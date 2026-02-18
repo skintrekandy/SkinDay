@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SkinDay — Review Flow</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #FAF7F2;
+    --warm-white: #FFFCF8;
+    --blush: #E8C4B8;
+    --rose: #C8725A;
+    --deep: #1A1410;
+    --muted: #8A7B72;
+    --gold: #C9A96E;
+    --border: #EDE8E0;
+    --tag-bg: #F4EDE8;
+    --green: #2E7D32;
+    --green-light: #E8F5E9;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: #F0EBE3;
+    color: var(--deep);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 2rem 1rem 6rem;
+  }
+
+  /* HEADER */
+  .flow-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 480px;
+    margin-bottom: 2rem;
+  }
+
+  .logo {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.4rem;
+    color: var(--deep);
+    letter-spacing: -0.01em;
+  }
+
+  .logo span { color: var(--rose); font-style: italic; }
+
+  .step-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .step-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--border);
+    transition: all 0.3s;
+  }
+
+  .step-dot.active { background: var(--rose); width: 24px; border-radius: 4px; }
+  .step-dot.done { background: var(--gold); }
+
+  /* CARD */
+  .card {
+    background: white;
+    border-radius: 24px;
+    width: 100%;
+    max-width: 480px;
+    overflow: hidden;
+    box-shadow: 0 8px 40px rgba(26,20,16,0.10);
+    animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ========================
+     SCREEN 0: SMS NUDGE
+  ======================== */
+  .phone-frame {
+    background: #1C1C1E;
+    border-radius: 24px;
+    padding: 1.5rem;
+    width: 100%;
+    max-width: 480px;
+    box-shadow: 0 8px 40px rgba(26,20,16,0.25);
+    animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .phone-top {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    margin-bottom: 1.2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .phone-app-icon {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, #C8725A, #C9A96E);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+  }
+
+  .phone-sender {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: white;
+  }
+
+  .phone-time {
+    font-size: 0.72rem;
+    color: rgba(255,255,255,0.4);
+    margin-left: auto;
+  }
+
+  .sms-bubble {
+    background: #2C2C2E;
+    border-radius: 18px 18px 18px 4px;
+    padding: 1rem 1.1rem;
+    margin-bottom: 0.8rem;
+  }
+
+  .sms-text {
+    color: rgba(255,255,255,0.88);
+    font-size: 0.88rem;
+    line-height: 1.65;
+  }
+
+  .sms-text strong { color: white; }
+
+  .sms-highlight {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: rgba(200,114,90,0.25);
+    border: 1px solid rgba(200,114,90,0.4);
+    color: #E8A090;
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding: 0.4rem 0.9rem;
+    border-radius: 100px;
+    margin-top: 0.8rem;
+    display: block;
+    text-align: center;
+  }
+
+  .sms-cta {
+    background: var(--rose);
+    color: white;
+    border: none;
+    border-radius: 14px;
+    padding: 0.9rem;
+    width: 100%;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 1rem;
+    transition: all 0.2s;
+  }
+
+  .sms-cta:hover { background: #b5604a; transform: scale(1.01); }
+
+  .phone-label {
+    text-align: center;
+    font-size: 0.75rem;
+    color: rgba(255,255,255,0.3);
+    margin-top: 0.8rem;
+  }
+
+  /* ========================
+     SCREEN 1: CLINIC CONFIRM
+  ======================== */
+  .card-header {
+    background: var(--deep);
+    padding: 1.5rem 1.8rem;
+    color: white;
+  }
+
+  .card-header-eyebrow {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: rgba(255,255,255,0.5);
+    margin-bottom: 0.5rem;
+  }
+
+  .card-header h2 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.55rem;
+    line-height: 1.2;
+    margin-bottom: 0.3rem;
+  }
+
+  .card-header p {
+    font-size: 0.82rem;
+    color: rgba(255,255,255,0.55);
+  }
+
+  .card-body { padding: 1.5rem 1.8rem; }
+
+  .clinic-confirm-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: var(--cream);
+    border-radius: 14px;
+    padding: 1rem 1.2rem;
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--border);
+  }
+
+  .clinic-confirm-emoji {
+    width: 48px; height: 48px;
+    background: #E8F5E9;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    flex-shrink: 0;
+  }
+
+  .clinic-confirm-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.05rem;
+    font-weight: 600;
+  }
+
+  .clinic-confirm-detail {
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  /* ========================
+     STAR RATING
+  ======================== */
+  .rating-section { margin-bottom: 1.5rem; }
+
+  .rating-section-title {
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-bottom: 1rem;
+  }
+
+  .star-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .star-row:last-child { border-bottom: none; }
+
+  .star-row-label {
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--deep);
+  }
+
+  .stars-input {
+    display: flex;
+    gap: 4px;
+  }
+
+  .star-btn {
+    font-size: 1.4rem;
+    cursor: pointer;
+    color: var(--border);
+    transition: all 0.15s;
+    background: none;
+    border: none;
+    line-height: 1;
+    padding: 2px;
+  }
+
+  .star-btn.filled { color: var(--gold); }
+  .star-btn:hover { transform: scale(1.2); }
+
+  /* ========================
+     INVOICE UPLOAD
+  ======================== */
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: 16px;
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--cream);
+    margin-bottom: 1.2rem;
+    position: relative;
+  }
+
+  .upload-zone:hover, .upload-zone.dragover {
+    border-color: var(--rose);
+    background: #FDF5F3;
+  }
+
+  .upload-zone.uploaded {
+    border-color: var(--green);
+    background: var(--green-light);
+    border-style: solid;
+  }
+
+  .upload-icon {
+    width: 52px; height: 52px;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 0.8rem;
+    font-size: 1.4rem;
+    transition: all 0.3s;
+  }
+
+  .upload-zone.uploaded .upload-icon {
+    background: var(--green-light);
+    border-color: var(--green);
+  }
+
+  .upload-title {
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-bottom: 0.3rem;
+  }
+
+  .upload-sub {
+    font-size: 0.78rem;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  .upload-input { display: none; }
+
+  .privacy-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    background: #EEF7FF;
+    border-radius: 10px;
+    padding: 0.8rem 1rem;
+    font-size: 0.78rem;
+    color: #1565C0;
+    line-height: 1.5;
+    margin-bottom: 1.5rem;
+  }
+
+  /* ========================
+     REVIEW TEXT
+  ======================== */
+  .review-textarea {
+    width: 100%;
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    padding: 1rem;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.88rem;
+    color: var(--deep);
+    resize: none;
+    height: 120px;
+    outline: none;
+    transition: border-color 0.2s;
+    background: white;
+    line-height: 1.6;
+    margin-bottom: 0.6rem;
+  }
+
+  .review-textarea:focus { border-color: var(--rose); }
+
+  .char-count {
+    text-align: right;
+    font-size: 0.74rem;
+    color: var(--muted);
+    margin-bottom: 1.2rem;
+  }
+
+  /* ========================
+     REWARD BANNER
+  ======================== */
+  .reward-banner {
+    background: linear-gradient(135deg, #1A1410 0%, #3D2B1F 100%);
+    border-radius: 14px;
+    padding: 1rem 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .reward-icon {
+    width: 40px; height: 40px;
+    background: linear-gradient(135deg, var(--gold), #E8C97A);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+  }
+
+  .reward-text { font-size: 0.82rem; color: rgba(255,255,255,0.75); line-height: 1.5; }
+  .reward-text strong { color: white; }
+
+  /* ========================
+     BUTTONS
+  ======================== */
+  .btn-primary {
+    width: 100%;
+    background: var(--rose);
+    color: white;
+    border: none;
+    border-radius: 14px;
+    padding: 1rem;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  .btn-primary:hover { background: #b5604a; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(200,114,90,0.35); }
+  .btn-primary:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; transform: none; box-shadow: none; }
+
+  .btn-secondary {
+    width: 100%;
+    background: transparent;
+    color: var(--muted);
+    border: none;
+    padding: 0.7rem;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem;
+    cursor: pointer;
+    margin-top: 0.5rem;
+    transition: color 0.2s;
+  }
+
+  .btn-secondary:hover { color: var(--deep); }
+
+  /* ========================
+     SUCCESS SCREEN
+  ======================== */
+  .success-screen {
+    text-align: center;
+    padding: 3rem 1.8rem 2rem;
+  }
+
+  .success-animation {
+    width: 80px; height: 80px;
+    background: var(--green-light);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+    font-size: 2rem;
+    animation: popIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes popIn {
+    from { transform: scale(0); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  .success-screen h2 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.9rem;
+    margin-bottom: 0.6rem;
+  }
+
+  .success-screen p {
+    font-size: 0.88rem;
+    color: var(--muted);
+    line-height: 1.65;
+    max-width: 320px;
+    margin: 0 auto 2rem;
+  }
+
+  .credit-earned {
+    background: linear-gradient(135deg, #1A1410, #3D2B1F);
+    border-radius: 16px;
+    padding: 1.2rem 1.5rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .credit-label { font-size: 0.82rem; color: rgba(255,255,255,0.6); }
+  .credit-amount {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.8rem;
+    color: var(--gold);
+    font-weight: 600;
+  }
+
+  .credit-note { font-size: 0.75rem; color: rgba(255,255,255,0.45); }
+
+  .review-summary {
+    background: var(--cream);
+    border-radius: 14px;
+    padding: 1rem 1.2rem;
+    text-align: left;
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--border);
+  }
+
+  .review-summary-clinic {
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-bottom: 0.3rem;
+  }
+
+  .review-summary-stars { color: var(--gold); font-size: 1rem; margin-bottom: 0.4rem; }
+
+  .review-summary-text {
+    font-size: 0.83rem;
+    color: var(--deep);
+    line-height: 1.55;
+    font-style: italic;
+  }
+
+  .founding-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: linear-gradient(135deg, var(--gold), #E8C97A);
+    color: var(--deep);
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.4rem 1rem;
+    border-radius: 100px;
+    margin-bottom: 1.5rem;
+    letter-spacing: 0.04em;
+  }
+
+  /* NAV TABS */
+  .nav-tabs {
+    display: flex;
+    max-width: 480px;
+    width: 100%;
+    margin-bottom: 1.5rem;
+    background: rgba(255,255,255,0.5);
+    border-radius: 100px;
+    padding: 4px;
+    gap: 4px;
+  }
+
+  .nav-tab {
+    flex: 1;
+    padding: 0.5rem;
+    border: none;
+    background: transparent;
+    border-radius: 100px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 500;
+    cursor: pointer;
+    color: var(--muted);
+    transition: all 0.2s;
+    text-align: center;
+  }
+
+  .nav-tab.active {
+    background: white;
+    color: var(--deep);
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  .progress-bar {
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    margin-bottom: 1.5rem;
+    max-width: 480px;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--rose), var(--gold));
+    border-radius: 2px;
+    transition: width 0.4s ease;
+  }
+</style>
+</head>
+<body>
+
+<div class="flow-header">
+  <div class="logo">Skin<span>Day</span></div>
+  <div class="step-indicator">
+    <div class="step-dot done" id="dot-0"></div>
+    <div class="step-dot active" id="dot-1"></div>
+    <div class="step-dot" id="dot-2"></div>
+    <div class="step-dot" id="dot-3"></div>
+    <div class="step-dot" id="dot-4"></div>
+  </div>
+</div>
+
+<!-- NAV TABS (for demo) -->
+<div class="nav-tabs">
+  <button class="nav-tab" onclick="goTo(0)">📱 SMS</button>
+  <button class="nav-tab active" onclick="goTo(1)">🏥 Clinic</button>
+  <button class="nav-tab" onclick="goTo(2)">⭐ Rate</button>
+  <button class="nav-tab" onclick="goTo(3)">📄 Verify</button>
+  <button class="nav-tab" onclick="goTo(4)">🎉 Done</button>
+</div>
+
+<div class="progress-bar">
+  <div class="progress-fill" id="progress" style="width:25%"></div>
+</div>
+
+<!-- ========================
+     SCREEN 0: SMS NUDGE
+======================== -->
+<div id="screen-0" class="screen">
+  <div class="phone-frame">
+    <div class="phone-top">
+      <div class="phone-app-icon">💆</div>
+      <div>
+        <div class="phone-sender">SkinDay</div>
+        <div style="font-size:0.72rem;color:rgba(255,255,255,0.4)">Text Message · 2 days after visit</div>
+      </div>
+      <div class="phone-time">Now</div>
+    </div>
+
+    <div class="sms-bubble">
+      <div class="sms-text">
+        Hi <strong>Priya</strong> 👋<br><br>
+        How did your visit go at <strong>Lumière Medical Aesthetics</strong>?<br><br>
+        Your experience helps other clients in Toronto find the right clinic — and your review can only be left by <strong>verified clients like you</strong>.<br><br>
+        <div class="sms-highlight">🎁 Earn $15 SkinDay credit for a verified review</div>
+      </div>
+    </div>
+
+    <div class="sms-bubble" style="margin-bottom:0;background:rgba(255,255,255,0.06)">
+      <div class="sms-text" style="font-size:0.78rem;color:rgba(255,255,255,0.5)">
+        Takes ~2 min · Your invoice info is kept private · Honest reviews only
+      </div>
+    </div>
+
+    <button class="sms-cta" onclick="goTo(1)">Leave My Review →</button>
+    <div class="phone-label">Tap to open in SkinDay app</div>
+  </div>
+</div>
+
+<!-- ========================
+     SCREEN 1: CONFIRM CLINIC
+======================== -->
+<div id="screen-1" class="screen active">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-header-eyebrow">Step 1 of 3 · Confirm Visit</div>
+      <h2>Is this the right clinic?</h2>
+      <p>We've pre-filled this from your booking. Tap to change if needed.</p>
+    </div>
+    <div class="card-body">
+      <div class="clinic-confirm-row">
+        <div class="clinic-confirm-emoji">🌿</div>
+        <div>
+          <div class="clinic-confirm-name">Lumière Medical Aesthetics</div>
+          <div class="clinic-confirm-detail">Yorkville, Toronto · Feb 15, 2025</div>
+          <div class="clinic-confirm-detail" style="margin-top:3px">💉 Lip Filler — Dr. Sarah Chen</div>
+        </div>
+      </div>
+
+      <div class="reward-banner">
+        <div class="reward-icon">🎁</div>
+        <div class="reward-text">
+          <strong>Earn $15 SkinDay credit</strong> when your review is verified. Redeem on any booking.
+        </div>
+      </div>
+
+      <button class="btn-primary" onclick="goTo(2)">Yes, That's My Visit →</button>
+      <button class="btn-secondary">This isn't right — let me search</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========================
+     SCREEN 2: RATE
+======================== -->
+<div id="screen-2" class="screen">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-header-eyebrow">Step 2 of 3 · Your Rating</div>
+      <h2>How was your experience?</h2>
+      <p>Rate each area — your breakdown helps future clients decide.</p>
+    </div>
+    <div class="card-body">
+
+      <div class="rating-section">
+        <div class="rating-section-title">Rate each category</div>
+        <div id="star-rows"></div>
+      </div>
+
+      <div style="margin-bottom:1.2rem">
+        <div class="rating-section-title" style="margin-bottom:0.6rem">Your review</div>
+        <textarea class="review-textarea" id="review-text" placeholder="What should other clients know? Results, bedside manner, value, what you'd do differently..." oninput="updateChar()"></textarea>
+        <div class="char-count"><span id="char-count">0</span> / 500</div>
+      </div>
+
+      <button class="btn-primary" id="rate-next-btn" onclick="goTo(3)" disabled>
+        Next: Verify Your Visit →
+      </button>
+      <button class="btn-secondary" onclick="goTo(1)">← Back</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========================
+     SCREEN 3: INVOICE UPLOAD
+======================== -->
+<div id="screen-3" class="screen">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-header-eyebrow">Step 3 of 3 · Verification</div>
+      <h2>Verify your visit</h2>
+      <p>Upload your invoice or receipt to get the verified badge — and your $15 credit.</p>
+    </div>
+    <div class="card-body">
+
+      <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()"
+           ondragover="handleDragOver(event)" ondrop="handleDrop(event)" ondragleave="handleDragLeave(event)">
+        <input type="file" class="upload-input" id="file-input" accept="image/*,.pdf" onchange="handleFileSelect(event)">
+        <div class="upload-icon" id="upload-icon">📄</div>
+        <div class="upload-title" id="upload-title">Tap to upload invoice or receipt</div>
+        <div class="upload-sub" id="upload-sub">Photo, screenshot, or PDF · JPG, PNG, PDF supported<br>Your name and financial details will be automatically redacted</div>
+      </div>
+
+      <div class="privacy-note">
+        🔒 <span>Your invoice is used <strong>only to verify you visited</strong>. We redact personal info and never share it with the clinic or third parties.</span>
+      </div>
+
+      <div class="reward-banner">
+        <div class="reward-icon">⚡</div>
+        <div class="reward-text">
+          <strong>Review verified within 24 hours.</strong> Your $15 credit will appear in your SkinDay wallet automatically.
+        </div>
+      </div>
+
+      <button class="btn-primary" id="submit-btn" onclick="goTo(4)">Submit My Review →</button>
+      <button class="btn-secondary" onclick="skipUpload()">Skip for now — submit without verification</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========================
+     SCREEN 4: SUCCESS
+======================== -->
+<div id="screen-4" class="screen">
+  <div class="card">
+    <div class="success-screen">
+      <div class="success-animation">✓</div>
+      <div class="founding-badge">⭐ Founding Reviewer · GTA</div>
+      <h2>Your review is live!</h2>
+      <p>You're helping Toronto clients make more confident choices. This is what SkinDay is built on.</p>
+
+      <div class="credit-earned">
+        <div>
+          <div class="credit-label">SkinDay credit earned</div>
+          <div class="credit-amount">$15.00</div>
+          <div class="credit-note">Pending invoice verification · arrives in ~24h</div>
+        </div>
+        <div style="font-size:2rem">🎁</div>
+      </div>
+
+      <div class="review-summary">
+        <div class="review-summary-clinic">Lumière Medical Aesthetics · Lip Filler</div>
+        <div class="review-summary-stars">★★★★★</div>
+        <div class="review-summary-text" id="summary-text">"Great experience! Dr. Chen really listened and the results look natural."</div>
+      </div>
+
+      <button class="btn-primary" style="margin-bottom:0.6rem">Browse More Clinics →</button>
+      <button class="btn-secondary">Share my review</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const categories = ['Overall', 'Results', 'Cleanliness', 'Value', 'Communication'];
+const ratings = {};
+categories.forEach(c => ratings[c] = 0);
+
+function renderStarRows() {
+  const container = document.getElementById('star-rows');
+  container.innerHTML = categories.map(cat => `
+    <div class="star-row">
+      <span class="star-row-label">${cat}</span>
+      <div class="stars-input" id="stars-${cat}">
+        ${[1,2,3,4,5].map(n => `
+          <button class="star-btn" 
+            onmouseover="hoverStar('${cat}', ${n})"
+            onmouseout="resetHover('${cat}')"
+            onclick="setStar('${cat}', ${n})">★</button>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+function setStar(cat, val) {
+  ratings[cat] = val;
+  renderStarState(cat, val);
+  checkRateReady();
+}
+
+function hoverStar(cat, val) {
+  renderStarState(cat, val, true);
+}
+
+function resetHover(cat) {
+  renderStarState(cat, ratings[cat]);
+}
+
+function renderStarState(cat, val, isHover = false) {
+  const container = document.getElementById(`stars-${cat}`);
+  if (!container) return;
+  container.querySelectorAll('.star-btn').forEach((btn, i) => {
+    btn.classList.toggle('filled', i < val);
+  });
+}
+
+function checkRateReady() {
+  const allRated = categories.every(c => ratings[c] > 0);
+  const hasText = document.getElementById('review-text').value.trim().length > 20;
+  document.getElementById('rate-next-btn').disabled = !(allRated && hasText);
+}
+
+function updateChar() {
+  const len = document.getElementById('review-text').value.length;
+  document.getElementById('char-count').textContent = len;
+  checkRateReady();
+
+  // Update summary text
+  const txt = document.getElementById('review-text').value;
+  if (txt.trim()) {
+    document.getElementById('summary-text').textContent = `"${txt.slice(0,100)}${txt.length > 100 ? '...' : ''}"`;
+  }
+}
+
+// Upload handlers
+function handleDragOver(e) {
+  e.preventDefault();
+  document.getElementById('upload-zone').classList.add('dragover');
+}
+
+function handleDragLeave() {
+  document.getElementById('upload-zone').classList.remove('dragover');
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  handleDragLeave();
+  const file = e.dataTransfer.files[0];
+  if (file) showUploadSuccess(file.name);
+}
+
+function handleFileSelect(e) {
+  const file = e.target.files[0];
+  if (file) showUploadSuccess(file.name);
+}
+
+function showUploadSuccess(name) {
+  const zone = document.getElementById('upload-zone');
+  zone.classList.add('uploaded');
+  document.getElementById('upload-icon').textContent = '✅';
+  document.getElementById('upload-title').textContent = name.length > 30 ? name.slice(0,28)+'...' : name;
+  document.getElementById('upload-sub').textContent = 'Invoice uploaded · Personal details will be auto-redacted';
+}
+
+function skipUpload() {
+  goTo(4);
+}
+
+// Navigation
+function goTo(step) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(`screen-${step}`).classList.add('active');
+
+  // Update dots
+  document.querySelectorAll('.step-dot').forEach((d, i) => {
+    d.classList.remove('active', 'done');
+    if (i < step) d.classList.add('done');
+    else if (i === step) d.classList.add('active');
+  });
+
+  // Update tabs
+  document.querySelectorAll('.nav-tab').forEach((t, i) => {
+    t.classList.toggle('active', i === step);
+  });
+
+  // Progress bar
+  const pct = [0, 25, 50, 75, 100][step];
+  document.getElementById('progress').style.width = pct + '%';
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Init
+renderStarRows();
+</script>
+</body>
+</html>
