@@ -1,0 +1,1223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SkinDay — Find Your Clinic</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #FAF7F2;
+    --warm-white: #FFFCF8;
+    --blush: #E8C4B8;
+    --rose: #C8725A;
+    --deep: #1A1410;
+    --muted: #8A7B72;
+    --gold: #C9A96E;
+    --card-bg: #FFFFFF;
+    --border: #EDE8E0;
+    --tag-bg: #F4EDE8;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--cream);
+    color: var(--deep);
+    min-height: 100vh;
+  }
+
+  /* NAV */
+  nav {
+    background: var(--warm-white);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 64px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    color: var(--deep);
+    letter-spacing: -0.02em;
+  }
+
+  .logo span { color: var(--rose); font-style: italic; }
+
+  .nav-links {
+    display: flex;
+    gap: 2rem;
+    list-style: none;
+  }
+
+  .nav-links a {
+    text-decoration: none;
+    color: var(--muted);
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: color 0.2s;
+  }
+
+  .nav-links a:hover { color: var(--deep); }
+
+  .nav-cta {
+    background: var(--deep);
+    color: white !important;
+    padding: 0.5rem 1.2rem;
+    border-radius: 100px;
+    font-size: 0.85rem !important;
+  }
+
+  /* HERO */
+  .hero {
+    background: var(--deep);
+    padding: 5rem 2rem 4rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -80px;
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(200,114,90,0.25) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+
+  .hero::after {
+    content: '';
+    position: absolute;
+    bottom: -60px; left: -60px;
+    width: 300px; height: 300px;
+    background: radial-gradient(circle, rgba(201,169,110,0.15) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+
+  .hero-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(200,114,90,0.15);
+    border: 1px solid rgba(200,114,90,0.3);
+    color: var(--blush);
+    font-size: 0.78rem;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.35rem 1rem;
+    border-radius: 100px;
+    margin-bottom: 1.5rem;
+  }
+
+  .hero h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2.4rem, 5vw, 3.8rem);
+    color: white;
+    line-height: 1.15;
+    margin-bottom: 1.2rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  .hero h1 em {
+    color: var(--gold);
+    font-style: italic;
+  }
+
+  .hero p {
+    color: rgba(255,255,255,0.55);
+    font-size: 1.05rem;
+    max-width: 520px;
+    margin: 0 auto 2.5rem;
+    line-height: 1.7;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* SEARCH BAR */
+  .search-bar {
+    display: flex;
+    max-width: 680px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 16px;
+    padding: 0.5rem;
+    gap: 0.5rem;
+    position: relative;
+    z-index: 1;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  }
+
+  .search-field {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    gap: 0.6rem;
+    padding: 0.5rem 0.8rem;
+    border-right: 1px solid var(--border);
+  }
+
+  .search-field:last-of-type { border-right: none; }
+
+  .search-field svg { color: var(--muted); flex-shrink: 0; }
+
+  .search-field input, .search-field select {
+    border: none;
+    outline: none;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    color: var(--deep);
+    background: transparent;
+    width: 100%;
+    cursor: pointer;
+  }
+
+  .search-field label {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-bottom: 2px;
+  }
+
+  .search-btn {
+    background: var(--rose);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 0.75rem 1.5rem;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: background 0.2s, transform 0.15s;
+    white-space: nowrap;
+  }
+
+  .search-btn:hover { background: #b5604a; transform: scale(1.02); }
+
+  /* FILTERS */
+  .filters-section {
+    padding: 1.5rem 2rem;
+    background: var(--warm-white);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    overflow-x: auto;
+    flex-wrap: wrap;
+  }
+
+  .filter-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+  }
+
+  .filter-chip {
+    padding: 0.45rem 1rem;
+    border-radius: 100px;
+    border: 1.5px solid var(--border);
+    background: white;
+    font-size: 0.83rem;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    color: var(--deep);
+    transition: all 0.2s;
+    white-space: nowrap;
+    font-weight: 500;
+  }
+
+  .filter-chip:hover { border-color: var(--rose); color: var(--rose); }
+  .filter-chip.active { border-color: var(--rose); background: var(--rose); color: white; }
+
+  /* MAIN LAYOUT */
+  .main-layout {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    min-height: calc(100vh - 200px);
+  }
+
+  /* SIDEBAR */
+  .sidebar {
+    background: var(--warm-white);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    max-height: calc(100vh - 150px);
+    position: sticky;
+    top: 64px;
+  }
+
+  .sidebar-header {
+    padding: 1.2rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .sidebar-header span {
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+
+  .sidebar-header strong { color: var(--deep); }
+
+  .sort-select {
+    border: 1px solid var(--border);
+    background: white;
+    border-radius: 8px;
+    padding: 0.4rem 0.7rem;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.8rem;
+    color: var(--deep);
+    cursor: pointer;
+    outline: none;
+  }
+
+  /* CLINIC CARDS */
+  .clinic-card {
+    padding: 1.2rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.2s;
+    position: relative;
+  }
+
+  .clinic-card:hover, .clinic-card.active { background: #FDF8F5; }
+  .clinic-card.active { border-left: 3px solid var(--rose); }
+
+  .clinic-card-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.8rem;
+    margin-bottom: 0.7rem;
+  }
+
+  .clinic-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+  }
+
+  .clinic-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin-bottom: 2px;
+  }
+
+  .clinic-location {
+    font-size: 0.78rem;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+
+  .stars {
+    color: var(--gold);
+    font-size: 0.8rem;
+    letter-spacing: 1px;
+  }
+
+  .review-count {
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-left: 3px;
+  }
+
+  .clinic-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 0.7rem;
+  }
+
+  .tag {
+    background: var(--tag-bg);
+    color: var(--muted);
+    font-size: 0.72rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 100px;
+    font-weight: 500;
+  }
+
+  .clinic-price-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .price-from {
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+
+  .price-amount {
+    font-weight: 700;
+    color: var(--deep);
+    font-size: 0.95rem;
+  }
+
+  .verified-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: #E8F5E9;
+    color: #2E7D32;
+    font-size: 0.68rem;
+    font-weight: 600;
+    padding: 0.2rem 0.5rem;
+    border-radius: 100px;
+  }
+
+  /* DETAIL PANEL */
+  .detail-panel {
+    overflow-y: auto;
+    background: var(--cream);
+  }
+
+  .detail-hero {
+    height: 260px;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: flex-end;
+  }
+
+  .detail-hero-bg {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8rem;
+  }
+
+  .detail-hero-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(26,20,16,0.85) 0%, rgba(26,20,16,0.1) 60%);
+  }
+
+  .detail-hero-content {
+    position: relative;
+    z-index: 1;
+    padding: 1.5rem 2rem;
+    width: 100%;
+    color: white;
+  }
+
+  .detail-clinic-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.8rem;
+    margin-bottom: 0.3rem;
+  }
+
+  .detail-meta {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-size: 0.85rem;
+    opacity: 0.85;
+    flex-wrap: wrap;
+  }
+
+  .detail-body {
+    padding: 2rem;
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 2rem;
+    align-items: start;
+  }
+
+  .section-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+    color: var(--deep);
+  }
+
+  /* SERVICES */
+  .services-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.7rem;
+    margin-bottom: 2rem;
+  }
+
+  .service-item {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 0.9rem 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: border-color 0.2s;
+    cursor: pointer;
+  }
+
+  .service-item:hover { border-color: var(--rose); }
+
+  .service-name { font-size: 0.85rem; font-weight: 500; }
+  .service-price { font-size: 0.85rem; color: var(--rose); font-weight: 600; }
+
+  /* REVIEWS */
+  .reviews-section { margin-bottom: 2rem; }
+
+  .review-card {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1.2rem;
+    margin-bottom: 0.8rem;
+  }
+
+  .review-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.5rem;
+  }
+
+  .reviewer-name { font-weight: 600; font-size: 0.88rem; }
+
+  .review-verified {
+    font-size: 0.72rem;
+    color: #2E7D32;
+    background: #E8F5E9;
+    padding: 0.15rem 0.5rem;
+    border-radius: 100px;
+  }
+
+  .review-text { font-size: 0.85rem; color: #5A4E48; line-height: 1.6; }
+
+  .review-date { font-size: 0.75rem; color: var(--muted); margin-top: 0.4rem; }
+
+  /* BOOKING WIDGET */
+  .booking-widget {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.5rem;
+    position: sticky;
+    top: 80px;
+  }
+
+  .booking-price {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.6rem;
+    margin-bottom: 0.2rem;
+  }
+
+  .booking-price span { font-size: 1rem; font-family: 'DM Sans', sans-serif; color: var(--muted); font-weight: 400; }
+
+  .booking-stars {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 1.2rem;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+
+  .booking-field {
+    margin-bottom: 0.8rem;
+  }
+
+  .booking-field label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-bottom: 0.4rem;
+  }
+
+  .booking-field select, .booking-field input {
+    width: 100%;
+    padding: 0.7rem 0.9rem;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.88rem;
+    color: var(--deep);
+    outline: none;
+    transition: border-color 0.2s;
+    background: white;
+  }
+
+  .booking-field select:focus, .booking-field input:focus { border-color: var(--rose); }
+
+  .book-btn {
+    width: 100%;
+    background: var(--rose);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 0.9rem;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 0.5rem;
+    transition: background 0.2s, transform 0.15s;
+  }
+
+  .book-btn:hover { background: #b5604a; transform: translateY(-1px); }
+
+  .booking-note {
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-top: 0.7rem;
+  }
+
+  .compare-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0; right: 0;
+    background: var(--deep);
+    color: white;
+    padding: 1rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    z-index: 200;
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+  }
+
+  .compare-bar.visible { transform: translateY(0); }
+
+  .compare-bar-clinics {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+  }
+
+  .compare-pill {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 100px;
+    padding: 0.4rem 1rem;
+    font-size: 0.83rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .compare-pill button {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.6);
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+  }
+
+  .compare-btn {
+    background: var(--rose);
+    color: white;
+    border: none;
+    border-radius: 100px;
+    padding: 0.6rem 1.4rem;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 600;
+    font-size: 0.88rem;
+    cursor: pointer;
+  }
+
+  .add-compare-btn {
+    padding: 0.3rem 0.8rem;
+    border: 1.5px solid var(--rose);
+    background: transparent;
+    color: var(--rose);
+    border-radius: 100px;
+    font-size: 0.75rem;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .add-compare-btn:hover, .add-compare-btn.added {
+    background: var(--rose);
+    color: white;
+  }
+
+  .rating-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    margin-bottom: 0.4rem;
+    font-size: 0.8rem;
+  }
+
+  .rating-bar-label { width: 80px; color: var(--muted); }
+
+  .rating-bar-track {
+    flex: 1;
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .rating-bar-fill {
+    height: 100%;
+    background: var(--gold);
+    border-radius: 3px;
+  }
+
+  .overall-score {
+    text-align: center;
+    margin-bottom: 1.2rem;
+    padding: 1rem;
+    background: var(--cream);
+    border-radius: 12px;
+  }
+
+  .score-big {
+    font-family: 'Playfair Display', serif;
+    font-size: 3rem;
+    line-height: 1;
+    color: var(--deep);
+  }
+
+  .score-label { font-size: 0.8rem; color: var(--muted); margin-top: 2px; }
+
+  @media (max-width: 900px) {
+    .main-layout { grid-template-columns: 1fr; }
+    .sidebar { max-height: 400px; position: static; }
+    .detail-body { grid-template-columns: 1fr; }
+    .booking-widget { position: static; }
+    .services-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">Skin<span>Day</span></div>
+  <ul class="nav-links">
+    <li><a href="#">Explore</a></li>
+    <li><a href="#">How it works</a></li>
+    <li><a href="#">For Clinics</a></li>
+    <li><a href="#" class="nav-cta">Sign Up</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-eyebrow">✦ Greater Toronto Area · 42 Verified Clinics</div>
+  <h1>Find Your Perfect<br><em>Cosmetic Clinic</em></h1>
+  <p>Real reviews from verified clients. Compare treatments, pricing, and practitioners — all in one place.</p>
+
+  <div class="search-bar">
+    <div class="search-field">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+      <div>
+        <label>Location</label>
+        <input type="text" value="Toronto, ON" />
+      </div>
+    </div>
+    <div class="search-field">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4.5 6.375a4.125 4.125 0 118.25 0 4.125 4.125 0 01-8.25 0zM14.25 8.625a3.375 3.375 0 116.75 0 3.375 3.375 0 01-6.75 0zM1.5 19.125a7.125 7.125 0 0114.25 0v.003l-.001.119a.75.75 0 01-.363.63 13.067 13.067 0 01-6.761 1.873c-2.472 0-4.786-.684-6.76-1.873a.75.75 0 01-.364-.63l-.001-.122zM17.25 19.128l-.001.144a2.25 2.25 0 01-.233.96 10.088 10.088 0 005.06-1.01.75.75 0 00.42-.643 4.875 4.875 0 00-6.957-4.611 8.586 8.586 0 011.71 5.157v.003z"/></svg>
+      <div>
+        <label>Treatment</label>
+        <select>
+          <option>All Treatments</option>
+          <option>Botox & Fillers</option>
+          <option>Laser Treatments</option>
+          <option>Body Contouring</option>
+          <option>Surgical</option>
+        </select>
+      </div>
+    </div>
+    <button class="search-btn" onclick="triggerSearch()">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      Search
+    </button>
+  </div>
+</section>
+
+<!-- FILTERS -->
+<div class="filters-section">
+  <span class="filter-label">Filter:</span>
+  <button class="filter-chip active" onclick="toggleFilter(this)">All</button>
+  <button class="filter-chip" onclick="toggleFilter(this)">💉 Injectables</button>
+  <button class="filter-chip" onclick="toggleFilter(this)">✨ Laser & Skin</button>
+  <button class="filter-chip" onclick="toggleFilter(this)">🧖 Body Contouring</button>
+  <button class="filter-chip" onclick="toggleFilter(this)">🏥 Surgical</button>
+  <button class="filter-chip" onclick="toggleFilter(this)">⭐ 4.5+ Rating</button>
+  <button class="filter-chip" onclick="toggleFilter(this)">✅ Verified Only</button>
+  <button class="filter-chip" onclick="toggleFilter(this)">💰 Under $300</button>
+</div>
+
+<!-- MAIN -->
+<div class="main-layout">
+  <!-- SIDEBAR / LIST -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <span><strong>42</strong> clinics found</span>
+      <select class="sort-select">
+        <option>Top Rated</option>
+        <option>Most Reviews</option>
+        <option>Price: Low to High</option>
+        <option>Nearest</option>
+      </select>
+    </div>
+
+    <div id="clinic-list"></div>
+  </div>
+
+  <!-- DETAIL PANEL -->
+  <div class="detail-panel" id="detail-panel"></div>
+</div>
+
+<!-- COMPARE BAR -->
+<div class="compare-bar" id="compare-bar">
+  <div style="display:flex; align-items:center; gap:1rem;">
+    <span style="font-size:0.85rem; opacity:0.7">Comparing:</span>
+    <div class="compare-bar-clinics" id="compare-pills"></div>
+  </div>
+  <button class="compare-btn" onclick="runCompare()">Compare Now →</button>
+</div>
+
+<script>
+const clinics = [
+  {
+    id: 1,
+    name: "Lumière Medical Aesthetics",
+    location: "Yorkville, Toronto",
+    rating: 4.9,
+    reviews: 312,
+    emoji: "🌿",
+    bg: "#E8F5E9",
+    tags: ["Botox", "Fillers", "PRP"],
+    priceFrom: 150,
+    verified: true,
+    about: "Award-winning medical aesthetic clinic in the heart of Yorkville. Led by Dr. Sarah Chen, a double board-certified physician with 12+ years of experience. Known for natural-looking results and a patient-first approach.",
+    services: [
+      {name: "Botox (per unit)", price: "$12–15"},
+      {name: "Lip Filler", price: "$650"},
+      {name: "PRP Facial", price: "$450"},
+      {name: "Cheek Augmentation", price: "$850"},
+      {name: "Tear Trough Filler", price: "$750"},
+      {name: "Skin Booster (Profhilo)", price: "$550"},
+    ],
+    ratings: { cleanliness: 5.0, results: 4.9, value: 4.7, communication: 4.9 },
+    reviewList: [
+      { name: "Maria T.", stars: 5, text: "Absolutely transformed my confidence. Dr. Chen listened carefully and gave me the most natural result — colleagues keep saying I look 'refreshed' without guessing why!", date: "Feb 2025" },
+      { name: "James K.", stars: 5, text: "First time getting Botox and I was nervous. The consultation was thorough and zero-pressure. Results are subtle and exactly what I asked for.", date: "Jan 2025" },
+      { name: "Priya R.", stars: 4, text: "Great experience overall. Booking was easy, clinic is immaculate. Slight wait time but worth it.", date: "Dec 2024" },
+    ]
+  },
+  {
+    id: 2,
+    name: "Pure Skin Toronto",
+    location: "King West, Toronto",
+    rating: 4.7,
+    reviews: 198,
+    emoji: "💎",
+    bg: "#E3F2FD",
+    tags: ["Laser", "Microneedling", "Chemical Peels"],
+    priceFrom: 200,
+    verified: true,
+    about: "Boutique laser clinic specializing in advanced skin resurfacing and rejuvenation. Our team of certified laser technicians use only Health Canada approved devices.",
+    services: [
+      {name: "IPL Photofacial", price: "$350"},
+      {name: "Fraxel Laser", price: "$900"},
+      {name: "Microneedling", price: "$300"},
+      {name: "Chemical Peel (VI)", price: "$250"},
+      {name: "Laser Hair Removal", price: "$120+"},
+      {name: "BBL Hero", price: "$400"},
+    ],
+    ratings: { cleanliness: 4.9, results: 4.7, value: 4.5, communication: 4.8 },
+    reviewList: [
+      { name: "Aisha B.", stars: 5, text: "My hyperpigmentation is 90% gone after 3 IPL sessions. The staff are knowledgeable and made me feel safe the whole time.", date: "Feb 2025" },
+      { name: "Chris W.", stars: 4, text: "Good results on my acne scars after microneedling series. Recovery was longer than expected but they prepped me well.", date: "Jan 2025" },
+    ]
+  },
+  {
+    id: 3,
+    name: "Forma Body & Face",
+    location: "North York, Toronto",
+    rating: 4.6,
+    reviews: 154,
+    emoji: "✨",
+    bg: "#FFF3E0",
+    tags: ["CoolSculpting", "Emsculpt", "RF Lifting"],
+    priceFrom: 299,
+    verified: true,
+    about: "GTA's premier body contouring destination. Non-surgical solutions for fat reduction and muscle toning using FDA-cleared technology.",
+    services: [
+      {name: "CoolSculpting (per cycle)", price: "$750"},
+      {name: "Emsculpt NEO", price: "$1,200"},
+      {name: "Forma RF Skin Tightening", price: "$400"},
+      {name: "BodyFX", price: "$600"},
+      {name: "Morpheus8 Body", price: "$1,500"},
+      {name: "Package: 4x CoolSculpt", price: "$2,600"},
+    ],
+    ratings: { cleanliness: 4.8, results: 4.6, value: 4.3, communication: 4.7 },
+    reviewList: [
+      { name: "Sandra M.", stars: 5, text: "Lost 2 inches off my waist with CoolSculpting and Emsculpt combo. Results took 3 months to fully show but amazing.", date: "Jan 2025" },
+      { name: "David L.", stars: 4, text: "Professional team, comfortable facility. Pricing is on the higher end but quality shows.", date: "Nov 2024" },
+    ]
+  },
+  {
+    id: 4,
+    name: "Revive Aesthetics Clinic",
+    location: "Mississauga",
+    rating: 4.5,
+    reviews: 89,
+    emoji: "🌸",
+    bg: "#FCE4EC",
+    tags: ["Botox", "Skin Boosters", "Laser"],
+    priceFrom: 120,
+    verified: false,
+    about: "Friendly, accessible medical aesthetics clinic in Mississauga. Excellent for first-timers and those looking for affordable, quality treatments.",
+    services: [
+      {name: "Botox (per unit)", price: "$10–13"},
+      {name: "Juvederm Filler", price: "$600"},
+      {name: "Hydrafacial", price: "$180"},
+      {name: "Laser Hair Removal", price: "$99+"},
+      {name: "Skin Booster", price: "$480"},
+      {name: "Dermaplaning", price: "$120"},
+    ],
+    ratings: { cleanliness: 4.5, results: 4.4, value: 4.8, communication: 4.6 },
+    reviewList: [
+      { name: "Nina P.", stars: 5, text: "Best value in GTA. The injector is gentle and honest — told me I didn't need as much filler as I wanted to book. Trustworthy!", date: "Feb 2025" },
+    ]
+  },
+  {
+    id: 5,
+    name: "The Aesthetic Gallery",
+    location: "Etobicoke, Toronto",
+    rating: 4.8,
+    reviews: 221,
+    emoji: "🖤",
+    bg: "#F3E5F5",
+    tags: ["Surgical", "Rhinoplasty", "Body Sculpt"],
+    priceFrom: 500,
+    verified: true,
+    about: "Boutique surgical and non-surgical aesthetic practice. Dr. Nazari is one of Toronto's most sought-after facial plastic surgeons, with over 2,000 procedures performed.",
+    services: [
+      {name: "Rhinoplasty consult", price: "$300"},
+      {name: "Blepharoplasty", price: "$4,500+"},
+      {name: "Thread Lift", price: "$1,800"},
+      {name: "Morpheus8 Face", price: "$1,200"},
+      {name: "PRP Hair Restoration", price: "$800"},
+      {name: "Mini Facelift", price: "$8,500+"},
+    ],
+    ratings: { cleanliness: 5.0, results: 4.9, value: 4.4, communication: 4.8 },
+    reviewList: [
+      { name: "Rebecca A.", stars: 5, text: "Had a thread lift and the results are incredible. Dr. Nazari has an artistic eye — my face looks lifted and natural, not done.", date: "Feb 2025" },
+      { name: "Tom H.", stars: 5, text: "Had a rhinoplasty consult. Even though I wasn't ready to book, the team was thorough, honest, and not pushy at all.", date: "Dec 2024" },
+    ]
+  }
+];
+
+let selected = clinics[0];
+let compareList = [];
+
+function renderStars(n) {
+  const full = Math.floor(n);
+  const half = n % 1 >= 0.5;
+  let s = '★'.repeat(full);
+  if (half) s += '½';
+  return s;
+}
+
+function renderClinicList() {
+  const container = document.getElementById('clinic-list');
+  container.innerHTML = clinics.map(c => `
+    <div class="clinic-card ${c.id === selected.id ? 'active' : ''}" onclick="selectClinic(${c.id})">
+      <div class="clinic-card-top">
+        <div class="clinic-avatar" style="background:${c.bg}">${c.emoji}</div>
+        <div style="flex:1">
+          <div class="clinic-name">${c.name}</div>
+          <div class="clinic-location">📍 ${c.location}</div>
+          <div style="margin-top:3px">
+            <span class="stars">${renderStars(c.rating)}</span>
+            <span class="review-count">${c.rating} (${c.reviews} reviews)</span>
+          </div>
+        </div>
+        ${c.verified ? '<span class="verified-badge">✓ Verified</span>' : ''}
+      </div>
+      <div class="clinic-tags">
+        ${c.tags.map(t => `<span class="tag">${t}</span>`).join('')}
+      </div>
+      <div class="clinic-price-row">
+        <div>
+          <div class="price-from">From</div>
+          <div class="price-amount">$${c.priceFrom}</div>
+        </div>
+        <button class="add-compare-btn ${compareList.includes(c.id) ? 'added' : ''}" 
+          onclick="event.stopPropagation(); toggleCompare(${c.id})" id="compare-btn-${c.id}">
+          ${compareList.includes(c.id) ? '✓ Comparing' : '+ Compare'}
+        </button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderDetail(clinic) {
+  const avgRating = clinic.rating;
+  const panel = document.getElementById('detail-panel');
+
+  const ratingBars = Object.entries(clinic.ratings).map(([k, v]) => `
+    <div class="rating-bar-row">
+      <span class="rating-bar-label">${k.charAt(0).toUpperCase() + k.slice(1)}</span>
+      <div class="rating-bar-track"><div class="rating-bar-fill" style="width:${v/5*100}%"></div></div>
+      <span style="font-size:0.8rem;color:var(--muted);width:28px;text-align:right">${v}</span>
+    </div>
+  `).join('');
+
+  panel.innerHTML = `
+    <div class="detail-hero">
+      <div class="detail-hero-bg" style="background:${clinic.bg}">${clinic.emoji}</div>
+      <div class="detail-hero-overlay"></div>
+      <div class="detail-hero-content">
+        <div class="detail-clinic-name">${clinic.name}</div>
+        <div class="detail-meta">
+          <span>📍 ${clinic.location}</span>
+          <span>⭐ ${clinic.rating} · ${clinic.reviews} verified reviews</span>
+          ${clinic.verified ? '<span style="background:rgba(46,125,50,0.3);padding:2px 8px;border-radius:100px;font-size:0.75rem">✓ SkinDay Verified</span>' : ''}
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-body">
+      <div>
+        <p style="color:var(--muted);font-size:0.9rem;line-height:1.75;margin-bottom:2rem">${clinic.about}</p>
+
+        <div class="section-title">Services & Pricing</div>
+        <div class="services-grid">
+          ${clinic.services.map(s => `
+            <div class="service-item">
+              <span class="service-name">${s.name}</span>
+              <span class="service-price">${s.price}</span>
+            </div>
+          `).join('')}
+        </div>
+
+        <div class="reviews-section">
+          <div class="section-title">Client Reviews</div>
+          ${clinic.reviewList.map(r => `
+            <div class="review-card">
+              <div class="review-header">
+                <div>
+                  <div class="reviewer-name">${r.name}</div>
+                  <span class="stars" style="font-size:0.75rem">${'★'.repeat(r.stars)}</span>
+                </div>
+                <span class="review-verified">✓ Verified client</span>
+              </div>
+              <div class="review-text">${r.text}</div>
+              <div class="review-date">${r.date}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- BOOKING WIDGET -->
+      <div>
+        <div class="booking-widget">
+          <div class="booking-price">From $${clinic.priceFrom} <span>/ session</span></div>
+          <div class="booking-stars">
+            <span class="stars" style="color:var(--gold)">★★★★★</span>
+            ${clinic.rating} · ${clinic.reviews} reviews
+          </div>
+
+          <div class="booking-field">
+            <label>Treatment</label>
+            <select>
+              ${clinic.services.map(s => `<option>${s.name} — ${s.price}</option>`).join('')}
+            </select>
+          </div>
+          <div class="booking-field">
+            <label>Preferred Date</label>
+            <input type="date" min="${new Date().toISOString().split('T')[0]}" />
+          </div>
+          <div class="booking-field">
+            <label>Preferred Time</label>
+            <select>
+              <option>Morning (9am–12pm)</option>
+              <option>Afternoon (12–5pm)</option>
+              <option>Evening (5–8pm)</option>
+            </select>
+          </div>
+
+          <button class="book-btn">Request Booking →</button>
+          <div class="booking-note">Free consultation · No commitment</div>
+        </div>
+
+        <!-- RATINGS BREAKDOWN -->
+        <div style="background:white;border:1px solid var(--border);border-radius:16px;padding:1.5rem;margin-top:1rem">
+          <div class="section-title">Rating Breakdown</div>
+          <div class="overall-score">
+            <div class="score-big">${clinic.rating}</div>
+            <div class="stars" style="font-size:1.1rem;color:var(--gold)">${renderStars(clinic.rating)}</div>
+            <div class="score-label">${clinic.reviews} verified reviews</div>
+          </div>
+          ${ratingBars}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function selectClinic(id) {
+  selected = clinics.find(c => c.id === id);
+  renderClinicList();
+  renderDetail(selected);
+  document.getElementById('detail-panel').scrollTop = 0;
+}
+
+function toggleFilter(el) {
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function toggleCompare(id) {
+  const idx = compareList.indexOf(id);
+  if (idx > -1) {
+    compareList.splice(idx, 1);
+  } else {
+    if (compareList.length >= 3) {
+      alert('You can compare up to 3 clinics at once.');
+      return;
+    }
+    compareList.push(id);
+  }
+  updateCompareBar();
+  renderClinicList();
+}
+
+function updateCompareBar() {
+  const bar = document.getElementById('compare-bar');
+  const pills = document.getElementById('compare-pills');
+
+  if (compareList.length === 0) {
+    bar.classList.remove('visible');
+    return;
+  }
+
+  bar.classList.add('visible');
+  pills.innerHTML = compareList.map(id => {
+    const c = clinics.find(x => x.id === id);
+    return `<div class="compare-pill">${c.emoji} ${c.name.split(' ')[0]} <button onclick="toggleCompare(${id})">×</button></div>`;
+  }).join('');
+}
+
+function runCompare() {
+  if (compareList.length < 2) {
+    alert('Add at least 2 clinics to compare!');
+    return;
+  }
+  
+  const toCompare = compareList.map(id => clinics.find(c => c.id === id));
+  
+  // Simple compare modal
+  const modal = document.createElement('div');
+  modal.style.cssText = `
+    position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;
+    display:flex;align-items:center;justify-content:center;padding:2rem;
+  `;
+  
+  const categories = ['cleanliness', 'results', 'value', 'communication'];
+  
+  modal.innerHTML = `
+    <div style="background:white;border-radius:20px;padding:2rem;max-width:800px;width:100%;max-height:80vh;overflow-y:auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem">
+        <h2 style="font-family:'Playfair Display',serif;font-size:1.5rem">Side-by-Side Comparison</h2>
+        <button onclick="this.closest('[style*=fixed]').remove()" style="border:none;background:none;font-size:1.5rem;cursor:pointer">×</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(${toCompare.length},1fr);gap:1rem">
+        ${toCompare.map(c => `
+          <div style="text-align:center;padding:1rem;background:${c.bg};border-radius:12px">
+            <div style="font-size:2rem">${c.emoji}</div>
+            <div style="font-family:'Playfair Display',serif;font-weight:700;font-size:0.95rem;margin:0.5rem 0">${c.name}</div>
+            <div style="font-size:0.8rem;color:#666">${c.location}</div>
+            <div style="font-size:1.4rem;font-family:'Playfair Display',serif;margin:0.5rem 0">${c.rating} ⭐</div>
+            <div style="font-size:0.8rem;color:#888">${c.reviews} reviews</div>
+            <div style="margin-top:0.5rem;font-weight:700;color:#C8725A">From $${c.priceFrom}</div>
+          </div>
+        `).join('')}
+      </div>
+      <table style="width:100%;border-collapse:collapse;margin-top:1.5rem;font-size:0.88rem">
+        <tr style="border-bottom:2px solid #EDE8E0">
+          <td style="padding:0.7rem;font-weight:600;color:#8A7B72;text-transform:uppercase;font-size:0.75rem;letter-spacing:0.08em">Category</td>
+          ${toCompare.map(c => `<td style="padding:0.7rem;text-align:center;font-weight:600">${c.name.split(' ')[0]}</td>`).join('')}
+        </tr>
+        ${categories.map(cat => `
+          <tr style="border-bottom:1px solid #EDE8E0">
+            <td style="padding:0.7rem;color:#5A4E48;text-transform:capitalize">${cat}</td>
+            ${toCompare.map(c => {
+              const val = c.ratings[cat];
+              const best = Math.max(...toCompare.map(x => x.ratings[cat]));
+              return `<td style="padding:0.7rem;text-align:center;font-weight:${val === best ? '700' : '400'};color:${val === best ? '#C8725A' : '#5A4E48'}">${val} ${val === best ? '🏆' : ''}</td>`;
+            }).join('')}
+          </tr>
+        `).join('')}
+        <tr>
+          <td style="padding:0.7rem;color:#5A4E48">Starting Price</td>
+          ${toCompare.map(c => {
+            const cheapest = Math.min(...toCompare.map(x => x.priceFrom));
+            return `<td style="padding:0.7rem;text-align:center;font-weight:${c.priceFrom === cheapest ? '700' : '400'};color:${c.priceFrom === cheapest ? '#C8725A' : '#5A4E48'}">$${c.priceFrom} ${c.priceFrom === cheapest ? '💰' : ''}</td>`;
+          }).join('')}
+        </tr>
+      </table>
+    </div>
+  `;
+  
+  modal.addEventListener('click', (e) => { if(e.target === modal) modal.remove(); });
+  document.body.appendChild(modal);
+}
+
+function triggerSearch() {
+  // Animate cards briefly
+  document.querySelectorAll('.clinic-card').forEach((card, i) => {
+    card.style.opacity = '0';
+    card.style.transform = 'translateY(10px)';
+    setTimeout(() => {
+      card.style.transition = 'all 0.3s ease';
+      card.style.opacity = '1';
+      card.style.transform = 'translateY(0)';
+    }, i * 80);
+  });
+}
+
+// Init
+renderClinicList();
+renderDetail(selected);
+</script>
+</body>
+</html>
