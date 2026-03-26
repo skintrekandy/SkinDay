@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Clinic Profile — SkinDay</title>
+  <link rel="canonical" id="meta-canonical" href="https://skinday.ca/" />
+  <meta name="description" id="meta-description" content="Find cosmetic clinics in the GTA with transparent Botox pricing on SkinDay." />
+  <!-- OpenGraph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="SkinDay" />
+  <meta property="og:title" id="og-title" content="SkinDay — GTA Cosmetic Clinic Directory" />
+  <meta property="og:description" id="og-description" content="Find cosmetic clinics in the GTA with transparent Botox pricing on SkinDay." />
+  <meta property="og:url" id="og-url" content="https://skinday.ca/" />
+  <meta property="og:image" id="og-image" content="https://skinday.ca/og-default.jpg" />
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" id="tw-title" content="SkinDay — GTA Cosmetic Clinic Directory" />
+  <meta name="twitter:description" id="tw-description" content="Find cosmetic clinics in the GTA with transparent Botox pricing on SkinDay." />
+  <meta name="twitter:image" id="tw-image" content="https://skinday.ca/og-default.jpg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --cream:   #FAF7F2;
+      --warm:    #F4EDE4;
+      --deep:    #1C1714;
+      --rose:    #C8725A;
+      --rose-m:  #D4896E;
+      --rose-bg: #F5E8E3;
+      --gold:    #C9A96E;
+      --muted:   #8A7B72;
+      --dim:     #B5A89F;
+      --border:  #EAE2D8;
+      --green:   #3D7A55;
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--cream);
+      color: var(--deep);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: rgba(28,23,20,0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(201,169,110,0.25);
+      padding: 0 5%;
+      display: flex; align-items: center; justify-content: space-between;
+      height: 64px;
+    }
+    .nav-logo {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.6rem; font-weight: 400;
+      color: var(--cream); letter-spacing: 0.04em;
+      text-decoration: none;
+    }
+    .nav-logo span { color: var(--gold); }
+    .nav-links { display: flex; gap: 2rem; align-items: center; list-style: none; }
+    .nav-links a {
+      color: var(--dim); text-decoration: none;
+      font-size: 0.85rem; font-weight: 400;
+      letter-spacing: 0.03em; transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--cream); }
+    .nav-cta {
+      background: var(--rose); color: #fff !important;
+      padding: 0.45rem 1.1rem; border-radius: 4px;
+      font-weight: 500 !important; transition: background 0.2s !important;
+    }
+    .nav-cta:hover { background: var(--rose-m) !important; }
+    @media (max-width: 768px) { .nav-links { display: none; } }
+
+    /* ── PAGE SHELL ── */
+    .page-wrap {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 96px 5% 80px;
+    }
+
+    /* ── BACK LINK ── */
+    .back-link {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      color: var(--muted); text-decoration: none;
+      font-size: 0.82rem; font-weight: 500;
+      letter-spacing: 0.03em;
+      margin-bottom: 2rem;
+      transition: color 0.2s;
+    }
+    .back-link:hover { color: var(--rose); }
+    .back-link svg { flex-shrink: 0; }
+
+    /* ── HERO SECTION ── */
+    .profile-hero {
+      background: var(--deep);
+      border-radius: 16px;
+      padding: 2rem 2rem 1.75rem;
+      margin-bottom: 1.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .profile-hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse 80% 60% at 80% 20%, rgba(201,169,110,0.07) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .profile-pills {
+      display: flex; align-items: center; gap: 0.5rem;
+      flex-wrap: wrap; margin-bottom: 1rem;
+    }
+    .pill {
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.72rem; font-weight: 600;
+      letter-spacing: 0.06em; text-transform: uppercase;
+    }
+    .pill-neighbourhood {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: var(--dim);
+    }
+    .trust-badge-clinic {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      padding: 4px 10px;
+      border-radius: 100px;
+      background: rgba(61,122,85,0.1);
+      color: #3D7A55;
+      border: 1px solid rgba(61,122,85,0.2);
+      margin-top: 0.5rem;
+      margin-bottom: 0.25rem;
+    }
+    .trust-badge-inquiry {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      padding: 4px 10px;
+      border-radius: 100px;
+      background: rgba(181,168,159,0.12);
+      color: #8A7B72;
+      border: 1px solid rgba(181,168,159,0.22);
+      margin-top: 0.5rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .pill-verified {
+      background: rgba(61,122,85,0.15);
+      border: 1px solid rgba(61,122,85,0.3);
+      color: #6abf8a;
+    }
+    .pill-verified::before {
+      content: '';
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #6abf8a;
+      flex-shrink: 0;
+    }
+    .pill-unverified {
+      background: rgba(181,168,159,0.1);
+      border: 1px solid rgba(181,168,159,0.2);
+      color: var(--dim);
+    }
+    .pill-unverified::before {
+      content: '';
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--dim);
+      flex-shrink: 0;
+    }
+    .profile-name {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 2.4rem; font-weight: 400;
+      color: var(--cream); line-height: 1.15;
+      margin-bottom: 1rem;
+    }
+    .profile-rating-row {
+      display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
+    }
+    .stars { display: flex; gap: 2px; }
+    .rating-num {
+      font-size: 1rem; font-weight: 600; color: var(--cream);
+    }
+    .review-count {
+      font-size: 0.82rem; color: var(--dim);
+    }
+    .review-link {
+      color: var(--gold); text-decoration: none;
+      font-size: 0.82rem;
+      transition: opacity 0.2s;
+    }
+    .review-link:hover { opacity: 0.75; }
+    .promo-badge {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      background: rgba(200,114,90,0.15);
+      border: 1px solid rgba(200,114,90,0.3);
+      color: var(--rose-m);
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.72rem; font-weight: 600;
+      letter-spacing: 0.06em; text-transform: uppercase;
+    }
+
+    /* ── CARD SECTIONS ── */
+    .card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      margin-bottom: 1rem;
+      overflow: hidden;
+    }
+    .card-section {
+      padding: 1.4rem 1.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .card-section:last-child { border-bottom: none; }
+    .section-label {
+      font-size: 0.68rem; font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 0.9rem;
+    }
+
+    /* ── PRICE ── */
+    .price-display {
+      display: flex; align-items: baseline; gap: 0.4rem;
+    }
+    .price-amount {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 2.8rem; font-weight: 400;
+      color: var(--deep); line-height: 1;
+    }
+    .price-unit {
+      font-size: 0.82rem; color: var(--muted);
+    }
+    .price-sub {
+      font-size: 0.78rem; color: var(--dim);
+      margin-top: 0.3rem;
+    }
+    .price-hidden {
+      display: flex; align-items: center; gap: 0.6rem;
+      color: var(--muted); font-size: 0.88rem;
+    }
+    .price-hidden svg { color: var(--dim); flex-shrink: 0; }
+    .price-claim-link { color: var(--rose); text-decoration: none; border-bottom: 1px solid var(--rose-bg); }
+    .price-claim-link:hover { border-color: var(--rose); }
+
+    /* ── PROMO ── */
+    .promo-text-display {
+      background: var(--rose-bg);
+      border: 1px solid rgba(200,114,90,0.2);
+      border-radius: 8px;
+      padding: 0.9rem 1.1rem;
+      font-size: 0.88rem; color: var(--deep); line-height: 1.5;
+    }
+    .promo-icon { margin-right: 0.35rem; }
+
+    /* ── PHOTOS ── */
+    .photos-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+    .photos-grid-item {
+      aspect-ratio: 4/3;
+      border-radius: 6px;
+      overflow: hidden;
+      background: var(--warm);
+    }
+    .photos-grid-item img {
+      width: 100%; height: 100%; object-fit: cover;
+    }
+    .photos-placeholder {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      background: var(--warm);
+      border-radius: 10px;
+      padding: 2rem;
+      gap: 0.5rem;
+      text-align: center;
+    }
+    .photos-placeholder svg { color: var(--dim); margin-bottom: 0.25rem; }
+    .photos-placeholder p { font-size: 0.85rem; color: var(--muted); }
+    .photos-placeholder a { color: var(--rose); text-decoration: none; font-size: 0.82rem; }
+
+    /* ── CONTACT BUTTONS ── */
+    .contact-row {
+      display: flex; gap: 0.6rem; flex-wrap: wrap;
+    }
+    .contact-btn {
+      display: inline-flex; align-items: center; gap: 0.45rem;
+      padding: 0.6rem 1.1rem;
+      border-radius: 8px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.85rem; font-weight: 500;
+      text-decoration: none;
+      cursor: pointer;
+      border: 1.5px solid var(--border);
+      background: white;
+      color: var(--deep);
+      transition: all 0.2s;
+    }
+    .contact-btn:hover { border-color: var(--deep); }
+    .contact-btn.primary {
+      background: var(--rose); border-color: var(--rose); color: white;
+    }
+    .contact-btn.primary:hover { background: var(--rose-m); border-color: var(--rose-m); }
+    .contact-btn.dim { opacity: 0.4; pointer-events: none; }
+    .contact-btn svg { flex-shrink: 0; }
+
+    /* ── DETAILS ── */
+    .details-list { display: flex; flex-direction: column; gap: 0.7rem; }
+    .detail-row {
+      display: flex; align-items: center; gap: 0.7rem;
+      font-size: 0.88rem; color: var(--deep);
+    }
+    .detail-row svg { color: var(--muted); flex-shrink: 0; }
+    .detail-row a {
+      color: var(--deep); text-decoration: none;
+      border-bottom: 1px solid var(--border);
+      transition: border-color 0.2s;
+    }
+    .detail-row a:hover { border-color: var(--deep); }
+
+    /* ── CLAIM CTA ── */
+    .claim-band {
+      background: var(--deep);
+      border-radius: 14px;
+      padding: 1.75rem 2rem;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 1.5rem; flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+    .claim-band-copy h3 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.3rem; font-weight: 400;
+      color: var(--cream); margin-bottom: 0.3rem;
+    }
+    .claim-band-copy p {
+      font-size: 0.82rem; color: var(--dim); line-height: 1.5;
+    }
+    .claim-band-btn {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      background: var(--rose); color: white;
+      padding: 0.65rem 1.4rem;
+      border-radius: 6px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.88rem; font-weight: 600;
+      text-decoration: none; white-space: nowrap;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+    .claim-band-btn:hover { background: var(--rose-m); }
+
+    /* ── SERVICES ── */
+    .services-placeholder {
+      display: flex; align-items: center; gap: 0.5rem;
+      font-size: 0.85rem; color: var(--dim); font-style: italic;
+    }
+
+    /* ── NOT FOUND ── */
+    .not-found {
+      text-align: center;
+      padding: 5rem 2rem;
+    }
+    .not-found h2 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 2rem; font-weight: 400;
+      color: var(--deep); margin-bottom: 0.75rem;
+    }
+    .not-found p { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.5rem; }
+    .not-found a {
+      color: var(--rose); text-decoration: none;
+      border-bottom: 1px solid var(--rose-bg);
+    }
+
+    /* ── LOADING ── */
+    .loading {
+      text-align: center; padding: 5rem 2rem;
+      color: var(--muted); font-size: 0.9rem;
+    }
+
+    /* ── REPORT ── */
+    .report-link {
+      display: block; text-align: center;
+      font-size: 0.78rem; color: var(--dim);
+      margin-top: 1.5rem; text-decoration: none;
+      transition: color 0.2s;
+    }
+    .report-link:hover { color: var(--muted); }
+
+    /* ── MOBILE ── */
+    @media (max-width: 600px) {
+      .page-wrap { padding: 88px 4% 60px; }
+      .profile-hero { padding: 1.5rem; }
+      .profile-name { font-size: 1.9rem; }
+      .card-section { padding: 1.1rem 1.25rem; }
+      .claim-band { padding: 1.25rem 1.5rem; }
+      .photos-grid { grid-template-columns: repeat(2, 1fr); }
+      .contact-row { gap: 0.5rem; }
+      .contact-btn { font-size: 0.8rem; padding: 0.55rem 0.9rem; }
+    }
+
+    /* ── PRACTITIONERS ── */
+    .practitioner-list {
+      display: flex; flex-direction: column; gap: 0.7rem;
+    }
+    .practitioner-item {
+      display: flex; align-items: center; gap: 0.85rem;
+    }
+    .practitioner-avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: var(--warm);
+      border: 1.5px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.78rem; font-weight: 600;
+      color: var(--muted); flex-shrink: 0;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .practitioner-info { display: flex; flex-direction: column; gap: 1px; }
+    .practitioner-name {
+      font-size: 0.9rem; font-weight: 500; color: var(--deep);
+    }
+    .practitioner-desig {
+      font-size: 0.78rem; color: var(--muted);
+    }
+    .practitioner-primary {
+      font-size: 0.65rem; font-weight: 700; letter-spacing: 0.06em;
+      text-transform: uppercase; color: var(--rose);
+      background: rgba(200,114,90,0.1); border-radius: 3px;
+      padding: 1px 5px; margin-left: 6px; vertical-align: middle;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .animate { animation: fadeUp 0.4s ease both; }
+    .animate-delay-1 { animation-delay: 0.05s; }
+    .animate-delay-2 { animation-delay: 0.1s; }
+    .animate-delay-3 { animation-delay: 0.15s; }
+  </style>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/favicon-32x32.png" type="image/png" sizes="32x32">
+  <link rel="icon" href="/favicon-16x16.png" type="image/png" sizes="16x16">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">
+</head>
+<body>
+
+<nav>
+  <a href="/index.html" class="nav-logo">Skin<span>Day</span></a>
+  <ul class="nav-links">
+    <li><a href="/claim2.html" class="nav-cta">Claim Your Clinic</a></li>
+    <li><a href="/editor.html" class="nav-cta" style="margin-left:4px;">Clinic Portal</a></li>
+  </ul>
+</nav>
+
+<div class="page-wrap" id="pageWrap">
+  <div class="loading" id="loadingState">Loading clinic…</div>
+</div>
+
+<script>
+// ── SLUG HELPER ──
+function toSlug(name) {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+function renderStars(rating) {
+  let html = '';
+  for (let i = 1; i <= 5; i++) {
+    const filled = i <= Math.round(rating || 0);
+    html += `<svg width="14" height="14" viewBox="0 0 24 24" fill="${filled ? 'var(--gold)' : 'none'}" stroke="${filled ? 'var(--gold)' : 'var(--border)'}" stroke-width="1.5">
+      <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/>
+    </svg>`;
+  }
+  return html;
+}
+
+// ── RENDER PAGE ──
+function formatPriceDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('en-CA', { month: 'long', year: 'numeric' });
+}
+
+function renderClinic(clinic) {
+  const isClaimed = clinic.claimed === true;
+  const claimHref = '/claim2.html?clinic=' + clinic.id;
+  const wrap = document.getElementById('pageWrap');
+
+  // ── SEO: title, meta, OG, Twitter, canonical, JSON-LD ──
+  const slug = toSlug(clinic.name);
+  const pageUrl = `https://skinday.ca/clinic/${slug}`;
+  const priceDesc = clinic.price ? `Botox from $${clinic.price}/unit. ` : '';
+  const credDesc = (clinic.injector_credentials || []).length
+    ? `Injector: ${(clinic.injector_credentials).map(v => ({physician:'MD',np:'NP',rn:'RN/RPN',img:'IMG'})[v]||v).join(', ')}. ` : '';
+  const langDesc = (clinic.languages || []).length
+    ? `Languages: ${(clinic.languages).map(v => ({english:'English',mandarin:'Mandarin',cantonese:'Cantonese',farsi:'Farsi',french:'French',korean:'Korean',hindi:'Hindi',arabic:'Arabic',punjabi:'Punjabi',portuguese:'Portuguese'})[v]||v).join(', ')}. ` : '';
+  const description = `${clinic.name} in ${clinic.neighbourhood}, ON. ${priceDesc}${credDesc}${langDesc}Book or compare on SkinDay.`;
+  const ogImage = (clinic.photos && clinic.photos.length > 0) ? clinic.photos[0] : 'https://skinday.ca/og-default.jpg';
+
+  document.title = `${clinic.name} — Botox Price & Reviews · SkinDay`;
+  document.getElementById('meta-canonical').href = pageUrl;
+  document.getElementById('meta-description').content = description;
+  document.getElementById('og-title').content = `${clinic.name} — ${clinic.neighbourhood} · SkinDay`;
+  document.getElementById('og-description').content = description;
+  document.getElementById('og-url').content = pageUrl;
+  document.getElementById('og-image').content = ogImage;
+  document.getElementById('tw-title').content = `${clinic.name} — ${clinic.neighbourhood} · SkinDay`;
+  document.getElementById('tw-description').content = description;
+  document.getElementById('tw-image').content = ogImage;
+
+  // JSON-LD structured data
+  const existingJsonLd = document.getElementById('json-ld');
+  if (existingJsonLd) existingJsonLd.remove();
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'MedicalBusiness',
+    'name': clinic.name,
+    'address': {
+      '@type': 'PostalAddress',
+      'addressLocality': clinic.neighbourhood,
+      'addressRegion': 'ON',
+      'addressCountry': 'CA'
+    },
+    'url': pageUrl,
+    ...(clinic.phone && { 'telephone': clinic.phone }),
+    ...(clinic.website && { 'sameAs': clinic.website }),
+    ...(clinic.rating && {
+      'aggregateRating': {
+        '@type': 'AggregateRating',
+        'ratingValue': clinic.rating,
+        'reviewCount': clinic.reviews || 1,
+        'bestRating': 5
+      }
+    }),
+    ...(clinic.price && {
+      'priceRange': `$${clinic.price}/unit (Botox)`
+    }),
+    ...(clinic.photos && clinic.photos.length > 0 && { 'image': clinic.photos[0] })
+  };
+  const script = document.createElement('script');
+  script.id = 'json-ld';
+  script.type = 'application/ld+json';
+  script.textContent = JSON.stringify(jsonLd);
+  document.head.appendChild(script);
+
+  // Photos HTML
+  let photosHTML = '';
+  if (clinic.photos && clinic.photos.length > 0) {
+    photosHTML = `<div class="photos-grid">
+      ${clinic.photos.map(url => `
+        <div class="photos-grid-item">
+          <img src="${url}" alt="${clinic.name}" loading="lazy" />
+        </div>`).join('')}
+    </div>`;
+  } else {
+    photosHTML = `<div class="photos-placeholder">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2"/>
+        <path d="M3 9l4-4 4 4 4-5 4 5"/>
+        <circle cx="7.5" cy="14.5" r="1.5"/>
+      </svg>
+      <p>No photos yet.</p>
+      ${isClaimed
+        ? `<a href="/editor.html">Add photos in your dashboard →</a>`
+        : `<a href="${claimHref}">Own this clinic? Add photos →</a>`}
+    </div>`;
+  }
+
+  // Price HTML — show prices if we have them regardless of claimed status
+  let priceHTML = '';
+  const hasPrices = (clinic.prices && clinic.prices.length > 0) || (clinic.price !== null && clinic.price !== undefined);
+  if (!hasPrices && !isClaimed) {
+    priceHTML = `<div class="price-hidden">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      Price hidden — <a href="${claimHref}" class="price-claim-link">claim this listing</a> to publish yours
+    </div>`;
+  } else if (clinic.prices && clinic.prices.length > 0) {
+    // Multi-price breakdown from clinic_prices table
+    const credMap = { physician:'MD / Physician', np:'NP', rn:'RN / RPN', img:'IMG' };
+    const toxinLabel = t => t.charAt(0).toUpperCase() + t.slice(1);
+    const srcLabel = clinic.price_source === 'clinic'
+      ? `<span class="trust-badge-clinic"><svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 6 5 9 10 3"/></svg>Managed by clinic · ${formatPriceDate(clinic.price_date)}</span>`
+      : clinic.price_source === 'inquiry'
+      ? `<span class="trust-badge-inquiry">Verified via inquiry · ${formatPriceDate(clinic.price_date)}</span>`
+      : null;
+    const sorted = [...clinic.prices].sort((a,b) => a.price - b.price);
+    const tableRows = sorted.map(p => `
+      <tr>
+        <td style="padding:0.45rem 0.75rem 0.45rem 0;font-size:0.88rem;color:var(--deep);border-bottom:1px solid var(--warm);">${toxinLabel(p.toxin)}</td>
+        <td style="padding:0.45rem 0.75rem;font-size:0.82rem;color:var(--muted);border-bottom:1px solid var(--warm);">${p.injector_type ? credMap[p.injector_type] || p.injector_type : 'Any injector'}</td>
+        <td style="padding:0.45rem 0 0.45rem 0.75rem;font-size:0.95rem;font-family:'Cormorant Garamond',serif;color:var(--deep);border-bottom:1px solid var(--warm);text-align:right;">$${parseFloat(p.price).toFixed(2)}<span style="font-size:0.72rem;color:var(--muted)">/unit</span></td>
+      </tr>`).join('');
+    priceHTML = `
+    <div class="price-display">
+      <span class="price-amount">From $${clinic.price}</span>
+      <span class="price-unit">/ unit</span>
+    </div>
+    <table style="width:100%;border-collapse:collapse;margin-top:0.75rem;">
+      <thead>
+        <tr>
+          <th style="text-align:left;font-size:0.7rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);padding-bottom:0.4rem;font-weight:400;">Brand</th>
+          <th style="text-align:left;font-size:0.7rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);padding:0 0.75rem 0.4rem;font-weight:400;">Injector</th>
+          <th style="text-align:right;font-size:0.7rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);padding-bottom:0.4rem;font-weight:400;">Price</th>
+        </tr>
+      </thead>
+      <tbody>${tableRows}</tbody>
+    </table>
+    <div class="price-sub" style="margin-top:0.6rem;">${srcLabel ? `<span style="font-size:0.82em;color:var(--muted)">${srcLabel}</span>` : ''}</div>`;
+  } else if (clinic.price !== null && clinic.price !== undefined) {
+    // Legacy single price fallback
+    const toxinLabel = clinic.toxin_type
+      ? clinic.toxin_type.charAt(0).toUpperCase() + clinic.toxin_type.slice(1)
+      : 'Botox';
+    const srcLabel = clinic.price_source === 'clinic'
+      ? `<span class="trust-badge-clinic"><svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 6 5 9 10 3"/></svg>Managed by clinic · ${formatPriceDate(clinic.price_date)}</span>`
+      : clinic.price_source === 'inquiry'
+      ? `<span class="trust-badge-inquiry">Verified via inquiry · ${formatPriceDate(clinic.price_date)}</span>`
+      : null;
+    priceHTML = `<div class="price-display">`
+      <span class="price-amount">From $${clinic.price}</span>
+      <span class="price-unit">/ unit</span>
+    </div>
+    <div class="price-sub">Botulinum toxin · per unit${srcLabel ? ` · <span style="font-size:0.82em;color:var(--muted)">${srcLabel}</span>` : ''}</div>`;
+  } else {
+    priceHTML = `<p style="font-size:0.88rem;color:var(--muted);">Price not listed</p>`;
+  }
+
+  // Promo HTML — standalone card, only rendered when promo text is present
+  const promoHTML = (clinic.promo && clinic.promo_text) ? `
+    <div class="card animate animate-delay-2">
+      <div class="card-section">
+        <div class="section-label">Current Promotion</div>
+        <div class="promo-text-display">
+          <span class="promo-icon">🎉</span>${clinic.promo_text}
+        </div>
+      </div>
+    </div>` : '';
+
+  // Contact buttons
+  const directionsDisabled = !clinic.maps_url ? 'dim' : '';
+  const callDisabled = !clinic.phone ? 'dim' : '';
+  const emailDisabled = !clinic.email ? 'dim' : '';
+  const websiteDisabled = !clinic.website ? 'dim' : '';
+
+  // Claim band (only for unclaimed)
+  const claimBandHTML = !isClaimed ? `
+    <div class="claim-band animate animate-delay-3">
+      <div class="claim-band-copy">
+        <h3>Own this clinic?</h3>
+        <p>Claim your free listing to publish your price, add photos, and manage your profile.</p>
+      </div>
+      <a href="${claimHref}" class="claim-band-btn">Claim Free Listing →</a>
+    </div>` : '';
+
+  // Practitioners HTML
+  let practitionersHTML = '';
+  if (clinic.practitioners && clinic.practitioners.length > 0) {
+    const initials = name => name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+    const items = clinic.practitioners.map((p, i) => `
+      <div class="practitioner-item">
+        <div class="practitioner-avatar">${initials(p.name || '?')}</div>
+        <div class="practitioner-info">
+          <div class="practitioner-name">
+            ${p.name}${i === 0 ? '<span class="practitioner-primary">Lead</span>' : ''}
+          </div>
+          ${p.designation ? `<div class="practitioner-desig">${p.designation}</div>` : ''}
+        </div>
+      </div>`).join('');
+    practitionersHTML = `
+    <div class="card animate animate-delay-2">
+      <div class="card-section">
+        <div class="section-label">Lead Practitioners</div>
+        <div class="practitioner-list">${items}</div>
+      </div>
+    </div>`;
+  }
+
+  wrap.innerHTML = `
+    <a href="/index.html" class="back-link animate">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M19 12H5M12 5l-7 7 7 7"/>
+      </svg>
+      Back to directory
+    </a>
+
+    <!-- HERO -->
+    <div class="profile-hero animate animate-delay-1">
+      <div class="profile-pills">
+        <span class="pill pill-neighbourhood">${clinic.neighbourhood}</span>
+        ${isClaimed
+          ? `<span class="pill pill-verified">Verified listing</span>`
+          : `<span class="pill pill-unverified">Unverified listing</span>`}
+        ${(clinic.promo && clinic.promo_text) ? `<span class="promo-badge">🎉 Promo Available</span>` : ''}
+      </div>
+      <h1 class="profile-name">${clinic.name}</h1>
+      <div class="profile-rating-row">
+        <div class="stars">${renderStars(clinic.rating)}</div>
+        <span class="rating-num">${clinic.rating != null ? clinic.rating.toFixed(1) : '—'}</span>
+        <span class="review-count">${(clinic.reviews || 0).toLocaleString()} reviews on Google</span>
+        ${clinic.maps_url ? `<a href="${clinic.maps_url}" target="_blank" rel="noopener" class="review-link">See on Maps →</a>` : ''}
+      </div>
+    </div>
+
+    <!-- PROMO (above pricing, only when promo text exists) -->
+    ${promoHTML}
+
+    <!-- PRICING -->
+    <div class="card animate animate-delay-2">
+      <div class="card-section">
+        <div class="section-label">Botox</div>
+        ${priceHTML}
+      </div>
+    </div>
+
+    <!-- PHOTOS -->
+    <div class="card animate animate-delay-2">
+      <div class="card-section">
+        <div class="section-label">Photos</div>
+        ${photosHTML}
+      </div>
+    </div>
+
+    <!-- PRACTITIONERS -->
+    ${practitionersHTML}
+
+    <!-- CONTACT -->
+    <div class="card animate animate-delay-2">
+      <div class="card-section">
+        <div class="section-label">Contact</div>
+        <div class="contact-row">
+          <a class="contact-btn primary ${directionsDisabled}" href="${clinic.maps_url || '#'}" target="_blank" rel="noopener">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3,11 22,2 13,21 11,13 3,11"/></svg>
+            Directions
+          </a>
+          <a class="contact-btn ${callDisabled}" href="${clinic.phone ? 'tel:' + clinic.phone.replace(/\s/g,'') : '#'}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.69a16 16 0 0 0 6.29 6.29l.95-.95a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            Call
+          </a>
+          <a class="contact-btn ${emailDisabled}" href="${clinic.email ? 'mailto:' + clinic.email : '#'}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            Email
+          </a>
+          <a class="contact-btn ${websiteDisabled}" href="${clinic.website || '#'}" target="_blank" rel="noopener">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            Website
+          </a>
+        </div>
+      </div>
+      <div class="card-section">
+        <div class="section-label">Details</div>
+        <div class="details-list">
+          <div class="detail-row">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            ${clinic.neighbourhood}, ON
+          </div>
+          ${clinic.phone ? `<div class="detail-row">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.69a16 16 0 0 0 6.29 6.29l.95-.95a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            <a href="tel:${clinic.phone.replace(/\s/g,'')}">${clinic.phone}</a>
+          </div>` : ''}
+          ${clinic.website ? `<div class="detail-row">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            <a href="${clinic.website}" target="_blank" rel="noopener">${clinic.website.replace(/^https?:\/\//, '').replace(/\/$/, '')}</a>
+          </div>` : ''}
+        </div>
+      </div>
+      <div class="card-section">
+        <div class="section-label">Services</div>
+        <div class="services-placeholder">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Full treatment menu coming in a future update.
+        </div>
+      </div>
+    </div>
+
+    ${claimBandHTML}
+
+    <a href="mailto:support@skinday.ca?subject=Report: ${encodeURIComponent(clinic.name)}" class="report-link">Report incorrect information</a>
+  `;
+}
+
+function renderNotFound(slug) {
+  document.getElementById('pageWrap').innerHTML = `
+    <div class="not-found">
+      <h2>Clinic not found</h2>
+      <p>We couldn't find a clinic matching "<strong>${slug}</strong>".</p>
+      <a href="/index.html">← Browse all clinics</a>
+    </div>
+  `;
+}
+
+// ── MAIN: resolve slug → clinic ──
+function init() {
+  // Get slug from URL: /clinic/skin-trek
+  const pathParts = window.location.pathname.split('/');
+  const slug = pathParts[pathParts.length - 1] || pathParts[pathParts.length - 2];
+
+  if (!slug) { renderNotFound(''); return; }
+
+  // Find in static array by slug or numeric id
+  let clinic = clinics.find(c => toSlug(c.name) === slug);
+  if (!clinic && !isNaN(slug)) clinic = clinics.find(c => c.id == slug);
+
+  if (!clinic) { renderNotFound(slug); return; }
+
+  renderClinic(clinic);
+
+  // Then fetch DB overrides and re-render if anything changed
+  fetch('/api/get-clinics')
+    .then(r => r.ok ? r.json() : [])
+    .then(data => {
+      const overrides = Array.isArray(data) ? data : (data.clinics || data.data || []);
+      if (!overrides || overrides.length === 0) return;
+      const override = overrides.find(o => o.id == clinic.id);
+      if (override) {
+        Object.assign(clinic, override);
+        renderClinic(clinic);
+      }
+    })
+    .catch(() => {});
+}
+
+// ── INLINE CLINIC DATA ──
+// Paste the same clinics array from index.html here, or load via API.
+// For now we load from the window if index.html pre-populated it,
+// otherwise fall back to fetching from get-clinics.
+// Best approach: extract clinics array to a shared clinics-data.js file.
+// For this standalone page, we fetch all from DB and match by slug.
+
+async function initFromDB() {
+  const pathParts = window.location.pathname.split('/');
+  const slug = decodeURIComponent(pathParts[pathParts.length - 1] || pathParts[pathParts.length - 2] || '');
+
+  if (!slug) { renderNotFound(''); return; }
+
+  try {
+    // Try to get all clinics from DB — only approved ones
+    const res = await fetch('/api/get-clinics');
+    const data = res.ok ? await res.json() : [];
+    const overrides = Array.isArray(data) ? data : (data.clinics || data.data || []);
+
+    // Try matching the slug against static array first (has full data like name, rating, etc)
+    let clinic = clinics.find(c => toSlug(c.name) === slug);
+    if (!clinic && !isNaN(slug)) clinic = clinics.find(c => c.id == slug);
+
+    if (!clinic) { renderNotFound(slug); return; }
+
+    // Merge DB overrides
+    if (overrides.length > 0) {
+      const override = overrides.find(o => o.id == clinic.id);
+      if (override) {
+        ['injector_credentials', 'languages'].forEach(field => {
+          if (typeof override[field] === 'string') {
+            try { override[field] = JSON.parse(override[field]); } catch(e) { override[field] = []; }
+          }
+          if (!Array.isArray(override[field])) override[field] = [];
+        });
+        Object.assign(clinic, override);
+      }
+    }
+
+    renderClinic(clinic);
+
+    // Fetch practitioners for this clinic
+    try {
+      const SUPABASE_URL = 'https://vefldlqtyxdywbzdjuia.supabase.co';
+      const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlZmxkbHF0eXhkeXdiemRqdWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNDAwMjgsImV4cCI6MjA4NzkxNjAyOH0.o582sXiUkB3j4FiHEA5rE3ABy_pdTeeK1PnNpNirHZA';
+      const pRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/practitioners?clinic_id=eq.${encodeURIComponent(String(clinic.id))}&order=display_order.asc`,
+        { headers: { 'apikey': SUPABASE_KEY } }
+      );
+      if (pRes.ok) {
+        const practitioners = await pRes.json();
+        if (Array.isArray(practitioners) && practitioners.length > 0) {
+          clinic.practitioners = practitioners;
+          renderClinic(clinic);
+        }
+      }
+    } catch(e) { /* non-fatal */ }
+
+  } catch(e) {
+    // Fallback: try static array only
+    const clinic = clinics.find(c => toSlug(c.name) === slug);
+    if (clinic) renderClinic(clinic);
+    else renderNotFound(slug);
+  }
+}
+</script>
+
+<!-- ── CLINICS DATA + INIT ── -->
+<script src="/clinics-data.js"></script>
+<script>
+initFromDB();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contact — SkinDay</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32x32.png" type="image/png" sizes="32x32">
+<link rel="icon" href="/favicon-16x16.png" type="image/png" sizes="16x16">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+
+<style>
+  :root {
+    --cream:   #FAF7F2;
+    --warm:    #F4EDE4;
+    --deep:    #1C1714;
+    --rose:    #C8725A;
+    --rose-m:  #D4896E;
+    --rose-bg: #F5E8E3;
+    --gold:    #C9A96E;
+    --muted:   #8A7B72;
+    --dim:     #B5A89F;
+    --border:  #EAE2D8;
+    --green:   #3D7A55;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 16px; scroll-behavior: smooth; }
+  body {
+    background: var(--cream);
+    color: var(--deep);
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 400;
+    min-height: 100vh;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    background: var(--deep);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 40px;
+    height: 64px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .nav-logo {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--cream);
+    text-decoration: none;
+    letter-spacing: 0.01em;
+  }
+  .nav-logo span { color: var(--rose-m); }
+  .nav-back {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--dim);
+    text-decoration: none;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    transition: color 0.2s;
+  }
+  .nav-back:hover { color: var(--cream); }
+  .nav-back::before { content: '← '; }
+
+  /* ── HERO ── */
+  .hero {
+    background: var(--deep);
+    padding: 128px 40px 80px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -80px; left: 50%;
+    transform: translateX(-50%);
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(200,114,90,0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-eyebrow {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--rose-m);
+    margin-bottom: 16px;
+  }
+  .hero h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(2.4rem, 5vw, 3.6rem);
+    font-weight: 400;
+    color: var(--cream);
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    margin-bottom: 16px;
+  }
+  .hero h1 em {
+    font-style: italic;
+    color: var(--rose-m);
+  }
+  .hero-sub {
+    font-size: 1rem;
+    color: var(--dim);
+    max-width: 480px;
+    margin: 0 auto;
+    line-height: 1.65;
+  }
+
+  /* ── FORM SECTION ── */
+  .form-section {
+    max-width: 620px;
+    margin: 0 auto;
+    padding: 64px 24px 100px;
+  }
+
+  .form-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 48px;
+    box-shadow: 0 4px 40px rgba(28,23,20,0.06);
+    animation: fadeUp 0.5s ease both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .field { margin-bottom: 22px; }
+
+  .field label {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  .field input,
+  .field select,
+  .field textarea {
+    width: 100%;
+    padding: 13px 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    color: var(--deep);
+    background: var(--cream);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+
+  .field select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238A7B72' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 16px center;
+    padding-right: 40px;
+    cursor: pointer;
+  }
+
+  .field textarea {
+    resize: vertical;
+    min-height: 130px;
+    line-height: 1.6;
+  }
+
+  .field input:focus,
+  .field select:focus,
+  .field textarea:focus {
+    border-color: var(--rose);
+    box-shadow: 0 0 0 3px rgba(200,114,90,0.1);
+  }
+
+  .field input::placeholder,
+  .field textarea::placeholder {
+    color: var(--dim);
+  }
+
+  .field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .submit-btn {
+    width: 100%;
+    padding: 15px;
+    background: var(--rose);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    margin-top: 8px;
+    letter-spacing: 0.02em;
+  }
+  .submit-btn:hover { background: #b5614a; }
+  .submit-btn:active { transform: scale(0.98); }
+  .submit-btn:disabled { background: var(--dim); cursor: not-allowed; transform: none; }
+
+  /* ── SUCCESS STATE ── */
+  .success-state {
+    display: none;
+    text-align: center;
+    padding: 16px 0;
+    animation: fadeUp 0.4s ease both;
+  }
+  .success-icon {
+    width: 56px; height: 56px;
+    background: #edf7f1;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 20px;
+    font-size: 24px;
+  }
+  .success-state h2 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.7rem;
+    font-weight: 500;
+    color: var(--deep);
+    margin-bottom: 10px;
+  }
+  .success-state p {
+    font-size: 0.9rem;
+    color: var(--muted);
+    line-height: 1.6;
+    margin-bottom: 28px;
+  }
+  .success-back {
+    display: inline-block;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--rose);
+    text-decoration: none;
+  }
+  .success-back:hover { text-decoration: underline; }
+
+  /* ── ERROR ── */
+  .form-error {
+    background: #fde8e6;
+    border: 1px solid #f5b8b3;
+    border-radius: 8px;
+    padding: 11px 14px;
+    font-size: 0.85rem;
+    color: #a85a52;
+    margin-bottom: 20px;
+    display: none;
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 600px) {
+    nav { padding: 0 20px; }
+    .hero { padding: 110px 24px 60px; }
+    .form-card { padding: 32px 24px; }
+    .field-row { grid-template-columns: 1fr; gap: 0; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="/index.html" class="nav-logo">Skin<span>Day</span></a>
+  <a href="/index.html" class="nav-back">Back to directory</a>
+</nav>
+
+<div class="hero">
+  <div class="hero-eyebrow">Get in touch</div>
+  <h1>We'd love to <em>hear from you</em></h1>
+  <p class="hero-sub">Whether you're a clinic, a pharma partner, or just curious about SkinDay — reach out and we'll get back to you shortly.</p>
+</div>
+
+<div class="form-section">
+  <div class="form-card">
+
+    <div class="form-error" id="form-error"></div>
+
+    <div id="form-body">
+      <div class="field-row">
+        <div class="field">
+          <label for="name">Name</label>
+          <input type="text" id="name" placeholder="Your name" autocomplete="name" />
+        </div>
+        <div class="field">
+          <label for="email">Email</label>
+          <input type="email" id="email" placeholder="you@example.com" autocomplete="email" />
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="subject">Subject</label>
+        <select id="subject">
+          <option value="" disabled selected>Select an inquiry type</option>
+          <option value="Clinic support">Clinic support</option>
+          <option value="Partnership / pharma">Partnership / pharma</option>
+          <option value="Media inquiry">Media inquiry</option>
+          <option value="General question">General question</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="message">Message</label>
+        <textarea id="message" placeholder="Tell us what's on your mind…"></textarea>
+      </div>
+
+      <button class="submit-btn" id="submit-btn" onclick="submitForm()">Send message →</button>
+    </div>
+
+    <div class="success-state" id="success-state">
+      <div class="success-icon">✓</div>
+      <h2>Message sent</h2>
+      <p>Thanks for reaching out. We'll get back to you at the email you provided.</p>
+      <a href="/index.html" class="success-back">← Back to SkinDay</a>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  async function submitForm() {
+    const name    = document.getElementById('name').value.trim();
+    const email   = document.getElementById('email').value.trim();
+    const subject = document.getElementById('subject').value;
+    const message = document.getElementById('message').value.trim();
+    const errEl   = document.getElementById('form-error');
+    const btn     = document.getElementById('submit-btn');
+
+    errEl.style.display = 'none';
+
+    if (!name)    return showError('Please enter your name.');
+    if (!email || !email.includes('@')) return showError('Please enter a valid email address.');
+    if (!subject) return showError('Please select an inquiry type.');
+    if (!message) return showError('Please enter a message.');
+
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+
+    try {
+      const res = await fetch('/.netlify/functions/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, subject, message })
+      });
+
+      if (!res.ok) throw new Error('Server error');
+
+      document.getElementById('form-body').style.display = 'none';
+      document.getElementById('success-state').style.display = 'block';
+
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = 'Send message →';
+      showError('Something went wrong. Please try again or email hello@skinday.ca directly.');
+    }
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('form-error');
+    el.textContent = msg;
+    el.style.display = 'block';
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+</script>
+
+</body>
+</html>

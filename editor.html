@@ -1,0 +1,2096 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SkinDay — Clinic Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --cream: #faf8f5;
+      --warm-white: #fffef9;
+      --blush: #f2ddd5;
+      --rose: #c9736a;
+      --rose-deep: #a85a52;
+      --rose-light: #e8a89f;
+      --bark: #3d2c28;
+      --bark-mid: #6b4c44;
+      --bark-light: #9e7a72;
+      --sage: #8fa882;
+      --gold: #c9a96e;
+      --border: #e8ddd8;
+      --shadow: rgba(61, 44, 40, 0.08);
+      --shadow-md: rgba(61, 44, 40, 0.14);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--cream);
+      color: var(--bark);
+      min-height: 100vh;
+    }
+
+    /* ─── LOGIN SCREEN ─── */
+    #login-screen {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--cream);
+      padding: 24px;
+    }
+
+    .login-card {
+      background: var(--warm-white);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 52px 48px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 4px 40px var(--shadow);
+      animation: fadeUp 0.5s ease both;
+    }
+
+    .login-logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 28px;
+      color: var(--bark);
+      letter-spacing: -0.5px;
+      margin-bottom: 6px;
+    }
+
+    .login-logo span {
+      color: var(--rose);
+    }
+
+    .login-tagline {
+      font-size: 13px;
+      color: var(--bark-light);
+      font-weight: 400;
+      margin-bottom: 36px;
+    }
+
+    .login-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--bark-mid);
+      margin-bottom: 8px;
+    }
+
+    .login-input {
+      width: 100%;
+      padding: 13px 16px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      color: var(--bark);
+      background: var(--cream);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      margin-bottom: 20px;
+    }
+
+    .login-input:focus {
+      border-color: var(--rose);
+      box-shadow: 0 0 0 3px rgba(201,115,106,0.12);
+    }
+
+    .login-btn {
+      width: 100%;
+      padding: 14px;
+      background: var(--rose);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      margin-top: 4px;
+    }
+
+    .login-btn:hover { background: var(--rose-deep); }
+    .login-btn:active { transform: scale(0.98); }
+
+    .login-error {
+      background: #fde8e6;
+      border: 1px solid #f5b8b3;
+      border-radius: 8px;
+      padding: 11px 14px;
+      font-size: 13px;
+      color: var(--rose-deep);
+      margin-bottom: 16px;
+      display: none;
+    }
+
+    .login-forgot {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 13px;
+      color: var(--bark-light);
+    }
+
+    .login-forgot a {
+      color: var(--rose);
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    /* ─── PORTAL SHELL ─── */
+    #portal-screen {
+      display: none;
+      min-height: 100vh;
+      flex-direction: column;
+    }
+
+    header {
+      background: var(--warm-white);
+      border-bottom: 1px solid var(--border);
+      padding: 0 32px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 22px;
+      color: var(--bark);
+      letter-spacing: -0.3px;
+    }
+
+    .header-logo span { color: var(--rose); }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .clinic-badge {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--cream);
+      border: 1px solid var(--border);
+      border-radius: 40px;
+      padding: 6px 14px 6px 8px;
+    }
+
+    .clinic-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--blush);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--rose-deep);
+    }
+
+    .clinic-name-small {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--bark);
+    }
+
+    .logout-btn {
+      font-size: 13px;
+      color: var(--bark-light);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .logout-btn:hover { color: var(--rose); }
+    /* ─── LOCATION SWITCHER ─── */
+    .location-switcher {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--cream);
+      border: 1px solid var(--border);
+      border-radius: 40px;
+      padding: 6px 12px 6px 14px;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .location-switcher:hover { border-color: var(--rose-light); }
+    .location-switcher-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--bark);
+      white-space: nowrap;
+      max-width: 260px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .location-switcher-arrow {
+      font-size: 10px;
+      color: var(--bark-light);
+      flex-shrink: 0;
+    }
+    .location-dropdown {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      background: var(--warm-white);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 8px 32px var(--shadow-md);
+      min-width: 300px;
+      max-width: 380px;
+      z-index: 200;
+      overflow: hidden;
+      animation: fadeUp 0.2s ease;
+    }
+    .location-dropdown-header {
+      padding: 10px 14px 8px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--bark-light);
+      border-bottom: 1px solid var(--border);
+    }
+    .location-dropdown-item {
+      padding: 11px 14px;
+      font-size: 13px;
+      font-weight: 400;
+      color: var(--bark);
+      cursor: pointer;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      line-height: 1.4;
+    }
+    .location-dropdown-item:last-child { border-bottom: none; }
+    .location-dropdown-item:hover { background: var(--cream); }
+    .location-dropdown-item.active {
+      background: #fdf5f3;
+      color: var(--rose);
+      font-weight: 500;
+    }
+    .location-dropdown-item.active::after {
+      content: '✓';
+      font-size: 12px;
+      color: var(--rose);
+    }
+    .location-switcher-wrap {
+      position: relative;
+    }
+
+    /* ─── SAVE BAR ─── */
+    .save-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--bark);
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 200;
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .save-bar.visible { transform: translateY(0); }
+
+    .save-bar-msg {
+      font-size: 14px;
+      color: rgba(255,255,255,0.7);
+    }
+
+    .save-bar-msg strong { color: white; }
+
+    .save-bar-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn-discard {
+      padding: 10px 20px;
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      background: transparent;
+      color: rgba(255,255,255,0.7);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-discard:hover {
+      border-color: rgba(255,255,255,0.5);
+      color: white;
+    }
+
+    .btn-save {
+      padding: 10px 24px;
+      background: var(--rose);
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-save:hover { background: var(--rose-deep); }
+
+    /* ─── MAIN LAYOUT ─── */
+    .portal-main {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 40px 32px 120px;
+      width: 100%;
+    }
+
+    .page-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 32px;
+      font-weight: 600;
+      color: var(--bark);
+      margin-bottom: 6px;
+    }
+
+    .page-subtitle {
+      font-size: 14px;
+      color: var(--bark-light);
+      margin-bottom: 40px;
+    }
+
+    /* ─── TABS ─── */
+    .tab-nav {
+      display: flex;
+      gap: 4px;
+      border-bottom: 1.5px solid var(--border);
+      margin-bottom: 36px;
+    }
+
+    .tab-btn {
+      padding: 10px 18px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--bark-light);
+      background: none;
+      border: none;
+      cursor: pointer;
+      border-bottom: 2.5px solid transparent;
+      margin-bottom: -1.5px;
+      transition: color 0.2s, border-color 0.2s;
+    }
+
+    .tab-btn:hover { color: var(--bark); }
+
+    .tab-btn.active {
+      color: var(--rose);
+      border-bottom-color: var(--rose);
+    }
+
+    .tab-pane { display: none; animation: fadeIn 0.25s ease; }
+    .tab-pane.active { display: block; }
+
+    /* ─── CARDS ─── */
+    .card {
+      background: var(--warm-white);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px 32px;
+      margin-bottom: 20px;
+    }
+
+    .card-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--bark);
+      margin-bottom: 4px;
+    }
+
+    .card-desc {
+      font-size: 13px;
+      color: var(--bark-light);
+      margin-bottom: 24px;
+    }
+
+    /* ─── FORM FIELDS ─── */
+    .field-group {
+      margin-bottom: 20px;
+    }
+
+    .field-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--bark-mid);
+      margin-bottom: 8px;
+    }
+
+    .field-input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      color: var(--bark);
+      background: var(--cream);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .field-input:focus {
+      border-color: var(--rose);
+      box-shadow: 0 0 0 3px rgba(201,115,106,0.1);
+    }
+
+    .field-hint {
+      font-size: 12px;
+      color: var(--bark-light);
+      margin-top: 6px;
+    }
+
+    .field-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    /* ─── PRICE FIELD ─── */
+    .price-wrap {
+      position: relative;
+    }
+
+    .price-prefix {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 15px;
+      color: var(--bark-mid);
+      font-weight: 500;
+      pointer-events: none;
+    }
+
+    .price-wrap .field-input {
+      padding-left: 28px;
+    }
+
+    /* ─── TOGGLE ─── */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .toggle-row:last-child { border-bottom: none; }
+
+    .toggle-label {
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--bark);
+    }
+
+    .toggle-desc {
+      font-size: 13px;
+      color: var(--bark-light);
+      margin-top: 2px;
+    }
+
+    .toggle {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+
+    .toggle input { opacity: 0; width: 0; height: 0; }
+
+    .toggle-slider {
+      position: absolute;
+      inset: 0;
+      background: var(--border);
+      border-radius: 24px;
+      cursor: pointer;
+      transition: background 0.25s;
+    }
+
+    .toggle-slider::before {
+      content: '';
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      left: 3px;
+      top: 3px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.25s;
+      box-shadow: 0 1px 4px var(--shadow-md);
+    }
+
+    .toggle input:checked + .toggle-slider { background: var(--rose); }
+    .toggle input:checked + .toggle-slider::before { transform: translateX(20px); }
+
+    /* ─── PROMO TEXTAREA ─── */
+    .field-textarea {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      color: var(--bark);
+      background: var(--cream);
+      outline: none;
+      resize: vertical;
+      min-height: 90px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .field-textarea:focus {
+      border-color: var(--rose);
+      box-shadow: 0 0 0 3px rgba(201,115,106,0.1);
+    }
+
+    /* ─── HOURS TABLE ─── */
+    .hours-row {
+      display: grid;
+      grid-template-columns: 110px 1fr 1fr 80px;
+      gap: 12px;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .hours-row:last-child { border-bottom: none; }
+
+    .hours-day {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--bark);
+    }
+
+    .hours-input {
+      padding: 9px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      color: var(--bark);
+      background: var(--cream);
+      outline: none;
+      width: 100%;
+      transition: border-color 0.2s;
+    }
+
+    .hours-input:focus { border-color: var(--rose); }
+
+    .hours-closed {
+      font-size: 13px;
+      color: var(--bark-light);
+      text-align: center;
+    }
+
+    .hours-closed label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      justify-content: center;
+    }
+
+    .hours-closed input[type="checkbox"] {
+      accent-color: var(--rose);
+      width: 15px;
+      height: 15px;
+    }
+
+    /* ─── PHOTOS ─── */
+    .photo-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .photo-slot {
+      aspect-ratio: 4/3;
+      border-radius: 12px;
+      border: 1.5px dashed var(--border);
+      background: var(--cream);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .photo-slot:hover {
+      border-color: var(--rose-light);
+      background: #fdf5f3;
+    }
+
+    .photo-slot img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      position: absolute;
+      inset: 0;
+    }
+
+    .photo-slot-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(61,44,40,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.2s;
+      border-radius: 12px;
+    }
+
+    .photo-slot:hover .photo-slot-overlay { opacity: 1; }
+
+    .photo-slot-icon {
+      font-size: 28px;
+      color: var(--bark-light);
+      margin-bottom: 6px;
+    }
+
+    .photo-slot-label {
+      font-size: 12px;
+      color: var(--bark-light);
+      font-weight: 500;
+    }
+
+    .photo-remove {
+      background: white;
+      border: none;
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--rose-deep);
+      cursor: pointer;
+    }
+
+    .photo-add-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 11px 20px;
+      background: var(--cream);
+      border: 1.5px dashed var(--border);
+      border-radius: 10px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--bark-mid);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .photo-add-btn:hover {
+      border-color: var(--rose-light);
+      color: var(--rose);
+      background: #fdf5f3;
+    }
+
+    /* ─── STATUS PILL ─── */
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .status-pill.verified {
+      background: #eef6eb;
+      color: var(--sage);
+    }
+
+    .status-pill.verified::before {
+      content: '✓';
+      font-size: 11px;
+    }
+
+    /* ─── TOAST ─── */
+    .toast {
+      position: fixed;
+      top: 80px;
+      right: 24px;
+      background: var(--bark);
+      color: white;
+      padding: 14px 20px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 500;
+      box-shadow: 0 8px 32px var(--shadow-md);
+      z-index: 999;
+      transform: translateX(120%);
+      transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .toast.show { transform: translateX(0); }
+    .toast.success { background: var(--sage); }
+    .toast.error { background: var(--rose-deep); }
+
+    /* ─── ANIMATIONS ─── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 600px) {
+      .portal-main { padding: 24px 20px 120px; }
+      header { padding: 0 20px; }
+      .card { padding: 22px 20px; }
+      .field-row { grid-template-columns: 1fr; }
+      .photo-grid { grid-template-columns: 1fr 1fr; }
+      .hours-row { grid-template-columns: 80px 1fr 1fr 60px; gap: 8px; }
+      .save-bar { padding: 14px 20px; }
+      .login-card { padding: 36px 28px; }
+    }
+    /* ─── PRACTITIONERS ─── */
+    .practitioner-row {
+      display: grid;
+      grid-template-columns: 24px 1fr 1fr 36px;
+      gap: 10px;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .practitioner-row:last-child { border-bottom: none; }
+    .practitioner-drag {
+      color: var(--bark-light);
+      cursor: grab;
+      font-size: 15px;
+      text-align: center;
+      user-select: none;
+    }
+    .practitioner-drag:active { cursor: grabbing; }
+    .practitioner-primary-badge {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--rose);
+      background: rgba(201,115,106,0.10);
+      border-radius: 4px;
+      padding: 2px 6px;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+  </style>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/favicon-32x32.png" type="image/png" sizes="32x32">
+  <link rel="icon" href="/favicon-16x16.png" type="image/png" sizes="16x16">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">
+</head>
+<body>
+
+<!-- ─── LOGIN ─── -->
+<div id="login-screen">
+  <a href="/index.html" style="position:fixed;top:20px;left:24px;font-size:13px;font-weight:500;color:var(--bark-light);text-decoration:none;transition:color 0.2s;z-index:10;" onmouseover="this.style.color='var(--rose)'" onmouseout="this.style.color='var(--bark-light)'">← Back to directory</a>
+  <div class="login-card">
+    <div class="login-logo">Skin<span>Day</span></div>
+    <div class="login-tagline">Clinic Owner Portal</div>
+
+    <div class="login-error" id="login-error">Incorrect email or password. Please try again.</div>
+
+    <label class="login-label" for="login-email">Email</label>
+    <input class="login-input" type="email" id="login-email" placeholder="you@yourclinic.com" autocomplete="email" />
+
+    <label class="login-label" for="login-password">Password</label>
+    <input class="login-input" type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" />
+
+    <button class="login-btn" id="login-btn" onclick="doLogin()">Sign In</button>
+
+    <div class="login-forgot">
+      <a href="#" onclick="showForgot()">Forgot your password?</a>
+    </div>
+  </div>
+</div>
+
+<!-- ─── PASSWORD SETUP ─── -->
+<div id="setup-screen" style="display:none;min-height:100vh;align-items:center;justify-content:center;background:var(--cream);padding:24px;">
+  <div class="login-card">
+    <div class="login-logo">Skin<span>Day</span></div>
+    <div class="login-tagline">Set your password</div>
+
+    <p style="font-size:14px;color:var(--bark-light);margin-bottom:24px;line-height:1.6;">
+      Welcome! Choose a password to access your clinic portal going forward.
+    </p>
+
+    <div class="login-error" id="setup-error">Passwords do not match.</div>
+
+    <label class="login-label" for="setup-password">New password</label>
+    <input class="login-input" type="password" id="setup-password" placeholder="At least 8 characters" autocomplete="new-password" />
+
+    <label class="login-label" for="setup-confirm">Confirm password</label>
+    <input class="login-input" type="password" id="setup-confirm" placeholder="Repeat your password" autocomplete="new-password" />
+
+    <button class="login-btn" id="setup-btn" onclick="doSetupPassword()">Set Password & Continue</button>
+  </div>
+</div>
+
+<!-- ─── PORTAL ─── -->
+<div id="portal-screen">
+  <header>
+    <div class="header-logo">Skin<span>Day</span> <span style="font-family:'DM Sans',sans-serif;font-size:14px;color:var(--bark-light);font-weight:400;margin-left:6px;">/ Clinic Portal</span></div>
+    <div class="header-right">
+      <a href="/index.html" style="font-size:13px;font-weight:500;color:var(--bark-light);text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='var(--rose)'" onmouseout="this.style.color='var(--bark-light)'">← Back to directory</a>
+      <!-- Single-location badge (default) -->
+      <div class="clinic-badge" id="header-clinic-badge">
+        <div class="clinic-avatar" id="clinic-avatar">ST</div>
+        <div class="clinic-name-small" id="clinic-name-small">Skin Trek</div>
+      </div>
+      <!-- Chain location switcher (shown for multi-location accounts) -->
+      <div class="location-switcher-wrap" id="location-switcher-wrap" style="display:none;">
+        <div class="location-switcher" id="location-switcher-btn" onclick="toggleLocationDropdown()">
+          <span class="location-switcher-label" id="location-switcher-label">Select location</span>
+          <span class="location-switcher-arrow">▾</span>
+        </div>
+        <div class="location-dropdown" id="location-dropdown" style="display:none;">
+          <div class="location-dropdown-header">Your locations</div>
+          <div id="location-dropdown-items"></div>
+        </div>
+      </div>
+      <a href="/contact.html" style="font-size:13px;font-weight:500;color:var(--bark-light);text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='var(--rose)'" onmouseout="this.style.color='var(--bark-light)'">Need help?</a>
+      <button class="logout-btn" onclick="doLogout()">Sign out</button>
+    </div>
+  </header>
+
+  <div class="portal-main">
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:6px;">
+      <div class="page-title" id="portal-clinic-name">Skin Trek</div>
+      <span class="status-pill verified">Verified</span>
+    </div>
+    <div id="portal-location-subtitle" style="font-size:14px;color:var(--bark-light);margin-bottom:4px;display:none;"></div>
+    <div class="page-subtitle">Manage your listing on SkinDay — changes go live immediately.</div>
+
+    <!-- Tabs -->
+    <nav class="tab-nav">
+      <button class="tab-btn active" onclick="switchTab('pricing', this)">Pricing & Promos</button>
+      <button class="tab-btn" onclick="switchTab('contact', this)">Contact & Links</button>
+      <button class="tab-btn" onclick="switchTab('details', this)">Clinic Details</button>
+      <button class="tab-btn" onclick="switchTab('hours', this)">Hours</button>
+      <button class="tab-btn" onclick="switchTab('photos', this)">Photos</button>
+      <button class="tab-btn" onclick="switchTab('practitioners', this)">Practitioners</button>
+    </nav>
+
+    <!-- ─── TAB: PRICING ─── -->
+    <div class="tab-pane active" id="tab-pricing">
+      <div class="card">
+        <div class="card-title">Neurotoxin Pricing</div>
+        <div class="card-desc">Add your prices by brand and injector type. Patients see a "from $X" price on your card and a full breakdown on your profile.</div>
+
+        <!-- Existing prices from DB -->
+        <div id="portal-existing-prices" style="display:none;margin-bottom:1.25rem;">
+          <div class="field-label" style="margin-bottom:0.5rem;">Current prices on your listing</div>
+          <div id="portal-existing-list"></div>
+        </div>
+
+        <!-- Price rows -->
+        <div class="field-label" style="margin-bottom:0.5rem;">Add / update prices</div>
+        <div style="display:grid;grid-template-columns:160px 150px 110px 36px;gap:0.5rem;margin-bottom:0.4rem;">
+          <div style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;">Brand</div>
+          <div style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;">Injector type</div>
+          <div style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;">Price / unit</div>
+          <div></div>
+        </div>
+        <div id="portal-price-rows"></div>
+        <button type="button" onclick="portalAddPriceRow()" style="margin-top:0.5rem;background:rgba(200,114,90,0.06);border:1px dashed rgba(200,114,90,0.3);border-radius:8px;color:var(--rose);cursor:pointer;font-size:0.82rem;padding:0.45rem 0.9rem;width:100%;max-width:460px;transition:all 0.15s;" onmouseover="this.style.background='rgba(200,114,90,0.1)'" onmouseout="this.style.background='rgba(200,114,90,0.06)'">+ Add row</button>
+
+        <div class="field-hint" style="margin-top:0.75rem;">Leave blank any rows you don't want to publish. Prices are shown as "from $X" on your card and a full breakdown on your profile page.</div>
+        <div id="price-last-updated" style="display:none;font-size:0.78rem;color:var(--muted);margin-top:6px;"></div>
+
+        <!-- Apply to all locations — only shown for chain accounts -->
+        <div id="apply-all-wrap" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+            <input type="checkbox" id="apply-all-locations" style="width:16px;height:16px;accent-color:var(--rose);cursor:pointer;" />
+            <span style="font-size:0.88rem;color:var(--bark);">Apply these prices & credentials to <strong>all my locations</strong></span>
+          </label>
+          <div id="apply-all-locations-list" style="margin-top:8px;font-size:0.78rem;color:var(--bark-light);padding-left:26px;"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Promotions</div>
+        <div class="card-desc">Highlight a limited-time deal or offer on your listing.</div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">Active Promotion</div>
+            <div class="toggle-desc">Show a promo badge on your listing</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="field-promo" onchange="togglePromoText(); markDirty();" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div id="promo-text-wrap" style="margin-top:20px;display:none;">
+          <label class="field-label">Promo description</label>
+          <textarea class="field-textarea" id="field-promo-text" placeholder="e.g. 20% off first visit — mention SkinDay at booking" oninput="markDirty()"></textarea>
+          <div class="field-hint">Keep it short and scannable — 1–2 sentences max.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── TAB: CONTACT ─── -->
+    <div class="tab-pane" id="tab-contact">
+      <div class="card">
+        <div class="card-title">Contact Information</div>
+        <div class="card-desc">How visitors can reach your clinic.</div>
+        <div class="field-row">
+          <div class="field-group">
+            <label class="field-label">Phone number</label>
+            <input class="field-input" type="tel" id="field-phone" placeholder="(416) 555-0100" oninput="markDirty()" />
+          </div>
+          <div class="field-group">
+            <label class="field-label">Website URL</label>
+            <input class="field-input" type="url" id="field-website" placeholder="https://yourclinic.com" oninput="markDirty()" />
+          </div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Booking link <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:12px;color:var(--bark-light);">(optional)</span></label>
+          <input class="field-input" type="url" id="field-booking" placeholder="https://jane.app/yourclinic" oninput="markDirty()" />
+          <div class="field-hint">Direct link for online booking — shown as a CTA button on your listing.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── TAB: CLINIC DETAILS ─── -->
+    <div class="tab-pane" id="tab-details">
+      <div class="card">
+        <div class="card-title">Injector Credentials</div>
+        <div class="card-desc">What credentials does your injector hold? Select all that apply.</div>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px;">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:0.9rem;color:var(--bark);">
+            <input type="checkbox" id="cred-physician" value="physician" onchange="markDirty()" style="width:16px;height:16px;accent-color:var(--rose);cursor:pointer;" />
+            <span><strong>Physician (MD)</strong> — licensed medical doctor</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:0.9rem;color:var(--bark);">
+            <input type="checkbox" id="cred-np" value="np" onchange="markDirty()" style="width:16px;height:16px;accent-color:var(--rose);cursor:pointer;" />
+            <span><strong>Nurse Practitioner (NP)</strong> — advanced practice nurse</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:0.9rem;color:var(--bark);">
+            <input type="checkbox" id="cred-rn" value="rn" onchange="markDirty()" style="width:16px;height:16px;accent-color:var(--rose);cursor:pointer;" />
+            <span><strong>Registered Nurse (RN / RPN)</strong></span>
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:0.9rem;color:var(--bark);">
+            <input type="checkbox" id="cred-img" value="img" onchange="markDirty()" style="width:16px;height:16px;accent-color:var(--rose);cursor:pointer;" />
+            <span><strong>IMG (International Medical Graduate)</strong> — foreign-trained physician</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div class="card-title">Languages Spoken</div>
+        <div class="card-desc">Which languages does your clinic serve? Select all that apply.</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px;">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:0.9rem;color:var(--bark);">
+            <input type="checkbox" id="lang-english" value="english" onchange="markDirty()" style="width:16px;height:16px;accent-color:var(--rose);cursor:pointer;" />
+            English
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:0.9rem;color:var(--bark);">
+            <input type="checkbox" id="lang-mandarin" value="mandarin" onchange="markDirty()" style="width:16px;height:16px;accent-color:var(--rose);cursor:pointer;" />
+            Mandarin
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:0.9rem;color:var(--bark);">
+            <input type="checkbox" id="lang-cantonese" value="cantonese" onchange="markDirty()" style="width:16px;height:16px;accent-color:var(--rose);cursor:pointer;" />
+            Cantonese
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:0.9rem;color:var(--bark);">
+            <input type="checkbox" id="lang-farsi" value="farsi" onchange="markDirty()" style="width:16px;height:16px;accent-color:var(--rose);cursor:pointer;" />
+            Farsi
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:0.9rem;color:var(--bark);">
+            <input type="checkbox" id="lang-french" value="french" onchange="markDirty()" style="width:16px;height:16px;accent-color:var(--rose);cursor:pointer;" />
+            French
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:0.9rem;color:var(--bark);">
+            <input type="checkbox" id="lang-korean" value="korean" onchange="markDirty()" style="width:16px;height:16px;accent-color:var(--rose);cursor:pointer;" />
+            Korean
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:0.9rem;color:var(--bark);">
+            <input type="checkbox" id="lang-hindi" value="hindi" onchange="markDirty()" style="width:16px;height:16px;accent-color:var(--rose);cursor:pointer;" />
+            Hindi
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:0.9rem;color:var(--bark);">
+            <input type="checkbox" id="lang-arabic" value="arabic" onchange="markDirty()" style="width:16px;height:16px;accent-color:var(--rose);cursor:pointer;" />
+            Arabic
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:0.9rem;color:var(--bark);">
+            <input type="checkbox" id="lang-punjabi" value="punjabi" onchange="markDirty()" style="width:16px;height:16px;accent-color:var(--rose);cursor:pointer;" />
+            Punjabi
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:0.9rem;color:var(--bark);">
+            <input type="checkbox" id="lang-portuguese" value="portuguese" onchange="markDirty()" style="width:16px;height:16px;accent-color:var(--rose);cursor:pointer;" />
+            Portuguese
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── TAB: HOURS ─── -->
+    <div class="tab-pane" id="tab-hours">
+      <div class="card">
+        <div class="card-title">Business Hours</div>
+        <div class="card-desc">Set your weekly schedule. Toggle "Closed" for days you're not open.</div>
+        <div id="hours-table"></div>
+      </div>
+    </div>
+
+    <!-- ─── TAB: PHOTOS ─── -->
+    <div class="tab-pane" id="tab-photos">
+      <div class="card">
+        <div class="card-title">Clinic Photos</div>
+        <div class="card-desc">Upload up to 6 photos — clinic exterior, treatment rooms, or before/after results.</div>
+        <div class="photo-grid" id="photo-grid"></div>
+        <input type="file" id="photo-upload-input" accept="image/*" style="display:none;" onchange="handlePhotoUpload(event)" />
+        <button class="photo-add-btn" onclick="document.getElementById('photo-upload-input').click()">
+          <span style="font-size:18px;">＋</span> Add Photo
+        </button>
+        <div class="field-hint" style="margin-top:12px;">JPG or PNG, max 5MB each. First photo is used as your cover image.</div>
+      </div>
+    </div>
+  </div>
+
+    <!-- ─── TAB: PRACTITIONERS ─── -->
+    <div class="tab-pane" id="tab-practitioners">
+      <div class="card">
+        <div class="card-title">Lead Practitioners</div>
+        <div class="card-desc">Add the injectors at your clinic. The first practitioner listed is shown on your card. Self-reported — no verification required.</div>
+
+        <div id="practitioner-rows"></div>
+
+        <button type="button" onclick="practitionerAddRow()" style="margin-top:12px;background:rgba(200,114,90,0.06);border:1px dashed rgba(200,114,90,0.3);border-radius:8px;color:var(--rose);cursor:pointer;font-size:0.82rem;padding:0.45rem 0.9rem;width:100%;max-width:560px;transition:all 0.15s;font-family:'DM Sans',sans-serif;" onmouseover="this.style.background='rgba(200,114,90,0.1)'" onmouseout="this.style.background='rgba(200,114,90,0.06)'">+ Add practitioner</button>
+
+        <div class="field-hint" style="margin-top:12px;">Drag ☰ to reorder. The top practitioner's name and designation appear under your clinic name on SkinDay.</div>
+      </div>
+    </div>
+
+  <!-- Save Bar -->
+  <div class="save-bar" id="save-bar">
+    <div class="save-bar-msg"><strong>Unsaved changes</strong> — your edits haven't been published yet.</div>
+    <div class="save-bar-actions">
+      <button class="btn-discard" onclick="discardChanges()">Discard</button>
+      <button class="btn-save" onclick="saveChanges()">Save & Publish</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script src="/clinics-data.js"></script>
+<script>
+  // ─── SUPABASE CONFIG ───
+  // Replace with your actual values
+  const SUPABASE_URL = 'https://vefldlqtyxdywbzdjuia.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlZmxkbHF0eXhkeXdiemRqdWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNDAwMjgsImV4cCI6MjA4NzkxNjAyOH0.o582sXiUkB3j4FiHEA5rE3ABy_pdTeeK1PnNpNirHZA';
+
+  // ─── STATE ───
+  let currentClinic = null;
+  let originalData = {};
+  let isDirty = false;
+  let photos = []; // { url, file? }
+  let allClinicIds = [];    // populated for chain accounts
+  let allClinicNames = {};  // id → name map for switcher labels
+
+  // ─── HOURS CONFIG ───
+  const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+  const defaultHours = { open: '09:00', close: '17:00', closed: false };
+
+  // ─── LOGIN ───
+  async function doLogin() {
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    const btn = document.getElementById('login-btn');
+    const err = document.getElementById('login-error');
+
+    if (!email || !password) {
+      showLoginError('Please enter your email and password.');
+      return;
+    }
+
+    btn.textContent = 'Signing in…';
+    btn.disabled = true;
+    err.style.display = 'none';
+
+    try {
+      const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_KEY
+        },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || data.error) {
+        showLoginError(data.error_description || 'Login failed. Please try again.');
+        return;
+      }
+
+      // Store session
+      sessionStorage.setItem('sd_token', data.access_token);
+      sessionStorage.setItem('sd_user_email', email);
+
+      // Fetch clinic linked to this user
+      await loadClinicForUser(data.access_token, email);
+
+    } catch (e) {
+      showLoginError('Network error — please try again.');
+    } finally {
+      btn.textContent = 'Sign In';
+      btn.disabled = false;
+    }
+  }
+
+  function showLoginError(msg) {
+    const err = document.getElementById('login-error');
+    err.textContent = msg;
+    err.style.display = 'block';
+    document.getElementById('login-btn').textContent = 'Sign In';
+    document.getElementById('login-btn').disabled = false;
+  }
+
+  async function loadClinicForUser(token, email) {
+    try {
+      const res = await fetch('/api/save-clinic', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ action: 'get-clinic' })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || data.error) {
+        showLoginError(data.error || 'No approved clinic found for this account. Contact support@skinday.ca.');
+        return;
+      }
+
+      currentClinic = data.clinic;
+
+      // Chain support: get all clinic IDs from user metadata
+      allClinicIds = data.clinic_ids || [currentClinic.id];
+      // Build name map from clinics-data.js static array (has name + neighbourhood)
+      allClinicNames = {};
+      const idsToName = data.clinic_ids || [currentClinic.id];
+      idsToName.forEach(id => {
+        const match = typeof clinics !== 'undefined'
+          ? clinics.find(c => String(c.id) === String(id))
+          : null;
+        if (match) {
+          allClinicNames[String(id)] = match.neighbourhood
+            ? `${match.name} — ${match.neighbourhood}`
+            : match.name;
+        } else {
+          const rawNames = data.clinic_names || {};
+          allClinicNames[String(id)] = rawNames[String(id)] || 'Location ' + id;
+        }
+      });
+
+      // Patch currentClinic.name from clinics-data.js if server returned null
+      if (!currentClinic.name) {
+        const staticMatch = typeof clinics !== 'undefined'
+          ? clinics.find(c => String(c.id) === String(currentClinic.id))
+          : null;
+        if (staticMatch) {
+          currentClinic.name         = staticMatch.name;
+          currentClinic.neighbourhood = staticMatch.neighbourhood;
+        }
+      }
+
+      showPortal();
+    } catch (e) {
+      showLoginError('Network error — please try again.');
+    }
+  }
+
+  // ─── SWITCH LOCATION (chain accounts) ───
+  async function switchLocation(clinicId) {
+    if (isDirty) {
+      if (!confirm('You have unsaved changes. Switch location anyway?')) return;
+    }
+    closeLocationDropdown();
+
+    const token = sessionStorage.getItem('sd_token');
+    try {
+      const res = await fetch('/api/save-clinic', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ action: 'get-clinic', clinicId })
+      });
+
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        showToast('Could not load that location. Try again.', 'error');
+        return;
+      }
+
+      currentClinic = data.clinic;
+      // Patch name from clinics-data.js if null
+      if (!currentClinic.name) {
+        const staticMatch = typeof clinics !== 'undefined'
+          ? clinics.find(c => String(c.id) === String(currentClinic.id))
+          : null;
+        if (staticMatch) {
+          currentClinic.name          = staticMatch.name;
+          currentClinic.neighbourhood = staticMatch.neighbourhood;
+        }
+      }
+      isDirty = false;
+      document.getElementById('save-bar').classList.remove('visible');
+      updatePortalForCurrentClinic();
+      showToast('Switched to ' + currentClinic.name, 'success');
+    } catch (e) {
+      showToast('Network error — please try again.', 'error');
+    }
+  }
+
+  function toggleLocationDropdown() {
+    const dd = document.getElementById('location-dropdown');
+    dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+  }
+
+  function closeLocationDropdown() {
+    document.getElementById('location-dropdown').style.display = 'none';
+  }
+
+  // Close dropdown on outside click
+  document.addEventListener('click', e => {
+    if (!e.target.closest('#location-switcher-wrap')) closeLocationDropdown();
+  });
+
+  function buildLocationSwitcher() {
+    const isChain = allClinicIds.length > 1;
+    document.getElementById('header-clinic-badge').style.display   = isChain ? 'none' : 'flex';
+    document.getElementById('location-switcher-wrap').style.display = isChain ? 'block' : 'none';
+    if (!isChain) return;
+
+    const itemsEl = document.getElementById('location-dropdown-items');
+    itemsEl.innerHTML = allClinicIds.map(id => {
+      const name = allClinicNames[String(id)] || allClinicNames[id] || currentClinic.name || 'Location ' + id;
+      const isActive = String(id) === String(currentClinic.id);
+      return `<div class="location-dropdown-item${isActive ? ' active' : ''}" onclick="switchLocation('${id}')">${name}</div>`;
+    }).join('');
+
+    // Update header label
+    document.getElementById('location-switcher-label').textContent = currentClinic.name || 'Select location';
+
+    // Show/hide apply-all toggle and populate location list
+    const applyWrap = document.getElementById('apply-all-wrap');
+    if (applyWrap) {
+      applyWrap.style.display = isChain ? 'block' : 'none';
+      const listEl = document.getElementById('apply-all-locations-list');
+      if (listEl && isChain) {
+        const otherNames = allClinicIds
+          .filter(id => String(id) !== String(currentClinic.id))
+          .map(id => allClinicNames[String(id)] || 'Location ' + id);
+        listEl.textContent = otherNames.length
+          ? 'Will also update: ' + otherNames.join(', ')
+          : '';
+      }
+    }
+  }
+
+  function showPortal() {
+    document.getElementById('login-screen').style.display = 'none';
+    const portal = document.getElementById('portal-screen');
+    portal.style.display = 'flex';
+
+    buildLocationSwitcher();
+    updatePortalForCurrentClinic();
+  }
+
+  function updatePortalForCurrentClinic() {
+    const name = currentClinic.name || 'Your Clinic';
+    const hood = currentClinic.neighbourhood || null;
+
+    document.getElementById('portal-clinic-name').textContent = name;
+    document.getElementById('clinic-name-small').textContent  = name;
+    document.getElementById('clinic-avatar').textContent = name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+
+    // Show neighbourhood as location subtitle under the clinic name
+    const subtitleEl = document.getElementById('portal-location-subtitle');
+    if (subtitleEl) {
+      subtitleEl.textContent = hood ? '📍 ' + hood : '';
+      subtitleEl.style.display = hood ? 'block' : 'none';
+    }
+
+    // Update switcher label — show "Name — Neighbourhood" for chains
+    const labelEl = document.getElementById('location-switcher-label');
+    if (labelEl) {
+      labelEl.textContent = allClinicIds.length > 1 && hood
+        ? `${name} — ${hood}`
+        : name;
+    }
+
+    // Rebuild dropdown to reflect active location
+    if (allClinicIds.length > 1) buildLocationSwitcher();
+
+    photos = [];
+    populateFields();
+    buildHoursTable();
+    buildPhotoGrid();
+    practitionerLoad(currentClinic.id);
+  }
+
+  function populateFields() {
+    const c = currentClinic;
+
+    // Supabase may return array columns as JSON strings — parse them
+    ['injector_credentials', 'languages'].forEach(field => {
+      if (typeof c[field] === 'string') {
+        try { c[field] = JSON.parse(c[field]); } catch(e) { c[field] = []; }
+      }
+      if (!Array.isArray(c[field])) c[field] = [];
+    });
+
+    // Load prices from clinic_prices via get-clinics data
+    portalLoadPrices(c);
+
+    setVal('field-phone', c.phone || '');
+    setVal('field-website', c.website || '');
+    setVal('field-booking', c.booking_url || '');
+    setVal('field-promo-text', c.promo_text || '');
+
+    const promoCheck = document.getElementById('field-promo');
+    promoCheck.checked = !!c.promo;
+    togglePromoText();
+
+    // Photos
+    photos = (c.photos || []).map(url => ({ url }));
+
+    // Injector credentials checkboxes
+    const allCreds = ['physician','np','rn','img'];
+    const savedCreds = Array.isArray(c.injector_credentials) ? c.injector_credentials : [];
+    allCreds.forEach(v => {
+      const el = document.getElementById('cred-' + v);
+      if (el) el.checked = savedCreds.includes(v);
+    });
+
+    // Languages checkboxes
+    const allLangs = ['english','mandarin','cantonese','farsi','french','korean','hindi','arabic','punjabi','portuguese'];
+    const savedLangs = Array.isArray(c.languages) ? c.languages : [];
+    allLangs.forEach(v => {
+      const el = document.getElementById('lang-' + v);
+      if (el) el.checked = savedLangs.includes(v);
+    });
+
+    // Store originals for discard
+    originalData = {
+      prices: portalGetPriceRows(),
+      phone: c.phone || '',
+      website: c.website || '',
+      booking_url: c.booking_url || '',
+      promo: !!c.promo,
+      promo_text: c.promo_text || '',
+      hours: JSON.parse(JSON.stringify(c.hours || {})),
+      photos: [...photos],
+      injector_credentials: [...savedCreds],
+      languages: [...savedLangs]
+    };
+  }
+
+  function setVal(id, val) {
+    const el = document.getElementById(id);
+    if (el) el.value = val;
+  }
+
+  // ─── HOURS ───
+  function buildHoursTable() {
+    const table = document.getElementById('hours-table');
+    const saved = currentClinic.hours || {};
+    table.innerHTML = '';
+
+    DAYS.forEach(day => {
+      const h = saved[day] || defaultHours;
+      const row = document.createElement('div');
+      row.className = 'hours-row';
+      row.id = `hours-${day}`;
+      row.innerHTML = `
+        <div class="hours-day">${day}</div>
+        <input class="hours-input" type="time" id="open-${day}" value="${h.closed ? '' : h.open || '09:00'}" ${h.closed ? 'disabled' : ''} oninput="markDirty()" />
+        <input class="hours-input" type="time" id="close-${day}" value="${h.closed ? '' : h.close || '17:00'}" ${h.closed ? 'disabled' : ''} oninput="markDirty()" />
+        <div class="hours-closed">
+          <label>
+            <input type="checkbox" id="closed-${day}" ${h.closed ? 'checked' : ''} onchange="toggleDay('${day}'); markDirty();" />
+            Closed
+          </label>
+        </div>
+      `;
+      table.appendChild(row);
+    });
+  }
+
+  function toggleDay(day) {
+    const isClosed = document.getElementById(`closed-${day}`).checked;
+    document.getElementById(`open-${day}`).disabled = isClosed;
+    document.getElementById(`close-${day}`).disabled = isClosed;
+    if (isClosed) {
+      document.getElementById(`open-${day}`).value = '';
+      document.getElementById(`close-${day}`).value = '';
+    } else {
+      document.getElementById(`open-${day}`).value = '09:00';
+      document.getElementById(`close-${day}`).value = '17:00';
+    }
+  }
+
+  function collectHours() {
+    const hours = {};
+    DAYS.forEach(day => {
+      hours[day] = {
+        closed: document.getElementById(`closed-${day}`).checked,
+        open: document.getElementById(`open-${day}`).value,
+        close: document.getElementById(`close-${day}`).value
+      };
+    });
+    return hours;
+  }
+
+  // ─── PHOTOS ───
+  function buildPhotoGrid() {
+    const grid = document.getElementById('photo-grid');
+    grid.innerHTML = '';
+
+    const slots = Math.max(photos.length + 1, 3);
+    for (let i = 0; i < Math.min(slots, 6); i++) {
+      const slot = document.createElement('div');
+      slot.className = 'photo-slot';
+
+      if (photos[i]) {
+        slot.innerHTML = `
+          <img src="${photos[i].url}" alt="Clinic photo ${i+1}" />
+          <div class="photo-slot-overlay">
+            <button class="photo-remove" onclick="removePhoto(${i}); event.stopPropagation();">Remove</button>
+          </div>
+        `;
+      } else {
+        slot.innerHTML = `
+          <div class="photo-slot-icon">📷</div>
+          <div class="photo-slot-label">Add photo</div>
+        `;
+        slot.onclick = () => {
+          document.getElementById('photo-upload-input').click();
+        };
+      }
+      grid.appendChild(slot);
+    }
+  }
+
+  function handlePhotoUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (photos.length >= 6) { showToast('Maximum 6 photos allowed.', 'error'); return; }
+
+    const url = URL.createObjectURL(file);
+    photos.push({ url, file });
+    buildPhotoGrid();
+    markDirty();
+    e.target.value = '';
+  }
+
+  function removePhoto(idx) {
+    photos.splice(idx, 1);
+    buildPhotoGrid();
+    markDirty();
+  }
+
+  // ─── PROMO TOGGLE ───
+  function togglePromoText() {
+    const on = document.getElementById('field-promo').checked;
+    document.getElementById('promo-text-wrap').style.display = on ? 'block' : 'none';
+  }
+
+  // ─── TABS ───
+  function switchTab(tab, btn) {
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + tab).classList.add('active');
+    btn.classList.add('active');
+  }
+
+  // ─── DIRTY STATE ───
+  function markDirty() {
+    isDirty = true;
+    document.getElementById('save-bar').classList.add('visible');
+  }
+
+  function discardChanges() {
+    // Restore original data
+    const c = originalData;
+    portalLoadPrices(c);
+    setVal('field-phone', c.phone);
+    setVal('field-website', c.website);
+    setVal('field-booking', c.booking_url);
+    setVal('field-promo-text', c.promo_text);
+    document.getElementById('field-promo').checked = c.promo;
+    togglePromoText();
+    photos = [...c.photos];
+    buildPhotoGrid();
+    currentClinic.hours = JSON.parse(JSON.stringify(c.hours));
+    buildHoursTable();
+
+    // Restore credentials
+    ['physician','np','rn','img'].forEach(v => {
+      const el = document.getElementById('cred-' + v);
+      if (el) el.checked = (c.injector_credentials || []).includes(v);
+    });
+    // Restore languages
+    ['english','mandarin','cantonese','farsi','french','korean','hindi','arabic','punjabi','portuguese'].forEach(v => {
+      const el = document.getElementById('lang-' + v);
+      if (el) el.checked = (c.languages || []).includes(v);
+    });
+
+    // Restore practitioners
+    practitioners = practitionerOriginal.map(p => ({ ...p }));
+    practitionerRender();
+
+    isDirty = false;
+    document.getElementById('save-bar').classList.remove('visible');
+  }
+
+  // ─── SAVE ───
+  async function saveChanges() {
+    const token = sessionStorage.getItem('sd_token');
+    const btn = document.querySelector('.btn-save');
+    btn.textContent = 'Saving…';
+    btn.disabled = true;
+
+    try {
+      // Upload any new photos to Supabase Storage (placeholder — wire to real bucket)
+      const uploadedUrls = await uploadNewPhotos(token);
+      const allPhotoUrls = photos.map((p, i) => uploadedUrls[i] || p.url);
+
+      const payload = {
+        prices: portalGetPriceRows(),
+        price_source: 'clinic',
+        price_date: new Date().toISOString().split('T')[0],
+        phone: document.getElementById('field-phone').value.trim(),
+        website: document.getElementById('field-website').value.trim(),
+        booking_url: document.getElementById('field-booking').value.trim(),
+        promo: document.getElementById('field-promo').checked,
+        promo_text: document.getElementById('field-promo-text').value.trim(),
+        hours: collectHours(),
+        photos: allPhotoUrls,
+        injector_credentials: ['physician','np','rn','img'].filter(v => document.getElementById('cred-' + v)?.checked),
+        languages: ['english','mandarin','cantonese','farsi','french','korean','hindi','arabic','punjabi','portuguese'].filter(v => document.getElementById('lang-' + v)?.checked)
+      };
+
+      // Determine which clinic IDs to save to
+      const applyAll = document.getElementById('apply-all-locations')?.checked;
+      const saveIds = applyAll && allClinicIds.length > 1
+        ? allClinicIds
+        : [currentClinic.id];
+
+      // For non-primary locations, only push prices + credentials (not hours/photos which are per-location)
+      const sharedPayload = {
+        prices: payload.prices,
+        price_source: payload.price_source,
+        price_date: payload.price_date,
+        injector_credentials: payload.injector_credentials,
+        languages: payload.languages
+      };
+
+      // Save to all target locations
+      for (const saveId of saveIds) {
+        const savePayload = String(saveId) === String(currentClinic.id)
+          ? payload                // full payload for current location
+          : sharedPayload;         // prices + credentials only for others
+
+        const res = await fetch('/api/save-clinic', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ action: 'save-clinic', clinicId: saveId, payload: savePayload })
+        });
+        if (!res.ok) throw new Error(`Save failed for clinic ${saveId}`);
+      }
+
+      // Save practitioners for current location only
+      await practitionerSave(currentClinic.id, token);
+      practitionerOriginal = practitioners.filter(p => p.name.trim()).map((p, i) => ({ ...p, display_order: i }));
+
+      // Update local state
+      Object.assign(currentClinic, payload);
+      originalData = { ...payload, photos: photos.map(p => ({ url: p.url })), injector_credentials: [...payload.injector_credentials], languages: [...payload.languages] };
+      isDirty = false;
+      document.getElementById('save-bar').classList.remove('visible');
+      // Reset apply-all checkbox after save
+      const applyAllEl = document.getElementById('apply-all-locations');
+      if (applyAllEl) applyAllEl.checked = false;
+      const toastMsg = saveIds.length > 1
+        ? `Changes saved to ${saveIds.length} locations ✓`
+        : 'Changes saved and published! ✓';
+      showToast(toastMsg, 'success');
+
+    } catch (e) {
+      showToast('Error saving — please try again.', 'error');
+    } finally {
+      btn.textContent = 'Save & Publish';
+      btn.disabled = false;
+    }
+  }
+
+  async function uploadNewPhotos(token) {
+    // Returns array of URLs in same order as photos[]
+    // New photos have a .file property; existing ones don't
+    return Promise.all(photos.map(async (p) => {
+      if (!p.file) return p.url; // already uploaded
+      const filename = `clinic-${currentClinic.id}/${Date.now()}-${p.file.name}`;
+      const res = await fetch(`${SUPABASE_URL}/storage/v1/object/clinic-photos/${filename}`, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': p.file.type
+        },
+        body: p.file
+      });
+      if (!res.ok) return p.url; // fallback to blob URL on error
+      return `${SUPABASE_URL}/storage/v1/object/public/clinic-photos/${filename}`;
+    }));
+  }
+
+  // ─── LOGOUT ───
+  function doLogout() {
+    sessionStorage.removeItem('sd_token');
+    sessionStorage.removeItem('sd_user_email');
+    currentClinic = null;
+    allClinicIds = [];
+    allClinicNames = {};
+    isDirty = false;
+    document.getElementById('portal-screen').style.display = 'none';
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('login-email').value = '';
+    document.getElementById('login-password').value = '';
+    document.getElementById('login-error').style.display = 'none';
+    document.getElementById('save-bar').classList.remove('visible');
+  }
+
+  // ─── FORGOT PASSWORD ───
+  async function showForgot() {
+    const email = document.getElementById('login-email').value.trim();
+    if (!email) {
+      showLoginError('Enter your email address first, then click Forgot Password.');
+      return;
+    }
+    try {
+      const res = await fetch(`${SUPABASE_URL}/auth/v1/recover`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
+        body: JSON.stringify({
+          email,
+          redirect_to: window.location.origin + '/editor.html'
+        })
+      });
+      const responseText = await res.text();
+      console.log('Recover response:', res.status, responseText);
+      if (res.ok) {
+        showToast('Reset email sent — check your inbox.', 'success');
+      } else {
+        let errMsg = 'Failed to send reset email. Try again.';
+        try {
+          const d = JSON.parse(responseText);
+          errMsg = d.message || d.error_description || d.msg || JSON.stringify(d);
+        } catch { errMsg = responseText || errMsg; }
+        showLoginError('Error ' + res.status + ': ' + errMsg);
+      }
+    } catch (e) {
+      showLoginError('Network error — please try again.');
+    }
+  }
+
+  // ─── PRACTITIONERS ───────────────────────────────────────────
+  let practitioners = [];      // [{ id?, name, designation, display_order }]
+  let practitionerOriginal = [];
+  let dragSrcIdx = null;
+
+  async function practitionerLoad(clinicId) {
+    try {
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/practitioners?clinic_id=eq.${encodeURIComponent(clinicId)}&order=display_order.asc`,
+        { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${sessionStorage.getItem('sd_token')}` } }
+      );
+      const rows = await res.json();
+      practitioners = Array.isArray(rows) ? rows.map(r => ({ id: r.id, name: r.name || '', designation: r.designation || '', display_order: r.display_order })) : [];
+    } catch(e) {
+      practitioners = [];
+    }
+    practitionerOriginal = practitioners.map(p => ({ ...p }));
+    practitionerRender();
+  }
+
+  function practitionerRender() {
+    const container = document.getElementById('practitioner-rows');
+    if (!container) return;
+    container.innerHTML = '';
+    if (practitioners.length === 0) {
+      container.innerHTML = '<div style="font-size:13px;color:var(--bark-light);padding:12px 0;">No practitioners added yet.</div>';
+      return;
+    }
+    const inpStyle = 'background:var(--cream);border:1.5px solid var(--border);border-radius:8px;color:var(--bark);font-family:\'DM Sans\',sans-serif;font-size:0.88rem;padding:0.5rem 0.75rem;outline:none;width:100%;transition:border-color 0.2s;';
+    practitioners.forEach((p, i) => {
+      const row = document.createElement('div');
+      row.className = 'practitioner-row';
+      row.dataset.idx = i;
+      row.draggable = true;
+      row.innerHTML = `
+        <div class="practitioner-drag" title="Drag to reorder">☰</div>
+        <div>
+          ${i === 0 ? '<span class="practitioner-primary-badge">Primary</span>' : ''}
+          <input type="text" placeholder="Name" value="${escHtml(p.name)}"
+            style="${inpStyle}${i === 0 ? 'border-color:var(--rose-light);' : ''}"
+            oninput="practitioners[${i}].name=this.value;markDirty();" />
+        </div>
+        <input type="text" placeholder="Designation (e.g. MD, RN, NP)" value="${escHtml(p.designation)}"
+          style="${inpStyle}"
+          oninput="practitioners[${i}].designation=this.value;markDirty();" />
+        <button type="button" onclick="practitionerRemove(${i})"
+          style="background:none;border:none;color:var(--bark-light);cursor:pointer;font-size:1.1rem;padding:0;line-height:1;transition:color 0.15s;"
+          onmouseover="this.style.color='var(--rose)'" onmouseout="this.style.color='var(--bark-light)'">✕</button>`;
+
+      // Drag-and-drop
+      row.addEventListener('dragstart', e => { dragSrcIdx = i; row.style.opacity = '0.4'; e.dataTransfer.effectAllowed = 'move'; });
+      row.addEventListener('dragend', () => { row.style.opacity = '1'; dragSrcIdx = null; });
+      row.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; row.style.background = 'rgba(201,115,106,0.05)'; });
+      row.addEventListener('dragleave', () => { row.style.background = ''; });
+      row.addEventListener('drop', e => {
+        e.preventDefault();
+        row.style.background = '';
+        if (dragSrcIdx === null || dragSrcIdx === i) return;
+        const moved = practitioners.splice(dragSrcIdx, 1)[0];
+        practitioners.splice(i, 0, moved);
+        practitioners.forEach((p, idx) => p.display_order = idx);
+        markDirty();
+        practitionerRender();
+      });
+
+      container.appendChild(row);
+    });
+  }
+
+  function practitionerAddRow() {
+    practitioners.push({ name: '', designation: '', display_order: practitioners.length });
+    markDirty();
+    practitionerRender();
+    // Focus the new name input
+    const rows = document.querySelectorAll('.practitioner-row');
+    if (rows.length) rows[rows.length - 1].querySelector('input[type="text"]')?.focus();
+  }
+
+  function practitionerRemove(idx) {
+    practitioners.splice(idx, 1);
+    practitioners.forEach((p, i) => p.display_order = i);
+    markDirty();
+    practitionerRender();
+  }
+
+  async function practitionerSave(clinicId, token) {
+    // Delete all existing rows for this clinic, then insert fresh
+    // (simplest reliable approach for a small list)
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/practitioners?clinic_id=eq.${encodeURIComponent(clinicId)}`,
+      { method: 'DELETE', headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${token}`, 'Prefer': 'return=minimal' } }
+    );
+    const toInsert = practitioners
+      .filter(p => p.name.trim())
+      .map((p, i) => ({ clinic_id: String(clinicId), name: p.name.trim(), designation: p.designation.trim(), display_order: i }));
+    if (toInsert.length === 0) return;
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/practitioners`,
+      {
+        method: 'POST',
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        body: JSON.stringify(toInsert)
+      }
+    );
+  }
+
+  function escHtml(str) {
+    return (str || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+
+  function showToast(msg, type = '') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast ' + type;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3500);
+  }
+
+  // ─── ENTER KEY on login ───
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && document.getElementById('login-screen').style.display !== 'none') {
+      doLogin();
+    }
+  });
+
+  // ─── PASSWORD SETUP (from approval email link) ───
+  // Supabase puts access_token + type=recovery in the URL hash after redirect
+  function parseHashParams() {
+    const hash = window.location.hash.substring(1);
+    return Object.fromEntries(hash.split('&').map(p => p.split('=')).filter(p => p.length === 2));
+  }
+
+  async function doSetupPassword() {
+    const pw  = document.getElementById('setup-password').value;
+    const pw2 = document.getElementById('setup-confirm').value;
+    const err = document.getElementById('setup-error');
+    const btn = document.getElementById('setup-btn');
+
+    err.style.display = 'none';
+
+    if (pw.length < 8) {
+      err.textContent = 'Password must be at least 8 characters.';
+      err.style.display = 'block'; return;
+    }
+    if (pw !== pw2) {
+      err.textContent = 'Passwords do not match.';
+      err.style.display = 'block'; return;
+    }
+
+    btn.textContent = 'Setting password…';
+    btn.disabled = true;
+
+    try {
+      // Use the recovery token from the URL hash to set the new password
+      const recoveryToken = sessionStorage.getItem('sd_recovery_token');
+      const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${recoveryToken}`
+        },
+        body: JSON.stringify({ password: pw })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        err.textContent = data.message || 'Failed to set password. Try again.';
+        err.style.display = 'block'; return;
+      }
+
+      // Password set — now get a proper session
+      sessionStorage.setItem('sd_token', recoveryToken);
+      sessionStorage.setItem('sd_user_email', data.email);
+      sessionStorage.removeItem('sd_recovery_token');
+
+      // Clear hash from URL
+      history.replaceState(null, '', window.location.pathname);
+
+      // Load portal
+      document.getElementById('setup-screen').style.display = 'none';
+      await loadClinicForUser(recoveryToken, data.email);
+
+    } catch (e) {
+      err.textContent = 'Network error — please try again.';
+      err.style.display = 'block';
+    } finally {
+      btn.textContent = 'Set Password & Continue';
+      btn.disabled = false;
+    }
+  }
+
+  // ─── AUTO-RESTORE SESSION + HASH DETECTION ───
+  window.addEventListener('load', async () => {
+    // Check hash params (older Supabase implicit flow)
+    const hashParams = parseHashParams();
+
+    // Check query params (newer Supabase PKCE flow)
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code');
+
+    if (hashParams.access_token && (hashParams.type === 'recovery' || !hashParams.type)) {
+      // Implicit flow — token in hash (type may or may not be present)
+      console.log('Recovery token found in hash, type:', hashParams.type);
+      sessionStorage.setItem('sd_recovery_token', hashParams.access_token);
+      history.replaceState(null, '', window.location.pathname); // clean URL
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('setup-screen').style.display = 'flex';
+      return;
+    }
+
+    if (code) {
+      // Newer PKCE flow — exchange code for session token
+      try {
+        const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=pkce`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_KEY
+          },
+          body: JSON.stringify({ auth_code: code })
+        });
+        const data = await res.json();
+        console.log('PKCE exchange response:', JSON.stringify(data));
+        if (data.access_token) {
+          sessionStorage.setItem('sd_recovery_token', data.access_token);
+          history.replaceState(null, '', window.location.pathname);
+          document.getElementById('login-screen').style.display = 'none';
+          document.getElementById('setup-screen').style.display = 'flex';
+          return;
+        }
+        // Supabase may return token_type + access_token differently
+        if (data.error) {
+          console.error('PKCE exchange error:', data.error, data.error_description);
+        }
+      } catch (e) {
+        console.error('Code exchange failed:', e);
+      }
+    }
+
+    // Normal session restore
+    const token = sessionStorage.getItem('sd_token');
+    const email = sessionStorage.getItem('sd_user_email');
+    if (token && email) loadClinicForUser(token, email);
+  });
+
+  // Enter key on setup screen
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && document.getElementById('setup-screen').style.display === 'flex') {
+      doSetupPassword();
+    }
+  });
+
+  // ── PORTAL PRICE ROWS ────────────────────────────────────────
+  let portalRowCount = 0;
+
+  function portalAddPriceRow(toxin, injectorType, price) {
+    const rowId = ++portalRowCount;
+    const row = document.createElement('div');
+    row.id = `portal-row-${rowId}`;
+    row.style.cssText = 'display:grid;grid-template-columns:160px 150px 110px 36px;gap:0.5rem;margin-bottom:0.5rem;align-items:center;';
+    const inpStyle = 'background:var(--warm);border:1px solid var(--border);border-radius:8px;color:var(--deep);font-family:inherit;font-size:0.9rem;padding:0.55rem 0.75rem;outline:none;width:100%;';
+    row.innerHTML = `
+      <select style="${inpStyle};cursor:pointer;" onchange="markDirty()">
+        <option value="botox"${toxin==='botox'?' selected':''}>Botox</option>
+        <option value="dysport"${toxin==='dysport'?' selected':''}>Dysport</option>
+        <option value="xeomin"${toxin==='xeomin'?' selected':''}>Xeomin</option>
+        <option value="nuceiva"${toxin==='nuceiva'?' selected':''}>Nuceiva</option>
+        <option value="letybo"${toxin==='letybo'?' selected':''}>Letybo</option>
+      </select>
+      <select style="${inpStyle};cursor:pointer;" onchange="markDirty()">
+        <option value=""${!injectorType?' selected':''}>Any injector</option>
+        <option value="physician"${injectorType==='physician'?' selected':''}>Physician (MD)</option>
+        <option value="np"${injectorType==='np'?' selected':''}>NP</option>
+        <option value="rn"${injectorType==='rn'?' selected':''}>RN / RPN</option>
+        <option value="img"${injectorType==='img'?' selected':''}>IMG</option>
+      </select>
+      <div style="display:flex;align-items:center;">
+        <span style="background:var(--warm);border:1px solid var(--border);border-right:none;border-radius:8px 0 0 8px;color:var(--muted);padding:0.55rem 0.6rem;font-size:0.9rem;">$</span>
+        <input type="number" min="1" max="99" step="0.50" placeholder="0.00" value="${price||''}" oninput="markDirty()" style="background:var(--warm);border:1px solid var(--border);border-left:none;border-radius:0 8px 8px 0;color:var(--deep);font-family:inherit;font-size:0.9rem;padding:0.55rem 0.6rem;outline:none;width:100%;-moz-appearance:textfield;" />
+      </div>
+      <button type="button" onclick="document.getElementById('portal-row-${rowId}').remove();markDirty();" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;padding:0;line-height:1;" onmouseover="this.style.color='var(--rose)'" onmouseout="this.style.color='var(--muted)'">✕</button>`;
+    document.getElementById('portal-price-rows').appendChild(row);
+    row.querySelectorAll('select, input').forEach(el => el.addEventListener('change', markDirty));
+  }
+
+  function portalGetPriceRows() {
+    const rows = [];
+    document.querySelectorAll('#portal-price-rows > div').forEach(row => {
+      const selects = row.querySelectorAll('select');
+      const input = row.querySelector('input[type="number"]');
+      const toxin = selects[0]?.value;
+      const injector_type = selects[1]?.value || '';
+      const price = parseFloat(input?.value);
+      if (toxin && price > 0) rows.push({ toxin, injector_type, price });
+    });
+    return rows;
+  }
+
+  function portalLoadPrices(clinic) {
+    document.getElementById('portal-price-rows').innerHTML = '';
+    portalRowCount = 0;
+    const existingEl = document.getElementById('portal-existing-prices');
+    const existingList = document.getElementById('portal-existing-list');
+    const credMap = { physician:'MD / Physician', np:'NP', rn:'RN / RPN', img:'IMG' };
+
+    if (clinic.prices && clinic.prices.length > 0) {
+      // Show existing prices and pre-populate rows
+      existingList.innerHTML = clinic.prices.map(p => `
+        <div style="display:flex;gap:1rem;padding:0.3rem 0;font-size:0.82rem;color:var(--muted);">
+          <span style="color:var(--deep);">${p.toxin.charAt(0).toUpperCase()+p.toxin.slice(1)}</span>
+          <span>${p.injector_type ? (credMap[p.injector_type]||p.injector_type) : 'Any injector'}</span>
+          <span style="color:var(--rose);font-family:'Cormorant Garamond',serif;font-size:1rem;">$${parseFloat(p.price).toFixed(2)}/unit</span>
+        </div>`).join('');
+      existingEl.style.display = 'block';
+      clinic.prices.forEach(p => portalAddPriceRow(p.toxin, p.injector_type, p.price));
+    } else {
+      existingEl.style.display = 'none';
+      // Legacy single price fallback
+      if (clinic.price) {
+        portalAddPriceRow(clinic.toxin_type || 'botox', '', clinic.price);
+      } else {
+        portalAddPriceRow();
+      }
+    }
+
+    // Update last updated label
+    if (clinic.price_date) {
+      const d = new Date(clinic.price_date);
+      const label = d.toLocaleDateString('en-CA', { month: 'long', year: 'numeric' });
+      const el = document.getElementById('price-last-updated');
+      if (el) { el.textContent = `Price last updated: ${label}`; el.style.display = 'block'; }
+    }
+  }
+</script>
+</body>
+</html>

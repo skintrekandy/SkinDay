@@ -1,0 +1,44 @@
+# netlify.toml
+# Place this in the root of your Netlify-deployed repo.
+
+[build]
+  functions = "netlify/functions"
+  publish    = "."          # static HTML files are in root
+
+# Route /api/* to Netlify Functions
+[[redirects]]
+  from   = "/api/get-clinics"
+  to     = "/.netlify/functions/get-clinics"
+  status = 200
+
+[[redirects]]
+  from   = "/api/submit-claim"
+  to     = "/.netlify/functions/submit-claim"
+  status = 200
+
+[[redirects]]
+  from   = "/api/update-profile"
+  to     = "/.netlify/functions/update-profile"
+  status = 200
+
+[[redirects]]
+  from   = "/api/admin-action"
+  to     = "/.netlify/functions/admin-action"
+  status = 200
+
+[[redirects]]
+  from   = "/api/save-clinic"
+  to     = "/.netlify/functions/save-clinic"
+  status = 200
+
+[[redirects]]
+  from   = "/clinic/:slug"
+  to     = "/clinic.html"
+  status = 200
+
+# Protect admin page with Netlify password (optional — belt-and-suspenders on top of ADMIN_SECRET)
+# Uncomment and set in Netlify dashboard → Site settings → Access control if desired
+# [[headers]]
+#   for = "/skinday-admin.html"
+#   [headers.values]
+#     X-Robots-Tag = "noindex"

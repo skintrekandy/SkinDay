@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://skinday.ca/sitemap.xml
+
+Disallow: /skinday-admin.html
+Disallow: /editor.html
+Disallow: /api/

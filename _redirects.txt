@@ -1,0 +1,4 @@
+/api/get-clinics      /.netlify/functions/get-clinics      200
+/api/submit-claim     /.netlify/functions/submit-claim     200
+/api/update-profile   /.netlify/functions/update-profile   200
+/api/admin-action     /.netlify/functions/admin-action     200

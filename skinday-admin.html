@@ -1,0 +1,1739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SkinDay Admin — Claims</title>
+<script>/* clinics loaded from Supabase via piLoadClinics() and pracLoadClinics() */</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream:   #FAF7F2;
+    --warm:    #F4EDE4;
+    --deep:    #1C1714;
+    --deep2:   #241E1A;
+    --rose:    #C8725A;
+    --rose-m:  #D4896E;
+    --rose-bg: #F5E8E3;
+    --gold:    #C9A96E;
+    --muted:   #8A7B72;
+    --dim:     #B5A89F;
+    --border:  #EAE2D8;
+    --green:   #3D7A55;
+    --green-bg:#E8F4ED;
+    --red:     #B94040;
+    --red-bg:  #F9EDED;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--deep);
+    color: var(--cream);
+    min-height: 100vh;
+  }
+
+  /* ── LOGIN SCREEN ─────────────────────────────────────────── */
+  #login-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 2rem;
+  }
+
+  .login-card {
+    background: var(--deep2);
+    border: 1px solid rgba(201,169,110,0.2);
+    border-radius: 12px;
+    padding: 3rem 2.5rem;
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+  }
+
+  .login-logo {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2rem;
+    font-weight: 600;
+    color: var(--gold);
+    letter-spacing: 0.02em;
+    margin-bottom: 0.25rem;
+  }
+
+  .login-sub {
+    font-size: 0.75rem;
+    color: var(--muted);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 2.5rem;
+  }
+
+  .login-card input {
+    width: 100%;
+    padding: 0.875rem 1rem;
+    background: var(--deep);
+    border: 1px solid rgba(234,226,216,0.15);
+    border-radius: 8px;
+    color: var(--cream);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    letter-spacing: 0.1em;
+    outline: none;
+    margin-bottom: 1rem;
+    transition: border-color 0.2s;
+  }
+
+  .login-card input:focus {
+    border-color: rgba(201,169,110,0.4);
+  }
+
+  .btn-primary {
+    width: 100%;
+    padding: 0.875rem;
+    background: var(--rose);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    transition: background 0.2s, opacity 0.2s;
+  }
+
+  .btn-primary:hover { background: var(--rose-m); }
+  .btn-primary:disabled { opacity: 0.5; cursor: default; }
+
+  .login-error {
+    margin-top: 1rem;
+    font-size: 0.85rem;
+    color: var(--red);
+    display: none;
+  }
+
+  /* ── MAIN APP ─────────────────────────────────────────────── */
+  #app { display: none; }
+
+  /* Header */
+  .admin-header {
+    background: var(--deep2);
+    border-bottom: 1px solid rgba(234,226,216,0.1);
+    padding: 1rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .header-brand {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+  }
+
+  .header-logo {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--gold);
+  }
+
+  .header-badge {
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border: 1px solid rgba(234,226,216,0.15);
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .btn-ghost {
+    background: none;
+    border: 1px solid rgba(234,226,216,0.15);
+    color: var(--dim);
+    padding: 0.4rem 0.9rem;
+    border-radius: 6px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-ghost:hover { border-color: rgba(234,226,216,0.3); color: var(--cream); }
+
+  /* Tab nav */
+  .admin-nav {
+    background: var(--deep2);
+    border-bottom: 1px solid rgba(234,226,216,0.08);
+    padding: 0 2rem;
+    display: flex;
+    gap: 0;
+  }
+
+  .nav-tab {
+    padding: 0.875rem 1.25rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    white-space: nowrap;
+    background: none;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+    font-family: 'DM Sans', sans-serif;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .nav-tab:hover { color: var(--cream); }
+  .nav-tab.active { color: var(--cream); border-bottom-color: var(--rose); }
+
+  .tab-count {
+    background: var(--rose);
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.1rem 0.45rem;
+    border-radius: 10px;
+    min-width: 18px;
+    text-align: center;
+  }
+
+  .tab-count.zero { background: rgba(234,226,216,0.15); color: var(--muted); }
+
+  /* Main content */
+  .admin-main {
+    padding: 2rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  /* Loading */
+  .loading-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+
+  .spinner {
+    width: 32px;
+    height: 32px;
+    border: 2px solid rgba(234,226,216,0.1);
+    border-top-color: var(--gold);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 1rem;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--muted);
+  }
+
+  .empty-icon { font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.4; }
+  .empty-title { font-size: 1rem; color: var(--dim); margin-bottom: 0.4rem; }
+  .empty-desc { font-size: 0.85rem; }
+
+  /* Claims list */
+  .claims-grid {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .claim-card {
+    background: var(--deep2);
+    border: 1px solid rgba(234,226,216,0.08);
+    border-radius: 10px;
+    padding: 1.5rem;
+    transition: border-color 0.2s;
+  }
+
+  .claim-card:hover { border-color: rgba(234,226,216,0.15); }
+
+  .claim-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .claim-clinic-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.35rem;
+    font-weight: 500;
+    color: var(--cream);
+    line-height: 1.2;
+  }
+
+  .claim-neighbourhood {
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-top: 0.2rem;
+  }
+
+  .claim-id {
+    font-size: 0.7rem;
+    color: var(--dim);
+    font-family: monospace;
+    background: rgba(255,255,255,0.04);
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+
+  .claim-meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.75rem 1.5rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid rgba(234,226,216,0.06);
+  }
+
+  .meta-item { }
+
+  .meta-label {
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.2rem;
+  }
+
+  .meta-value {
+    font-size: 0.9rem;
+    color: var(--cream);
+  }
+
+  .meta-value a {
+    color: var(--rose-m);
+    text-decoration: none;
+  }
+
+  .meta-value a:hover { text-decoration: underline; }
+
+  .claim-submitted {
+    font-size: 0.8rem;
+    color: var(--dim);
+    margin-bottom: 1.25rem;
+  }
+
+  .claim-actions {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .btn-approve {
+    padding: 0.6rem 1.25rem;
+    background: var(--green);
+    color: white;
+    border: none;
+    border-radius: 7px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+
+  .btn-approve:hover { opacity: 0.85; }
+  .btn-approve:disabled { opacity: 0.4; cursor: default; }
+
+  .btn-reject {
+    padding: 0.6rem 1.25rem;
+    background: none;
+    color: var(--red);
+    border: 1px solid rgba(185,64,64,0.3);
+    border-radius: 7px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-reject:hover { background: var(--red-bg); color: var(--red); border-color: var(--red); }
+  .btn-reject:disabled { opacity: 0.4; cursor: default; }
+
+  .btn-revoke {
+    padding: 0.6rem 1.25rem;
+    background: none;
+    color: var(--gold);
+    border: 1px solid rgba(201,169,110,0.3);
+    border-radius: 7px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-revoke:hover { background: rgba(201,169,110,0.1); border-color: var(--gold); }
+  .btn-revoke:disabled { opacity: 0.4; cursor: default; }
+
+  .status-pill.revoked { background: rgba(201,169,110,0.1); color: var(--gold); }
+  .chain-tag {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    font-size: 0.7rem; color: var(--dim);
+    background: rgba(234,226,216,0.06);
+    border: 1px solid rgba(234,226,216,0.1);
+    border-radius: 4px; padding: 0.15rem 0.5rem;
+    margin-left: 0.5rem; vertical-align: middle;
+  }
+
+  .admin-note-input {
+    flex: 1;
+    min-width: 180px;
+    padding: 0.55rem 0.875rem;
+    background: var(--deep);
+    border: 1px solid rgba(234,226,216,0.12);
+    border-radius: 7px;
+    color: var(--cream);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .admin-note-input:focus { border-color: rgba(201,169,110,0.3); }
+  .admin-note-input::placeholder { color: var(--dim); }
+
+  /* Status badge on reviewed cards */
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.25rem 0.7rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  .status-pill.approved { background: var(--green-bg); color: var(--green); }
+  .status-pill.rejected { background: var(--red-bg); color: var(--red); }
+  .status-pill.pending  { background: rgba(201,169,110,0.12); color: var(--gold); }
+
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  /* Toast */
+  #toast {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--deep2);
+    border: 1px solid rgba(234,226,216,0.15);
+    border-radius: 8px;
+    padding: 0.875rem 1.5rem;
+    font-size: 0.875rem;
+    color: var(--cream);
+    z-index: 9999;
+    transition: transform 0.3s ease;
+    pointer-events: none;
+    white-space: nowrap;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+
+  #toast.show { transform: translateX(-50%) translateY(0); }
+  #toast.success { border-color: rgba(61,122,85,0.4); color: var(--green); }
+  #toast.error   { border-color: rgba(185,64,64,0.4); color: var(--red); }
+
+  /* Reviewed tab card overrides */
+  .claim-card.reviewed { opacity: 0.75; }
+  .claim-card.reviewed:hover { opacity: 1; }
+
+  /* Stats bar */
+  .stats-bar {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .stat-card {
+    background: var(--deep2);
+    border: 1px solid rgba(234,226,216,0.08);
+    border-radius: 10px;
+    padding: 1.25rem 1.5rem;
+  }
+
+  .stat-value {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2.25rem;
+    font-weight: 500;
+    color: var(--cream);
+    line-height: 1;
+    margin-bottom: 0.3rem;
+  }
+
+  .stat-label {
+    font-size: 0.75rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* ── ADD CLINIC FORM ──────────────────────────────────────── */
+  .add-clinic-form {
+    background: var(--deep2);
+    border: 1px solid rgba(234,226,216,0.08);
+    border-radius: 10px;
+    padding: 2rem;
+    max-width: 640px;
+  }
+
+  .form-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.5rem;
+    font-weight: 500;
+    color: var(--cream);
+    margin-bottom: 0.35rem;
+  }
+
+  .form-subtitle {
+    font-size: 0.82rem;
+    color: var(--muted);
+    margin-bottom: 2rem;
+    line-height: 1.5;
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .form-grid.full { grid-template-columns: 1fr; }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .form-label {
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .form-label span {
+    color: var(--rose);
+    margin-left: 2px;
+  }
+
+  .form-input {
+    padding: 0.75rem 0.875rem;
+    background: var(--deep);
+    border: 1px solid rgba(234,226,216,0.12);
+    border-radius: 7px;
+    color: var(--cream);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.88rem;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .form-input:focus { border-color: rgba(201,169,110,0.35); }
+  .form-input::placeholder { color: var(--dim); }
+
+  .form-select {
+    padding: 0.75rem 0.875rem;
+    background: var(--deep);
+    border: 1px solid rgba(234,226,216,0.12);
+    border-radius: 7px;
+    color: var(--cream);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.88rem;
+    outline: none;
+    width: 100%;
+    cursor: pointer;
+  }
+
+  .form-divider {
+    border: none;
+    border-top: 1px solid rgba(234,226,216,0.06);
+    margin: 1.5rem 0;
+  }
+
+  .form-section-label {
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--dim);
+    margin-bottom: 1rem;
+  }
+
+  .btn-submit-clinic {
+    padding: 0.875rem 2rem;
+    background: var(--rose);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s, opacity 0.2s;
+    margin-top: 1rem;
+  }
+
+  .btn-submit-clinic:hover { background: var(--rose-m); }
+  .btn-submit-clinic:disabled { opacity: 0.5; cursor: default; }
+
+  .add-success {
+    display: none;
+    background: var(--green-bg);
+    border: 1px solid rgba(61,122,85,0.3);
+    border-radius: 8px;
+    padding: 1.25rem 1.5rem;
+    margin-top: 1.5rem;
+    color: var(--green);
+    font-size: 0.88rem;
+    line-height: 1.6;
+  }
+
+  .add-success.show { display: block; }
+
+  @media (max-width: 600px) {
+    .form-grid { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 600px) {
+    .admin-header { padding: 1rem; }
+    .admin-main { padding: 1rem; }
+    .admin-nav { padding: 0 1rem; overflow-x: auto; }
+    .stats-bar { grid-template-columns: 1fr; }
+    .claim-meta { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/favicon-32x32.png" type="image/png" sizes="32x32">
+  <link rel="icon" href="/favicon-16x16.png" type="image/png" sizes="16x16">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">
+</head>
+<body>
+
+<!-- ── LOGIN SCREEN ─────────────────────────────────────────── -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">SkinDay</div>
+    <div class="login-sub">Admin Dashboard</div>
+    <input type="password" id="secret-input" placeholder="Admin secret" autocomplete="current-password">
+    <button class="btn-primary" onclick="login()">Sign in</button>
+    <div class="login-error" id="login-error">Incorrect secret.</div>
+  </div>
+</div>
+
+<!-- ── MAIN APP ─────────────────────────────────────────────── -->
+<div id="app">
+  <header class="admin-header">
+    <div class="header-brand">
+      <span class="header-logo">SkinDay</span>
+      <span class="header-badge">Admin</span>
+    </div>
+    <div class="header-actions">
+      <button class="btn-ghost" onclick="refresh()">↻ Refresh</button>
+      <button class="btn-ghost" onclick="logout()">Sign out</button>
+    </div>
+  </header>
+
+  <nav class="admin-nav">
+    <button class="nav-tab active" data-tab="pending" onclick="switchTab('pending')">
+      Pending <span class="tab-count" id="count-pending">—</span>
+    </button>
+    <button class="nav-tab" data-tab="approved" onclick="switchTab('approved')">
+      Approved <span class="tab-count zero" id="count-approved">—</span>
+    </button>
+    <button class="nav-tab" data-tab="rejected" onclick="switchTab('rejected')">
+      Rejected <span class="tab-count zero" id="count-rejected">—</span>
+    </button>
+    <button class="nav-tab" data-tab="revoked" onclick="switchTab('revoked')">
+      Revoked <span class="tab-count zero" id="count-revoked">—</span>
+    </button>
+    <button class="nav-tab" data-tab="add-clinic" onclick="switchTab('add-clinic')">
+      + Add Clinic
+    </button>
+    <button class="nav-tab" data-tab="price-intake" onclick="switchTab('price-intake')">
+      $ Price Intake
+    </button>
+    <button class="nav-tab" data-tab="practitioners" onclick="switchTab('practitioners')">
+      👤 Practitioners
+    </button>
+  </nav>
+
+  <main class="admin-main">
+    <div class="stats-bar" id="stats-bar" style="display:none">
+      <div class="stat-card">
+        <div class="stat-value" id="stat-pending">—</div>
+        <div class="stat-label">Pending review</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-approved">—</div>
+        <div class="stat-label">Approved clinics</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-rejected">—</div>
+        <div class="stat-label">Rejected</div>
+      </div>
+      <div class="stat-card" style="border-color:rgba(201,169,110,0.2);">
+        <div class="stat-value" id="stat-priced" style="color:var(--gold);">—</div>
+        <div class="stat-label" style="color:var(--gold);opacity:0.7;">Clinics with prices</div>
+      </div>
+    </div>
+
+    <div id="claims-container">
+      <div class="loading-state">
+        <div class="spinner"></div>
+        Loading claims…
+      </div>
+    </div>
+
+    <!-- ADD CLINIC PANEL -->
+    <div id="add-clinic-panel" style="display:none">
+      <div class="add-clinic-form">
+        <div class="form-title">Add a missing clinic</div>
+        <div class="form-subtitle">Use this when a clinic contacts you and isn't in the directory. Fill in what you know — all fields except Clinic Name are optional.</div>
+
+        <div class="form-section-label">Clinic details</div>
+        <div class="form-grid">
+          <div class="form-group" style="grid-column:1/-1">
+            <label class="form-label">Clinic name <span>*</span></label>
+            <input class="form-input" id="ac-name" type="text" placeholder="e.g. Lidy Beauty">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Neighbourhood</label>
+            <input class="form-input" id="ac-neighbourhood" type="text" placeholder="e.g. Richmond Hill">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Area (filter key)</label>
+            <input class="form-input" id="ac-area" type="text" placeholder="e.g. richmond-hill">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Phone</label>
+            <input class="form-input" id="ac-phone" type="text" placeholder="+1 416-000-0000">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Website</label>
+            <input class="form-input" id="ac-website" type="text" placeholder="https://...">
+          </div>
+          <div class="form-group" style="grid-column:1/-1">
+            <label class="form-label">Google Maps URL</label>
+            <input class="form-input" id="ac-maps-url" type="text" placeholder="https://google.com/maps/place/...">
+          </div>
+        </div>
+
+        <hr class="form-divider">
+        <div class="form-section-label">Owner details (if known)</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Owner name</label>
+            <input class="form-input" id="ac-owner-name" type="text" placeholder="Full name">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Owner email</label>
+            <input class="form-input" id="ac-owner-email" type="email" placeholder="hello@clinic.com">
+          </div>
+        </div>
+
+        <hr class="form-divider">
+        <div class="form-section-label">Admin note</div>
+        <div class="form-grid full">
+          <div class="form-group">
+            <label class="form-label">Note (internal only)</label>
+            <input class="form-input" id="ac-note" type="text" placeholder="e.g. Clinic contacted us via email, not in Outscraper dataset">
+          </div>
+        </div>
+
+        <button class="btn-submit-clinic" onclick="submitNewClinic()">Add clinic to directory →</button>
+
+        <div class="add-success" id="ac-success"></div>
+      </div>
+    </div>
+
+    <!-- PRICE INTAKE PANEL -->
+    <div id="price-intake-panel" style="display:none">
+      <div class="add-clinic-form">
+        <div class="form-title">Clinic data intake</div>
+        <div class="form-subtitle">Search for a clinic, enter prices from their email reply, and update credentials and languages.</div>
+
+        <!-- Clinic search -->
+        <div class="form-section-label">Find clinic</div>
+        <div class="form-group" style="position:relative;max-width:480px;">
+          <input class="form-input" type="text" id="pi-search" placeholder="Type clinic name…" autocomplete="off" oninput="piSearch(this.value)" />
+          <div id="pi-results" style="display:none;position:absolute;top:100%;left:0;right:0;background:#1C1714;border:1px solid rgba(234,226,216,0.15);border-radius:0 0 8px 8px;max-height:220px;overflow-y:auto;z-index:100;"></div>
+        </div>
+
+        <!-- Selected clinic -->
+        <div id="pi-selected" style="display:none;margin:0.75rem 0 1rem;padding:0.75rem 1rem;background:rgba(201,169,110,0.08);border:1px solid rgba(201,169,110,0.25);border-radius:8px;max-width:600px;">
+          <div style="font-size:0.95rem;color:#C9A96E;" id="pi-clinic-name"></div>
+          <div style="font-size:0.75rem;color:#8C7B6B;margin-top:0.2rem;" id="pi-clinic-meta"></div>
+        </div>
+
+        <!-- Chain detection -->
+        <div id="pi-chain-box" style="display:none;margin-bottom:1rem;padding:0.65rem 1rem;background:rgba(200,114,90,0.08);border:1px solid rgba(200,114,90,0.2);border-radius:8px;max-width:600px;">
+          <label style="display:flex;align-items:center;gap:0.6rem;cursor:pointer;">
+            <input type="checkbox" id="pi-chain-all" checked style="accent-color:#C8725A;width:15px;height:15px;" />
+            <span style="font-size:0.82rem;color:#FAF7F2;" id="pi-chain-label"></span>
+          </label>
+          <div style="font-size:0.72rem;color:#8C7B6B;margin-top:0.35rem;" id="pi-chain-locations"></div>
+        </div>
+
+        <!-- Price rows table -->
+        <div class="form-section-label" style="margin-top:1.25rem;">Prices</div>
+        <div id="pi-prices-table" style="max-width:600px;">
+          <div style="display:grid;grid-template-columns:160px 140px 110px 36px;gap:0.5rem;margin-bottom:0.4rem;">
+            <div style="font-size:0.7rem;color:#8C7B6B;text-transform:uppercase;letter-spacing:0.08em;">Toxin</div>
+            <div style="font-size:0.7rem;color:#8C7B6B;text-transform:uppercase;letter-spacing:0.08em;">Injector type</div>
+            <div style="font-size:0.7rem;color:#8C7B6B;text-transform:uppercase;letter-spacing:0.08em;">Price / unit</div>
+            <div></div>
+          </div>
+          <div id="pi-price-rows"></div>
+          <button onclick="piAddRow()" style="margin-top:0.5rem;background:rgba(234,226,216,0.07);border:1px dashed rgba(234,226,216,0.2);border-radius:7px;color:#8C7B6B;cursor:pointer;font-size:0.8rem;padding:0.45rem 0.9rem;width:100%;max-width:450px;transition:all 0.15s;" onmouseover="this.style.color='#FAF7F2'" onmouseout="this.style.color='#8C7B6B'">+ Add row</button>
+        </div>
+
+        <!-- Existing prices from DB -->
+        <div id="pi-existing-prices" style="display:none;margin-top:1rem;max-width:600px;">
+          <div style="font-size:0.72rem;color:#8C7B6B;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.5rem;">Currently on file</div>
+          <div id="pi-existing-list" style="font-size:0.82rem;color:#B5A898;"></div>
+        </div>
+
+        <!-- Credentials -->
+        <div class="form-section-label" style="margin-top:1.5rem;">Injector credentials</div>
+        <div style="display:flex;flex-wrap:wrap;gap:0.6rem;max-width:600px;" id="pi-creds">
+          <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-size:0.82rem;color:#FAF7F2;background:rgba(234,226,216,0.05);border:1px solid rgba(234,226,216,0.12);border-radius:6px;padding:0.4rem 0.75rem;">
+            <input type="checkbox" value="physician" style="accent-color:#C9A96E;" /> MD / Physician
+          </label>
+          <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-size:0.82rem;color:#FAF7F2;background:rgba(234,226,216,0.05);border:1px solid rgba(234,226,216,0.12);border-radius:6px;padding:0.4rem 0.75rem;">
+            <input type="checkbox" value="np" style="accent-color:#C9A96E;" /> NP
+          </label>
+          <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-size:0.82rem;color:#FAF7F2;background:rgba(234,226,216,0.05);border:1px solid rgba(234,226,216,0.12);border-radius:6px;padding:0.4rem 0.75rem;">
+            <input type="checkbox" value="rn" style="accent-color:#C9A96E;" /> RN / RPN
+          </label>
+          <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-size:0.82rem;color:#FAF7F2;background:rgba(234,226,216,0.05);border:1px solid rgba(234,226,216,0.12);border-radius:6px;padding:0.4rem 0.75rem;">
+            <input type="checkbox" value="img" style="accent-color:#C9A96E;" /> IMG
+          </label>
+        </div>
+
+        <!-- Languages -->
+        <div class="form-section-label" style="margin-top:1.25rem;">Languages</div>
+        <div style="display:flex;flex-wrap:wrap;gap:0.6rem;max-width:600px;" id="pi-langs">
+          <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-size:0.82rem;color:#FAF7F2;background:rgba(234,226,216,0.05);border:1px solid rgba(234,226,216,0.12);border-radius:6px;padding:0.4rem 0.75rem;"><input type="checkbox" value="english" style="accent-color:#C9A96E;" /> English</label>
+          <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-size:0.82rem;color:#FAF7F2;background:rgba(234,226,216,0.05);border:1px solid rgba(234,226,216,0.12);border-radius:6px;padding:0.4rem 0.75rem;"><input type="checkbox" value="mandarin" style="accent-color:#C9A96E;" /> Mandarin</label>
+          <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-size:0.82rem;color:#FAF7F2;background:rgba(234,226,216,0.05);border:1px solid rgba(234,226,216,0.12);border-radius:6px;padding:0.4rem 0.75rem;"><input type="checkbox" value="cantonese" style="accent-color:#C9A96E;" /> Cantonese</label>
+          <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-size:0.82rem;color:#FAF7F2;background:rgba(234,226,216,0.05);border:1px solid rgba(234,226,216,0.12);border-radius:6px;padding:0.4rem 0.75rem;"><input type="checkbox" value="farsi" style="accent-color:#C9A96E;" /> Farsi</label>
+          <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-size:0.82rem;color:#FAF7F2;background:rgba(234,226,216,0.05);border:1px solid rgba(234,226,216,0.12);border-radius:6px;padding:0.4rem 0.75rem;"><input type="checkbox" value="french" style="accent-color:#C9A96E;" /> French</label>
+          <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-size:0.82rem;color:#FAF7F2;background:rgba(234,226,216,0.05);border:1px solid rgba(234,226,216,0.12);border-radius:6px;padding:0.4rem 0.75rem;"><input type="checkbox" value="korean" style="accent-color:#C9A96E;" /> Korean</label>
+          <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-size:0.82rem;color:#FAF7F2;background:rgba(234,226,216,0.05);border:1px solid rgba(234,226,216,0.12);border-radius:6px;padding:0.4rem 0.75rem;"><input type="checkbox" value="hindi" style="accent-color:#C9A96E;" /> Hindi</label>
+          <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-size:0.82rem;color:#FAF7F2;background:rgba(234,226,216,0.05);border:1px solid rgba(234,226,216,0.12);border-radius:6px;padding:0.4rem 0.75rem;"><input type="checkbox" value="arabic" style="accent-color:#C9A96E;" /> Arabic</label>
+          <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-size:0.82rem;color:#FAF7F2;background:rgba(234,226,216,0.05);border:1px solid rgba(234,226,216,0.12);border-radius:6px;padding:0.4rem 0.75rem;"><input type="checkbox" value="punjabi" style="accent-color:#C9A96E;" /> Punjabi</label>
+          <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-size:0.82rem;color:#FAF7F2;background:rgba(234,226,216,0.05);border:1px solid rgba(234,226,216,0.12);border-radius:6px;padding:0.4rem 0.75rem;"><input type="checkbox" value="portuguese" style="accent-color:#C9A96E;" /> Portuguese</label>
+        </div>
+
+        <!-- Save button -->
+        <div style="margin-top:1.5rem;display:flex;gap:0.75rem;align-items:center;">
+          <button class="btn-submit-clinic" onclick="piSaveAll()">Save All →</button>
+        </div>
+
+        <div id="pi-status" style="display:none;margin-top:1rem;font-size:0.82rem;padding:0.6rem 0.9rem;border-radius:7px;max-width:600px;"></div>
+      </div>
+    </div>
+
+    </div>
+
+    <!-- PRACTITIONERS PANEL -->
+    <div id="practitioners-panel" style="display:none">
+      <div class="add-clinic-form">
+        <div class="form-title">Practitioners</div>
+        <div class="form-subtitle">Search for a clinic to view, add, or remove practitioners after an inquiry.</div>
+
+        <div class="form-section-label">Find clinic</div>
+        <div class="form-group" style="position:relative;max-width:480px;">
+          <input class="form-input" type="text" id="prac-search" placeholder="Type clinic name…" autocomplete="off" oninput="pracSearch(this.value)" />
+          <div id="prac-results" style="display:none;position:absolute;top:100%;left:0;right:0;background:#1C1714;border:1px solid rgba(234,226,216,0.15);border-radius:0 0 8px 8px;max-height:220px;overflow-y:auto;z-index:100;"></div>
+        </div>
+
+        <div id="prac-selected-label" style="display:none;margin:0.75rem 0 0;padding:0.65rem 1rem;background:rgba(201,169,110,0.08);border:1px solid rgba(201,169,110,0.25);border-radius:8px;max-width:600px;">
+          <div style="font-size:0.95rem;color:#C9A96E;" id="prac-clinic-name"></div>
+          <div style="font-size:0.75rem;color:#8C7B6B;margin-top:0.15rem;" id="prac-clinic-meta"></div>
+        </div>
+
+        <div id="prac-list-wrap" style="display:none;margin-top:1.25rem;max-width:600px;">
+          <div style="font-size:0.72rem;color:#8C7B6B;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.75rem;">Practitioners on file</div>
+          <div id="prac-list"></div>
+        </div>
+
+        <div id="prac-empty" style="display:none;margin-top:1rem;font-size:0.85rem;color:var(--muted);font-style:italic;">No practitioners listed for this clinic.</div>
+
+        <!-- ADD NEW PRACTITIONERS -->
+        <div id="prac-add-wrap" style="display:none;margin-top:1.75rem;max-width:600px;">
+          <div style="font-size:0.72rem;color:#8C7B6B;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.75rem;">Add practitioners</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 28px;gap:0.5rem;margin-bottom:0.35rem;">
+            <div style="font-size:0.68rem;color:#8C7B6B;text-transform:uppercase;letter-spacing:0.08em;">Name</div>
+            <div style="font-size:0.68rem;color:#8C7B6B;text-transform:uppercase;letter-spacing:0.08em;">Designation</div>
+            <div></div>
+          </div>
+          <div id="prac-add-rows"></div>
+          <button onclick="pracAddRow()" style="margin-top:0.5rem;background:rgba(234,226,216,0.07);border:1px dashed rgba(234,226,216,0.2);border-radius:7px;color:#8C7B6B;cursor:pointer;font-size:0.8rem;padding:0.4rem 0.85rem;width:100%;transition:all 0.15s;font-family:inherit;" onmouseover="this.style.color='#FAF7F2'" onmouseout="this.style.color='#8C7B6B'">+ Add row</button>
+          <div style="margin-top:1rem;">
+            <button onclick="pracSaveNew()" style="padding:0.65rem 1.5rem;background:var(--green);color:white;border:none;border-radius:7px;font-family:'DM Sans',sans-serif;font-size:0.85rem;font-weight:500;cursor:pointer;transition:opacity 0.2s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">Save practitioners →</button>
+          </div>
+        </div>
+
+        <div id="prac-status" style="display:none;margin-top:1rem;font-size:0.82rem;padding:0.6rem 0.9rem;border-radius:7px;max-width:600px;"></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const API = '/api/admin-action';
+let adminSecret = '';
+let currentTab = 'pending';
+let allClaims = { pending: [], approved: [], rejected: [], revoked: [] };
+
+// ── AUTH ─────────────────────────────────────────────────────
+function login() {
+  const val = document.getElementById('secret-input').value.trim();
+  if (!val) return;
+  adminSecret = val;
+  localStorage.setItem('skinday_admin_secret', val);
+  document.getElementById('login-error').style.display = 'none';
+  loadAll();
+}
+
+document.getElementById('secret-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') login();
+});
+
+function logout() {
+  adminSecret = '';
+  localStorage.removeItem('skinday_admin_secret');
+  allClaims = { pending: [], approved: [], rejected: [], revoked: [] };
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('secret-input').value = '';
+}
+
+// Auto-login if secret is saved
+(function autoLogin() {
+  const saved = localStorage.getItem('skinday_admin_secret');
+  if (saved) {
+    adminSecret = saved;
+    loadAll();
+  }
+})();
+
+// ── API ──────────────────────────────────────────────────────
+async function apiCall(body) {
+  const res = await fetch(API, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-admin-secret': adminSecret
+    },
+    body: JSON.stringify(body)
+  });
+  const data = await res.json();
+  return { ok: res.ok, status: res.status, data };
+}
+
+// ── LOAD ─────────────────────────────────────────────────────
+async function loadAll() {
+  showLoading();
+
+  const results = await Promise.all([
+    apiCall({ action: 'list', status: 'pending' }),
+    apiCall({ action: 'list', status: 'approved' }),
+    apiCall({ action: 'list', status: 'rejected' }),
+    apiCall({ action: 'list', status: 'revoked' })
+  ]);
+
+  // Auth check
+  if (results[0].status === 401) {
+    adminSecret = '';
+    localStorage.removeItem('skinday_admin_secret');
+    document.getElementById('login-error').style.display = 'block';
+    return;
+  }
+
+  allClaims.pending  = results[0].ok ? (results[0].data.claims || []) : [];
+  allClaims.approved = results[1].ok ? (results[1].data.claims || []) : [];
+  allClaims.rejected = results[2].ok ? (results[2].data.claims || []) : [];
+  allClaims.revoked  = results[3]?.ok ? (results[3].data.claims || []) : [];
+
+  // Show app
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+
+  updateStats();
+  renderTab(currentTab);
+}
+
+function refresh() {
+  loadAll();
+}
+
+function showLoading() {
+  document.getElementById('claims-container').innerHTML = `
+    <div class="loading-state">
+      <div class="spinner"></div>
+      Loading claims…
+    </div>`;
+}
+
+// ── STATS ─────────────────────────────────────────────────────
+function updateStats() {
+  const p = allClaims.pending.length;
+  const a = allClaims.approved.length;
+  const r = allClaims.rejected.length;
+  const v = allClaims.revoked.length;
+
+  document.getElementById('stat-pending').textContent  = p;
+  document.getElementById('stat-approved').textContent = a;
+  document.getElementById('stat-rejected').textContent = r;
+  document.getElementById('stats-bar').style.display = 'grid';
+
+  // Fetch distinct priced clinics count from Supabase
+  fetch(`${SUPABASE_URL_ADMIN}/rest/v1/clinic_prices?select=clinic_id&limit=1`, {
+    headers: { 'apikey': SUPABASE_KEY_ADMIN, 'Prefer': 'count=exact', 'Range-Unit': 'items', 'Range': '0-0' }
+  }).then(async r => {
+    // exact count is in Content-Range header: "0-0/29"
+    const range = r.headers.get('Content-Range') || '';
+    const total = range.split('/')[1];
+    // That counts rows, not distinct clinics — do a proper distinct count
+    return fetch(`${SUPABASE_URL_ADMIN}/rest/v1/rpc/count_priced_clinics`, {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY_ADMIN, 'Content-Type': 'application/json' },
+      body: '{}'
+    });
+  }).then(r => r.json()).then(n => {
+    if (typeof n === 'number') document.getElementById('stat-priced').textContent = n;
+  }).catch(() => {
+    // Fallback: count rows in clinic_prices as proxy
+    fetch(`${SUPABASE_URL_ADMIN}/rest/v1/clinic_prices?select=clinic_id`, {
+      headers: { 'apikey': SUPABASE_KEY_ADMIN, 'Prefer': 'count=exact', 'Range': '0-0' }
+    }).then(r => {
+      const range = r.headers.get('Content-Range') || '';
+      const total = range.split('/')[1];
+      if (total) document.getElementById('stat-priced').textContent = total + '*';
+    }).catch(() => {});
+  });
+
+  // Tab counts
+  setCount('pending',  p);
+  setCount('approved', a);
+  setCount('rejected', r);
+  if (document.getElementById('count-revoked')) setCount('revoked', v);
+}
+
+function setCount(tab, n) {
+  const el = document.getElementById(`count-${tab}`);
+  el.textContent = n;
+  el.className = `tab-count${n === 0 ? ' zero' : ''}`;
+}
+
+// ── TABS ─────────────────────────────────────────────────────
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.nav-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.tab === tab);
+  });
+
+  const isAddClinic     = tab === 'add-clinic';
+  const isPriceIntake   = tab === 'price-intake';
+  const isPractitioners = tab === 'practitioners';
+  const isClaims        = !isAddClinic && !isPriceIntake && !isPractitioners;
+
+  document.getElementById('claims-container').style.display      = isClaims        ? 'block' : 'none';
+  document.getElementById('add-clinic-panel').style.display      = isAddClinic      ? 'block' : 'none';
+  document.getElementById('price-intake-panel').style.display    = isPriceIntake    ? 'block' : 'none';
+  document.getElementById('practitioners-panel').style.display   = isPractitioners  ? 'block' : 'none';
+  document.getElementById('stats-bar').style.display             = isClaims && Object.values(allClaims).flat().length > 0 ? 'grid' : 'none';
+
+  if (isClaims) renderTab(tab);
+  if (isPriceIntake && !piClinicsLoaded) piLoadClinics();
+  if (isPractitioners && !pracClinicsLoaded) pracLoadClinics();
+}
+
+// ── RENDER ───────────────────────────────────────────────────
+function renderTab(tab) {
+  const claims = allClaims[tab] || [];
+  const container = document.getElementById('claims-container');
+
+  if (claims.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">◎</div>
+        <div class="empty-title">No ${tab} claims</div>
+        <div class="empty-desc">${tab === 'pending' ? 'New submissions will appear here.' : 'Nothing to show.'}</div>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = `<div class="claims-grid">${claims.map(c => renderCard(c, tab)).join('')}</div>`;
+}
+
+function renderCard(c, tab) {
+  const submitted = new Date(c.submitted_at).toLocaleString('en-CA', {
+    year: 'numeric', month: 'short', day: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  });
+
+  const reviewed = c.reviewed_at ? new Date(c.reviewed_at).toLocaleString('en-CA', {
+    year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+  }) : null;
+
+  const chainTag = c.is_chain
+    ? `<span class="chain-tag">🏢 Chain · ${c.chain_clinic_ids ? JSON.parse(c.chain_clinic_ids).length : '?'} locations</span>`
+    : '';
+
+  const statusPill = tab !== 'pending' ? `
+    <span class="status-pill ${tab}">
+      <span class="status-dot"></span>
+      ${tab.charAt(0).toUpperCase() + tab.slice(1)}
+    </span>` : '';
+
+  const adminActions = tab === 'pending' ? `
+    <div class="claim-actions">
+      <input class="admin-note-input" id="note-${c.id}" placeholder="Optional note…" type="text">
+      <button class="btn-approve" onclick="act('approve','${c.id}')">✓ Approve</button>
+      <button class="btn-reject"  onclick="act('reject','${c.id}')">✗ Reject</button>
+    </div>` : tab === 'approved' ? `
+    <div class="claim-actions">
+      ${statusPill}
+      ${c.admin_note ? `<span style="font-size:0.8rem;color:var(--dim)">"${escHtml(c.admin_note)}"</span>` : ''}
+      ${reviewed ? `<span style="font-size:0.8rem;color:var(--dim);margin-left:auto">${reviewed}</span>` : ''}
+      <button class="btn-revoke" onclick="act('revoke','${c.id}')" style="margin-left:auto;" title="Revoke approval — resets clinic to unclaimed">Revoke</button>
+    </div>` : `
+    <div class="claim-actions">
+      ${statusPill}
+      ${c.admin_note ? `<span style="font-size:0.8rem;color:var(--dim)">"${escHtml(c.admin_note)}"</span>` : ''}
+      ${reviewed ? `<span style="font-size:0.8rem;color:var(--dim);margin-left:auto">${reviewed}</span>` : ''}
+    </div>`;
+
+    return `
+    <div class="claim-card${tab !== 'pending' ? ' reviewed' : ''}" id="card-${c.id}">
+      <div class="claim-header">
+        <div>
+          <div class="claim-clinic-name">${escHtml(c.clinic_name)}${chainTag}</div>
+          ${c.clinic_neighbourhood ? `<div class="claim-neighbourhood">${escHtml(c.clinic_neighbourhood)}</div>` : ''}
+        </div>
+        <div class="claim-id">ID: ${escHtml(c.clinic_id)}</div>
+      </div>
+      <div class="claim-meta">
+        <div class="meta-item">
+          <div class="meta-label">Owner name</div>
+          <div class="meta-value">${escHtml(c.owner_name)}</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">Owner email</div>
+          <div class="meta-value"><a href="mailto:${escHtml(c.owner_email)}">${escHtml(c.owner_email)}</a></div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">Role</div>
+          <div class="meta-value">${escHtml(c.owner_role)}</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">Submitted</div>
+          <div class="meta-value">${submitted}</div>
+        </div>
+      </div>
+      ${adminActions}
+    </div>`;
+}
+
+// ── ACTIONS ───────────────────────────────────────────────────
+async function act(action, claimId) {
+  const noteEl = document.getElementById(`note-${claimId}`);
+  const note = noteEl ? noteEl.value.trim() : '';
+
+  // Disable buttons
+  const card = document.getElementById(`card-${claimId}`);
+  card.querySelectorAll('button').forEach(b => b.disabled = true);
+
+  // For revoke: move card optimistically, then fire API in background
+  if (action === 'revoke') {
+    const claim = allClaims.approved.find(c => c.id == claimId);
+    if (claim) {
+      allClaims.approved = allClaims.approved.filter(c => c.id != claimId);
+      claim.status = 'revoked';
+      claim.admin_note = note || null;
+      claim.reviewed_at = new Date().toISOString();
+      allClaims.revoked.unshift(claim);
+      updateStats();
+      renderTab(currentTab);
+    }
+    const { ok, data } = await apiCall({ action, claim_id: claimId, admin_note: note || undefined });
+    if (!ok) {
+      showToast('Card moved — Supabase reset failed: ' + ((data && data.error) || 'unknown'), 'error');
+    } else {
+      showToast('Clinic revoked and reset to unclaimed ✓', 'success');
+    }
+    return;
+  }
+
+  // approve / reject — fire the API call
+  const { ok, data } = await apiCall({ action, claim_id: claimId, admin_note: note || undefined });
+
+  if (!ok) {
+    // 409 means already approved/rejected — move out of pending anyway
+    const claim = allClaims.pending.find(c => c.id == claimId);
+    if (claim) {
+      allClaims.pending = allClaims.pending.filter(c => c.id != claimId);
+      const dest = (data && data.error && data.error.includes('approved')) ? 'approved'
+                 : (data && data.error && data.error.includes('rejected')) ? 'rejected'
+                 : null;
+      if (dest) { claim.status = dest; allClaims[dest].unshift(claim); }
+    }
+    showToast((data && data.error) || 'Something went wrong', 'error');
+    card.querySelectorAll('button').forEach(b => b.disabled = false);
+    updateStats();
+    renderTab(currentTab);
+    return;
+  } else {
+    showToast(action === 'approve' ? '✓ Claim approved — email sent' : 'Claim rejected', action === 'approve' ? 'success' : '');
+
+    // Remove from pending, add to correct bucket
+    const claim = allClaims.pending.find(c => c.id == claimId);
+    if (claim) {
+      allClaims.pending = allClaims.pending.filter(c => c.id != claimId);
+      claim.status = action === 'approve' ? 'approved' : 'rejected';
+      claim.admin_note = note || null;
+      claim.reviewed_at = new Date().toISOString();
+      allClaims[action === 'approve' ? 'approved' : 'rejected'].unshift(claim);
+    }
+  }
+
+  updateStats();
+  renderTab(currentTab);
+}
+
+// ── TABS ─────────────────────────────────────────────────────
+// ── ADD CLINIC ────────────────────────────────────────────────
+async function submitNewClinic() {
+  const name = document.getElementById('ac-name').value.trim();
+  if (!name) {
+    showToast('Clinic name is required.', 'error');
+    return;
+  }
+
+  const neighbourhood = document.getElementById('ac-neighbourhood').value.trim();
+  // Auto-derive area from neighbourhood if not manually entered
+  let area = document.getElementById('ac-area').value.trim();
+  if (!area && neighbourhood) {
+    area = neighbourhood.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+  }
+
+  const btn = document.querySelector('.btn-submit-clinic');
+  btn.disabled = true;
+  btn.textContent = 'Adding…';
+
+  const payload = {
+    action:       'add-clinic',
+    name,
+    neighbourhood: neighbourhood || null,
+    area:          area || null,
+    phone:         document.getElementById('ac-phone').value.trim() || null,
+    website:       document.getElementById('ac-website').value.trim() || null,
+    maps_url:      document.getElementById('ac-maps-url').value.trim() || null,
+    owner_name:    document.getElementById('ac-owner-name').value.trim() || null,
+    owner_email:   document.getElementById('ac-owner-email').value.trim() || null,
+    admin_note:    document.getElementById('ac-note').value.trim() || null,
+  };
+
+  const { ok, data } = await apiCall(payload);
+
+  btn.disabled = false;
+  btn.textContent = 'Add clinic to directory →';
+
+  if (!ok) {
+    showToast(data.error || 'Something went wrong.', 'error');
+    return;
+  }
+
+  // Show success message
+  const s = document.getElementById('ac-success');
+  s.innerHTML = `
+    <strong>✓ ${escHtml(name)} added.</strong><br>
+    Assigned ID: <code>${data.clinic_id}</code><br><br>
+    <strong>One manual step remaining:</strong> add this clinic to the
+    <code>CLINICS_STATIC</code> array in <code>index.html</code> so it appears
+    on the homepage, then redeploy. Use this ID: <strong>${data.clinic_id}</strong>.<br><br>
+    Copy this line into the array:<br>
+    <code style="font-size:0.78rem;word-break:break-all">
+      { id: ${data.clinic_id}, name: '${escHtml(name)}',
+      neighbourhood: '${escHtml(neighbourhood || '')}',
+      area: '${escHtml(area || '')}', price: null, rating: null,
+      reviews: 0, promo: false, rank: 'low',
+      phone: '${escHtml(payload.phone || '')}',
+      website: '${escHtml(payload.website || null)}',
+      place_id: null,
+      maps_url: '${escHtml(payload.maps_url || null)}' }
+    </code>
+  `;
+  s.classList.add('show');
+
+  // Clear form
+  ['ac-name','ac-neighbourhood','ac-area','ac-phone','ac-website',
+   'ac-maps-url','ac-owner-name','ac-owner-email','ac-note'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+}
+
+// ── TOAST ─────────────────────────────────────────────────────
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `show ${type}`.trim();
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.className = type; }, 3000);
+}
+
+// ── UTILS ─────────────────────────────────────────────────────
+function escHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+// ── PRICE INTAKE ──────────────────────────────────────────────
+let piClinicsLoaded = false;
+let piAllClinics    = [];
+let piSelectedId    = null;
+let piChainIds      = [];
+let piRowCount      = 0;
+
+function piLoadClinics() {
+  if (piClinicsLoaded) return;
+  fetch('/api/get-clinics')
+    .then(r => r.ok ? r.json() : [])
+    .then(data => {
+      const raw = Array.isArray(data) ? data : (data.clinics || data.data || []);
+      raw.forEach(o => { o.id = Number(o.id) || o.id; });
+      piAllClinics = raw;
+      piClinicsLoaded = true;
+    })
+    .catch(() => { piAllClinics = []; });
+}
+
+function piSearch(query) {
+  const resultsEl = document.getElementById('pi-results');
+  if (!query || query.length < 2) { resultsEl.style.display = 'none'; return; }
+  if (!piClinicsLoaded) { setTimeout(() => piSearch(query), 300); return; }
+  const q = query.toLowerCase();
+  const matches = piAllClinics.filter(c => c.name.toLowerCase().includes(q)).slice(0, 8);
+  if (!matches.length) { resultsEl.style.display = 'none'; return; }
+  resultsEl.innerHTML = matches.map(c => `
+    <div data-clinic-id="${c.id}" style="padding:0.65rem 1rem;cursor:pointer;border-bottom:1px solid rgba(234,226,216,0.06);transition:background 0.15s;" onmouseover="this.style.background='rgba(234,226,216,0.07)'" onmouseout="this.style.background=''">
+      <div style="font-size:0.88rem;color:#FAF7F2;">${escHtml(c.name)}</div>
+      <div style="font-size:0.72rem;color:#8C7B6B;margin-top:0.1rem;">${escHtml(c.neighbourhood || '')}</div>
+    </div>`).join('');
+  resultsEl.querySelectorAll('[data-clinic-id]').forEach(el => {
+    el.addEventListener('click', () => {
+      const clinic = piAllClinics.find(c => String(c.id) === el.dataset.clinicId);
+      if (clinic) piSelect(clinic.id, clinic.name, clinic.neighbourhood || '', clinic.area || '');
+    });
+  });
+  resultsEl.style.display = 'block';
+}
+
+function piSelect(id, name, neighbourhood, area) {
+  piSelectedId = id;
+  document.getElementById('pi-results').style.display = 'none';
+  document.getElementById('pi-search').value = name;
+  document.getElementById('pi-clinic-name').textContent = name;
+  document.getElementById('pi-clinic-meta').textContent = [neighbourhood, area].filter(Boolean).join(' · ');
+  document.getElementById('pi-selected').style.display = 'block';
+  document.getElementById('pi-price-rows').innerHTML = '';
+  piRowCount = 0;
+  piAddRow();
+  document.querySelectorAll('#pi-creds input, #pi-langs input').forEach(cb => cb.checked = false);
+
+  // Chain detection
+  const selectedClinic = piAllClinics.find(c => String(c.id) == String(id));
+  const chainBox = document.getElementById('pi-chain-box');
+  if (selectedClinic && selectedClinic.website) {
+    const domain = selectedClinic.website.replace(/https?:\/\/(www\.)?/,'').split('/')[0].toLowerCase();
+    const chainClinics = piAllClinics.filter(c => String(c.id) != String(id) && c.website && c.website.replace(/https?:\/\/(www\.)?/,'').split('/')[0].toLowerCase() === domain);
+    if (chainClinics.length > 0) {
+      piChainIds = chainClinics.map(c => c.id);
+      document.getElementById('pi-chain-label').textContent = `Chain detected — apply prices to all ${chainClinics.length + 1} locations`;
+      document.getElementById('pi-chain-locations').textContent = chainClinics.map(c => c.name.replace(/^.*?-\s*/,'')).join(', ');
+      chainBox.style.display = 'block';
+    } else { piChainIds = []; chainBox.style.display = 'none'; }
+  } else { piChainIds = []; chainBox.style.display = 'none'; }
+
+  // Load existing data
+  apiCall({ action: 'get-clinic-prices', clinic_id: id }).then(res => {
+    if (!res.ok) return;
+    const { prices, injector_credentials, languages } = res.data;
+    const existingEl = document.getElementById('pi-existing-prices');
+    const existingList = document.getElementById('pi-existing-list');
+    const credMap = { physician:'MD', np:'NP', rn:'RN/RPN', img:'IMG' };
+    if (prices && prices.length) {
+      existingList.innerHTML = prices.map(p => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:0.35rem 0;border-bottom:1px solid rgba(234,226,216,0.06);">
+          <span>${p.toxin.charAt(0).toUpperCase()+p.toxin.slice(1)}${p.injector_type ? ' · '+(credMap[p.injector_type]||p.injector_type) : ''}</span>
+          <span style="color:#C9A96E;">$${p.price}/unit</span>
+          <span style="font-size:0.7rem;color:#8C7B6B;">${p.price_source} · ${new Date(p.price_date).toLocaleDateString('en-CA',{month:'short',year:'numeric'})}</span>
+          <button data-pid="${p.id}" style="background:none;border:none;color:#C8725A;cursor:pointer;font-size:0.75rem;padding:0 0.25rem;">✕</button>
+        </div>`).join('');
+      existingList.querySelectorAll('[data-pid]').forEach(btn => {
+        btn.addEventListener('click', () => piDeletePrice(btn.dataset.pid));
+      });
+      existingEl.style.display = 'block';
+    } else { existingEl.style.display = 'none'; }
+    if (injector_credentials && injector_credentials.length) {
+      document.querySelectorAll('#pi-creds input').forEach(cb => { cb.checked = injector_credentials.includes(cb.value); });
+    }
+    if (languages && languages.length) {
+      document.querySelectorAll('#pi-langs input').forEach(cb => { cb.checked = languages.includes(cb.value); });
+    }
+  });
+}
+
+function piAddRow() {
+  const rowId = ++piRowCount;
+  const row = document.createElement('div');
+  row.id = `pi-row-${rowId}`;
+  row.style.cssText = 'display:grid;grid-template-columns:160px 140px 110px 36px;gap:0.5rem;margin-bottom:0.4rem;align-items:center;';
+  const sel = 'background:rgba(234,226,216,0.07);border:1px solid rgba(234,226,216,0.15);border-radius:7px;color:#FAF7F2;font-family:inherit;font-size:0.85rem;padding:0.5rem 0.6rem;outline:none;width:100%;';
+  row.innerHTML = `
+    <select style="${sel}">
+      <option value="botox">Botox</option><option value="dysport">Dysport</option>
+      <option value="xeomin">Xeomin</option><option value="nuceiva">Nuceiva</option>
+      <option value="letybo">Letybo</option>
+    </select>
+    <select style="${sel}">
+      <option value="">Any injector</option><option value="physician">Physician (MD)</option>
+      <option value="np">NP</option><option value="rn">RN / RPN</option><option value="img">IMG</option>
+    </select>
+    <div style="display:flex;align-items:center;">
+      <span style="background:rgba(234,226,216,0.07);border:1px solid rgba(234,226,216,0.15);border-right:none;border-radius:7px 0 0 7px;color:#8C7B6B;padding:0.5rem 0.5rem;font-size:0.85rem;">$</span>
+      <input type="number" min="1" max="99" step="0.50" placeholder="0.00" style="background:rgba(234,226,216,0.07);border:1px solid rgba(234,226,216,0.15);border-left:none;border-radius:0 7px 7px 0;color:#FAF7F2;font-family:inherit;font-size:0.85rem;padding:0.5rem 0.5rem;outline:none;width:100%;-moz-appearance:textfield;" />
+    </div>
+    <button onclick="document.getElementById('pi-row-${rowId}').remove()" style="background:none;border:none;color:#8C7B6B;cursor:pointer;font-size:1rem;padding:0;" onmouseover="this.style.color='#C8725A'" onmouseout="this.style.color='#8C7B6B'">✕</button>`;
+  document.getElementById('pi-price-rows').appendChild(row);
+}
+
+function piGetRows() {
+  const rows = [];
+  document.querySelectorAll('#pi-price-rows > div').forEach(row => {
+    const selects = row.querySelectorAll('select');
+    const input = row.querySelector('input[type="number"]');
+    const toxin = selects[0]?.value;
+    const injector_type = selects[1]?.value || null;
+    const price = parseFloat(input?.value);
+    if (toxin && price > 0) rows.push({ toxin, injector_type, price });
+  });
+  return rows;
+}
+
+async function piSaveAll() {
+  if (!piSelectedId) { piStatus('error', 'Select a clinic first.'); return; }
+  const rows = piGetRows();
+  const creds = [...document.querySelectorAll('#pi-creds input:checked')].map(cb => cb.value);
+  const langs = [...document.querySelectorAll('#pi-langs input:checked')].map(cb => cb.value);
+  if (!rows.length && !creds.length && !langs.length) { piStatus('error', 'Enter at least one price, credential, or language.'); return; }
+
+  const applyAll = document.getElementById('pi-chain-all')?.checked;
+  const allIds = applyAll && piChainIds.length ? [piSelectedId, ...piChainIds] : [piSelectedId];
+  let errors = [];
+
+  for (const cid of allIds) {
+    if (rows.length) {
+      const res = await apiCall({ action: 'set-prices', clinic_id: cid, prices: rows });
+      if (!res.ok || !res.data.success) errors.push(res.data?.error || 'Save failed');
+    }
+    if (creds.length || langs.length) {
+      await apiCall({ action: 'set-clinic-info', clinic_id: cid,
+        ...(creds.length ? { injector_credentials: creds } : {}),
+        ...(langs.length ? { languages: langs } : {}) });
+    }
+  }
+
+  if (errors.length) {
+    piStatus('error', errors[0]);
+  } else {
+    const parts = [];
+    if (rows.length) parts.push(`${rows.length} price${rows.length>1?'s':''} saved${allIds.length>1?` × ${allIds.length} locations`:''}`);
+    if (creds.length) parts.push('credentials updated');
+    if (langs.length) parts.push('languages updated');
+    piStatus('success', '✓ ' + parts.join(' · '));
+    piSelect(piSelectedId, document.getElementById('pi-clinic-name').textContent, document.getElementById('pi-clinic-meta').textContent, '');
+  }
+}
+
+async function piDeletePrice(priceId) {
+  const res = await apiCall({ action: 'delete-price', price_id: priceId });
+  if (res.ok && res.data.success) {
+    piStatus('success', 'Price removed.');
+    piSelect(piSelectedId, document.getElementById('pi-clinic-name').textContent, document.getElementById('pi-clinic-meta').textContent, '');
+  } else { piStatus('error', 'Failed to delete price.'); }
+}
+
+function piStatus(type, msg) {
+  const el = document.getElementById('pi-status');
+  el.style.display = 'block';
+  el.style.background = type === 'success' ? 'rgba(74,124,89,0.15)' : 'rgba(200,114,90,0.15)';
+  el.style.border = type === 'success' ? '1px solid rgba(74,124,89,0.3)' : '1px solid rgba(200,114,90,0.3)';
+  el.style.color  = type === 'success' ? '#7fbf8f' : '#C8725A';
+  el.textContent  = msg;
+  setTimeout(() => { el.style.display = 'none'; }, 6000);
+}
+
+// ── PRACTITIONERS TAB ─────────────────────────────────────────
+const SUPABASE_URL_ADMIN = 'https://vefldlqtyxdywbzdjuia.supabase.co';
+const SUPABASE_KEY_ADMIN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlZmxkbHF0eXhkeXdiemRqdWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNDAwMjgsImV4cCI6MjA4NzkxNjAyOH0.o582sXiUkB3j4FiHEA5rE3ABy_pdTeeK1PnNpNirHZA';
+
+let pracClinicsLoaded = false;
+let pracAllClinics = [];
+let pracSelectedId = null;
+
+function pracLoadClinics() {
+  if (pracClinicsLoaded) return;
+  fetch('/api/get-clinics')
+    .then(r => r.ok ? r.json() : [])
+    .then(data => {
+      const raw = Array.isArray(data) ? data : (data.clinics || data.data || []);
+      raw.forEach(o => { o.id = Number(o.id) || o.id; });
+      pracAllClinics = raw;
+      pracClinicsLoaded = true;
+    })
+    .catch(() => { pracAllClinics = []; });
+}
+
+function pracSearch(query) {
+  const resultsEl = document.getElementById('prac-results');
+  if (!query || query.length < 2) { resultsEl.style.display = 'none'; return; }
+  if (!pracClinicsLoaded) { setTimeout(() => pracSearch(query), 300); return; }
+  const q = query.toLowerCase();
+  const matches = pracAllClinics.filter(c => c.name.toLowerCase().includes(q)).slice(0, 8);
+  if (!matches.length) { resultsEl.style.display = 'none'; return; }
+  resultsEl.innerHTML = matches.map(c => `
+    <div data-clinic-id="${c.id}" style="padding:0.65rem 1rem;cursor:pointer;border-bottom:1px solid rgba(234,226,216,0.06);transition:background 0.15s;" onmouseover="this.style.background='rgba(234,226,216,0.07)'" onmouseout="this.style.background=''">
+      <div style="font-size:0.88rem;color:#FAF7F2;">${escHtml(c.name)}</div>
+      <div style="font-size:0.72rem;color:#8C7B6B;margin-top:0.1rem;">${escHtml(c.neighbourhood || '')}</div>
+    </div>`).join('');
+  resultsEl.querySelectorAll('[data-clinic-id]').forEach(el => {
+    el.addEventListener('click', () => {
+      const clinic = pracAllClinics.find(c => String(c.id) === el.dataset.clinicId);
+      if (clinic) pracSelect(clinic);
+    });
+  });
+  resultsEl.style.display = 'block';
+}
+
+async function pracSelect(clinic) {
+  pracSelectedId = clinic.id;
+  document.getElementById('prac-results').style.display = 'none';
+  document.getElementById('prac-search').value = clinic.name;
+  document.getElementById('prac-clinic-name').textContent = clinic.name;
+  document.getElementById('prac-clinic-meta').textContent = clinic.neighbourhood || '';
+  document.getElementById('prac-selected-label').style.display = 'block';
+  document.getElementById('prac-list-wrap').style.display = 'none';
+  document.getElementById('prac-empty').style.display = 'none';
+  document.getElementById('prac-status').style.display = 'none';
+  document.getElementById('prac-add-wrap').style.display = 'none';
+  document.getElementById('prac-add-rows').innerHTML = '';
+  pracAddRowCount = 0;
+
+  await pracFetch(clinic.id);
+}
+
+async function pracFetch(clinicId) {
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL_ADMIN}/rest/v1/practitioners?clinic_id=eq.${encodeURIComponent(String(clinicId))}&order=display_order.asc`,
+      { headers: { 'apikey': SUPABASE_KEY_ADMIN } }
+    );
+    const rows = res.ok ? await res.json() : [];
+    pracRender(rows);
+  } catch(e) {
+    pracRender([]);
+  }
+}
+
+function pracRender(rows) {
+  const listWrap = document.getElementById('prac-list-wrap');
+  const emptyEl  = document.getElementById('prac-empty');
+  const listEl   = document.getElementById('prac-list');
+
+  if (!rows || rows.length === 0) {
+    listWrap.style.display = 'none';
+    emptyEl.style.display = 'block';
+    document.getElementById('prac-add-wrap').style.display = 'block';
+    if (document.querySelectorAll('#prac-add-rows > div').length === 0) pracAddRow();
+    return;
+  }
+  emptyEl.style.display = 'none';
+  listWrap.style.display = 'block';
+  document.getElementById('prac-add-wrap').style.display = 'block';
+  if (document.querySelectorAll('#prac-add-rows > div').length === 0) pracAddRow();
+
+  listEl.innerHTML = rows.map((p, i) => `
+    <div id="prac-row-${p.id}" style="display:flex;align-items:center;justify-content:space-between;padding:0.75rem 0;border-bottom:1px solid rgba(234,226,216,0.06);">
+      <div style="display:flex;align-items:center;gap:0.85rem;">
+        <div style="width:34px;height:34px;border-radius:50%;background:rgba(234,226,216,0.07);border:1px solid rgba(234,226,216,0.12);display:flex;align-items:center;justify-content:center;font-size:0.72rem;font-weight:600;color:#8C7B6B;flex-shrink:0;">${(p.name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()}</div>
+        <div>
+          <div style="font-size:0.88rem;color:#FAF7F2;font-weight:${i===0?'500':'400'};">${escHtml(p.name)}${i===0?'<span style="font-size:0.62rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--rose);background:rgba(200,114,90,0.12);border-radius:3px;padding:1px 5px;margin-left:7px;">Lead</span>':''}</div>
+          ${p.designation ? `<div style="font-size:0.75rem;color:#8C7B6B;margin-top:2px;">${escHtml(p.designation)}</div>` : ''}
+        </div>
+      </div>
+      <button onclick="pracDelete('${p.id}')" style="background:none;border:1px solid rgba(185,64,64,0.25);border-radius:6px;color:var(--red);cursor:pointer;font-size:0.75rem;padding:0.3rem 0.7rem;transition:all 0.15s;font-family:inherit;" onmouseover="this.style.background='rgba(185,64,64,0.1)'" onmouseout="this.style.background='none'">Remove</button>
+    </div>`).join('');
+}
+
+async function pracDelete(practitionerId) {
+  if (!confirm('Remove this practitioner?')) return;
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL_ADMIN}/rest/v1/practitioners?id=eq.${encodeURIComponent(practitionerId)}`,
+      { method: 'DELETE', headers: { 'apikey': SUPABASE_KEY_ADMIN, 'Prefer': 'return=minimal' } }
+    );
+    if (res.ok || res.status === 204) {
+      document.getElementById(`prac-row-${practitionerId}`)?.remove();
+      // Check if list is now empty
+      const remaining = document.querySelectorAll('[id^="prac-row-"]').length;
+      if (remaining === 0) {
+        document.getElementById('prac-list-wrap').style.display = 'none';
+        document.getElementById('prac-empty').style.display = 'block';
+      }
+      pracStatus('success', 'Practitioner removed.');
+    } else {
+      pracStatus('error', 'Delete failed — try again.');
+    }
+  } catch(e) {
+    pracStatus('error', 'Network error.');
+  }
+}
+
+let pracAddRowCount = 0;
+
+function pracAddRow() {
+  const rowId = ++pracAddRowCount;
+  const sel = 'background:rgba(234,226,216,0.07);border:1px solid rgba(234,226,216,0.15);border-radius:7px;color:#FAF7F2;font-family:inherit;font-size:0.85rem;padding:0.5rem 0.65rem;outline:none;width:100%;';
+  const row = document.createElement('div');
+  row.id = `prac-add-row-${rowId}`;
+  row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 28px;gap:0.5rem;margin-bottom:0.4rem;align-items:center;';
+  row.innerHTML = `
+    <input type="text" placeholder="Full name" style="${sel}" />
+    <input type="text" placeholder="MD, RN, NP…" style="${sel}" />
+    <button onclick="document.getElementById('prac-add-row-${rowId}').remove()" style="background:none;border:none;color:#8C7B6B;cursor:pointer;font-size:1rem;padding:0;line-height:1;transition:color 0.15s;" onmouseover="this.style.color='#C8725A'" onmouseout="this.style.color='#8C7B6B'">✕</button>`;
+  document.getElementById('prac-add-rows').appendChild(row);
+  row.querySelector('input').focus();
+}
+
+async function pracSaveNew() {
+  if (!pracSelectedId) { pracStatus('error', 'No clinic selected.'); return; }
+  const toInsert = [];
+  document.querySelectorAll('#prac-add-rows > div').forEach(row => {
+    const inputs = row.querySelectorAll('input');
+    const name = inputs[0]?.value.trim();
+    const designation = inputs[1]?.value.trim();
+    if (name) toInsert.push({ name, designation });
+  });
+  if (!toInsert.length) { pracStatus('error', 'Enter at least one name.'); return; }
+
+  // Get current max display_order for this clinic
+  let startOrder = 0;
+  try {
+    const existing = await fetch(
+      `${SUPABASE_URL_ADMIN}/rest/v1/practitioners?clinic_id=eq.${encodeURIComponent(String(pracSelectedId))}&select=display_order&order=display_order.desc&limit=1`,
+      { headers: { 'apikey': SUPABASE_KEY_ADMIN } }
+    );
+    if (existing.ok) {
+      const rows = await existing.json();
+      if (rows.length) startOrder = (rows[0].display_order ?? 0) + 1;
+    }
+  } catch(e) {}
+
+  const payload = toInsert.map((p, i) => ({
+    clinic_id: String(pracSelectedId),
+    name: p.name,
+    designation: p.designation || null,
+    display_order: startOrder + i
+  }));
+
+  try {
+    const res = await fetch(`${SUPABASE_URL_ADMIN}/rest/v1/practitioners`, {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY_ADMIN, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify(payload)
+    });
+    if (res.ok || res.status === 201) {
+      pracStatus('success', `✓ ${toInsert.length} practitioner${toInsert.length > 1 ? 's' : ''} added.`);
+      document.getElementById('prac-add-rows').innerHTML = '';
+      pracAddRowCount = 0;
+      await pracFetch(pracSelectedId); // refresh list
+    } else {
+      pracStatus('error', 'Save failed — try again.');
+    }
+  } catch(e) {
+    pracStatus('error', 'Network error.');
+  }
+}
+
+function pracStatus(type, msg) {
+  const el = document.getElementById('prac-status');
+  el.style.display = 'block';
+  el.style.background = type === 'success' ? 'rgba(74,124,89,0.15)' : 'rgba(200,114,90,0.15)';
+  el.style.border = type === 'success' ? '1px solid rgba(74,124,89,0.3)' : '1px solid rgba(200,114,90,0.3)';
+  el.style.color  = type === 'success' ? '#7fbf8f' : '#C8725A';
+  el.textContent  = msg;
+  setTimeout(() => { el.style.display = 'none'; }, 4000);
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('#prac-search') && !e.target.closest('#prac-results')) {
+    const el = document.getElementById('prac-results');
+    if (el) el.style.display = 'none';
+  }
+});
+</script>
+</body>
+</html>
