@@ -1558,6 +1558,8 @@
         <option value="toronto">Toronto</option>
         <option value="north-york">North York</option>
         <option value="scarborough">Scarborough</option>
+        <option value="etobicoke">Etobicoke</option>
+        <option value="brampton">Brampton</option>
         <option value="richmond-hill">Richmond Hill</option>
         <option value="markham">Markham</option>
         <option value="thornhill">Thornhill</option>
@@ -1601,7 +1603,6 @@
     <button class="filter-btn" onclick="filterCards('promo', this)">Has Promo</button>
     <button class="filter-btn" onclick="filterCards('toronto', this)">Toronto</button>
     <button class="filter-btn" onclick="filterCards('north-york', this)">North York</button>
-    <button class="filter-btn" onclick="filterCards('scarborough', this)">Scarborough</button>
     <button class="filter-btn" onclick="filterCards('richmond-hill', this)">Richmond Hill</button>
     <button class="filter-btn" onclick="filterCards('markham', this)">Markham</button>
     <select class="sort-select" onchange="sortCards(this.value)">
@@ -1686,16 +1687,14 @@
   <div class="dir-grid">
     <a href="#prices" class="dir-pill" onclick="filterByPill('toronto')"><span class="dir-pill-name">Toronto</span><span class="dir-pill-count">367 clinics</span></a>
     <a href="#prices" class="dir-pill" onclick="filterByPill('north-york')"><span class="dir-pill-name">North York</span><span class="dir-pill-count">210 clinics</span></a>
+    <a href="#prices" class="dir-pill" onclick="filterByPill('brampton')"><span class="dir-pill-name">Brampton</span><span class="dir-pill-count">141 clinics</span></a>
     <a href="#prices" class="dir-pill" onclick="filterByPill('richmond-hill')"><span class="dir-pill-name">Richmond Hill</span><span class="dir-pill-count">119 clinics</span></a>
+    <a href="#prices" class="dir-pill" onclick="filterByPill('etobicoke')"><span class="dir-pill-name">Etobicoke</span><span class="dir-pill-count">99 clinics</span></a>
     <a href="#prices" class="dir-pill" onclick="filterByPill('markham')"><span class="dir-pill-name">Markham</span><span class="dir-pill-count">89 clinics</span></a>
     <a href="#prices" class="dir-pill" onclick="filterByPill('thornhill')"><span class="dir-pill-name">Thornhill</span><span class="dir-pill-count">87 clinics</span></a>
     <a href="#prices" class="dir-pill" onclick="filterByPill('burlington')"><span class="dir-pill-name">Burlington</span><span class="dir-pill-count">83 clinics</span></a>
     <a href="#prices" class="dir-pill" onclick="filterByPill('hamilton')"><span class="dir-pill-name">Hamilton</span><span class="dir-pill-count">82 clinics</span></a>
     <a href="#prices" class="dir-pill" onclick="filterByPill('scarborough')"><span class="dir-pill-name">Scarborough</span><span class="dir-pill-count">80 clinics</span></a>
-    <a href="#prices" class="dir-pill" onclick="filterByPill('mississauga')"><span class="dir-pill-name">Mississauga</span><span class="dir-pill-count">73 clinics</span></a>
-    <a href="#prices" class="dir-pill" onclick="filterByPill('oakville')"><span class="dir-pill-name">Oakville</span><span class="dir-pill-count">65 clinics</span></a>
-    <a href="#prices" class="dir-pill" onclick="filterByPill('vaughan')"><span class="dir-pill-name">Vaughan</span><span class="dir-pill-count">61 clinics</span></a>
-    <a href="#prices" class="dir-pill" onclick="filterByPill('milton')"><span class="dir-pill-name">Milton</span><span class="dir-pill-count">54 clinics</span></a>
   </div>
   <div class="dir-cta">
     <a href="#" class="btn-outline">See All Neighbourhoods →</a>
@@ -3004,16 +3003,18 @@ function handleClinicReport(e) {
     const SUPABASE_URL = 'https://vefldlqtyxdywbzdjuia.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlZmxkbHF0eXhkeXdiemRqdWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNDAwMjgsImV4cCI6MjA4NzkxNjAyOH0.o582sXiUkB3j4FiHEA5rE3ABy_pdTeeK1PnNpNirHZA';
 
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/clinics?select=id`, {
-      method: 'HEAD',
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/clinics?select=id&approved=eq.true`, {
+      method: 'GET',
       headers: {
         'apikey': SUPABASE_KEY,
         'Authorization': `Bearer ${SUPABASE_KEY}`,
-        'Prefer': 'count=exact'
+        'Prefer': 'count=exact',
+        'Range': '0-0'
       }
     });
 
-    const count = parseInt(res.headers.get('content-range')?.split('/')[1] || '0', 10);
+    const contentRange = res.headers.get('content-range') || '';
+    const count = parseInt(contentRange.split('/')[1] || '0', 10);
     if (!count) return;
 
     const formatted = count.toLocaleString('en-CA');
