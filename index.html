@@ -1525,10 +1525,10 @@
   <div class="hero-inner">
     <div class="hero-eyebrow">Greater Toronto Area</div>
     <h1>Find the right cosmetic clinic for you.</h1>
-    <p class="hero-sub"><strong style="color:var(--cream);font-weight:500;">When every clinic looks perfect, but not every clinic is the same.</strong><br>See what actually separates them: injector expertise, experience, and overall fit. Browse 1,700+ GTA clinics with real context.</p>
+    <p class="hero-sub"><strong style="color:var(--cream);font-weight:500;">When every clinic looks perfect, but not every clinic is the same.</strong><br>See what actually separates them: injector expertise, experience, and overall fit. Browse <span id="heroClinicCount">1,700+</span> GTA clinics with real context.</p>
     <div class="hero-stats">
       <div>
-        <div class="stat-num">1,756+</div>
+        <div class="stat-num" id="statClinicCount">1,756+</div>
         <div class="stat-label">GTA Clinics Listed</div>
       </div>
       <div>
@@ -1647,7 +1647,7 @@
     <div class="trust-icon">📍</div>
     <div class="trust-text">
       <strong>GTA-Only Focus</strong>
-      <span>1,700 clinics across the Greater Toronto Area</span>
+      <span><span id="trustClinicCount">1,700</span> clinics across the Greater Toronto Area</span>
     </div>
   </div>
 </div>
@@ -1679,7 +1679,7 @@
   <div class="dir-header">
     <div>
       <h2>Browse by <em>neighbourhood</em></h2>
-      <p class="dir-count">1,756 GTA clinics across all areas</p>
+      <p class="dir-count"><span id="dirClinicCount">1,756</span> GTA clinics across all areas</p>
     </div>
     <a href="#" class="btn-ghost">View Full Directory →</a>
   </div>
@@ -2998,3 +2998,38 @@ function handleClinicReport(e) {
     </div>
     <div class="missing-modal-success" id="missing-modal-success">
       <div class="success-
+<script>
+(async function fetchClinicCount() {
+  try {
+    const SUPABASE_URL = 'https://vefldlqtyxdywbzdjuia.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlZmxkbHF0eXhkeXdiemRqdWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNDAwMjgsImV4cCI6MjA4NzkxNjAyOH0.o582sXiUkB3j4FiHEA5rE3ABy_pdTeeK1PnNpNirHZA';
+
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/clinics?select=id`, {
+      method: 'HEAD',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Prefer': 'count=exact'
+      }
+    });
+
+    const count = parseInt(res.headers.get('content-range')?.split('/')[1] || '0', 10);
+    if (!count) return;
+
+    const formatted = count.toLocaleString('en-CA');
+    const formattedPlus = formatted + '+';
+
+    const stat = document.getElementById('statClinicCount');
+    const hero = document.getElementById('heroClinicCount');
+    const trust = document.getElementById('trustClinicCount');
+    const dir = document.getElementById('dirClinicCount');
+
+    if (stat) stat.textContent = formattedPlus;
+    if (hero) hero.textContent = formattedPlus;
+    if (trust) trust.textContent = formatted;
+    if (dir) dir.textContent = formatted;
+  } catch (e) {
+    // silently fail — hardcoded fallbacks remain visible
+  }
+})();
+</script>
