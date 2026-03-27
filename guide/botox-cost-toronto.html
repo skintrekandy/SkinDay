@@ -447,7 +447,7 @@
         <div class="stat-desc">Most common range</div>
       </div>
       <div class="stat-item">
-        <div class="stat-num">1,756<span>+</span></div>
+        <div class="stat-num" id="statClinicCount">1,756<span>+</span></div>
         <div class="stat-desc">GTA clinics tracked</div>
       </div>
     </div>
@@ -461,7 +461,7 @@
   <!-- SECTION: CITY DISTRIBUTION -->
   <div class="guide-section" id="city-distribution">
     <h2>Where GTA clinics <em>are concentrated</em></h2>
-    <p>Toronto and North York alone account for over a third of all cosmetic clinics in the GTA. Here's how 1,756+ clinics are distributed across the region.</p>
+    <p>Toronto and North York alone account for over a third of all cosmetic clinics in the GTA. Here's how <span id="proseClinicCount">1,756+</span> clinics are distributed across the region.</p>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:2.5rem;margin:2rem 0;align-items:start;" class="chart-grid">
       <!-- Donut chart -->
@@ -472,7 +472,7 @@
       <!-- Bar list -->
       <div>
         <div class="bar-chart" id="city-bars"></div>
-        <p style="font-size:0.72rem;color:var(--dim);margin-top:1rem;">Top 10 areas · 1,756 clinics total</p>
+        <p style="font-size:0.72rem;color:var(--dim);margin-top:1rem;">Top 10 areas · <span id="captionClinicCount">1,756</span> clinics total</p>
       </div>
     </div>
   </div>
@@ -518,7 +518,7 @@
     ctx.font = 'bold 28px Cormorant Garamond, serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('1,756', cx, cy - 10);
+    ctx.fillText(window._clinicCountLabel || '1,756', cx, cy - 10);
     ctx.font = '11px DM Sans, sans-serif';
     ctx.fillStyle = '#8A7B72';
     ctx.fillText('GTA clinics', cx, cy + 14);
@@ -939,3 +939,62 @@
 
 </body>
 </html>
+
+<script>
+(async function fetchClinicCount() {
+  try {
+    const SUPABASE_URL = 'https://vefldlqtyxdywbzdjuia.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlZmxkbHF0eXhkeXdiemRqdWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNDAwMjgsImV4cCI6MjA4NzkxNjAyOH0.o582sXiUkB3j4FiHEA5rE3ABy_pdTeeK1PnNpNirHZA';
+
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/clinics?select=id`, {
+      method: 'HEAD',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Prefer': 'count=exact'
+      }
+    });
+
+    const count = parseInt(res.headers.get('content-range')?.split('/')[1] || '0', 10);
+    if (!count) return;
+
+    const formatted = count.toLocaleString('en-CA');
+    const formattedPlus = formatted + '+';
+
+    // Text elements
+    const stat = document.getElementById('statClinicCount');
+    const prose = document.getElementById('proseClinicCount');
+    const caption = document.getElementById('captionClinicCount');
+
+    if (stat) stat.innerHTML = formatted + '<span>+</span>';
+    if (prose) prose.textContent = formattedPlus;
+    if (caption) caption.textContent = formatted;
+
+    // Canvas donut label — redraw center text only
+    const canvas = document.getElementById('cityChart');
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      const cx = canvas.width / 2;
+      const cy = canvas.height / 2;
+      const inner = 68;
+
+      // Clear and redraw center hole + text
+      ctx.beginPath();
+      ctx.arc(cx, cy, inner, 0, 2 * Math.PI);
+      ctx.fillStyle = '#FAF7F2';
+      ctx.fill();
+
+      ctx.fillStyle = '#1C1714';
+      ctx.font = 'bold 28px Cormorant Garamond, serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(formatted, cx, cy - 10);
+      ctx.font = '11px DM Sans, sans-serif';
+      ctx.fillStyle = '#8A7B72';
+      ctx.fillText('GTA clinics', cx, cy + 14);
+    }
+  } catch (e) {
+    // silently fail — hardcoded fallbacks remain
+  }
+})();
+</script>
