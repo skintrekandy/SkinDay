@@ -42,3 +42,8 @@
 #   for = "/skinday-admin.html"
 #   [headers.values]
 #     X-Robots-Tag = "noindex"
+
+[[redirects]]
+  from   = "/api/track-click"
+  to     = "/.netlify/functions/track-click"
+  status = 200
