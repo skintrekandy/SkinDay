@@ -203,7 +203,7 @@ exports.handler = async (event) => {
 
       // Only allow safe fields to be updated
       const safePayload = {};
-      const allowedFields = ['phone', 'website', 'booking_url', 'promo', 'promo_text', 'hours', 'photos', 'injector_credentials', 'languages'];
+      const allowedFields = ['phone', 'website', 'booking_url', 'promo', 'promo_text', 'hours', 'photos', 'logo_url', 'injector_credentials', 'languages'];
       for (const field of allowedFields) {
         if (payload[field] !== undefined) safePayload[field] = payload[field];
       }

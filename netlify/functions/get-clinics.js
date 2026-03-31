@@ -14,7 +14,7 @@ exports.handler = async () => {
         id, name, neighbourhood, area, rating, reviews,
         place_id, maps_url, rank, phone, website,
         claimed, approved,
-        promo, promo_text, booking_url, email, photos,
+        promo, promo_text, booking_url, email, photos, logo_url,
         toxin_type, injector_credentials, languages,
         price, price_source, price_date
       `)
