@@ -642,11 +642,7 @@ function renderClinic(clinic) {
       : clinic.price_source === 'inquiry'
       ? `<span class="trust-badge-inquiry">Verified via inquiry · ${formatPriceDate(clinic.price_date)}</span>`
       : null;
-    priceHTML = `<div class="price-display">`
-      <span class="price-amount">From $${clinic.price}</span>
-      <span class="price-unit">/ unit</span>
-    </div>
-    <div class="price-sub">Botulinum toxin · per unit${srcLabel ? ` · <span style="font-size:0.82em;color:var(--muted)">${srcLabel}</span>` : ''}</div>`;
+    priceHTML = `<div class="price-display"><span class="price-amount">From $${clinic.price}</span><span class="price-unit">/ unit</span></div><div class="price-sub">Botulinum toxin · per unit${srcLabel ? ` · <span style="font-size:0.82em;color:var(--muted)">${srcLabel}</span>` : ''}</div>`;
   } else {
     priceHTML = `<p style="font-size:0.88rem;color:var(--muted);">Price not listed</p>`;
   }
