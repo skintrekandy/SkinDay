@@ -47,3 +47,23 @@
   from   = "/api/track-click"
   to     = "/.netlify/functions/track-click"
   status = 200
+
+[[redirects]]
+  from   = "/botox-north-york"
+  to     = "/botox-north-york.html"
+  status = 200
+
+[[redirects]]
+  from   = "/botox-richmond-hill"
+  to     = "/botox-richmond-hill.html"
+  status = 200
+
+[[redirects]]
+  from   = "/botox-markham"
+  to     = "/botox-markham.html"
+  status = 200
+
+[[redirects]]
+  from   = "/botox-etobicoke"
+  to     = "/botox-etobicoke.html"
+  status = 200
