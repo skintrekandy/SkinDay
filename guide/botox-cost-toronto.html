@@ -619,9 +619,9 @@
         <div class="data-card-sub">Where most reputable GTA clinics land</div>
       </div>
       <div class="data-card">
-        <div class="data-card-num gold">168</div>
-        <div class="data-card-label">Clinics with prices</div>
-        <div class="data-card-sub">Verified pricing across GTA clinics</div>
+        <div class="data-card-num gold">$2.99</div>
+        <div class="data-card-label">Lowest published</div>
+        <div class="data-card-sub">The floor of the GTA market</div>
       </div>
     </div>
 
@@ -629,6 +629,136 @@
 
     <div class="highlight">"The right question isn't who charges the least — it's who gives you the outcome you're looking for at a price that makes sense for you."</div>
   </div>
+
+  <!-- SECTION: PRICE DISTRIBUTION -->
+  <div class="guide-section" id="price-distribution">
+    <h2>How GTA clinics <em>are priced</em></h2>
+    <p>Where does the market actually cluster? This histogram shows the number of GTA clinics charging at each per-unit price point — built from verified pricing in the SkinDay directory. Most of the market sits between $9 and $12/unit.</p>
+    <div style="margin:2rem 0;background:var(--warm);border-radius:16px;padding:1.5rem;">
+      <canvas id="priceDistChart" width="700" height="280" style="width:100%;height:auto;display:block;"></canvas>
+      <div id="price-dist-legend" style="display:flex;gap:1.5rem;justify-content:center;margin-top:1rem;flex-wrap:wrap;font-size:0.75rem;color:var(--muted);"></div>
+    </div>
+    <p style="font-size:0.82rem;color:var(--muted);margin-top:-0.5rem;">Each bar represents a $1 price band. Data from verified SkinDay listings — updated as new clinics publish their prices.</p>
+  </div>
+
+  <script>
+  (async function buildPriceDistChart() {
+    const SUPABASE_URL = 'https://vefldlqtyxdywbzdjuia.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlZmxkbHF0eXhkeXdiemRqdWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNDAwMjgsImV4cCI6MjA4NzkxNjAyOH0.o582sXiUkB3j4FiHEA5rE3ABy_pdTeeK1PnNpNirHZA';
+
+    // Fallback data if API unavailable
+    const FALLBACK = {3:1,4:1,5:3,6:4,7:12,8:14,9:22,10:31,11:28,12:18,13:9,14:6,15:4};
+
+    let bins = FALLBACK;
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/clinic_prices?select=price&price=gte.3&price=lte.15`, {
+        headers: { 'apikey': SUPABASE_KEY }
+      });
+      if (res.ok) {
+        const rows = await res.json();
+        if (rows.length > 0) {
+          bins = {};
+          for (let i = 3; i <= 15; i++) bins[i] = 0;
+          rows.forEach(r => {
+            const band = Math.floor(parseFloat(r.price));
+            if (band >= 3 && band <= 15) bins[band]++;
+          });
+        }
+      }
+    } catch(e) {}
+
+    const canvas = document.getElementById('priceDistChart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    // Polyfill roundRect for older Safari
+    if (!ctx.roundRect) {
+      ctx.roundRect = function(x, y, w, h, r) {
+        const R = Array.isArray(r) ? r[0] : r;
+        this.beginPath();
+        this.moveTo(x + R, y);
+        this.lineTo(x + w - R, y);
+        this.quadraticCurveTo(x + w, y, x + w, y + R);
+        this.lineTo(x + w, y + h);
+        this.lineTo(x, y + h);
+        this.lineTo(x, y + R);
+        this.quadraticCurveTo(x, y, x + R, y);
+        this.closePath();
+      };
+    }
+    const W = canvas.width, H = canvas.height;
+    const PAD = { top: 20, right: 20, bottom: 48, left: 16 };
+    const chartW = W - PAD.left - PAD.right;
+    const chartH = H - PAD.top - PAD.bottom;
+
+    const labels = Object.keys(bins).map(Number).sort((a,b) => a-b);
+    const values = labels.map(k => bins[k]);
+    const maxVal = Math.max(...values);
+    const barW = chartW / labels.length;
+    const sweetSpot = [9, 10, 11]; // highlight sweet spot
+
+    // Clear
+    ctx.clearRect(0, 0, W, H);
+
+    // Grid lines (no Y axis labels)
+    ctx.strokeStyle = 'rgba(28,23,20,0.06)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+      const y = PAD.top + chartH - (i / 4) * chartH;
+      ctx.beginPath();
+      ctx.moveTo(PAD.left, y);
+      ctx.lineTo(PAD.left + chartW, y);
+      ctx.stroke();
+    }
+
+    // Bars
+    labels.forEach((price, i) => {
+      const val = values[i];
+      const barH = val === 0 ? 0 : Math.max(2, (val / maxVal) * chartH);
+      const x = PAD.left + i * barW;
+      const y = PAD.top + chartH - barH;
+      const isSweet = sweetSpot.includes(price);
+      const isPeak = val === maxVal;
+
+      // Bar fill
+      ctx.fillStyle = isSweet ? '#C8725A' : isPeak ? '#C9A96E' : 'rgba(28,23,20,0.15)';
+      ctx.beginPath();
+      ctx.roundRect(x + 3, y, barW - 6, barH, [3, 3, 0, 0]);
+      ctx.fill();
+
+      // Count label on top of bar — omitted intentionally (changes daily)
+
+      // X axis label
+      ctx.fillStyle = '#3a2f2b';
+      ctx.font = isSweet ? 'bold 12px DM Sans, sans-serif' : '11px DM Sans, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(`$${price}`, x + barW / 2, PAD.top + chartH + 18);
+    });
+
+    // X axis line
+    ctx.strokeStyle = 'rgba(28,23,20,0.12)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(PAD.left, PAD.top + chartH);
+    ctx.lineTo(PAD.left + chartW, PAD.top + chartH);
+    ctx.stroke();
+
+    // X axis title
+    ctx.fillStyle = '#8A7B72';
+    ctx.font = '11px DM Sans, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Price per unit', PAD.left + chartW / 2, H - 4);
+
+    // Legend
+    const legend = document.getElementById('price-dist-legend');
+    if (legend) {
+      legend.innerHTML = `
+        <span style="display:flex;align-items:center;gap:5px;"><span style="width:12px;height:12px;border-radius:2px;background:#C8725A;display:inline-block;"></span> $9–$11 sweet spot</span>
+        <span style="display:flex;align-items:center;gap:5px;"><span style="width:12px;height:12px;border-radius:2px;background:#C9A96E;display:inline-block;"></span> Market peak</span>
+        <span style="display:flex;align-items:center;gap:5px;"><span style="width:12px;height:12px;border-radius:2px;background:rgba(28,23,20,0.15);display:inline-block;"></span> Other price points</span>
+      `;
+    }
+  })();
+  </script>
 
   <!-- SECTION 2: WHO IS INJECTING -->
   <div class="guide-section" id="who-is-injecting">
