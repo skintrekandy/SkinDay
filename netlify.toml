@@ -67,3 +67,8 @@
   from   = "/botox-etobicoke"
   to     = "/botox-etobicoke.html"
   status = 200
+
+[[redirects]]
+  from   = "/botox-toronto"
+  to     = "/botox-toronto.html"
+  status = 200
