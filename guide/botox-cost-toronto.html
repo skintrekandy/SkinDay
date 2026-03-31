@@ -447,7 +447,7 @@
         <div class="stat-desc">Most common range</div>
       </div>
       <div class="stat-item">
-        <div class="stat-num" id="statClinicCount">1,756<span>+</span></div>
+        <div class="stat-num" id="statClinicCount">1,996<span>+</span></div>
         <div class="stat-desc">GTA clinics tracked</div>
       </div>
     </div>
@@ -461,7 +461,7 @@
   <!-- SECTION: CITY DISTRIBUTION -->
   <div class="guide-section" id="city-distribution">
     <h2>Where GTA clinics <em>are concentrated</em></h2>
-    <p>Toronto and North York alone account for over a third of all cosmetic clinics in the GTA. Here's how <span id="proseClinicCount">1,756+</span> clinics are distributed across the region.</p>
+    <p>Toronto and North York alone account for over a third of all cosmetic clinics in the GTA. Here's how <span id="proseClinicCount">1,996+</span> clinics are distributed across the region.</p>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:2.5rem;margin:2rem 0;align-items:start;" class="chart-grid">
       <!-- Donut chart -->
@@ -472,25 +472,38 @@
       <!-- Bar list -->
       <div>
         <div class="bar-chart" id="city-bars"></div>
-        <p style="font-size:0.72rem;color:var(--dim);margin-top:1rem;">Top 10 areas · <span id="captionClinicCount">1,756</span> clinics total</p>
+        <p style="font-size:0.72rem;color:var(--dim);margin-top:1rem;">Top 10 areas · <span id="captionClinicCount">1,996</span> clinics total</p>
       </div>
     </div>
   </div>
 
   <script>
-  (function() {
-    const data = [
-      { area: 'Toronto',       count: 367, color: '#C8725A' },
-      { area: 'North York',    count: 210, color: '#C9A96E' },
-      { area: 'Brampton',      count: 141, color: '#3D7A55' },
-      { area: 'Richmond Hill', count: 119, color: '#8A7B72' },
-      { area: 'Etobicoke',     count: 99,  color: '#B5A89F' },
-      { area: 'Markham',       count: 89,  color: '#9e7a72' },
-      { area: 'Thornhill',     count: 87,  color: '#6b4c44' },
-      { area: 'Burlington',    count: 83,  color: '#a0614e' },
-      { area: 'Hamilton',      count: 82,  color: '#c9736a' },
-      { area: 'Scarborough',   count: 80,  color: '#d4896e' },
-    ];
+  const AREA_COLORS = {
+    'toronto': '#C8725A', 'north-york': '#C9A96E', 'brampton': '#3D7A55',
+    'richmond-hill': '#8A7B72', 'etobicoke': '#B5A89F', 'markham': '#9e7a72',
+    'thornhill': '#6b4c44', 'burlington': '#a0614e', 'hamilton': '#c9736a',
+    'scarborough': '#d4896e'
+  };
+  const AREA_LABELS = {
+    'toronto': 'Toronto', 'north-york': 'North York', 'brampton': 'Brampton',
+    'richmond-hill': 'Richmond Hill', 'etobicoke': 'Etobicoke', 'markham': 'Markham',
+    'thornhill': 'Thornhill', 'burlington': 'Burlington', 'hamilton': 'Hamilton',
+    'scarborough': 'Scarborough'
+  };
+  const FALLBACK_DATA = [
+    { area: 'Toronto',       count: 367, color: '#C8725A' },
+    { area: 'North York',    count: 210, color: '#C9A96E' },
+    { area: 'Brampton',      count: 148, color: '#3D7A55' },
+    { area: 'Richmond Hill', count: 119, color: '#8A7B72' },
+    { area: 'Etobicoke',     count: 110, color: '#B5A89F' },
+    { area: 'Markham',       count: 89,  color: '#9e7a72' },
+    { area: 'Thornhill',     count: 87,  color: '#6b4c44' },
+    { area: 'Burlington',    count: 83,  color: '#a0614e' },
+    { area: 'Hamilton',      count: 82,  color: '#c9736a' },
+    { area: 'Scarborough',   count: 80,  color: '#d4896e' },
+  ];
+
+  function drawChart(data) {
     const total = data.reduce((s, d) => s + d.count, 0);
 
     // Donut chart
@@ -518,7 +531,7 @@
     ctx.font = 'bold 28px Cormorant Garamond, serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(window._clinicCountLabel || '1,756', cx, cy - 10);
+    ctx.fillText(window._clinicCountLabel || '1,996', cx, cy - 10);
     ctx.font = '11px DM Sans, sans-serif';
     ctx.fillStyle = '#8A7B72';
     ctx.fillText('GTA clinics', cx, cy + 14);
@@ -545,6 +558,41 @@
         <div class="bar-pct">${d.count}</div>
       </div>`;
     });
+  }
+
+  // Fetch live data from get-clinics, fall back to hardcoded if unavailable
+  (async function() {
+    try {
+      const res = await fetch('/api/get-clinics');
+      const clinics = res.ok ? await res.json() : [];
+      if (!clinics.length) throw new Error('empty');
+
+      // Count by area, top 10
+      const counts = {};
+      clinics.forEach(c => { if (c.area) counts[c.area] = (counts[c.area] || 0) + 1; });
+      const sorted = Object.entries(counts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(([area, count]) => ({
+          area: AREA_LABELS[area] || area,
+          count,
+          color: AREA_COLORS[area] || '#8A7B72'
+        }));
+
+      const total = clinics.length;
+      const formatted = total.toLocaleString('en-CA');
+      window._clinicCountLabel = formatted;
+
+      // Update count spans
+      ['statClinicCount','proseClinicCount','captionClinicCount'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = formatted + (id === 'captionClinicCount' ? '' : '+');
+      });
+
+      drawChart(sorted);
+    } catch(e) {
+      drawChart(FALLBACK_DATA);
+    }
   })();
   </script>
 
