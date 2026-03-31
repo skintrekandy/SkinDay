@@ -1641,8 +1641,11 @@
       },
       body: logoState.file
     });
-    if (!res.ok) { console.warn('Logo upload failed'); return logoState.url; }
-    // Bust cache with timestamp
+    if (!res.ok) {
+      const err = await res.text();
+      console.error('Logo upload failed:', res.status, err);
+      throw new Error('Logo upload failed — please try again.');
+    }
     return `${SUPABASE_URL}/storage/v1/object/public/clinic-logos/${filename}?t=${Date.now()}`;
   }
 
