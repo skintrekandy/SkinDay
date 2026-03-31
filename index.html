@@ -40,13 +40,14 @@
       --hero-border: rgba(201,169,110,0.25);
     }
 
-    html { scroll-behavior: smooth; }
+    html { scroll-behavior: smooth; overflow-x: hidden; }
 
     body {
       font-family: 'DM Sans', sans-serif;
       background: var(--cream);
       color: var(--deep);
       -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
     }
 
     /* ─── NAV ─── */
@@ -520,6 +521,10 @@
       font-size: 0.75rem; color: var(--muted);
       margin-top: 0.3rem;
     }
+    .price-main {
+      display: flex; align-items: baseline; gap: 0.35rem;
+      flex-wrap: wrap;
+    }
     .trust-badge {
       display: inline-flex;
       align-items: center;
@@ -530,6 +535,9 @@
       padding: 3px 8px;
       border-radius: 100px;
       margin-top: 0.35rem;
+      max-width: 100%;
+      white-space: normal;
+      word-break: break-word;
     }
     .trust-badge-clinic {
       background: rgba(61,122,85,0.1);
@@ -1882,7 +1890,7 @@ function renderCards() {
           <div class="card-badges">${badgeHTML}</div>
           <div class="clinic-name">
             ${c.claimed
-              ? `<span class="clinic-name-verified">${c.logo_url ? `<img src="${c.logo_url}" alt="${c.name}" style="width:24px;height:24px;border-radius:4px;object-fit:contain;border:1px solid var(--border);background:#fff;flex-shrink:0;margin-right:4px;vertical-align:middle;">` : ''}${c.name}<span class="verified-tick"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 6 5 9 10 3"/></svg></span></span>`
+              ? `<span class="clinic-name-verified">${c.logo_url ? `<img src="${c.logo_url}" alt="${c.name}" style="width:24px;height:24px;border-radius:4px;object-fit:contain;border:1px solid var(--border);background:#fff;flex-shrink:0;margin-right:4px;vertical-align:middle;" onerror="this.style.display='none'">` : ''}${c.name}<span class="verified-tick"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 6 5 9 10 3"/></svg></span></span>`
               : c.name}
           </div>
           ${c.practitioners && c.practitioners.length > 0
