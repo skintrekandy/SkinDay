@@ -2399,10 +2399,11 @@ async function openCompareModal() {
   }).join('');
 
   const bookCells = selected.map(c => {
-    if (c.booking_url) {
-      return `<td><a href="${c.booking_url}" target="_blank" rel="noopener" style="display:inline-block;background:var(--rose);color:white;padding:7px 16px;border-radius:6px;font-size:0.82rem;text-decoration:none;font-family:var(--font-body);letter-spacing:0.02em;" onclick="trackClick(${c.id},'booking','${(c.neighbourhood||'').replace(/'/g,'')}')">Book Now →</a></td>`;
-    }
-    return `<td><span style="color:var(--dim);font-style:italic">—</span></td>`;
+    if (!c.claimed) return `<td><span style="color:var(--dim);font-style:italic">—</span></td>`;
+    const bookHref = c.booking_url || c.website || (c.phone ? 'tel:' + c.phone.replace(/\s/g,'') : null);
+    const bookType = c.booking_url ? 'booking' : c.website ? 'website' : 'phone';
+    if (!bookHref) return `<td><span style="color:var(--dim);font-style:italic">—</span></td>`;
+    return `<td><a href="${bookHref}" target="_blank" rel="noopener" style="display:inline-block;background:var(--rose);color:white;padding:7px 16px;border-radius:6px;font-size:0.82rem;text-decoration:none;letter-spacing:0.02em;" onclick="trackClick(${c.id},'${bookType}','${(c.neighbourhood||'').replace(/'/g,'')}')">Book Now →</a></td>`;
   }).join('');
 
   const practitionerCells = selected.map(c => {
