@@ -1882,7 +1882,7 @@ function renderCards() {
           <div class="card-badges">${badgeHTML}</div>
           <div class="clinic-name">
             ${c.claimed
-              ? `<span class="clinic-name-verified">${c.name}<span class="verified-tick"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 6 5 9 10 3"/></svg></span></span>`
+              ? `<span class="clinic-name-verified">${c.logo_url ? `<img src="${c.logo_url}" alt="${c.name}" style="width:24px;height:24px;border-radius:4px;object-fit:contain;border:1px solid var(--border);background:#fff;flex-shrink:0;margin-right:4px;vertical-align:middle;">` : ''}${c.name}<span class="verified-tick"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 6 5 9 10 3"/></svg></span></span>`
               : c.name}
           </div>
           ${c.practitioners && c.practitioners.length > 0

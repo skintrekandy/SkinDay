@@ -634,6 +634,38 @@
       height: 15px;
     }
 
+    /* ─── LOGO ─── */
+    .logo-upload-area {
+      display: flex; align-items: center; gap: 20px;
+      padding: 16px; background: var(--warm);
+      border: 1px solid var(--border); border-radius: 10px;
+      margin-bottom: 16px;
+    }
+    .logo-preview {
+      width: 64px; height: 64px; border-radius: 8px;
+      object-fit: contain; border: 1px solid var(--border);
+      background: #fff; flex-shrink: 0;
+    }
+    .logo-preview-placeholder {
+      width: 64px; height: 64px; border-radius: 8px;
+      background: var(--cream); border: 1px dashed var(--border);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; color: var(--bark-light); font-size: 22px;
+    }
+    .logo-upload-btn {
+      background: transparent; border: 1px solid var(--border);
+      border-radius: 6px; padding: 7px 14px;
+      font-family: 'DM Sans', sans-serif; font-size: 0.82rem;
+      color: var(--bark); cursor: pointer; transition: all 0.15s;
+    }
+    .logo-upload-btn:hover { border-color: var(--rose); color: var(--rose); }
+    .logo-remove-btn {
+      background: none; border: none; font-size: 0.78rem;
+      color: var(--bark-light); cursor: pointer; padding: 0;
+      transition: color 0.15s; margin-left: 4px;
+    }
+    .logo-remove-btn:hover { color: var(--rose); }
+
     /* ─── PHOTOS ─── */
     .photo-grid {
       display: grid;
@@ -1087,6 +1119,23 @@
 
     <!-- ─── TAB: PHOTOS ─── -->
     <div class="tab-pane" id="tab-photos">
+      <!-- LOGO CARD -->
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-title">Clinic Logo</div>
+        <div class="card-desc">Upload your clinic logo — displayed beside your clinic name on directory cards and your profile page.</div>
+        <div class="logo-upload-area">
+          <div id="logo-preview-wrap">
+            <div class="logo-preview-placeholder" id="logo-placeholder">🏥</div>
+          </div>
+          <div>
+            <button class="logo-upload-btn" onclick="document.getElementById('logo-upload-input').click()">Upload Logo</button>
+            <button class="logo-remove-btn" id="logo-remove-btn" onclick="removeLogo()" style="display:none;">✕ Remove</button>
+            <div class="field-hint" style="margin-top:8px;">PNG or JPG, max 2MB. Square or landscape works best.</div>
+          </div>
+        </div>
+        <input type="file" id="logo-upload-input" accept="image/png,image/jpeg,image/webp,image/svg+xml" style="display:none;" onchange="handleLogoUpload(event)" />
+      </div>
+      <!-- PHOTOS CARD -->
       <div class="card">
         <div class="card-title">Clinic Photos</div>
         <div class="card-desc">Upload up to 6 photos — clinic exterior, treatment rooms, or before/after results.</div>
@@ -1139,6 +1188,7 @@
   let originalData = {};
   let isDirty = false;
   let photos = []; // { url, file? }
+  let logoState = { url: null, file: null, removed: false }; // current logo
   let allClinicIds = [];    // populated for chain accounts
   let allClinicNames = {};  // id → name map for switcher labels
 
@@ -1415,6 +1465,8 @@
 
     // Photos
     photos = (c.photos || []).map(url => ({ url }));
+    logoState = { url: c.logo_url || null, file: null, removed: false };
+    renderLogoPreview();
 
     // Injector credentials checkboxes
     const allCreds = ['physician','np','rn','img'];
@@ -1545,6 +1597,55 @@
     e.target.value = '';
   }
 
+  // ─── LOGO HANDLERS ───
+  function handleLogoUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { showToast('Logo must be under 2MB.', 'error'); return; }
+    const url = URL.createObjectURL(file);
+    logoState = { url, file, removed: false };
+    renderLogoPreview();
+    markDirty();
+    e.target.value = '';
+  }
+
+  function removeLogo() {
+    logoState = { url: null, file: null, removed: true };
+    renderLogoPreview();
+    markDirty();
+  }
+
+  function renderLogoPreview() {
+    const wrap = document.getElementById('logo-preview-wrap');
+    const removeBtn = document.getElementById('logo-remove-btn');
+    if (logoState.url) {
+      wrap.innerHTML = `<img class="logo-preview" src="${logoState.url}" alt="Clinic logo" />`;
+      removeBtn.style.display = 'inline';
+    } else {
+      wrap.innerHTML = `<div class="logo-preview-placeholder" id="logo-placeholder">🏥</div>`;
+      removeBtn.style.display = 'none';
+    }
+  }
+
+  async function uploadLogo(token) {
+    if (!logoState.file) return logoState.removed ? null : logoState.url;
+    const ext = logoState.file.name.split('.').pop();
+    const filename = `clinic-${currentClinic.id}/logo.${ext}`;
+    const res = await fetch(`${SUPABASE_URL}/storage/v1/object/clinic-logos/${filename}`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': logoState.file.type,
+        'x-upsert': 'true'
+      },
+      body: logoState.file
+    });
+    if (!res.ok) { console.warn('Logo upload failed'); return logoState.url; }
+    // Bust cache with timestamp
+    return `${SUPABASE_URL}/storage/v1/object/public/clinic-logos/${filename}?t=${Date.now()}`;
+  }
+
   function removePhoto(idx) {
     photos.splice(idx, 1);
     buildPhotoGrid();
@@ -1617,6 +1718,9 @@
       const uploadedUrls = await uploadNewPhotos(token);
       const allPhotoUrls = photos.map((p, i) => uploadedUrls[i] || p.url);
 
+      // Upload logo if changed
+      const logoUrl = await uploadLogo(token);
+
       const payload = {
         prices: portalGetPriceRows(),
         price_source: 'clinic',
@@ -1628,6 +1732,7 @@
         promo_text: document.getElementById('field-promo-text').value.trim(),
         hours: collectHours(),
         photos: allPhotoUrls,
+        logo_url: logoUrl,
         injector_credentials: ['physician','np','rn','img'].filter(v => document.getElementById('cred-' + v)?.checked),
         languages: ['english','mandarin','cantonese','farsi','french','korean','hindi','arabic','punjabi','portuguese'].filter(v => document.getElementById('lang-' + v)?.checked)
       };

@@ -730,7 +730,10 @@ function renderClinic(clinic) {
           : `<span class="pill pill-unverified">Unverified listing</span>`}
         ${(clinic.promo && clinic.promo_text) ? `<span class="promo-badge">🎉 Promo Available</span>` : ''}
       </div>
-      <h1 class="profile-name">${clinic.name}</h1>
+      <h1 class="profile-name" style="display:flex;align-items:center;gap:10px;">
+        ${clinic.logo_url ? `<img src="${clinic.logo_url}" alt="${clinic.name} logo" style="width:36px;height:36px;border-radius:6px;object-fit:contain;border:1px solid var(--border);background:#fff;flex-shrink:0;">` : ''}
+        ${clinic.name}
+      </h1>
       <div class="profile-rating-row">
         <div class="stars">${renderStars(clinic.rating)}</div>
         <span class="rating-num">${clinic.rating != null ? clinic.rating.toFixed(1) : '—'}</span>
