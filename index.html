@@ -1800,9 +1800,16 @@ function trackClick(clinicId, clickType, neighbourhood) {
   fetch('/api/track-click', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ clinic_id: clinicId, click_type: clickType, neighbourhood: neighbourhood || null })
-  }).catch(() => {}); // fire-and-forget
+    body: JSON.stringify({ clinic_id: String(clinicId), click_type: clickType, neighbourhood: neighbourhood || null })
+  }).then(r => r.text()).then(t => console.log('[track-click]', t)).catch(e => console.warn('[track-click error]', e));
 }
+
+// Delegated listener for card Book Now buttons (data-attribute approach)
+document.addEventListener('click', function(e) {
+  const btn = e.target.closest('.book-now-btn');
+  if (!btn) return;
+  trackClick(btn.dataset.clinicId, btn.dataset.clickType, btn.dataset.neighbourhood);
+});
 
 function renderCards() {
   if (!clinics || clinics.length === 0) return;
@@ -1908,7 +1915,7 @@ function renderCards() {
               const bookHref = c.booking_url || c.website || (c.phone ? 'tel:' + c.phone.replace(/\s/g,'') : null);
               const bookType = c.booking_url ? 'booking' : c.website ? 'website' : 'phone';
               if (!bookHref) return '';
-              return `<a href="${bookHref}" target="_blank" rel="noopener" class="intent-btn" style="background:var(--rose);border-color:var(--rose);color:#fff;" onclick="trackClick(${c.id},'${bookType}','${(c.neighbourhood||'').replace(/'/g,'')}')" >Book Now</a>`;
+              return `<a href="${bookHref}" target="_blank" rel="noopener" class="intent-btn book-now-btn" style="background:var(--rose);border-color:var(--rose);color:#fff;" data-clinic-id="${c.id}" data-click-type="${bookType}" data-neighbourhood="${(c.neighbourhood||'').replace(/"/g,'')}">Book Now</a>`;
             })()}
             <button class="btn-compare-card" id="cmp-${c.id}" onclick="toggleCompare('${c.id}')">+ Compare</button>
           </div>
@@ -2399,11 +2406,12 @@ async function openCompareModal() {
   }).join('');
 
   const bookCells = selected.map(c => {
-    if (!c.claimed) return `<td><span style="color:var(--dim);font-style:italic">—</span></td>`;
+    const isClaimed = c.claimed === true || c.claimed === 'true' || c.claimed === 1;
+    if (!isClaimed) return `<td><span style="color:var(--dim);font-style:italic">—</span></td>`;
     const bookHref = c.booking_url || c.website || (c.phone ? 'tel:' + c.phone.replace(/\s/g,'') : null);
     const bookType = c.booking_url ? 'booking' : c.website ? 'website' : 'phone';
     if (!bookHref) return `<td><span style="color:var(--dim);font-style:italic">—</span></td>`;
-    return `<td><a href="${bookHref}" target="_blank" rel="noopener" style="display:inline-block;background:var(--rose);color:white;padding:7px 16px;border-radius:6px;font-size:0.82rem;text-decoration:none;letter-spacing:0.02em;" onclick="trackClick(${c.id},'${bookType}','${(c.neighbourhood||'').replace(/'/g,'')}')">Book Now →</a></td>`;
+    return `<td><a href="${bookHref}" target="_blank" rel="noopener" class="book-now-btn" style="display:inline-block;background:var(--rose);color:white;padding:7px 16px;border-radius:6px;font-size:0.82rem;text-decoration:none;letter-spacing:0.02em;" data-clinic-id="${c.id}" data-click-type="${bookType}" data-neighbourhood="${(c.neighbourhood||'').replace(/"/g,'')}">Book Now →</a></td>`;
   }).join('');
 
   const practitionerCells = selected.map(c => {
