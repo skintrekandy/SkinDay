@@ -1795,6 +1795,15 @@ function formatPriceDate(dateStr) {
   return d.toLocaleDateString('en-CA', { month: 'long', year: 'numeric' });
 }
 
+// ─── CLICK TRACKING ─────────────────────────────────────────
+function trackClick(clinicId, clickType, neighbourhood) {
+  fetch('/api/track-click', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ clinic_id: clinicId, click_type: clickType, neighbourhood: neighbourhood || null })
+  }).catch(() => {}); // fire-and-forget
+}
+
 function renderCards() {
   if (!clinics || clinics.length === 0) return;
   const grid = document.getElementById('cardsGrid');
@@ -1893,7 +1902,14 @@ function renderCards() {
         </div>
         <div class="card-footer">
           <a href="#" class="view-link" onclick="event.preventDefault(); openClinicModal(${c.id})">View Profile →</a>
-          <div style="display:flex;gap:0.4rem;">
+          <div style="display:flex;gap:0.4rem;align-items:center;">
+            ${(() => {
+              if (!c.claimed) return '';
+              const bookHref = c.booking_url || c.website || (c.phone ? 'tel:' + c.phone.replace(/\s/g,'') : null);
+              const bookType = c.booking_url ? 'booking' : c.website ? 'website' : 'phone';
+              if (!bookHref) return '';
+              return `<a href="${bookHref}" target="_blank" rel="noopener" class="intent-btn" style="background:var(--rose);border-color:var(--rose);color:#fff;" onclick="trackClick(${c.id},'${bookType}','${(c.neighbourhood||'').replace(/'/g,'')}')" >Book Now</a>`;
+            })()}
             <button class="btn-compare-card" id="cmp-${c.id}" onclick="toggleCompare('${c.id}')">+ Compare</button>
           </div>
         </div>
@@ -2384,7 +2400,7 @@ async function openCompareModal() {
 
   const bookCells = selected.map(c => {
     if (c.booking_url) {
-      return `<td><a href="${c.booking_url}" target="_blank" rel="noopener" style="display:inline-block;background:var(--rose);color:white;padding:7px 16px;border-radius:6px;font-size:0.82rem;text-decoration:none;font-family:var(--font-body);letter-spacing:0.02em;">Book Now →</a></td>`;
+      return `<td><a href="${c.booking_url}" target="_blank" rel="noopener" style="display:inline-block;background:var(--rose);color:white;padding:7px 16px;border-radius:6px;font-size:0.82rem;text-decoration:none;font-family:var(--font-body);letter-spacing:0.02em;" onclick="trackClick(${c.id},'booking','${(c.neighbourhood||'').replace(/'/g,'')}')">Book Now →</a></td>`;
     }
     return `<td><span style="color:var(--dim);font-style:italic">—</span></td>`;
   }).join('');
