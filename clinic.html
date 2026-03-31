@@ -480,7 +480,7 @@ function trackClick(clinicId, clickType, neighbourhood) {
   fetch('/api/track-click', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ clinic_id: clinicId, click_type: clickType, neighbourhood: neighbourhood || null })
+    body: JSON.stringify({ clinic_id: String(clinicId), click_type: clickType, neighbourhood: neighbourhood || null })
   }).catch(() => {});
 }
 
@@ -875,30 +875,24 @@ async function initFromDB() {
   if (!slug) { renderNotFound(''); return; }
 
   try {
-    // Try to get all clinics from DB — only approved ones
     const res = await fetch('/api/get-clinics');
     const data = res.ok ? await res.json() : [];
-    const overrides = Array.isArray(data) ? data : (data.clinics || data.data || []);
+    const all = Array.isArray(data) ? data : (data.clinics || data.data || []);
 
-    // Try matching the slug against static array first (has full data like name, rating, etc)
-    let clinic = clinics.find(c => toSlug(c.name) === slug);
-    if (!clinic && !isNaN(slug)) clinic = clinics.find(c => c.id == slug);
+    // Normalise array fields
+    all.forEach(o => {
+      ['injector_credentials', 'languages'].forEach(field => {
+        if (typeof o[field] === 'string') { try { o[field] = JSON.parse(o[field]); } catch(e) { o[field] = []; } }
+        if (!Array.isArray(o[field])) o[field] = [];
+      });
+      o.id = Number(o.id) || o.id;
+    });
+
+    // Match by slug first, then by numeric id
+    let clinic = all.find(c => toSlug(c.name) === slug);
+    if (!clinic && !isNaN(slug)) clinic = all.find(c => c.id == slug);
 
     if (!clinic) { renderNotFound(slug); return; }
-
-    // Merge DB overrides
-    if (overrides.length > 0) {
-      const override = overrides.find(o => o.id == clinic.id);
-      if (override) {
-        ['injector_credentials', 'languages'].forEach(field => {
-          if (typeof override[field] === 'string') {
-            try { override[field] = JSON.parse(override[field]); } catch(e) { override[field] = []; }
-          }
-          if (!Array.isArray(override[field])) override[field] = [];
-        });
-        Object.assign(clinic, override);
-      }
-    }
 
     renderClinic(clinic);
 
@@ -920,10 +914,7 @@ async function initFromDB() {
     } catch(e) { /* non-fatal */ }
 
   } catch(e) {
-    // Fallback: try static array only
-    const clinic = clinics.find(c => toSlug(c.name) === slug);
-    if (clinic) renderClinic(clinic);
-    else renderNotFound(slug);
+    renderNotFound(slug);
   }
 }
 </script>
