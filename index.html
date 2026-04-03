@@ -612,7 +612,7 @@
       font-style: italic;
       padding: 0.3rem 0;
     }
-    .clinic-card.no-price { opacity: 0.4; }
+    .clinic-card.no-price { opacity: 0.7; }
     .clinic-card.no-price .price-amount { color: var(--dim); }
 
     /* price rank indicator */
@@ -2180,8 +2180,10 @@ function closeMissingClinicModal() {
   document.getElementById('missingClinicModal').classList.remove('open');
 }
 
-document.getElementById('missingClinicModal')?.addEventListener('click', function(e) {
-  if (e.target === this) closeMissingClinicModal();
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('missingClinicModal')?.addEventListener('click', function(e) {
+    if (e.target === this) closeMissingClinicModal();
+  });
 });
 
 async function submitMissingClinic() {
