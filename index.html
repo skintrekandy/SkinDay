@@ -448,9 +448,14 @@
       border: 1px solid rgba(201,169,110,0.3);
     }
     .badge-promo {
+      position: absolute; top: 1rem; right: 1rem;
       background: rgba(200,114,90,0.12);
       color: var(--rose);
       border: 1px solid rgba(200,114,90,0.25);
+      font-size: 0.62rem; font-weight: 700; letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 0.2rem 0.55rem;
+      border-radius: 3px;
     }
     .badge-transparent {
       background: rgba(61,122,85,0.1);
@@ -626,8 +631,33 @@
     .rank-low { background: rgba(61,122,85,0.12); color: var(--green); border: 1px solid rgba(61,122,85,0.25); }
     .rank-mid { background: rgba(201,169,110,0.15); color: #9A7840; border: 1px solid rgba(201,169,110,0.3); }
     .rank-high { background: rgba(200,114,90,0.12); color: var(--rose); border: 1px solid rgba(200,114,90,0.25); }
-    .price-note-hover { opacity: 0; transition: opacity 0.2s; }
-    .clinic-card:hover .price-note-hover { opacity: 1; }
+    .price-note-hover { display: none; }
+    .price-tooltip-wrap {
+      position: relative; display: inline-flex; align-items: baseline;
+    }
+    .price-tooltip {
+      position: absolute;
+      bottom: calc(100% + 6px);
+      left: 50%; transform: translateX(-50%);
+      background: var(--deep);
+      color: var(--cream);
+      font-size: 0.68rem; font-weight: 400; letter-spacing: 0.02em;
+      white-space: nowrap;
+      padding: 4px 10px;
+      border-radius: 5px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      z-index: 10;
+    }
+    .price-tooltip::after {
+      content: '';
+      position: absolute;
+      top: 100%; left: 50%; transform: translateX(-50%);
+      border: 4px solid transparent;
+      border-top-color: var(--deep);
+    }
+    .price-tooltip-wrap:hover .price-tooltip { opacity: 1; }
 
     /* ─── LOAD MORE ─── */
     .load-more-wrap {
@@ -1973,9 +2003,8 @@ function renderCards() {
       : null;
     const priceHTML = hasPrice
       ? `<div class="price-main">
-           <span class="price-from">from</span><span class="price-amount">$${c.price}</span>
+           <span class="price-from">from</span><span class="price-tooltip-wrap"><span class="price-amount">$${c.price}</span>${priceSourceLabel ? `<span class="price-tooltip">${c.price_source === 'clinic' ? '✓ Managed by clinic' : 'Verified via inquiry'} · ${formatPriceDate(c.price_date)}</span>` : ''}</span>
            <span class="price-unit">/ unit · ${toxinLabel}</span>
-           ${priceSourceLabel ? `<div class="price-note price-note-hover">${priceSourceLabel}</div>` : ''}
          </div>`
       : `<div class="price-not-listed">Price not listed</div>`;
     const rankHTML = '';
@@ -1989,9 +2018,9 @@ function renderCards() {
     const pillsHTML = (credPills || langPills) ? `<div class="card-pills">${credPills}${langPills}</div>` : '';
     return `
       <div class="clinic-card${hasPrice ? '' : ' no-price'}" data-id="${c.id}">
-        ${rankHTML}
+        ${(c.promo && c.promo_text) ? '<span class="badge badge-promo">Promo</span>' : ''}
         <div class="card-header">
-          <div class="card-badges">${badgeHTML}</div>
+          <div class="card-badges"></div>
           <div class="clinic-name">
             ${c.claimed
               ? `<span class="clinic-name-verified">${c.logo_url ? `<img src="${c.logo_url}" alt="${c.name}" style="width:24px;height:24px;border-radius:4px;object-fit:contain;border:1px solid var(--border);background:#fff;flex-shrink:0;margin-right:4px;vertical-align:middle;" onerror="this.style.display='none'">` : ''}${c.name}<span class="verified-tick"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 6 5 9 10 3"/></svg></span></span>`
