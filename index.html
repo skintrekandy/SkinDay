@@ -1534,10 +1534,10 @@
   <div class="hero-inner">
     <div class="hero-eyebrow">Greater Toronto Area</div>
     <h1>Find the right cosmetic clinic for you.</h1>
-    <p class="hero-sub"><strong style="color:var(--cream);font-weight:500;">When every clinic looks perfect, but not every clinic is the same.</strong><br>See what actually separates them: injector expertise, experience, and overall fit. Browse <span id="heroClinicCount">1,947+</span> GTA clinics with real context.</p>
+    <p class="hero-sub"><strong style="color:var(--cream);font-weight:500;">When every clinic looks perfect, but not every clinic is the same.</strong><br>See what actually separates them: injector expertise, experience, and overall fit. Browse <span id="heroClinicCount">1,861+</span> GTA clinics with real context.</p>
     <div class="hero-stats">
       <div>
-        <div class="stat-num" id="statClinicCount">1,947+</div>
+        <div class="stat-num" id="statClinicCount">1,861+</div>
         <div class="stat-label">GTA Clinics Listed</div>
       </div>
       <div>
@@ -1656,7 +1656,7 @@
     <div class="trust-icon">📍</div>
     <div class="trust-text">
       <strong>GTA-Only Focus</strong>
-      <span><span id="trustClinicCount">1,947</span> clinics across the Greater Toronto Area</span>
+      <span><span id="trustClinicCount">1,861</span> clinics across the Greater Toronto Area</span>
     </div>
   </div>
 </div>
@@ -1688,7 +1688,7 @@
   <div class="dir-header">
     <div>
       <h2>Browse by <em>neighbourhood</em></h2>
-      <p class="dir-count"><span id="dirClinicCount">1,947</span> GTA clinics across all areas</p>
+      <p class="dir-count"><span id="dirClinicCount">1,861</span> GTA clinics across all areas</p>
     </div>
     <a href="#" class="btn-ghost">View Full Directory →</a>
   </div>
@@ -2180,7 +2180,7 @@ function closeMissingClinicModal() {
   document.getElementById('missingClinicModal').classList.remove('open');
 }
 
-document.getElementById('missingClinicModal').addEventListener('click', function(e) {
+document.getElementById('missingClinicModal')?.addEventListener('click', function(e) {
   if (e.target === this) closeMissingClinicModal();
 });
 
