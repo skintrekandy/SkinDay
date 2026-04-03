@@ -988,33 +988,31 @@
     .dir-count {
       font-size: 0.8rem; color: var(--muted); font-weight: 300;
     }
-    .dir-grid {
+    .dir-chart-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 0.75rem;
-      max-width: 1280px; margin: 0 auto 2rem;
+      grid-template-columns: 200px 1fr;
+      gap: 2.5rem;
+      max-width: 1280px; margin: 0 auto 1.5rem;
+      align-items: start;
     }
-    .dir-pill {
-      background: var(--cream);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 1rem 1.2rem;
-      text-decoration: none;
-      transition: all 0.2s;
-      display: flex; align-items: center; justify-content: space-between;
+    .dir-donut-wrap { display: flex; flex-direction: column; align-items: center; }
+    .dir-legend { margin-top: 1rem; width: 100%; display: flex; flex-direction: column; gap: 0.35rem; }
+    .dir-legend-row { display: flex; align-items: center; gap: 0.45rem; font-size: 0.72rem; color: var(--deep); }
+    .dir-legend-dot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
+    .dir-legend-pct { margin-left: auto; color: var(--muted); }
+    .dir-bar-chart { width: 100%; }
+    .dir-bar-row { display: grid; grid-template-columns: 100px 1fr 44px; gap: 0.65rem; align-items: center; margin-bottom: 0.6rem; cursor: pointer; }
+    .dir-bar-row:hover .dir-bar-label { color: var(--rose); }
+    .dir-bar-label { font-size: 0.73rem; color: var(--deep); font-weight: 500; transition: color 0.2s; }
+    .dir-bar-track { background: var(--border); border-radius: 4px; height: 7px; overflow: hidden; }
+    .dir-bar-fill { height: 100%; border-radius: 4px; transition: width 0.8s ease; }
+    .dir-bar-count { font-size: 0.72rem; color: var(--muted); text-align: right; }
+    .dir-caption { font-size: 0.68rem; color: var(--dim); margin-top: 1rem; max-width: 1280px; margin-left: auto; margin-right: auto; }
+    .dir-cta { text-align: center; margin-top: 1.5rem; }
+    @media (max-width: 640px) {
+      .dir-chart-grid { grid-template-columns: 1fr; gap: 1.5rem; }
+      .dir-donut-wrap canvas { width: 160px !important; height: 160px !important; }
     }
-    .dir-pill:hover {
-      border-color: var(--rose);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 16px rgba(28,23,20,0.07);
-    }
-    .dir-pill-name {
-      font-size: 0.85rem; font-weight: 500; color: var(--deep);
-    }
-    .dir-pill-count {
-      font-size: 0.75rem; color: var(--muted);
-    }
-    .dir-cta { text-align: center; }
 
     /* ─── FOOTER ─── */
     footer {
@@ -1534,10 +1532,10 @@
   <div class="hero-inner">
     <div class="hero-eyebrow">Greater Toronto Area</div>
     <h1>Find the right cosmetic clinic for you.</h1>
-    <p class="hero-sub"><strong style="color:var(--cream);font-weight:500;">When every clinic looks perfect, but not every clinic is the same.</strong><br>See what actually separates them: injector expertise, experience, and overall fit. Browse <span id="heroClinicCount">1,861+</span> GTA clinics with real context.</p>
+    <p class="hero-sub"><strong style="color:var(--cream);font-weight:500;">When every clinic looks perfect, but not every clinic is the same.</strong><br>See what actually separates them: injector expertise, experience, and overall fit. Browse <span id="heroClinicCount">2,203+</span> GTA clinics with real context.</p>
     <div class="hero-stats">
       <div>
-        <div class="stat-num" id="statClinicCount">1,861+</div>
+        <div class="stat-num" id="statClinicCount">2,203+</div>
         <div class="stat-label">GTA Clinics Listed</div>
       </div>
       <div>
@@ -1659,7 +1657,7 @@
     <div class="trust-icon">📍</div>
     <div class="trust-text">
       <strong>GTA-Only Focus</strong>
-      <span><span id="trustClinicCount">1,861</span> clinics across the Greater Toronto Area</span>
+      <span><span id="trustClinicCount">2,203</span> clinics across the Greater Toronto Area</span>
     </div>
   </div>
 </div>
@@ -1691,24 +1689,125 @@
   <div class="dir-header">
     <div>
       <h2>Browse by <em>neighbourhood</em></h2>
-      <p class="dir-count"><span id="dirClinicCount">2,040</span> clinics across all areas</p>
+      <p class="dir-count"><span id="dirClinicCount">2,203</span> clinics across all areas</p>
     </div>
     <a href="#" class="btn-ghost">View Full Directory →</a>
   </div>
-  <div class="dir-grid">
-    <a href="#prices" class="dir-pill" onclick="filterByPill('toronto')"><span class="dir-pill-name">Toronto</span><span class="dir-pill-count">367 clinics</span></a>
-    <a href="#prices" class="dir-pill" onclick="filterByPill('north-york')"><span class="dir-pill-name">North York</span><span class="dir-pill-count">210 clinics</span></a>
-    <a href="#prices" class="dir-pill" onclick="filterByPill('brampton')"><span class="dir-pill-name">Brampton</span><span class="dir-pill-count">148 clinics</span></a>
-    <a href="#prices" class="dir-pill" onclick="filterByPill('richmond-hill')"><span class="dir-pill-name">Richmond Hill</span><span class="dir-pill-count">119 clinics</span></a>
-    <a href="#prices" class="dir-pill" onclick="filterByPill('london')"><span class="dir-pill-name">London</span><span class="dir-pill-count">109 clinics</span></a>
-    <a href="#prices" class="dir-pill" onclick="filterByPill('etobicoke')"><span class="dir-pill-name">Etobicoke</span><span class="dir-pill-count">110 clinics</span></a>
-    <a href="#prices" class="dir-pill" onclick="filterByPill('markham')"><span class="dir-pill-name">Markham</span><span class="dir-pill-count">89 clinics</span></a>
-    <a href="#prices" class="dir-pill" onclick="filterByPill('thornhill')"><span class="dir-pill-name">Thornhill</span><span class="dir-pill-count">87 clinics</span></a>
+  <div class="dir-chart-grid">
+    <div class="dir-donut-wrap">
+      <canvas id="dirDonut" width="200" height="200"></canvas>
+      <div class="dir-legend" id="dirLegend"></div>
+    </div>
+    <div>
+      <div class="dir-bar-chart" id="dirBars"></div>
+    </div>
   </div>
+  <p class="dir-caption">Top 10 areas · <span id="dirCaptionCount">2,203</span> clinics total</p>
   <div class="dir-cta">
     <a href="#" class="btn-outline">See All Neighbourhoods →</a>
   </div>
 </section>
+
+<script>
+const DIR_AREA_COLORS = {
+  'toronto':'#C8725A','north-york':'#C9A96E','brampton':'#3D7A55',
+  'richmond-hill':'#8A7B72','etobicoke':'#B5A89F','london':'#a0614e',
+  'markham':'#9e7a72','thornhill':'#6b4c44','burlington':'#c9736a',
+  'scarborough':'#d4896e','hamilton':'#c4897a','mississauga':'#b07a6e'
+};
+const DIR_AREA_LABELS = {
+  'toronto':'Toronto','north-york':'North York','brampton':'Brampton',
+  'richmond-hill':'Richmond Hill','etobicoke':'Etobicoke','london':'London',
+  'markham':'Markham','thornhill':'Thornhill','burlington':'Burlington',
+  'scarborough':'Scarborough','hamilton':'Hamilton','mississauga':'Mississauga'
+};
+const DIR_FALLBACK = [
+  { area:'Toronto',       key:'toronto',       count:367, color:'#C8725A' },
+  { area:'North York',    key:'north-york',    count:210, color:'#C9A96E' },
+  { area:'Brampton',      key:'brampton',      count:148, color:'#3D7A55' },
+  { area:'Richmond Hill', key:'richmond-hill', count:119, color:'#8A7B72' },
+  { area:'Etobicoke',     key:'etobicoke',     count:110, color:'#B5A89F' },
+  { area:'London',        key:'london',        count:109, color:'#a0614e' },
+  { area:'Markham',       key:'markham',       count:89,  color:'#9e7a72' },
+  { area:'Thornhill',     key:'thornhill',     count:87,  color:'#6b4c44' },
+  { area:'Burlington',    key:'burlington',    count:83,  color:'#c9736a' },
+  { area:'Scarborough',   key:'scarborough',   count:80,  color:'#d4896e' },
+];
+
+function drawDirChart(data) {
+  const canvas = document.getElementById('dirDonut');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const cx = 100, cy = 100, r = 88, inner = 54;
+  const total = data.reduce((s, d) => s + d.count, 0);
+  let angle = -Math.PI / 2;
+  data.forEach(d => {
+    const slice = (d.count / total) * 2 * Math.PI;
+    ctx.beginPath(); ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r, angle, angle + slice);
+    ctx.closePath(); ctx.fillStyle = d.color; ctx.fill();
+    angle += slice;
+  });
+  ctx.beginPath(); ctx.arc(cx, cy, inner, 0, 2 * Math.PI);
+  ctx.fillStyle = '#FAF7F2'; ctx.fill();
+  ctx.fillStyle = '#1C1714';
+  ctx.font = 'bold 20px Cormorant Garamond, serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const label = document.getElementById('dirClinicCount')?.textContent || '2,203';
+  ctx.fillText(label, cx, cy - 9);
+  ctx.font = '10px DM Sans, sans-serif';
+  ctx.fillStyle = '#8A7B72';
+  ctx.fillText('clinics', cx, cy + 12);
+
+  const legend = document.getElementById('dirLegend');
+  if (legend) {
+    legend.innerHTML = '';
+    data.slice(0, 5).forEach(d => {
+      const pct = ((d.count / total) * 100).toFixed(1);
+      legend.innerHTML += `<div class="dir-legend-row"><span class="dir-legend-dot" style="background:${d.color}"></span><span>${d.area}</span><span class="dir-legend-pct">${pct}%</span></div>`;
+    });
+  }
+
+  const bars = document.getElementById('dirBars');
+  if (bars) {
+    bars.innerHTML = '';
+    const max = data[0].count;
+    data.forEach(d => {
+      const pct = Math.round((d.count / max) * 100);
+      bars.innerHTML += `<div class="dir-bar-row" onclick="filterByPill('${d.key}');document.getElementById('prices').scrollIntoView({behavior:'smooth'})">
+        <div class="dir-bar-label">${d.area}</div>
+        <div class="dir-bar-track"><div class="dir-bar-fill" style="width:${pct}%;background:${d.color};"></div></div>
+        <div class="dir-bar-count">${d.count}</div>
+      </div>`;
+    });
+  }
+}
+
+(async function() {
+  try {
+    const res = await fetch('/api/get-clinics');
+    const clinics = res.ok ? await res.json() : [];
+    if (!clinics.length) throw new Error('empty');
+    const counts = {};
+    clinics.forEach(c => { if (c.area) counts[c.area] = (counts[c.area] || 0) + 1; });
+    const sorted = Object.entries(counts)
+      .sort((a, b) => b[1] - a[1]).slice(0, 10)
+      .map(([area, count]) => ({
+        area: DIR_AREA_LABELS[area] || area,
+        key: area,
+        count,
+        color: DIR_AREA_COLORS[area] || '#8A7B72'
+      }));
+    const total = clinics.length;
+    const fmt = total.toLocaleString('en-CA');
+    const cap = document.getElementById('dirCaptionCount');
+    if (cap) cap.textContent = fmt;
+    drawDirChart(sorted);
+  } catch(e) {
+    drawDirChart(DIR_FALLBACK);
+  }
+})();
+</script>
 
 <!-- FOOTER -->
 <footer>
