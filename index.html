@@ -1557,7 +1557,7 @@
   <div class="search-bar">
     <div class="search-field">
       <div class="search-field-label">Clinic Name</div>
-      <input type="text" id="searchClinicName" placeholder="Clinic or injector name…" oninput="applySearch()" autocomplete="off">
+      <input type="text" id="searchClinicName" placeholder="Search clinics…" oninput="applySearch()" autocomplete="off">
     </div>
     <div class="search-field">
       <div class="search-field-label">Neighbourhood</div>
@@ -1929,10 +1929,7 @@ function renderCards() {
   let filtered = clinics.filter(c => {
     // Name search — takes priority, ignores neighbourhood filter
     if (currentNameQuery) {
-      const q = currentNameQuery;
-      const nameMatch = c.name.toLowerCase().includes(q);
-      const practMatch = Array.isArray(c.practitioners) && c.practitioners.some(p => p.name?.toLowerCase().includes(q));
-      return nameMatch || practMatch;
+      return c.name.toLowerCase().includes(currentNameQuery);
     }
     if (currentFilter === 'all') return true;
     if (currentFilter === 'promo') return c.promo && c.promo_text;
