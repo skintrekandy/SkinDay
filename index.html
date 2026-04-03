@@ -626,6 +626,8 @@
     .rank-low { background: rgba(61,122,85,0.12); color: var(--green); border: 1px solid rgba(61,122,85,0.25); }
     .rank-mid { background: rgba(201,169,110,0.15); color: #9A7840; border: 1px solid rgba(201,169,110,0.3); }
     .rank-high { background: rgba(200,114,90,0.12); color: var(--rose); border: 1px solid rgba(200,114,90,0.25); }
+    .price-note-hover { opacity: 0; transition: opacity 0.2s; }
+    .clinic-card:hover .price-note-hover { opacity: 1; }
 
     /* ─── LOAD MORE ─── */
     .load-more-wrap {
@@ -1555,7 +1557,7 @@
   <div class="search-bar">
     <div class="search-field">
       <div class="search-field-label">Clinic Name</div>
-      <input type="text" id="searchClinicName" placeholder="Search clinics…" oninput="applySearch()" autocomplete="off">
+      <input type="text" id="searchClinicName" placeholder="Clinic or injector name…" oninput="applySearch()" autocomplete="off">
     </div>
     <div class="search-field">
       <div class="search-field-label">Neighbourhood</div>
@@ -1927,7 +1929,10 @@ function renderCards() {
   let filtered = clinics.filter(c => {
     // Name search — takes priority, ignores neighbourhood filter
     if (currentNameQuery) {
-      return c.name.toLowerCase().includes(currentNameQuery);
+      const q = currentNameQuery;
+      const nameMatch = c.name.toLowerCase().includes(q);
+      const practMatch = Array.isArray(c.practitioners) && c.practitioners.some(p => p.name?.toLowerCase().includes(q));
+      return nameMatch || practMatch;
     }
     if (currentFilter === 'all') return true;
     if (currentFilter === 'promo') return c.promo && c.promo_text;
@@ -1973,10 +1978,10 @@ function renderCards() {
       ? `<div class="price-main">
            <span class="price-from">from</span><span class="price-amount">$${c.price}</span>
            <span class="price-unit">/ unit · ${toxinLabel}</span>
-           ${priceSourceLabel ? `<div class="price-note">${priceSourceLabel}</div>` : ''}
+           ${priceSourceLabel ? `<div class="price-note price-note-hover">${priceSourceLabel}</div>` : ''}
          </div>`
       : `<div class="price-not-listed">Price not listed</div>`;
-    const rankHTML = hasPrice ? `<div class="price-rank ${cls}">${label}</div>` : '';
+    const rankHTML = '';
     const badgeHTML = [
       (c.promo && c.promo_text) ? '<span class="badge badge-promo">Promo Available</span>' : '',
     ].filter(Boolean).join('');
