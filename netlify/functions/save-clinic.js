@@ -239,6 +239,18 @@ exports.handler = async (event) => {
           console.error('clinic_prices error:', pricesError);
           return { statusCode: 500, headers, body: JSON.stringify({ error: pricesError.message }) };
         }
+
+        // Sync lowest price back to clinics table for card display
+        const lowestRow = priceRows.reduce((min, p) => p.price < min.price ? p : min, priceRows[0]);
+        await supabase
+          .from('clinics')
+          .update({
+            price:        lowestRow.price,
+            price_source: lowestRow.price_source,
+            price_date:   lowestRow.price_date,
+            toxin_type:   lowestRow.toxin
+          })
+          .eq('id', String(clinicId));
       }
 
       return { statusCode: 200, headers, body: JSON.stringify({ success: true }) };
