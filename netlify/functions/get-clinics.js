@@ -69,7 +69,7 @@ exports.handler = async () => {
       headers: {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
-        'Cache-Control': 'public, max-age=3600', // 1-hour CDN cache
+        'Cache-Control': 'public, max-age=300', // 5-minute CDN cache
       },
       body: JSON.stringify(merged),
     };
