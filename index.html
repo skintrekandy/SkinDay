@@ -1593,24 +1593,41 @@
       <div class="search-field-label">Neighbourhood</div>
       <select id="searchNeighbourhood" onchange="applySearch()">
         <option value="all">Anywhere in GTA</option>
-        <option value="toronto">Toronto</option>
-        <option value="north-york">North York</option>
-        <option value="scarborough">Scarborough</option>
-        <option value="etobicoke">Etobicoke</option>
-        <option value="brampton">Brampton</option>
-        <option value="richmond-hill">Richmond Hill</option>
-        <option value="markham">Markham</option>
-        <option value="thornhill">Thornhill</option>
-        <option value="burlington">Burlington</option>
-        <option value="hamilton">Hamilton</option>
-        <option value="mississauga">Mississauga</option>
-        <option value="oakville">Oakville</option>
-        <option value="vaughan">Vaughan</option>
-        <option value="milton">Milton</option>
-        <option value="woodbridge">Woodbridge</option>
-        <option value="aurora">Aurora</option>
-        <option value="newmarket">Newmarket</option>
-        <option value="london">London</option>
+        <optgroup label="City of Toronto">
+          <option value="toronto">Toronto</option>
+          <option value="north-york">North York</option>
+          <option value="scarborough">Scarborough</option>
+          <option value="etobicoke">Etobicoke</option>
+        </optgroup>
+        <optgroup label="Peel Region">
+          <option value="mississauga">Mississauga</option>
+          <option value="brampton">Brampton</option>
+        </optgroup>
+        <optgroup label="York Region">
+          <option value="markham">Markham</option>
+          <option value="vaughan">Vaughan</option>
+          <option value="woodbridge">Woodbridge</option>
+          <option value="richmond-hill">Richmond Hill</option>
+          <option value="thornhill">Thornhill</option>
+          <option value="aurora">Aurora</option>
+          <option value="newmarket">Newmarket</option>
+        </optgroup>
+        <optgroup label="Durham Region">
+          <option value="oshawa">Oshawa</option>
+          <option value="whitby">Whitby</option>
+          <option value="ajax">Ajax</option>
+          <option value="pickering">Pickering</option>
+        </optgroup>
+        <optgroup label="Halton Region">
+          <option value="oakville">Oakville</option>
+          <option value="burlington">Burlington</option>
+          <option value="milton">Milton</option>
+        </optgroup>
+        <optgroup label="Outside GTA">
+          <option value="hamilton">Hamilton</option>
+          <option value="london">London</option>
+          <option value="ottawa">Ottawa</option>
+        </optgroup>
       </select>
     </div>
     <div class="search-field">
