@@ -3,20 +3,20 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-  <title>SkinDay — The GTA's First Public Botox Price Directory</title>
-  <meta name="description" content="The GTA's first public Botox price directory. Browse 1,700+ clinics with verified, publicly listed prices and Google reviews." />
+  <title>SkinDay — Canada's First Public Botox Price Directory</title>
+  <meta name="description" content="Canada's first public Botox price directory. Browse clinics across Ontario with verified, publicly listed prices and Google reviews." />
 
   <!-- OpenGraph -->
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://skinday.ca/" />
-  <meta property="og:title" content="SkinDay — The GTA's First Public Botox Price Directory" />
-  <meta property="og:description" content="The GTA's first public Botox price directory. Browse 1,700+ clinics with verified, publicly listed prices." />
+  <meta property="og:title" content="SkinDay — Canada's First Public Botox Price Directory" />
+  <meta property="og:description" content="Canada's first public Botox price directory. Browse clinics across Ontario with verified, publicly listed prices." />
   <meta property="og:site_name" content="SkinDay" />
 
   <!-- Twitter/X -->
   <meta name="twitter:card" content="summary" />
-  <meta name="twitter:title" content="SkinDay — The GTA's First Public Botox Price Directory" />
-  <meta name="twitter:description" content="The GTA's first public Botox price directory. Browse 1,700+ clinics with verified, publicly listed prices." />
+  <meta name="twitter:title" content="SkinDay — Canada's First Public Botox Price Directory" />
+  <meta name="twitter:description" content="Canada's first public Botox price directory. Browse clinics across Ontario with verified, publicly listed prices." />
   <meta name="google-site-verification" content="_Ug0tqzwO8eda09chcefdvbgqKWMIR8ZBaakXaz26FQ" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -1562,13 +1562,13 @@
 <!-- HERO -->
 <section class="hero">
   <div class="hero-inner">
-    <div class="hero-eyebrow">Greater Toronto Area</div>
+    <div class="hero-eyebrow">Ontario, Canada</div>
     <h1>Find the right cosmetic clinic for you.</h1>
-    <p class="hero-sub"><strong style="color:var(--cream);font-weight:500;">When every clinic looks perfect, but not every clinic is the same.</strong><br>See what actually separates them: injector expertise, experience, and overall fit. Browse <span id="heroClinicCount">2,003+</span> GTA clinics with real context.</p>
+    <p class="hero-sub"><strong style="color:var(--cream);font-weight:500;">When every clinic looks perfect, but not every clinic is the same.</strong><br>See what actually separates them: injector expertise, experience, and overall fit. Browse <span id="heroClinicCount">2,003+</span> clinics across Ontario with real context.</p>
     <div class="hero-stats">
       <div>
         <div class="stat-num" id="statClinicCount">2,003+</div>
-        <div class="stat-label">GTA Clinics Listed</div>
+        <div class="stat-label">Ontario Clinics Listed</div>
       </div>
       <div>
         <div class="stat-num">Google</div>
@@ -1592,7 +1592,7 @@
     <div class="search-field">
       <div class="search-field-label">Neighbourhood</div>
       <select id="searchNeighbourhood" onchange="applySearch()">
-        <option value="all">Anywhere in GTA</option>
+        <option value="all">Anywhere in Ontario</option>
         <optgroup label="City of Toronto">
           <option value="toronto">Toronto</option>
           <option value="north-york">North York</option>
@@ -1651,7 +1651,7 @@
 <section class="comparison-section" id="prices">
   <div class="section-header">
     <div class="section-eyebrow">Find the Right Clinic — Not Just the Right Price</div>
-    <h2 class="section-title">The GTA's first<br><em>verified Botox price directory.</em></h2>
+    <h2 class="section-title">Canada's first<br><em>verified Botox price directory.</em></h2>
     <p class="section-desc">Compare pricing alongside reputation and profile — because the best clinic is about fit, not just cost. Clinics without pricing are still visible, so you see the full landscape.</p>
   </div>
 
@@ -1705,8 +1705,8 @@
   <div class="trust-item">
     <div class="trust-icon">📍</div>
     <div class="trust-text">
-      <strong>GTA-Only Focus</strong>
-      <span><span id="trustClinicCount">2,003</span> clinics across the Greater Toronto Area</span>
+      <strong>Ontario-Wide Coverage</strong>
+      <span><span id="trustClinicCount">2,003</span> clinics across Ontario</span>
     </div>
   </div>
 </div>
@@ -1762,13 +1762,21 @@ const DIR_AREA_COLORS = {
   'toronto':'#C8725A','north-york':'#C9A96E','brampton':'#3D7A55',
   'richmond-hill':'#8A7B72','etobicoke':'#B5A89F','london':'#a0614e',
   'markham':'#9e7a72','thornhill':'#6b4c44','burlington':'#c9736a',
-  'scarborough':'#d4896e','hamilton':'#c4897a','mississauga':'#b07a6e'
+  'scarborough':'#d4896e','hamilton':'#c4897a','mississauga':'#b07a6e',
+  'vaughan':'#7a6a8a','woodbridge':'#6a5a7a','aurora':'#5a8a7a',
+  'newmarket':'#4a7a6a','oakville':'#8a6a5a','milton':'#7a8a6a',
+  'ajax':'#4a6a8a','pickering':'#5a7a8a','whitby':'#6a8a9a','oshawa':'#7a9aaa',
+  'ottawa':'#4a5a8a'
 };
 const DIR_AREA_LABELS = {
   'toronto':'Toronto','north-york':'North York','brampton':'Brampton',
   'richmond-hill':'Richmond Hill','etobicoke':'Etobicoke','london':'London',
   'markham':'Markham','thornhill':'Thornhill','burlington':'Burlington',
-  'scarborough':'Scarborough','hamilton':'Hamilton','mississauga':'Mississauga'
+  'scarborough':'Scarborough','hamilton':'Hamilton','mississauga':'Mississauga',
+  'vaughan':'Vaughan','woodbridge':'Woodbridge','aurora':'Aurora',
+  'newmarket':'Newmarket','oakville':'Oakville','milton':'Milton',
+  'ajax':'Ajax','pickering':'Pickering','whitby':'Whitby','oshawa':'Oshawa',
+  'ottawa':'Ottawa'
 };
 const DIR_FALLBACK = [
   { area:'Toronto',       key:'toronto',       count:367, color:'#C8725A' },
@@ -1863,7 +1871,7 @@ function drawDirChart(data) {
   <div class="footer-top">
     <div>
       <div class="footer-brand">Skin<span>Day</span></div>
-      <div class="footer-tagline">GTA's only cosmetic clinic directory with publicly listed prices.</div>
+      <div class="footer-tagline">Ontario's cosmetic clinic directory with publicly listed prices.</div>
     </div>
     <div class="footer-links">
       <h4>Discover</h4>
@@ -2207,7 +2215,7 @@ function useNearMe() {
       } else {
         currentFilter = 'all';
         renderCards();
-        showToast('Showing all GTA clinics — location outside GTA coverage area.');
+        showToast('Showing all Ontario clinics — location outside coverage area.');
       }
       document.getElementById('prices').scrollIntoView({ behavior: 'smooth', block: 'start' });
     },
@@ -2491,7 +2499,7 @@ async function openCompareModal() {
     return `
     <td class="compare-col-header">
       <span class="col-name">${displayName}</span>
-      <span class="col-meta">${c.neighbourhood} · GTA</span>
+      <span class="col-meta">${c.neighbourhood} · Ontario</span>
     </td>`;
   }).join('');
 
