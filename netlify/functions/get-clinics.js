@@ -11,12 +11,13 @@ exports.handler = async () => {
     const { data: clinics, error: clinicsError } = await supabase
       .from('clinics')
       .select(`
-        id, name, neighbourhood, area, rating, reviews,
+        id, name, neighbourhood, area, province, region, rating, reviews,
         place_id, maps_url, rank, phone, website,
         claimed, approved,
         promo, promo_text, booking_url, email, photos, logo_url,
         toxin_type, injector_credentials, languages,
-        price, price_source, price_date
+        price, price_source, price_date,
+        practitioners (id, name, designation, display_order)
       `)
       .eq('approved', true)
       .order('id', { ascending: true })
@@ -59,9 +60,14 @@ exports.handler = async () => {
           price_date:   lowest.price_date,
           toxin_type:   lowest.toxin,
           prices:       clinicPrices,
+          practitioners: (clinic.practitioners || []).sort((a,b) => a.display_order - b.display_order),
         };
       }
-      return { ...clinic, prices: [] };
+      return {
+        ...clinic,
+        prices: [],
+        practitioners: (clinic.practitioners || []).sort((a,b) => a.display_order - b.display_order),
+      };
     });
 
     return {
