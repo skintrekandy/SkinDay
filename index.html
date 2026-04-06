@@ -1000,6 +1000,52 @@
       line-height: 1.5;
     }
 
+    /* ─── DATA STAT STRIP ─── */
+    .stat-strip {
+      background: var(--deep2);
+      border-top: 1px solid var(--hero-border);
+      border-bottom: 1px solid var(--hero-border);
+      padding: 48px 5%;
+    }
+    .stat-strip-inner {
+      max-width: 1280px; margin: 0 auto;
+    }
+    .stat-strip-eyebrow {
+      font-size: 0.7rem; font-weight: 500; letter-spacing: 0.14em;
+      text-transform: uppercase; color: var(--gold);
+      margin-bottom: 2rem; text-align: center;
+    }
+    .stat-strip-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1px;
+      background: rgba(201,169,110,0.15);
+      border: 1px solid rgba(201,169,110,0.15);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .stat-strip-item {
+      background: var(--deep2);
+      padding: 1.5rem 2rem;
+      text-align: center;
+    }
+    .stat-strip-num {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 2.4rem; font-weight: 300;
+      color: var(--cream); line-height: 1;
+      margin-bottom: 0.4rem;
+    }
+    .stat-strip-num em { color: var(--gold); font-style: normal; }
+    .stat-strip-desc {
+      font-size: 0.78rem; color: var(--muted);
+      line-height: 1.5; max-width: 180px; margin: 0 auto;
+    }
+    @media (max-width: 640px) {
+      .stat-strip-grid { grid-template-columns: 1fr 1fr; }
+      .stat-strip-num { font-size: 1.9rem; }
+      .stat-strip-item { padding: 1.2rem 1rem; }
+    }
+
     /* ─── FOOTER ─── */
     footer {
       background: var(--deep);
@@ -1722,6 +1768,38 @@
 </section>
 
 <!-- DIRECTORY TEASER -->
+<!-- DATA STAT STRIP -->
+<div class="stat-strip">
+  <div class="stat-strip-inner">
+    <div class="stat-strip-eyebrow">Canada's cosmetic clinic market — by the numbers</div>
+    <div class="stat-strip-grid">
+      <div class="stat-strip-item">
+        <div class="stat-strip-num"><em>2,667</em></div>
+        <div class="stat-strip-desc">clinics listed across Ontario and British Columbia</div>
+      </div>
+      <div class="stat-strip-item">
+        <div class="stat-strip-num"><em>71%</em></div>
+        <div class="stat-strip-desc">of clinics rated 4.8+ stars — in both GTA and Vancouver</div>
+      </div>
+      <div class="stat-strip-item">
+        <div class="stat-strip-num"><em>42</em></div>
+        <div class="stat-strip-desc">clinics per 100k in Richmond BC — highest density in Canada</div>
+      </div>
+      <div class="stat-strip-item">
+        <div class="stat-strip-num"><em>5×</em></div>
+        <div class="stat-strip-desc">price spread across GTA clinics for the same treatment</div>
+      </div>
+      <div class="stat-strip-item">
+        <div class="stat-strip-num"><em>339</em></div>
+        <div class="stat-strip-desc">clinics in Toronto — largest single-city concentration in Canada</div>
+      </div>
+      <div class="stat-strip-item">
+        <div class="stat-strip-num"><em>130</em></div>
+        <div class="stat-strip-desc">avg Google reviews per clinic — patients are engaged</div>
+      </div>
+    </div>
+  </div>
+</div>
 <!-- FOOTER -->
 <footer>
   <div class="footer-top">
