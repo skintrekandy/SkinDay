@@ -1507,7 +1507,7 @@
   <a href="#" class="nav-logo">Skin<span>Day</span></a>
   <ul class="nav-links"></ul>
   <div class="nav-ctas">
-    <a href="/guide/botox-cost-toronto" class="nav-botox-guide">Botox Price Guide</a>
+    <a href="/guide/botox-cost-toronto" class="nav-botox-guide">Botox Guide Toronto</a>
     <a href="/claim2.html" class="nav-cta">Claim Your Clinic</a>
     <a href="/editor.html" class="nav-cta">Clinic Portal</a>
   </div>
@@ -1614,7 +1614,7 @@
         <option value="all">Any credential</option>
         <option value="physician">MD / Physician</option>
         <option value="np">Nurse Practitioner</option>
-        <option value="rn">RN / RPN</option>
+        <option value="rn">RN / RPN / LPN</option>
         <option value="img">IMG</option>
       </select>
     </div>
@@ -1721,7 +1721,7 @@
     <div class="footer-links">
       <h4>Discover</h4>
       <ul>
-        <li><a href="/guide/botox-cost-toronto">Botox Cost in Toronto</a></li>
+        <li><a href="/guide/botox-cost-toronto">Botox Guide Toronto</a></li>
         <li><a href="#directory">All Clinics</a></li>
       </ul>
     </div>
@@ -1888,7 +1888,7 @@ function renderCards() {
     const badgeHTML = [
       (c.promo && c.promo_text) ? '<span class="badge badge-promo">Promo Available</span>' : '',
     ].filter(Boolean).join('');
-    const credMap = { physician:'MD', np:'NP', rn:'RN/RPN', img:'IMG' };
+    const credMap = { physician:'MD', np:'NP', rn:'RN/RPN/LPN', img:'IMG' };
     const langMap = { english:'EN', mandarin:'中文', cantonese:'粵', farsi:'فا', french:'FR', korean:'한', hindi:'हि', arabic:'عر', punjabi:'ਪੰ', portuguese:'PT' };
     const credPills = (c.injector_credentials || []).map(v => `<span class="pill pill-cred">${credMap[v] || v.toUpperCase()}</span>`).join('');
     const langPills = (c.languages || []).map(v => `<span class="pill pill-lang">${langMap[v] || v}</span>`).join('');
@@ -2396,7 +2396,7 @@ async function openCompareModal() {
     return `<td><span style="color:var(--muted)">No current promo</span></td>`;
   }).join('');
 
-  const credLabels = { physician: 'MD / Physician', np: 'Nurse Practitioner', rn: 'RN / RPN', img: 'IMG' };
+  const credLabels = { physician: 'MD / Physician', np: 'Nurse Practitioner', rn: 'RN / RPN / LPN', img: 'IMG' };
   const credCells = selected.map(c => {
     const creds = Array.isArray(c.injector_credentials) ? c.injector_credentials : [];
     if (!creds.length) return `<td><span style="color:var(--dim);font-style:italic">Not listed</span></td>`;
@@ -2769,7 +2769,7 @@ function openClinicModal(clinicId) {
   } else if (clinic.prices && clinic.prices.length > 0) {
     // Multi-price breakdown table
     document.getElementById('cm-price-filled').style.display = 'block';
-    const credMap = { physician:'MD', np:'NP', rn:'RN/RPN', img:'IMG' };
+    const credMap = { physician:'MD', np:'NP', rn:'RN/RPN/LPN', img:'IMG' };
     const sorted = [...clinic.prices].sort((a,b) => a.price - b.price);
     const lowest = sorted[0];
     document.getElementById('cm-price-val').textContent = '$' + lowest.price;
@@ -2891,7 +2891,7 @@ function openClinicModal(clinicId) {
   }
 
   // Injector credentials
-  const credLabels = { physician: 'MD / Physician', np: 'Nurse Practitioner', rn: 'RN / RPN', img: 'IMG' };
+  const credLabels = { physician: 'MD / Physician', np: 'Nurse Practitioner', rn: 'RN / RPN / LPN', img: 'IMG' };
   const creds = Array.isArray(clinic.injector_credentials) ? clinic.injector_credentials : [];
   if (creds.length) {
     document.getElementById('cm-creds-row').style.display = 'flex';
