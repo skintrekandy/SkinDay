@@ -4,19 +4,19 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
   <title>SkinDay — Canada's First Public Botox Price Directory</title>
-  <meta name="description" content="Canada's first public Botox price directory. Browse clinics across Ontario with verified, publicly listed prices and Google reviews." />
+  <meta name="description" content="Canada's first public Botox price directory. Browse clinics across Canada with verified, publicly listed prices and Google reviews." />
 
   <!-- OpenGraph -->
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://skinday.ca/" />
   <meta property="og:title" content="SkinDay — Canada's First Public Botox Price Directory" />
-  <meta property="og:description" content="Canada's first public Botox price directory. Browse clinics across Ontario with verified, publicly listed prices." />
+  <meta property="og:description" content="Canada's first public Botox price directory. Browse clinics across Canada with verified, publicly listed prices." />
   <meta property="og:site_name" content="SkinDay" />
 
   <!-- Twitter/X -->
   <meta name="twitter:card" content="summary" />
   <meta name="twitter:title" content="SkinDay — Canada's First Public Botox Price Directory" />
-  <meta name="twitter:description" content="Canada's first public Botox price directory. Browse clinics across Ontario with verified, publicly listed prices." />
+  <meta name="twitter:description" content="Canada's first public Botox price directory. Browse clinics across Canada with verified, publicly listed prices." />
   <meta name="google-site-verification" content="_Ug0tqzwO8eda09chcefdvbgqKWMIR8ZBaakXaz26FQ" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -1562,13 +1562,13 @@
 <!-- HERO -->
 <section class="hero">
   <div class="hero-inner">
-    <div class="hero-eyebrow">Ontario, Canada</div>
+    <div class="hero-eyebrow">Canada</div>
     <h1>Find the right cosmetic clinic for you.</h1>
-    <p class="hero-sub"><strong style="color:var(--cream);font-weight:500;">When every clinic looks perfect, but not every clinic is the same.</strong><br>See what actually separates them: injector expertise, experience, and overall fit. Browse <span id="heroClinicCount">2,153+</span> clinics across Ontario with real context.</p>
+    <p class="hero-sub"><strong style="color:var(--cream);font-weight:500;">When every clinic looks perfect, but not every clinic is the same.</strong><br>See what actually separates them: injector expertise, experience, and overall fit. Browse <span id="heroClinicCount">2,153+</span> clinics across Canada with real context.</p>
     <div class="hero-stats">
       <div>
         <div class="stat-num" id="statClinicCount">2,153+</div>
-        <div class="stat-label">Ontario Clinics Listed</div>
+        <div class="stat-label">Clinics Listed</div>
       </div>
       <div>
         <div class="stat-num">Google</div>
@@ -1592,7 +1592,9 @@
     <div class="search-field">
       <div class="search-field-label">Neighbourhood</div>
       <select id="searchNeighbourhood" onchange="applySearch()">
-        <option value="all">Anywhere in Ontario</option>
+        <option value="all">Anywhere in Canada</option>
+        <optgroup label="── Ontario ──────────────">
+        </optgroup>
         <optgroup label="City of Toronto">
           <option value="toronto">Toronto</option>
           <option value="north-york">North York</option>
@@ -1623,10 +1625,32 @@
           <option value="burlington">Burlington</option>
           <option value="milton">Milton</option>
         </optgroup>
-        <optgroup label="Outside GTA">
+        <optgroup label="Eastern Ontario">
+          <option value="ottawa">Ottawa</option>
+        </optgroup>
+        <optgroup label="Southwestern Ontario">
           <option value="hamilton">Hamilton</option>
           <option value="london">London</option>
-          <option value="ottawa">Ottawa</option>
+        </optgroup>
+        <optgroup label="── British Columbia ──────">
+        </optgroup>
+        <optgroup label="Metro Vancouver">
+          <option value="vancouver" disabled>Vancouver (coming soon)</option>
+          <option value="richmond" disabled>Richmond (coming soon)</option>
+          <option value="burnaby" disabled>Burnaby (coming soon)</option>
+          <option value="surrey" disabled>Surrey (coming soon)</option>
+        </optgroup>
+        <optgroup label="── Alberta ───────────────">
+        </optgroup>
+        <optgroup label="Alberta">
+          <option value="calgary" disabled>Calgary (coming soon)</option>
+          <option value="edmonton" disabled>Edmonton (coming soon)</option>
+        </optgroup>
+        <optgroup label="── Quebec ────────────────">
+        </optgroup>
+        <optgroup label="Quebec">
+          <option value="montreal" disabled>Montréal (coming soon)</option>
+          <option value="quebec-city" disabled>Québec City (coming soon)</option>
         </optgroup>
       </select>
     </div>
@@ -1705,8 +1729,8 @@
   <div class="trust-item">
     <div class="trust-icon">📍</div>
     <div class="trust-text">
-      <strong>Ontario-Wide Coverage</strong>
-      <span><span id="trustClinicCount">2,153</span> clinics across Ontario</span>
+      <strong>Canada-Wide Coverage</strong>
+      <span><span id="trustClinicCount">2,153</span> clinics across Canada</span>
     </div>
   </div>
 </div>
@@ -1846,7 +1870,7 @@ function drawDirChart(data) {
     const clinics = res.ok ? await res.json() : [];
     if (!clinics.length) throw new Error('empty');
     const counts = {};
-    clinics.forEach(c => { if (c.area) counts[c.area] = (counts[c.area] || 0) + 1; });
+    clinics.forEach(c => { if (c.neighbourhood) counts[c.neighbourhood.toLowerCase().replace(/\s+/g,'-')] = (counts[c.neighbourhood.toLowerCase().replace(/\s+/g,'-')] || 0) + 1; });
     const sorted = Object.entries(counts)
       .sort((a, b) => b[1] - a[1]).slice(0, 10)
       .map(([area, count]) => ({
@@ -1871,7 +1895,7 @@ function drawDirChart(data) {
   <div class="footer-top">
     <div>
       <div class="footer-brand">Skin<span>Day</span></div>
-      <div class="footer-tagline">Ontario's cosmetic clinic directory with publicly listed prices.</div>
+      <div class="footer-tagline">Canada's cosmetic clinic directory with publicly listed prices.</div>
     </div>
     <div class="footer-links">
       <h4>Discover</h4>
@@ -1989,8 +2013,7 @@ function renderCards() {
     if (currentFilter === 'all') return true;
     if (currentFilter === 'promo') return c.promo && c.promo_text;
     const hood = (c.neighbourhood || '').toLowerCase().replace(/\s+/g, '-');
-    const area = (c.area || '').toLowerCase().replace(/\s+/g, '-');
-    return area === currentFilter || hood === currentFilter;
+    return hood === currentFilter;
   });
 
   // Injector filter — layered on top
@@ -2059,7 +2082,7 @@ function renderCards() {
           <div class="clinic-meta">📍 ${c.neighbourhood}${(() => {
             if (!userLocation) return '';
             const match = c.maps_url?.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-            const coords = match ? [parseFloat(match[1]), parseFloat(match[2])] : (HOOD_COORDS[c.area] || HOOD_COORDS[c.neighbourhood?.toLowerCase().replace(/\s+/g,'-')]);
+            const coords = match ? [parseFloat(match[1]), parseFloat(match[2])] : (HOOD_COORDS[c.neighbourhood?.toLowerCase().replace(/\s+/g,'-')]);
             if (!coords) return '';
             const d = haversineKm(userLocation.lat, userLocation.lon, coords[0], coords[1]);
             return ` <span class="dot">·</span> ${d < 1 ? (d * 1000).toFixed(0) + ' m' : d.toFixed(1) + ' km'} away`;
@@ -2215,7 +2238,7 @@ function useNearMe() {
       } else {
         currentFilter = 'all';
         renderCards();
-        showToast('Showing all Ontario clinics — location outside coverage area.');
+        showToast('Showing all clinics — location outside coverage area.');
       }
       document.getElementById('prices').scrollIntoView({ behavior: 'smooth', block: 'start' });
     },
@@ -2499,7 +2522,7 @@ async function openCompareModal() {
     return `
     <td class="compare-col-header">
       <span class="col-name">${displayName}</span>
-      <span class="col-meta">${c.neighbourhood} · Ontario</span>
+      <span class="col-meta">${c.neighbourhood}${c.province ? " · " + c.province : " · Canada"}</span>
     </td>`;
   }).join('');
 
@@ -3024,7 +3047,7 @@ function openClinicModal(clinicId) {
   }
 
   // Details
-  document.getElementById('cm-address').textContent = clinic.neighbourhood + ', ON';
+  document.getElementById('cm-address').textContent = clinic.neighbourhood + (clinic.province ? ', ' + clinic.province : ', ON');
   if (clinic.phone) {
     document.getElementById('cm-phone-row').style.display = 'flex';
     document.getElementById('cm-phone-link').href = 'tel:' + clinic.phone.replace(/\s/g,'');
