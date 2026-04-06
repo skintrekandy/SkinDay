@@ -1518,10 +1518,10 @@
   <div class="hero-inner">
     <div class="hero-eyebrow">Canada</div>
     <h1>Find the right cosmetic clinic for you.</h1>
-    <p class="hero-sub"><strong style="color:var(--cream);font-weight:500;">When every clinic looks perfect, but not every clinic is the same.</strong><br>See what actually separates them: injector expertise, experience, and overall fit. Browse <span id="heroClinicCount">2,153+</span> clinics across Canada with real context.</p>
+    <p class="hero-sub"><strong style="color:var(--cream);font-weight:500;">When every clinic looks perfect, but not every clinic is the same.</strong><br>See what actually separates them: injector expertise, experience, and overall fit. Browse <span id="heroClinicCount">2,667+</span> clinics across Canada with real context.</p>
     <div class="hero-stats">
       <div>
-        <div class="stat-num" id="statClinicCount">2,153+</div>
+        <div class="stat-num" id="statClinicCount">2,667+</div>
         <div class="stat-label">Clinics Listed</div>
       </div>
       <div>
@@ -1589,10 +1589,21 @@
         <optgroup label="── British Columbia ──────">
         </optgroup>
         <optgroup label="Metro Vancouver">
-          <option value="vancouver" disabled>Vancouver (coming soon)</option>
-          <option value="richmond" disabled>Richmond (coming soon)</option>
-          <option value="burnaby" disabled>Burnaby (coming soon)</option>
-          <option value="surrey" disabled>Surrey (coming soon)</option>
+          <option value="vancouver">Vancouver</option>
+          <option value="richmond">Richmond</option>
+          <option value="burnaby">Burnaby</option>
+          <option value="surrey">Surrey</option>
+          <option value="coquitlam">Coquitlam</option>
+          <option value="north-vancouver">North Vancouver</option>
+          <option value="port-coquitlam">Port Coquitlam</option>
+          <option value="west-vancouver">West Vancouver</option>
+          <option value="delta">Delta</option>
+          <option value="port-moody">Port Moody</option>
+          <option value="white-rock">White Rock</option>
+        </optgroup>
+        <optgroup label="Fraser Valley">
+          <option value="langley">Langley</option>
+          <option value="abbotsford">Abbotsford</option>
         </optgroup>
         <optgroup label="── Alberta ───────────────">
         </optgroup>
@@ -1683,7 +1694,7 @@
     <div class="trust-icon">📍</div>
     <div class="trust-text">
       <strong>Canada-Wide Coverage</strong>
-      <span><span id="trustClinicCount">2,153</span> clinics across Canada</span>
+      <span><span id="trustClinicCount">2,667</span> clinics across Canada</span>
     </div>
   </div>
 </div>
@@ -2012,6 +2023,19 @@ const HOOD_COORDS = {
   'waterloo': [43.4668, -80.5164],
   'kitchener': [43.4516, -80.4925],
   'whitchurch-stouffville': [43.9712, -79.2519],
+  'vancouver': [49.2827, -123.1207],
+  'richmond': [49.1666, -123.1336],
+  'burnaby': [49.2488, -122.9805],
+  'surrey': [49.1913, -122.8490],
+  'coquitlam': [49.2838, -122.7932],
+  'north-vancouver': [49.3198, -123.0724],
+  'port-coquitlam': [49.2625, -122.7811],
+  'west-vancouver': [49.3666, -123.1660],
+  'delta': [49.0847, -122.9430],
+  'port-moody': [49.2839, -122.8320],
+  'white-rock': [49.0253, -122.8027],
+  'langley': [49.1044, -122.6604],
+  'abbotsford': [49.0504, -122.3045],
 };
 
 function haversineKm(lat1, lon1, lat2, lon2) {
