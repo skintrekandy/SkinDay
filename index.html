@@ -306,8 +306,8 @@
     }
     .btn-nearby {
       background: transparent;
-      border: 1px solid var(--border);
-      color: var(--muted);
+      border: 1.5px solid var(--gold);
+      color: var(--deep);
       padding: 0.7rem 1rem;
       border-radius: 10px;
       font-family: 'DM Sans', sans-serif;
@@ -316,7 +316,7 @@
       transition: all 0.2s;
       display: flex; align-items: center; gap: 0.35rem;
     }
-    .btn-nearby:hover { border-color: var(--rose); color: var(--rose); }
+    .btn-nearby:hover { background: var(--gold); color: var(--deep); }
     .btn-search {
       background: var(--rose);
       color: #fff; border: none;
@@ -1000,9 +1000,6 @@
       line-height: 1.5;
     }
 
-    /* ─── DIRECTORY TEASER ─── */
-    }
-
     /* ─── FOOTER ─── */
     footer {
       background: var(--deep);
@@ -1639,11 +1636,10 @@
   <div class="filter-wrap">
     <span class="filter-label">Filter</span>
     <button class="filter-btn active" onclick="filterCards('all', this)">All</button>
-    <button class="filter-btn" onclick="filterCards('promo', this)">Has Promo</button>
-    <button class="filter-btn" onclick="filterCards('toronto', this)">Toronto</button>
-    <button class="filter-btn" onclick="filterCards('north-york', this)">North York</button>
-    <button class="filter-btn" onclick="filterCards('richmond-hill', this)">Richmond Hill</button>
-    <button class="filter-btn" onclick="filterCards('markham', this)">Markham</button>
+    <button class="filter-btn" onclick="filterCards('ontario', this)">ON</button>
+    <button class="filter-btn" onclick="filterCards('british-columbia', this)">BC</button>
+    <button class="filter-btn" onclick="filterCards('alberta', this)">AB</button>
+    <button class="filter-btn" onclick="filterCards('quebec', this)">QC</button>
     <select class="sort-select" onchange="sortCards(this.value)">
       <option value="price-low">Sort: Price Low → High</option>
       <option value="price-high">Sort: Price High → Low</option>
@@ -1837,7 +1833,13 @@ function renderCards() {
     }
     if (currentFilter === 'all') return true;
     if (currentFilter === 'promo') return c.promo && c.promo_text;
+    const province = (c.province || '').toLowerCase().replace(/\s+/g, '-');
     const hood = (c.neighbourhood || '').toLowerCase().replace(/\s+/g, '-');
+    // Province-level pills
+    if (['ontario','british-columbia','alberta','quebec'].includes(currentFilter)) {
+      return province === currentFilter;
+    }
+    // City-level dropdown
     return hood === currentFilter;
   });
 
