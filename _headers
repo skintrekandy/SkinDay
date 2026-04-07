@@ -1,8 +1,16 @@
-/*.html
-  Cache-Control: no-cache, no-store, must-revalidate
+# SkinDay Netlify headers
 
-/guide/*.html
-  Cache-Control: no-cache, no-store, must-revalidate
+# Cache clinic API for 5 minutes at CDN edge
+/api/get-clinics
+  Cache-Control: public, s-maxage=300, stale-while-revalidate=60
 
-/*
+# Cache static assets aggressively
+/*.js
   Cache-Control: public, max-age=31536000, immutable
+
+/*.css
+  Cache-Control: public, max-age=31536000, immutable
+
+# HTML — always revalidate
+/*.html
+  Cache-Control: public, max-age=0, must-revalidate
