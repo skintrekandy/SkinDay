@@ -120,6 +120,85 @@
       .nav-text-link { display: none; }
     }
 
+
+    /* ─── MOBILE NAV OVERLAY ─── */
+    .hamburger {
+      display: none;
+      flex-direction: column; gap: 5px;
+      cursor: pointer; padding: 4px;
+      background: none; border: none;
+      z-index: 201;
+    }
+    .hamburger span {
+      display: block; width: 24px; height: 1.5px;
+      background: var(--gold);
+      transition: transform 0.35s ease, opacity 0.35s ease;
+      transform-origin: center;
+    }
+    .hamburger.open span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
+    .hamburger.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+    .hamburger.open span:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); }
+
+    .nav-overlay {
+      position: fixed; inset: 0; z-index: 200;
+      background: var(--deep);
+      display: flex; flex-direction: column;
+      justify-content: center; align-items: center;
+      gap: 0;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.4s ease;
+    }
+    .nav-overlay.open { opacity: 1; pointer-events: all; }
+
+    .nav-overlay-logo {
+      position: absolute; top: 0; left: 0; right: 0;
+      height: 60px; display: flex; align-items: center;
+      padding: 0 5%;
+      border-bottom: 1px solid rgba(201,169,110,0.15);
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.35rem; color: var(--cream);
+      text-decoration: none;
+    }
+    .nav-overlay-logo span { color: var(--gold); }
+
+    .nav-overlay-links {
+      display: flex; flex-direction: column;
+      align-items: center; gap: 0;
+      width: 100%;
+    }
+    .nav-overlay-links a {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(2rem, 8vw, 3rem);
+      font-weight: 300; color: var(--cream);
+      text-decoration: none; letter-spacing: 0.02em;
+      padding: 0.6rem 0;
+      width: 100%; text-align: center;
+      border-bottom: 1px solid rgba(201,169,110,0.08);
+      transition: color 0.2s;
+      opacity: 0; transform: translateY(16px);
+      transition: opacity 0.4s ease, transform 0.4s ease, color 0.2s;
+    }
+    .nav-overlay.open .nav-overlay-links a { opacity: 1; transform: none; }
+    .nav-overlay.open .nav-overlay-links a:nth-child(1) { transition-delay: 0.05s; }
+    .nav-overlay.open .nav-overlay-links a:nth-child(2) { transition-delay: 0.1s; }
+    .nav-overlay.open .nav-overlay-links a:nth-child(3) { transition-delay: 0.15s; }
+    .nav-overlay.open .nav-overlay-links a:nth-child(4) { transition-delay: 0.2s; }
+    .nav-overlay-links a:hover { color: var(--gold); }
+    .nav-overlay-links a.cta-link { color: var(--rose); }
+    .nav-overlay-links a.cta-link:hover { color: var(--rose-m); }
+
+    .nav-overlay-bottom {
+      position: absolute; bottom: 2rem;
+      font-size: 0.72rem; color: var(--muted);
+      letter-spacing: 0.08em; text-transform: uppercase;
+    }
+
+    @media (max-width: 768px) {
+      .hamburger { display: flex; }
+      .nav-ctas { display: none; }
+      .nav-text { display: none; }
+    }
+
     /* ─── HERO ─── */
     .hero {
       background: var(--deep);
@@ -1561,14 +1640,49 @@
 
 <!-- NAV -->
 <nav>
-  <a href="#" class="nav-logo">Skin<span>Day</span></a>
+  <a href="/" class="nav-logo">Skin<span>Day</span></a>
   <ul class="nav-links"></ul>
   <div class="nav-ctas">
+    <a href="/about.html" class="nav-botox-guide">About</a>
     <a href="/guide/botox-cost-toronto" class="nav-botox-guide">Botox Guide Toronto</a>
     <a href="/claim.html" class="nav-cta">Claim Your Clinic</a>
     <a href="/editor.html" class="nav-cta">Clinic Portal</a>
   </div>
+  <button class="hamburger" id="hamburger" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
 </nav>
+
+<!-- MOBILE NAV OVERLAY -->
+<div class="nav-overlay" id="navOverlay">
+  <a href="/" class="nav-overlay-logo">Skin<span>Day</span></a>
+  <div class="nav-overlay-links">
+    <a href="/">Browse Clinics</a>
+    <a href="/about.html">About</a>
+    <a href="/guide/botox-cost-toronto">Botox Guide</a>
+    <a href="/claim.html" class="cta-link">Claim Your Clinic</a>
+  </div>
+  <div class="nav-overlay-bottom">skinday.ca</div>
+</div>
+
+<script>
+  (function() {
+    var btn = document.getElementById('hamburger');
+    var overlay = document.getElementById('navOverlay');
+    btn.addEventListener('click', function() {
+      btn.classList.toggle('open');
+      overlay.classList.toggle('open');
+      document.body.style.overflow = overlay.classList.contains('open') ? 'hidden' : '';
+    });
+    overlay.querySelectorAll('a').forEach(function(a) {
+      a.addEventListener('click', function() {
+        btn.classList.remove('open');
+        overlay.classList.remove('open');
+        document.body.style.overflow = '';
+      });
+    });
+  })();
+</script>
 
 <!-- HERO -->
 <section class="hero">
@@ -1875,7 +1989,7 @@
     <div class="footer-links">
       <h4>Company</h4>
       <ul>
-        <li><a href="#">About SkinDay</a></li>
+        <li><a href="/about.html">About SkinDay</a></li>
         <li><a href="/contact.html">Contact</a></li>
       </ul>
     </div>
