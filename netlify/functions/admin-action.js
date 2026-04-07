@@ -241,20 +241,18 @@ exports.handler = async (event) => {
       return { statusCode: 400, headers, body: JSON.stringify({ error: 'Clinic name is required' }) };
     }
 
-    // Generate a unique ID: find current max int id in clinics table and increment
-    // We use a large base (10000+) to avoid colliding with the static array IDs (max ~1696)
-    const { data: existing } = await supabase
+    // Generate a unique ID: fetch all IDs, find max numerically in JS
+    // (avoids .gte() issues on text-typed id column)
+    const { data: allIds, error: idErr } = await supabase
       .from('clinics')
-      .select('id')
-      .gte('id', '10000')
-      .order('id', { ascending: false })
-      .limit(1);
+      .select('id');
 
     let newId;
-    if (existing && existing.length > 0) {
-      newId = String(parseInt(existing[0].id) + 1);
+    if (idErr || !allIds || allIds.length === 0) {
+      newId = '10001';
     } else {
-      newId = '10001'; // first manually added clinic
+      const maxId = Math.max(...allIds.map(r => parseInt(r.id) || 0));
+      newId = String(Math.max(maxId, 10000) + 1);
     }
 
     const now = new Date().toISOString();
