@@ -748,11 +748,19 @@
           </div>
           <div class="form-group">
             <label class="form-label">Phone</label>
-            <input class="form-input" id="ac-phone" type="text" placeholder="+1 416-000-0000">
+            <input class="form-input" id="ac-phone" type="text" placeholder="+1 416-000-0000" onblur="formatPhone(this)">
           </div>
           <div class="form-group">
             <label class="form-label">Website</label>
             <input class="form-input" id="ac-website" type="text" placeholder="https://...">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Google Rating</label>
+            <input class="form-input" id="ac-rating" type="number" step="0.1" min="0" max="5" placeholder="e.g. 4.9">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Review Count</label>
+            <input class="form-input" id="ac-reviews" type="number" min="0" placeholder="e.g. 91">
           </div>
           <div class="form-group" style="grid-column:1/-1">
             <label class="form-label">Google Maps URL</label>
@@ -1280,6 +1288,8 @@ async function submitNewClinic() {
     phone:         document.getElementById('ac-phone').value.trim() || null,
     website:       document.getElementById('ac-website').value.trim() || null,
     maps_url:      document.getElementById('ac-maps-url').value.trim() || null,
+    rating:        parseFloat(document.getElementById('ac-rating').value) || null,
+    reviews:       parseInt(document.getElementById('ac-reviews').value) || null,
     owner_name:    document.getElementById('ac-owner-name').value.trim() || null,
     owner_email:   document.getElementById('ac-owner-email').value.trim() || null,
     admin_note:    document.getElementById('ac-note').value.trim() || null,
@@ -1319,9 +1329,20 @@ async function submitNewClinic() {
 
   // Clear form
   ['ac-name','ac-neighbourhood','ac-area','ac-phone','ac-website',
-   'ac-maps-url','ac-owner-name','ac-owner-email','ac-note'].forEach(id => {
+   'ac-maps-url','ac-rating','ac-reviews','ac-owner-name','ac-owner-email','ac-note'].forEach(id => {
     document.getElementById(id).value = '';
   });
+}
+
+// ── PHONE FORMAT ──────────────────────────────────────────────
+function formatPhone(input) {
+  let v = input.value.replace(/\D/g, '');
+  if (!v) return;
+  // Strip leading 1 if present
+  if (v.startsWith('1') && v.length === 11) v = v.slice(1);
+  if (v.length === 10) {
+    input.value = '+1 ' + v.slice(0,3) + '-' + v.slice(3,6) + '-' + v.slice(6);
+  }
 }
 
 // ── TOAST ─────────────────────────────────────────────────────
