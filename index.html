@@ -2092,21 +2092,27 @@ function renderCards() {
     if (currentFilter === 'promo') return c.promo && c.promo_text;
     const province = (c.province || '').toUpperCase();
     const hood = (c.neighbourhood || '').toLowerCase().replace(/\s+/g, '-');
-    // Province-level pills — fall back to area-based inference if province not set
+    const area  = (c.area || '').toLowerCase();
+    // Province-level pills
     const provinceMap = { 'ontario': 'ON', 'british-columbia': 'BC', 'alberta': 'AB', 'quebec': 'QC' };
     if (provinceMap[currentFilter]) {
       const target = provinceMap[currentFilter];
+      // Use province column if set
       if (province) return province === target;
-      // Infer from area
-      const area = (c.area || '').toLowerCase();
-      const onAreas = ['toronto','north york','scarborough','etobicoke','brampton','mississauga','richmond hill','markham','aurora','newmarket','oakville','burlington','hamilton','london','ottawa','kingston','waterloo','kitchener','barrie'];
-      const bcAreas = ['vancouver','surrey','burnaby','richmond','kelowna','victoria','coquitlam'];
-      const abAreas = ['calgary','edmonton','red deer','lethbridge'];
-      const qcAreas = ['montreal','quebec city','laval','gatineau'];
-      if (target === 'ON') return onAreas.some(a => area.includes(a));
-      if (target === 'BC') return bcAreas.some(a => area.includes(a));
-      if (target === 'AB') return abAreas.some(a => area.includes(a));
-      if (target === 'QC') return qcAreas.some(a => area.includes(a));
+      // Otherwise infer from area/neighbourhood
+      const onTerms = ['toronto','north york','scarborough','etobicoke','brampton','mississauga',
+        'richmond hill','markham','aurora','newmarket','oakville','burlington','hamilton',
+        'london','ottawa','kingston','waterloo','kitchener','barrie','vaughan','ajax',
+        'pickering','whitby','oshawa','thornhill','woodbridge'];
+      const bcTerms = ['vancouver','surrey','burnaby','richmond','kelowna','victoria',
+        'coquitlam','langley','abbotsford','north vancouver','west vancouver'];
+      const abTerms = ['calgary','edmonton','red deer','lethbridge','medicine hat','airdrie'];
+      const qcTerms = ['montreal','quebec city','laval','gatineau','longueuil','sherbrooke'];
+      const hay = area + ' ' + hood;
+      if (target === 'ON') return onTerms.some(t => hay.includes(t));
+      if (target === 'BC') return bcTerms.some(t => hay.includes(t));
+      if (target === 'AB') return abTerms.some(t => hay.includes(t));
+      if (target === 'QC') return qcTerms.some(t => hay.includes(t));
       return false;
     }
     // City-level dropdown
