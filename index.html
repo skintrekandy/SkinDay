@@ -912,7 +912,7 @@
 
     /* ─── CLINIC CLAIM CTA ─── */
     .claim-section {
-      background: var(--cream);
+      background: var(--deep);
       padding: 80px 5%;
     }
     .claim-inner {
@@ -924,7 +924,7 @@
       font-family: 'Cormorant Garamond', serif;
       font-size: clamp(1.8rem, 3.5vw, 2.6rem);
       font-weight: 400; line-height: 1.2;
-      color: var(--deep);
+      color: var(--cream);
       margin-bottom: 1rem;
     }
     .claim-copy h2 em { font-style: italic; color: var(--rose); }
@@ -937,7 +937,7 @@
       display: flex; flex-direction: column; gap: 0.7rem;
     }
     .claim-perks li {
-      font-size: 0.85rem; color: var(--deep);
+      font-size: 0.85rem; color: var(--cream);
       display: flex; align-items: center; gap: 0.6rem;
     }
     .claim-perks li::before {
@@ -946,7 +946,8 @@
       flex-shrink: 0;
     }
     .claim-card {
-      background: var(--deep);
+      background: rgba(234,226,216,0.06);
+      border: 1px solid rgba(234,226,216,0.12);
       border-radius: 12px;
       padding: 2.2rem;
       position: relative; overflow: hidden;
@@ -1002,9 +1003,9 @@
 
     /* ─── DATA STAT STRIP ─── */
     .stat-strip {
-      background: var(--deep2);
-      border-top: 1px solid var(--hero-border);
-      border-bottom: 1px solid var(--hero-border);
+      background: var(--cream);
+      border-top: 1px solid rgba(28,23,20,0.1);
+      border-bottom: 1px solid rgba(28,23,20,0.1);
       padding: 48px 5%;
     }
     .stat-strip-inner {
@@ -1019,20 +1020,20 @@
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 1px;
-      background: rgba(201,169,110,0.15);
-      border: 1px solid rgba(201,169,110,0.15);
+      background: rgba(28,23,20,0.08);
+      border: 1px solid rgba(28,23,20,0.08);
       border-radius: 12px;
       overflow: hidden;
     }
     .stat-strip-item {
-      background: var(--deep2);
+      background: var(--cream);
       padding: 1.5rem 2rem;
       text-align: center;
     }
     .stat-strip-num {
       font-family: 'Cormorant Garamond', serif;
       font-size: 2.4rem; font-weight: 300;
-      color: var(--cream); line-height: 1;
+      color: var(--deep); line-height: 1;
       margin-bottom: 0.4rem;
     }
     .stat-strip-num em { color: var(--gold); font-style: normal; }
@@ -1564,10 +1565,10 @@
   <div class="hero-inner">
     <div class="hero-eyebrow">Canada</div>
     <h1>Find the right cosmetic clinic for you.</h1>
-    <p class="hero-sub"><strong style="color:var(--cream);font-weight:500;">When every clinic looks perfect, but not every clinic is the same.</strong><br>See what actually separates them: injector expertise, experience, and overall fit. Browse <span id="heroClinicCount">2,667+</span> clinics across Canada with real context.</p>
+    <p class="hero-sub"><strong style="color:var(--cream);font-weight:500;">When every clinic looks perfect, but not every clinic is the same.</strong><br>See what actually separates them: injector expertise, experience, and overall fit. Browse <span id="heroClinicCount">3,888+</span> clinics across Canada with real context.</p>
     <div class="hero-stats">
       <div>
-        <div class="stat-num" id="statClinicCount">2,667+</div>
+        <div class="stat-num" id="statClinicCount">3,888+</div>
         <div class="stat-label">Clinics Listed</div>
       </div>
       <div>
@@ -1722,30 +1723,6 @@
   </div>
 </section>
 
-<!-- TRUST STRIP -->
-<div class="trust-strip">
-  <div class="trust-item">
-    <div class="trust-icon">⭐</div>
-    <div class="trust-text">
-      <strong>Google Ratings Included</strong>
-      <span>Every clinic shows live Google score</span>
-    </div>
-  </div>
-  <div class="trust-item">
-    <div class="trust-icon">💰</div>
-    <div class="trust-text">
-      <strong>Prices Verified &amp; Published</strong>
-      <span>Collected directly from clinics and published openly</span>
-    </div>
-  </div>
-  <div class="trust-item">
-    <div class="trust-icon">📍</div>
-    <div class="trust-text">
-      <strong>Canada-Wide Coverage</strong>
-      <span><span id="trustClinicCount">2,667</span> clinics across Canada</span>
-    </div>
-  </div>
-</div>
 
 <!-- CLINIC CLAIM CTA -->
 <section class="claim-section" id="claim">
@@ -1774,26 +1751,142 @@
 <div class="stat-strip">
   <div class="stat-strip-inner">
     <div class="stat-strip-eyebrow">Canada's cosmetic clinic market — by the numbers</div>
+    <!-- PROVINCE PIE CHART -->
+    <div id="province-pie-section" style="display:flex;align-items:center;justify-content:center;gap:3rem;padding-bottom:2rem;margin-bottom:1rem;border-bottom:1px solid rgba(28,23,20,0.1);flex-wrap:wrap;">
+      <div style="position:relative;width:200px;height:200px;flex-shrink:0;">
+        <svg id="province-pie" viewBox="0 0 200 200" width="200" height="200" style="transform:rotate(-90deg);cursor:pointer;">
+          <!-- Segments drawn by JS -->
+        </svg>
+        <div id="pie-center-label" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;">
+          <div style="font-family:'Cormorant Garamond',serif;font-size:1.8rem;font-weight:300;color:var(--deep);line-height:1;">3,888+</div>
+          <div style="font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-top:2px;">Canada</div>
+        </div>
+      </div>
+      <div id="province-legend" style="display:flex;flex-direction:column;gap:0.75rem;"></div>
+    </div>
+    <script>
+    (function() {
+      const provinces = [
+        { code: 'ontario',          label: 'Ontario',          abbr: 'ON', count: 2153, filter: 'ontario',          color: '#C9A96E' },
+        { code: 'quebec',           label: 'Quebec',           abbr: 'QC', count: 658,  filter: 'quebec',           color: '#C8725A' },
+        { code: 'alberta',          label: 'Alberta',          abbr: 'AB', count: 563,  filter: 'alberta',          color: '#8C7B6B' },
+        { code: 'british-columbia', label: 'British Columbia', abbr: 'BC', count: 514,  filter: 'british-columbia', color: '#B5A898' },
+      ];
+      const total = provinces.reduce((s, p) => s + p.count, 0);
+      const svg = document.getElementById('province-pie');
+      const legend = document.getElementById('province-legend');
+      const centerLabel = document.getElementById('pie-center-label');
+      let activeProvince = null;
+
+      function polarToXY(cx, cy, r, angleDeg) {
+        const rad = (angleDeg * Math.PI) / 180;
+        return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)];
+      }
+
+      function buildPie() {
+        svg.innerHTML = '';
+        let startAngle = 0;
+        provinces.forEach((p, i) => {
+          const slice = (p.count / total) * 360;
+          const endAngle = startAngle + slice;
+          const r = 90, cx = 100, cy = 100, innerR = 58;
+          const [x1, y1] = polarToXY(cx, cy, r, startAngle);
+          const [x2, y2] = polarToXY(cx, cy, r, endAngle);
+          const [ix1, iy1] = polarToXY(cx, cy, innerR, endAngle);
+          const [ix2, iy2] = polarToXY(cx, cy, innerR, startAngle);
+          const largeArc = slice > 180 ? 1 : 0;
+          const d = `M ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} L ${ix1} ${iy1} A ${innerR} ${innerR} 0 ${largeArc} 0 ${ix2} ${iy2} Z`;
+          const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          path.setAttribute('d', d);
+          path.setAttribute('fill', activeProvince === p.code ? p.color : p.color + 'CC');
+          path.setAttribute('stroke', '#FAF7F2');
+          path.setAttribute('stroke-width', '2');
+          path.style.transition = 'transform 0.2s, opacity 0.2s';
+          path.style.transformOrigin = '100px 100px';
+          if (activeProvince === p.code) path.style.transform = 'scale(1.06)';
+          path.addEventListener('mouseenter', () => {
+            if (activeProvince !== p.code) path.style.opacity = '0.85';
+          });
+          path.addEventListener('mouseleave', () => {
+            path.style.opacity = '1';
+          });
+          path.addEventListener('click', () => toggleProvince(p));
+          svg.appendChild(path);
+          startAngle = endAngle;
+        });
+      }
+
+      function buildLegend() {
+        legend.innerHTML = '';
+        provinces.forEach(p => {
+          const row = document.createElement('div');
+          row.style.cssText = 'display:flex;align-items:center;gap:0.75rem;cursor:pointer;padding:0.4rem 0.75rem;border-radius:8px;transition:background 0.15s;';
+          row.innerHTML = `
+            <div style="width:12px;height:12px;border-radius:50%;background:${p.color};flex-shrink:0;"></div>
+            <div>
+              <span style="font-size:0.82rem;font-weight:500;color:var(--deep);">${p.label}</span>
+              <span style="font-size:0.78rem;color:var(--muted);margin-left:0.4rem;">${p.count.toLocaleString()}+</span>
+            </div>
+            <div style="margin-left:auto;font-size:0.72rem;color:var(--muted);padding-left:1rem;">${Math.round(p.count/total*100)}%</div>`;
+          if (activeProvince === p.code) {
+            row.style.background = 'rgba(28,23,20,0.06)';
+          }
+          row.addEventListener('mouseenter', () => { if (activeProvince !== p.code) row.style.background = 'rgba(28,23,20,0.04)'; });
+          row.addEventListener('mouseleave', () => { if (activeProvince !== p.code) row.style.background = 'transparent'; });
+          row.addEventListener('click', () => toggleProvince(p));
+          legend.appendChild(row);
+        });
+      }
+
+      function toggleProvince(p) {
+        if (activeProvince === p.code) {
+          // deselect — back to All
+          activeProvince = null;
+          centerLabel.innerHTML = '<div style="font-family:'Cormorant Garamond',serif;font-size:1.8rem;font-weight:300;color:var(--deep);line-height:1;">3,888+</div><div style="font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-top:2px;">Canada</div>';
+          // trigger All filter
+          const allBtn = document.querySelector('.filter-btn');
+          if (allBtn) { filterCards('all', allBtn); }
+        } else {
+          activeProvince = p.code;
+          centerLabel.innerHTML = `<div style="font-family:'Cormorant Garamond',serif;font-size:1.8rem;font-weight:300;color:var(--deep);line-height:1;">${p.count.toLocaleString()}+</div><div style="font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-top:2px;">${p.abbr}</div>`;
+          // scroll to directory and trigger province filter
+          const dir = document.getElementById('directory');
+          if (dir) dir.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          // find the matching filter button and trigger it
+          const btns = document.querySelectorAll('.filter-btn');
+          let matched = null;
+          btns.forEach(b => { if (b.getAttribute('onclick')?.includes("'" + p.filter + "'")) matched = b; });
+          if (matched) { filterCards(p.filter, matched); }
+        }
+        buildPie();
+        buildLegend();
+      }
+
+      // Init
+      buildPie();
+      buildLegend();
+    })();
+    </script>
     <div class="stat-strip-grid">
       <div class="stat-strip-item">
-        <div class="stat-strip-num"><em>2,667</em></div>
-        <div class="stat-strip-desc">clinics listed across Ontario and British Columbia</div>
+        <div class="stat-strip-num"><em>3,888+</em></div>
+        <div class="stat-strip-desc">clinics listed across Canada</div>
       </div>
       <div class="stat-strip-item">
-        <div class="stat-strip-num"><em>71%</em></div>
-        <div class="stat-strip-desc">of clinics rated 4.8+ stars — in both GTA and Vancouver</div>
+        <div class="stat-strip-num"><em>70%</em></div>
+        <div class="stat-strip-desc">of clinics rated 4.8+ stars — across Canada</div>
       </div>
       <div class="stat-strip-item">
         <div class="stat-strip-num"><em>42</em></div>
-        <div class="stat-strip-desc">clinics per 100k in Richmond BC — highest density in Canada</div>
+        <div class="stat-strip-desc">clinics per 100k in <strong>Richmond BC</strong> — highest density in Canada</div>
       </div>
       <div class="stat-strip-item">
         <div class="stat-strip-num"><em>5×</em></div>
         <div class="stat-strip-desc">price spread across GTA clinics for the same treatment</div>
       </div>
       <div class="stat-strip-item">
-        <div class="stat-strip-num"><em>339</em></div>
-        <div class="stat-strip-desc">clinics in Toronto — largest single-city concentration in Canada</div>
+        <div class="stat-strip-num"><em>339+</em></div>
+        <div class="stat-strip-desc">clinics in <strong>Toronto</strong> — largest single-city concentration in Canada</div>
       </div>
       <div class="stat-strip-item">
         <div class="stat-strip-num"><em>130</em></div>
