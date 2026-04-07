@@ -1012,38 +1012,39 @@
       max-width: 1280px; margin: 0 auto;
     }
     .stat-strip-eyebrow {
-      font-size: 0.7rem; font-weight: 500; letter-spacing: 0.14em;
-      text-transform: uppercase; color: var(--gold);
-      margin-bottom: 2rem; text-align: center;
+      font-size: 0.82rem; font-weight: 600; letter-spacing: 0.16em;
+      text-transform: uppercase; color: var(--deep);
+      margin-bottom: 2.5rem; text-align: center;
     }
     .stat-strip-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 1px;
-      background: rgba(28,23,20,0.08);
-      border: 1px solid rgba(28,23,20,0.08);
+      background: rgba(28,23,20,0.12);
+      border: 1px solid rgba(28,23,20,0.12);
       border-radius: 12px;
       overflow: hidden;
     }
     .stat-strip-item {
       background: var(--cream);
-      padding: 1.5rem 2rem;
+      padding: 1.8rem 2rem;
       text-align: center;
     }
     .stat-strip-num {
       font-family: 'Cormorant Garamond', serif;
-      font-size: 2.4rem; font-weight: 300;
+      font-size: 2.8rem; font-weight: 400;
       color: var(--deep); line-height: 1;
-      margin-bottom: 0.4rem;
+      margin-bottom: 0.5rem;
     }
     .stat-strip-num em { color: var(--gold); font-style: normal; }
     .stat-strip-desc {
-      font-size: 0.78rem; color: var(--muted);
+      font-size: 0.82rem; color: var(--deep);
+      opacity: 0.7;
       line-height: 1.5; max-width: 180px; margin: 0 auto;
     }
     @media (max-width: 640px) {
       .stat-strip-grid { grid-template-columns: 1fr 1fr; }
-      .stat-strip-num { font-size: 1.9rem; }
+      .stat-strip-num { font-size: 2.2rem; }
       .stat-strip-item { padding: 1.2rem 1rem; }
     }
 
@@ -1084,11 +1085,20 @@
       max-width: 1280px; margin: 0 auto;
       border-top: 1px solid rgba(181,168,159,0.1);
       padding-top: 1.5rem;
-      display: flex; align-items: center; justify-content: space-between;
-      flex-wrap: wrap; gap: 0.75rem;
+      display: flex; flex-direction: column; align-items: center;
+      gap: 0.5rem; text-align: center;
     }
     .footer-copy {
       font-size: 0.75rem; color: var(--muted);
+    }
+    .footer-disclaimers {
+      display: flex; flex-direction: column; gap: 0.3rem; align-items: center;
+    }
+    .footer-disclaimer {
+      font-size: 0.7rem; color: var(--muted); opacity: 0.7; line-height: 1.5;
+    }
+    .footer-disclaimer span.disc-num {
+      opacity: 0.5; margin-right: 0.3rem;
     }
     .footer-note {
       font-size: 0.72rem; color: var(--muted);
@@ -1759,7 +1769,7 @@
         </svg>
         <div id="pie-center-label" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;">
           <div style="font-family:'Cormorant Garamond',serif;font-size:1.8rem;font-weight:300;color:var(--deep);line-height:1;">3,888+</div>
-          <div style="font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-top:2px;">Canada</div>
+          <div style="font-size:0.65rem;color:var(--deep);opacity:0.5;text-transform:uppercase;letter-spacing:0.1em;margin-top:2px;">Canada</div>
         </div>
       </div>
       <div id="province-legend" style="display:flex;flex-direction:column;gap:0.75rem;"></div>
@@ -1824,10 +1834,10 @@
           row.innerHTML = `
             <div style="width:12px;height:12px;border-radius:50%;background:${p.color};flex-shrink:0;"></div>
             <div>
-              <span style="font-size:0.82rem;font-weight:500;color:var(--deep);">${p.label}</span>
-              <span style="font-size:0.78rem;color:var(--muted);margin-left:0.4rem;">${p.count.toLocaleString()}+</span>
+              <span style="font-size:0.85rem;font-weight:600;color:var(--deep);">${p.label}</span>
+              <span style="font-size:0.78rem;color:var(--deep);opacity:0.6;margin-left:0.4rem;">${p.count.toLocaleString()}+</span>
             </div>
-            <div style="margin-left:auto;font-size:0.72rem;color:var(--muted);padding-left:1rem;">${Math.round(p.count/total*100)}%</div>`;
+            <div style="margin-left:auto;font-size:0.75rem;color:var(--deep);opacity:0.5;padding-left:1rem;">${Math.round(p.count/total*100)}%</div>`;
           if (activeProvince === p.code) {
             row.style.background = 'rgba(28,23,20,0.06)';
           }
@@ -1845,7 +1855,7 @@
           centerLabel.innerHTML = '<div style="font-family:'Cormorant Garamond',serif;font-size:1.8rem;font-weight:300;color:var(--deep);line-height:1;">3,888+</div><div style="font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-top:2px;">Canada</div>';
           // trigger All filter
           const allBtn = document.querySelector('.filter-btn');
-          if (allBtn) { filterCards('all', allBtn); }
+          if (allBtn && typeof filterCards === 'function') { filterCards('all', allBtn); }
         } else {
           activeProvince = p.code;
           centerLabel.innerHTML = `<div style="font-family:'Cormorant Garamond',serif;font-size:1.8rem;font-weight:300;color:var(--deep);line-height:1;">${p.count.toLocaleString()}+</div><div style="font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-top:2px;">${p.abbr}</div>`;
@@ -1856,15 +1866,19 @@
           const btns = document.querySelectorAll('.filter-btn');
           let matched = null;
           btns.forEach(b => { if (b.getAttribute('onclick')?.includes("'" + p.filter + "'")) matched = b; });
-          if (matched) { filterCards(p.filter, matched); }
+          if (matched && typeof filterCards === 'function') { filterCards(p.filter, matched); }
         }
         buildPie();
         buildLegend();
       }
 
-      // Init
-      buildPie();
-      buildLegend();
+      // Init — defer until DOM + scripts are ready
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() { buildPie(); buildLegend(); });
+      } else {
+        buildPie();
+        buildLegend();
+      }
     })();
     </script>
     <div class="stat-strip-grid">
@@ -1900,7 +1914,7 @@
   <div class="footer-top">
     <div>
       <div class="footer-brand">Skin<span>Day</span></div>
-      <div class="footer-tagline">Canada's cosmetic clinic directory with publicly listed prices.</div>
+      <div class="footer-tagline">Find the right clinic. See real prices. Book with confidence.</div>
     </div>
     <div class="footer-links">
       <h4>Discover</h4>
@@ -1924,8 +1938,11 @@
     </div>
   </div>
   <div class="footer-bottom">
-    <div class="footer-copy">© 2026 SkinDay. All rights reserved. skinday.ca<br><span style="font-size:0.72rem;opacity:0.6;">"Botox" is used as a general term for neurotoxin treatments. Clinics may use Botox®, Dysport®, Nuceiva®, or other Health Canada–approved neuromodulators.</span></div>
-    <div class="footer-note">Prices shown are user-reported or clinic-verified. Always confirm directly with the clinic before booking.</div>
+    <div class="footer-copy">© 2026 SkinDay. All rights reserved. skinday.ca</div>
+    <div class="footer-disclaimers">
+      <div class="footer-disclaimer"><span class="disc-num">1.</span>Prices shown are user-reported or clinic-verified. Always confirm directly with the clinic before booking.</div>
+      <div class="footer-disclaimer"><span class="disc-num">2.</span>"Botox" is used as a general term for neurotoxin treatments. Clinics may use Botox®, Dysport®, Nuceiva®, or other Health Canada–approved neuromodulators.</div>
+    </div>
   </div>
 </footer>
 
