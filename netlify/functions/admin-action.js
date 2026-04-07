@@ -235,24 +235,26 @@ exports.handler = async (event) => {
 
   // ── ADD CLINIC ──────────────────────────────────────────────────────────────
   if (action === 'add-clinic') {
-    const { name, neighbourhood, area, phone, website, maps_url, owner_name, owner_email, admin_note } = body;
+    const { name, neighbourhood, area, phone, website, maps_url, rating, reviews, owner_name, owner_email, admin_note } = body;
 
     if (!name || !name.trim()) {
       return { statusCode: 400, headers, body: JSON.stringify({ error: 'Clinic name is required' }) };
     }
 
-    // Generate a unique ID: fetch all IDs, find max numerically in JS
-    // (avoids .gte() issues on text-typed id column)
-    const { data: allIds, error: idErr } = await supabase
+    // Generate a unique ID: find current max int id in clinics table and increment
+    // We use a large base (10000+) to avoid colliding with the static array IDs (max ~1696)
+    const { data: existing } = await supabase
       .from('clinics')
-      .select('id');
+      .select('id')
+      .gte('id', '10000')
+      .order('id', { ascending: false })
+      .limit(1);
 
     let newId;
-    if (idErr || !allIds || allIds.length === 0) {
-      newId = '10001';
+    if (existing && existing.length > 0) {
+      newId = String(parseInt(existing[0].id) + 1);
     } else {
-      const maxId = Math.max(...allIds.map(r => parseInt(r.id) || 0));
-      newId = String(Math.max(maxId, 10000) + 1);
+      newId = '10001'; // first manually added clinic
     }
 
     const now = new Date().toISOString();
@@ -270,8 +272,8 @@ exports.handler = async (event) => {
         place_id:      null,
         claimed:       false,
         approved:      true,
-        rating:        null,
-        reviews:       null,
+        rating:        rating  || null,
+        reviews:       reviews || null,
       });
 
     if (clinicErr) {
