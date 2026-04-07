@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>SkinDay — Clinic Portal</title>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <style>
@@ -157,11 +157,13 @@
       height: 64px;
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      justify-content: flex-end;
       position: sticky;
       top: 0;
       z-index: 100;
     }
+    .header-top-row { display: none; }
+    .header-bottom-row { display: none; }
 
     .header-logo {
       font-family: 'Playfair Display', serif;
@@ -816,45 +818,71 @@
 
     /* ─── RESPONSIVE ─── */
     @media (max-width: 600px) {
-      .portal-main { padding: 24px 20px 120px; }
-      header {
-        padding: 0 16px;
-        height: auto;
-        flex-wrap: wrap;
-        gap: 0;
-        flex-direction: column;
-        align-items: stretch;
-      }
-      .header-row-top {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        height: 52px;
-      }
-      .header-row-bottom {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0 0 10px;
-        gap: 12px;
-        border-top: 1px solid var(--border);
-      }
-      .header-right { display: none; }
-      .header-logo { font-size: 18px; }
-      .card { padding: 22px 20px; }
+      /* Layout */
+      .portal-main { padding: 20px 16px 120px; }
+      .card { padding: 20px 16px; }
       .field-row { grid-template-columns: 1fr; }
       .photo-grid { grid-template-columns: 1fr 1fr; }
-      .hours-row { grid-template-columns: 80px 1fr 1fr 60px; gap: 8px; }
-      #portal-price-rows > div { grid-template-columns: 1fr 36px !important; grid-template-rows: auto auto auto; }
-      #portal-price-rows > div > *:nth-child(1) { grid-column: 1; }
-      #portal-price-rows > div > *:nth-child(2) { grid-column: 1; }
-      #portal-price-rows > div > *:nth-child(3) { grid-column: 1; }
-      #portal-price-rows > div > *:nth-child(4) { grid-column: 2; grid-row: 1; }
-      .save-bar { padding: 14px 20px; }
-      .login-card { padding: 36px 28px; }
-      .mobile-header-actions { display: flex !important; }
+      .save-bar { padding: 12px 16px; }
+      .login-card { padding: 32px 24px; }
+
+      /* Header — two rows */
+      header {
+        padding: 0;
+        height: auto;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0;
+      }
+      .header-top-row {
+        display: flex !important;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 16px;
+        height: 50px;
+        border-bottom: 1px solid var(--border);
+      }
+      .header-bottom-row {
+        display: flex !important;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 16px;
+        gap: 12px;
+      }
+      .header-right { display: none; }
+      .header-logo { font-size: 17px; }
+
+      /* Tabs — scroll horizontally */
+      .tab-nav {
+        gap: 0;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        margin-bottom: 20px;
+        padding-bottom: 0;
+      }
+      .tab-nav::-webkit-scrollbar { display: none; }
+      .tab-btn {
+        padding: 10px 14px;
+        font-size: 13px;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+
+      /* Hours */
+      .hours-row { grid-template-columns: 70px 1fr 1fr 50px; gap: 6px; }
+
+      /* Price inputs — smaller text to fit */
+      #portal-price-rows select,
+      #portal-price-rows input[type="number"] {
+        font-size: 13px !important;
+        padding: 0.48rem 0.4rem !important;
+      }
+
+      /* Save bar */
+      .save-bar-msg { font-size: 12px; }
+      .btn-discard, .btn-save { padding: 9px 14px; font-size: 13px; }
     }
-    .mobile-header-actions { display: none; }
     /* ─── PRACTITIONERS ─── */
     .practitioner-row {
       display: grid;
@@ -943,9 +971,26 @@
 <!-- ─── PORTAL ─── -->
 <div id="portal-screen">
   <header>
-    <!-- Desktop layout (unchanged) -->
-    <div class="header-logo">Skin<span>Day</span> <span style="font-family:'DM Sans',sans-serif;font-size:14px;color:var(--bark-light);font-weight:400;margin-left:6px;">/ Clinic Portal</span></div>
+    <!-- Mobile row 1: Logo only -->
+    <div class="header-top-row" style="display:none;">
+      <div class="header-logo">Skin<span>Day</span> <span style="font-family:'DM Sans',sans-serif;font-size:12px;color:var(--bark-light);font-weight:400;margin-left:5px;">/ Portal</span></div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="clinic-avatar" style="width:28px;height:28px;font-size:11px;border-radius:50%;background:var(--blush);display:flex;align-items:center;justify-content:center;font-weight:600;color:var(--rose-deep);" id="clinic-avatar-mobile">ST</div>
+        <span style="font-size:13px;font-weight:500;color:var(--bark);" id="clinic-name-mobile">Skin Trek</span>
+      </div>
+    </div>
+    <!-- Mobile row 2: Actions -->
+    <div class="header-bottom-row" style="display:none;">
+      <a href="/index.html" style="font-size:12px;font-weight:500;color:var(--bark-light);text-decoration:none;">← Directory</a>
+      <div style="display:flex;gap:16px;align-items:center;">
+        <a href="/contact.html" style="font-size:12px;color:var(--bark-light);text-decoration:none;">Need help?</a>
+        <button onclick="doLogout()" style="font-size:12px;color:var(--bark-light);background:none;border:none;cursor:pointer;padding:0;font-family:inherit;">Sign out</button>
+      </div>
+    </div>
+    <!-- Desktop header (hidden on mobile via .header-right display:none) -->
+    <div class="header-logo" style="display:none;" id="header-logo-desktop">Skin<span>Day</span> <span style="font-family:'DM Sans',sans-serif;font-size:14px;color:var(--bark-light);font-weight:400;margin-left:6px;">/ Clinic Portal</span></div>
     <div class="header-right">
+      <div class="header-logo">Skin<span>Day</span> <span style="font-family:'DM Sans',sans-serif;font-size:14px;color:var(--bark-light);font-weight:400;margin-left:6px;">/ Clinic Portal</span></div>
       <a href="/index.html" style="font-size:13px;font-weight:500;color:var(--bark-light);text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='var(--rose)'" onmouseout="this.style.color='var(--bark-light)'">← Back to directory</a>
       <!-- Single-location badge (default) -->
       <div class="clinic-badge" id="header-clinic-badge">
@@ -965,18 +1010,6 @@
       </div>
       <a href="/contact.html" style="font-size:13px;font-weight:500;color:var(--bark-light);text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='var(--rose)'" onmouseout="this.style.color='var(--bark-light)'">Need help?</a>
       <button class="logout-btn" onclick="doLogout()">Sign out</button>
-    </div>
-    <!-- Mobile layout: clinic name + actions on second row -->
-    <div class="mobile-header-actions">
-      <div style="display:flex;align-items:center;gap:8px;">
-        <div class="clinic-avatar" style="width:26px;height:26px;font-size:11px;border-radius:50%;background:var(--blush);display:flex;align-items:center;justify-content:center;font-weight:600;" id="clinic-avatar-mobile">ST</div>
-        <span style="font-size:13px;font-weight:500;color:var(--bark);" id="clinic-name-mobile">Skin Trek</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:14px;">
-        <a href="/index.html" style="font-size:12px;color:var(--bark-light);text-decoration:none;">← Directory</a>
-        <a href="/contact.html" style="font-size:12px;color:var(--bark-light);text-decoration:none;">Help</a>
-        <button onclick="doLogout()" style="font-size:12px;color:var(--bark-light);background:none;border:none;cursor:pointer;padding:0;font-family:inherit;">Sign out</button>
-      </div>
     </div>
   </header>
 
@@ -1012,7 +1045,7 @@
 
         <!-- Price rows -->
         <div class="field-label" style="margin-bottom:0.5rem;">Add / update prices</div>
-        <div style="display:grid;grid-template-columns:160px 150px 110px 36px;gap:0.5rem;margin-bottom:0.4rem;">
+        <div style="display:grid;grid-template-columns:1fr 1fr 90px 28px;gap:6px;margin-bottom:0.4rem;">
           <div style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;">Brand</div>
           <div style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;">Injector type</div>
           <div style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;">Price / unit</div>
@@ -1094,11 +1127,15 @@
           </label>
           <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:0.9rem;color:var(--bark);">
             <input type="checkbox" id="cred-rn" value="rn" onchange="markDirty()" style="width:16px;height:16px;accent-color:var(--rose);cursor:pointer;" />
-            <span><strong>Registered Nurse (RN / RPN)</strong></span>
+            <span><strong>Cosmetic Nurse (RN / RPN / LPN)</strong></span>
           </label>
           <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:0.9rem;color:var(--bark);">
             <input type="checkbox" id="cred-img" value="img" onchange="markDirty()" style="width:16px;height:16px;accent-color:var(--rose);cursor:pointer;" />
-            <span><strong>IMG (International Medical Graduate)</strong> — foreign-trained physician</span>
+            <span><strong>International Medical Graduate (IMG)</strong> — foreign-trained physician</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:0.9rem;color:var(--bark);">
+            <input type="checkbox" id="cred-nd" value="nd" onchange="markDirty()" style="width:16px;height:16px;accent-color:var(--rose);cursor:pointer;" />
+            <span><strong>Naturopathic Doctor (ND)</strong></span>
           </label>
         </div>
       </div>
@@ -1456,10 +1493,10 @@
 
     document.getElementById('portal-clinic-name').textContent = name;
     document.getElementById('clinic-name-small').textContent  = name;
-    const mobileAvatar = document.getElementById('clinic-avatar-mobile');
-    const mobileName = document.getElementById('clinic-name-mobile');
-    if (mobileAvatar) mobileAvatar.textContent = name.substring(0,2).toUpperCase();
-    if (mobileName) mobileName.textContent = name;
+    const _mAvatar = document.getElementById('clinic-avatar-mobile');
+    const _mName = document.getElementById('clinic-name-mobile');
+    if (_mAvatar) _mAvatar.textContent = name.substring(0,2).toUpperCase();
+    if (_mName) _mName.textContent = name;
     document.getElementById('clinic-avatar').textContent = name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
 
     // Show neighbourhood as location subtitle under the clinic name
@@ -1783,7 +1820,7 @@
         hours: collectHours(),
         photos: allPhotoUrls,
         logo_url: logoUrl,
-        injector_credentials: ['physician','np','rn','img'].filter(v => document.getElementById('cred-' + v)?.checked),
+        injector_credentials: ['physician','np','rn','img','nd'].filter(v => document.getElementById('cred-' + v)?.checked),
         languages: ['english','mandarin','cantonese','farsi','french','korean','hindi','arabic','punjabi','portuguese'].filter(v => document.getElementById('lang-' + v)?.checked)
       };
 
@@ -2172,7 +2209,7 @@
     const rowId = ++portalRowCount;
     const row = document.createElement('div');
     row.id = `portal-row-${rowId}`;
-    row.style.cssText = 'display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1.6fr) minmax(0,0.9fr) 36px;gap:0.5rem;margin-bottom:0.5rem;align-items:center;width:100%;box-sizing:border-box;';
+    row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 90px 28px;gap:6px;margin-bottom:0.5rem;align-items:center;width:100%;box-sizing:border-box;';
     const inpStyle = 'background:var(--warm);border:1px solid var(--border);border-radius:8px;color:var(--deep);font-family:inherit;font-size:0.9rem;padding:0.55rem 0.75rem;outline:none;width:100%;';
     row.innerHTML = `
       <select style="${inpStyle};cursor:pointer;" onchange="markDirty()">
