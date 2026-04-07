@@ -263,11 +263,17 @@ exports.handler = async (event) => {
     const { error: clinicErr } = await supabase
       .from('clinics')
       .insert({
-        id:          newId,
-        claimed:     false,
-        approved:    true,
-        phone:       phone   || null,
-        website:     website || null,
+        id:            newId,
+        name:          name.trim(),
+        neighbourhood: neighbourhood || null,
+        area:          area          || null,
+        phone:         phone         || null,
+        website:       website       || null,
+        place_id:      null,
+        claimed:       false,
+        approved:      true,
+        rating:        null,
+        reviews:       null,
       });
 
     if (clinicErr) {
