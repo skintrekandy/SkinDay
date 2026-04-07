@@ -2148,7 +2148,7 @@ function renderCards() {
     const badgeHTML = [
       (c.promo && c.promo_text) ? '<span class="badge badge-promo">Promo Available</span>' : '',
     ].filter(Boolean).join('');
-    const credMap = { physician:'MD', np:'NP', rn:'RN/RPN/LPN', img:'IMG' };
+    const credMap = { physician:'MD / Physician', np:'NP', rn:'RN/RPN/LPN', img:'IMG', nd:'ND' };
     const langMap = { english:'EN', mandarin:'中文', cantonese:'粵', farsi:'فا', french:'FR', korean:'한', hindi:'हि', arabic:'عر', punjabi:'ਪੰ', portuguese:'PT' };
     const credPills = (c.injector_credentials || []).map(v => `<span class="pill pill-cred">${credMap[v] || v.toUpperCase()}</span>`).join('');
     const langPills = (c.languages || []).map(v => `<span class="pill pill-lang">${langMap[v] || v}</span>`).join('');
@@ -3040,14 +3040,14 @@ function openClinicModal(clinicId) {
   document.getElementById('cm-price-empty').style.display  = 'none';
   document.getElementById('cm-price-lock').style.display   = 'none';
   const toxinLabel = getToxinLabel(clinic.toxin_type);
-  const hasPrices = (clinic.prices && clinic.prices.length > 0) || clinic.price !== null;
+  const hasPrices = (clinic.prices && clinic.prices.length > 0) || (clinic.price !== null && clinic.price !== undefined);
 
   if (!hasPrices && !isClaimed) {
     document.getElementById('cm-price-lock').style.display = 'flex';
   } else if (clinic.prices && clinic.prices.length > 0) {
     // Multi-price breakdown table
     document.getElementById('cm-price-filled').style.display = 'block';
-    const credMap = { physician:'MD', np:'NP', rn:'RN/RPN/LPN', img:'IMG' };
+    const credMap = { physician:'MD / Physician', np:'NP', rn:'RN/RPN/LPN', img:'IMG', nd:'ND' };
     const sorted = [...clinic.prices].sort((a,b) => a.price - b.price);
     const lowest = sorted[0];
     document.getElementById('cm-price-val').textContent = '$' + lowest.price;
@@ -3080,9 +3080,9 @@ function openClinicModal(clinicId) {
       document.getElementById('cm-price-filled').appendChild(cmSrcEl);
     }
     cmSrcEl.textContent = srcLabel || '';
-  } else if (clinic.price !== null) {
+  } else if (clinic.price !== null && clinic.price !== undefined) {
     document.getElementById('cm-price-filled').style.display = 'block';
-    document.getElementById('cm-price-val').textContent = '$' + clinic.price;
+    document.getElementById('cm-price-val').textContent = '$' + parseFloat(clinic.price).toFixed(2);
     document.getElementById('cm-toxin-label').textContent = toxinLabel;
     const isNonBotox = clinic.toxin_type && clinic.toxin_type !== 'botox';
     document.getElementById('cm-price-unit-label').textContent = isNonBotox
