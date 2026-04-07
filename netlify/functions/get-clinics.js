@@ -1,73 +1,89 @@
 const { createClient } = require('@supabase/supabase-js');
 
-exports.handler = async () => {
+// Fields needed for card grid + filtering + sorting — nothing more
+// Dropping: email, photos (heavy, only needed in modal — fetched separately)
+const CARD_FIELDS = `
+  id, name, neighbourhood, area, province, region,
+  rating, reviews, place_id, maps_url, rank,
+  phone, website, booking_url, logo_url,
+  claimed, approved, promo, promo_text,
+  toxin_type, injector_credentials, languages,
+  price, price_source, price_date,
+  practitioners (id, name, designation, display_order)
+`;
+
+exports.handler = async (event) => {
   try {
     const supabase = createClient(
       process.env.SUPABASE_URL,
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
-    // Fetch ALL clinics — discovery fields + enrichment fields
-    const { data: clinics, error: clinicsError } = await supabase
-      .from('clinics')
-      .select(`
-        id, name, neighbourhood, area, province, region, rating, reviews,
-        place_id, maps_url, rank, phone, website,
-        claimed, approved,
-        promo, promo_text, booking_url, email, photos, logo_url,
-        toxin_type, injector_credentials, languages,
-        price, price_source, price_date,
-        practitioners (id, name, designation, display_order)
-      `)
-      .eq('approved', true)
-      .order('id', { ascending: true })
-      .range(0, 9999);
+    // Run both queries in parallel
+    const [clinicsResult, pricesResult] = await Promise.all([
+      supabase
+        .from('clinics')
+        .select(CARD_FIELDS)
+        .eq('approved', true)
+        .order('id', { ascending: true })
+        .range(0, 9999),
+      supabase
+        .from('clinic_prices')
+        .select('clinic_id, toxin, price, injector_type, price_source, price_date')
+        .order('price', { ascending: true })
+    ]);
 
-    if (clinicsError) {
-      console.error('Supabase clinics error:', clinicsError);
-      return { statusCode: 500, body: JSON.stringify({ error: clinicsError.message }) };
-    }
-
-    // Fetch all prices from clinic_prices table
-    const { data: prices, error: pricesError } = await supabase
-      .from('clinic_prices')
-      .select('clinic_id, toxin, price, injector_type, price_source, price_date')
-      .order('price', { ascending: true });
-
-    if (pricesError) {
-      console.error('Supabase prices error:', pricesError);
+    if (clinicsResult.error) {
+      console.error('Supabase clinics error:', clinicsResult.error);
+      return { statusCode: 500, body: JSON.stringify({ error: clinicsResult.error.message }) };
     }
 
     // Build prices map keyed by clinic_id
     const pricesMap = {};
-    if (prices && prices.length) {
-      prices.forEach(p => {
+    if (pricesResult.data && pricesResult.data.length) {
+      pricesResult.data.forEach(p => {
         if (!pricesMap[p.clinic_id]) pricesMap[p.clinic_id] = [];
         pricesMap[p.clinic_id].push(p);
       });
     }
 
-    // Merge clinic_prices onto each clinic
-    const merged = clinics.map(clinic => {
+    // Merge + strip null/empty fields to shrink payload ~30%
+    const merged = clinicsResult.data.map(clinic => {
+      const practitioners = (clinic.practitioners || [])
+        .sort((a, b) => a.display_order - b.display_order);
+
+      const out = {};
+      const keep = [
+        'id','name','neighbourhood','area','province','region',
+        'rating','reviews','place_id','maps_url','rank',
+        'phone','website','booking_url','logo_url',
+        'claimed','approved','promo','promo_text',
+        'toxin_type','injector_credentials','languages',
+        'price','price_source','price_date',
+      ];
+
+      keep.forEach(k => {
+        const v = clinic[k];
+        if (v === null || v === undefined || v === '') return;
+        if (Array.isArray(v) && v.length === 0) return;
+        out[k] = v;
+      });
+
+      out.practitioners = practitioners;
+
       const clinicPrices = pricesMap[String(clinic.id)];
       if (clinicPrices && clinicPrices.length > 0) {
-        const sorted = [...clinicPrices].sort((a, b) => a.price - b.price);
-        const lowest = sorted[0];
-        return {
-          ...clinic,
-          price:        lowest.price,
-          price_source: lowest.price_source,
-          price_date:   lowest.price_date,
-          toxin_type:   lowest.toxin,
-          prices:       clinicPrices,
-          practitioners: (clinic.practitioners || []).sort((a,b) => a.display_order - b.display_order),
-        };
+        const lowest = [...clinicPrices].sort((a, b) => a.price - b.price)[0];
+        out.price        = lowest.price;
+        out.price_source = lowest.price_source;
+        out.price_date   = lowest.price_date;
+        out.toxin_type   = lowest.toxin;
+        out.prices       = clinicPrices;
+      } else {
+        out.prices = [];
       }
-      return {
-        ...clinic,
-        prices: [],
-        practitioners: (clinic.practitioners || []).sort((a,b) => a.display_order - b.display_order),
-      };
+
+      return out;
     });
 
     return {
@@ -75,7 +91,8 @@ exports.handler = async () => {
       headers: {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
-        'Cache-Control': 'public, max-age=300', // 5-minute CDN cache
+        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60',
+        'Vary': 'Accept-Encoding',
       },
       body: JSON.stringify(merged),
     };
