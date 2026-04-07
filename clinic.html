@@ -602,7 +602,7 @@ function renderClinic(clinic) {
     </div>`;
   } else if (clinic.prices && clinic.prices.length > 0) {
     // Multi-price breakdown from clinic_prices table
-    const credMap = { physician:'MD / Physician', np:'NP', rn:'RN / RPN', img:'IMG' };
+    const credMap = { physician:'MD / Physician', np:'Nurse Practitioner (NP)', rn:'Cosmetic Nurse (RN/RPN/LPN)', img:'International Medical Graduate (IMG)', nd:'Naturopathic Doctor (ND)' };
     const toxinLabel = t => t.charAt(0).toUpperCase() + t.slice(1);
     const srcLabel = clinic.price_source === 'clinic'
       ? `<span class="trust-badge-clinic"><svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 6 5 9 10 3"/></svg>Managed by clinic · ${formatPriceDate(clinic.price_date)}</span>`
@@ -618,7 +618,7 @@ function renderClinic(clinic) {
       </tr>`).join('');
     priceHTML = `
     <div class="price-display">
-      <span class="price-amount">From $${clinic.price}</span>
+      <span class="price-amount">From $${clinic.price != null && clinic.price !== undefined ? parseFloat(clinic.price).toFixed(2) : sorted[0].price.toFixed(2)}</span>
       <span class="price-unit">/ unit</span>
     </div>
     <table style="width:100%;border-collapse:collapse;margin-top:0.75rem;">
@@ -642,7 +642,7 @@ function renderClinic(clinic) {
       : clinic.price_source === 'inquiry'
       ? `<span class="trust-badge-inquiry">Verified via inquiry · ${formatPriceDate(clinic.price_date)}</span>`
       : null;
-    priceHTML = `<div class="price-display"><span class="price-amount">From $${clinic.price}</span><span class="price-unit">/ unit</span></div><div class="price-sub">Botulinum toxin · per unit${srcLabel ? ` · <span style="font-size:0.82em;color:var(--muted)">${srcLabel}</span>` : ''}</div>`;
+    priceHTML = `<div class="price-display"><span class="price-amount">From $${parseFloat(clinic.price).toFixed(2)}</span><span class="price-unit">/ unit</span></div><div class="price-sub">Botulinum toxin · per unit${srcLabel ? ` · <span style="font-size:0.82em;color:var(--muted)">${srcLabel}</span>` : ''}</div>`;
   } else {
     priceHTML = `<p style="font-size:0.88rem;color:var(--muted);">Price not listed</p>`;
   }
