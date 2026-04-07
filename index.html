@@ -1651,11 +1651,9 @@
           <option value="langley">Langley</option>
           <option value="abbotsford">Abbotsford</option>
         </optgroup>
-        <optgroup label="── Alberta ───────────────">
-        </optgroup>
         <optgroup label="Alberta">
-          <option value="calgary" disabled>Calgary (coming soon)</option>
-          <option value="edmonton" disabled>Edmonton (coming soon)</option>
+          <option value="calgary">Calgary</option>
+          <option value="edmonton">Edmonton</option>
         </optgroup>
         <optgroup label="── Quebec ────────────────">
         </optgroup>
@@ -1923,11 +1921,12 @@ function renderCards() {
     }
     if (currentFilter === 'all') return true;
     if (currentFilter === 'promo') return c.promo && c.promo_text;
-    const province = (c.province || '').toLowerCase().replace(/\s+/g, '-');
+    const province = (c.province || '').toUpperCase();
     const hood = (c.neighbourhood || '').toLowerCase().replace(/\s+/g, '-');
     // Province-level pills
-    if (['ontario','british-columbia','alberta','quebec'].includes(currentFilter)) {
-      return province === currentFilter;
+    const provinceMap = { 'ontario': 'ON', 'british-columbia': 'BC', 'alberta': 'AB', 'quebec': 'QC' };
+    if (provinceMap[currentFilter]) {
+      return province === provinceMap[currentFilter];
     }
     // City-level dropdown
     return hood === currentFilter;
@@ -2115,6 +2114,8 @@ const HOOD_COORDS = {
   'white-rock': [49.0253, -122.8027],
   'langley': [49.1044, -122.6604],
   'abbotsford': [49.0504, -122.3045],
+  'calgary': [51.0447, -114.0719],
+  'edmonton': [53.5461, -113.4938],
 };
 
 function haversineKm(lat1, lon1, lat2, lon2) {
