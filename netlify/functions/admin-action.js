@@ -269,11 +269,12 @@ exports.handler = async (event) => {
         area:          area          || null,
         phone:         phone         || null,
         website:       website       || null,
+        maps_url:      maps_url      || null,
         place_id:      null,
         claimed:       false,
         approved:      true,
-        rating:        rating  || null,
-        reviews:       reviews || null,
+        rating:        rating        || null,
+        reviews:       reviews       || null,
       });
 
     if (clinicErr) {
