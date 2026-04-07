@@ -2137,10 +2137,11 @@
       </select>
       <select style="${inpStyle};cursor:pointer;" onchange="markDirty()">
         <option value=""${!injectorType?' selected':''}>Any injector</option>
-        <option value="physician"${injectorType==='physician'?' selected':''}>Physician (MD)</option>
-        <option value="np"${injectorType==='np'?' selected':''}>NP</option>
-        <option value="rn"${injectorType==='rn'?' selected':''}>RN / RPN</option>
-        <option value="img"${injectorType==='img'?' selected':''}>IMG</option>
+        <option value="physician"${injectorType==='physician'?' selected':''}>MD / Physician</option>
+        <option value="np"${injectorType==='np'?' selected':''}>Nurse Practitioner (NP)</option>
+        <option value="rn"${injectorType==='rn'?' selected':''}>Cosmetic Nurse (RN/RPN/LPN)</option>
+        <option value="img"${injectorType==='img'?' selected':''}>International Medical Graduate (IMG)</option>
+        <option value="nd"${injectorType==='nd'?' selected':''}>Naturopathic Doctor (ND)</option>
       </select>
       <div style="display:flex;align-items:center;">
         <span style="background:var(--warm);border:1px solid var(--border);border-right:none;border-radius:8px 0 0 8px;color:var(--muted);padding:0.55rem 0.6rem;font-size:0.9rem;">$</span>

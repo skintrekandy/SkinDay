@@ -842,13 +842,16 @@
             <input type="checkbox" value="physician" style="accent-color:#C9A96E;" /> MD / Physician
           </label>
           <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-size:0.82rem;color:#FAF7F2;background:rgba(234,226,216,0.05);border:1px solid rgba(234,226,216,0.12);border-radius:6px;padding:0.4rem 0.75rem;">
-            <input type="checkbox" value="np" style="accent-color:#C9A96E;" /> NP
+            <input type="checkbox" value="np" style="accent-color:#C9A96E;" /> Nurse Practitioner (NP)
           </label>
           <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-size:0.82rem;color:#FAF7F2;background:rgba(234,226,216,0.05);border:1px solid rgba(234,226,216,0.12);border-radius:6px;padding:0.4rem 0.75rem;">
-            <input type="checkbox" value="rn" style="accent-color:#C9A96E;" /> RN / RPN
+            <input type="checkbox" value="rn" style="accent-color:#C9A96E;" /> Cosmetic Nurse (RN/RPN/LPN)
           </label>
           <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-size:0.82rem;color:#FAF7F2;background:rgba(234,226,216,0.05);border:1px solid rgba(234,226,216,0.12);border-radius:6px;padding:0.4rem 0.75rem;">
-            <input type="checkbox" value="img" style="accent-color:#C9A96E;" /> IMG
+            <input type="checkbox" value="img" style="accent-color:#C9A96E;" /> International Medical Graduate (IMG)
+          </label>
+          <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-size:0.82rem;color:#FAF7F2;background:rgba(234,226,216,0.05);border:1px solid rgba(234,226,216,0.12);border-radius:6px;padding:0.4rem 0.75rem;">
+            <input type="checkbox" value="nd" style="accent-color:#C9A96E;" /> Naturopathic Doctor (ND)
           </label>
         </div>
 
@@ -1413,7 +1416,7 @@ function piSelect(id, name, neighbourhood, area) {
     const { prices, injector_credentials, languages } = res.data;
     const existingEl = document.getElementById('pi-existing-prices');
     const existingList = document.getElementById('pi-existing-list');
-    const credMap = { physician:'MD', np:'NP', rn:'RN/RPN', img:'IMG' };
+    const credMap = { physician:'MD / Physician', np:'NP', rn:'RN/RPN/LPN', img:'IMG', nd:'ND' };
     if (prices && prices.length) {
       existingList.innerHTML = prices.map(p => `
         <div style="display:flex;justify-content:space-between;align-items:center;padding:0.35rem 0;border-bottom:1px solid rgba(234,226,216,0.06);">
@@ -1449,8 +1452,8 @@ function piAddRow() {
       <option value="letybo">Letybo</option>
     </select>
     <select style="${sel}">
-      <option value="">Any injector</option><option value="physician">Physician (MD)</option>
-      <option value="np">NP</option><option value="rn">RN / RPN</option><option value="img">IMG</option>
+      <option value="">Any injector</option><option value="physician">MD / Physician</option>
+      <option value="np">Nurse Practitioner (NP)</option><option value="rn">Cosmetic Nurse (RN/RPN/LPN)</option><option value="img">International Medical Graduate (IMG)</option><option value="nd">Naturopathic Doctor (ND)</option>
     </select>
     <div style="display:flex;align-items:center;">
       <span style="background:rgba(234,226,216,0.07);border:1px solid rgba(234,226,216,0.15);border-right:none;border-radius:7px 0 0 7px;color:#8C7B6B;padding:0.5rem 0.5rem;font-size:0.85rem;">$</span>
