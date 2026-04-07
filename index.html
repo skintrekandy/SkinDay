@@ -1593,7 +1593,7 @@
       <div class="search-field-label">Neighbourhood</div>
       <select id="searchNeighbourhood" onchange="applySearch()">
         <option value="all">Anywhere in Canada</option>
-        <optgroup label="── Ontario ──────────────">
+        <optgroup label="── Ontario ─────────────────────">
         </optgroup>
         <optgroup label="City of Toronto">
           <option value="toronto">Toronto</option>
@@ -1632,7 +1632,7 @@
           <option value="hamilton">Hamilton</option>
           <option value="london">London</option>
         </optgroup>
-        <optgroup label="── British Columbia ──────">
+        <optgroup label="── British Columbia ─────────────">
         </optgroup>
         <optgroup label="Metro Vancouver">
           <option value="vancouver">Vancouver</option>
@@ -1651,15 +1651,18 @@
           <option value="langley">Langley</option>
           <option value="abbotsford">Abbotsford</option>
         </optgroup>
+        <optgroup label="── Alberta ──────────────────────">
+        </optgroup>
         <optgroup label="Alberta">
           <option value="calgary">Calgary</option>
           <option value="edmonton">Edmonton</option>
         </optgroup>
-        <optgroup label="── Quebec ────────────────">
+        <optgroup label="── Quebec ───────────────────────">
         </optgroup>
         <optgroup label="Quebec">
-          <option value="montreal" disabled>Montréal (coming soon)</option>
-          <option value="quebec-city" disabled>Québec City (coming soon)</option>
+          <option value="montreal">Montréal</option>
+          <option value="laval">Laval</option>
+          <option value="quebec-city">Québec City</option>
         </optgroup>
       </select>
     </div>
@@ -2116,6 +2119,9 @@ const HOOD_COORDS = {
   'abbotsford': [49.0504, -122.3045],
   'calgary': [51.0447, -114.0719],
   'edmonton': [53.5461, -113.4938],
+  'montreal': [45.5017, -73.5673],
+  'laval': [45.6066, -73.7124],
+  'quebec-city': [46.8139, -71.2080],
 };
 
 function haversineKm(lat1, lon1, lat2, lon2) {
