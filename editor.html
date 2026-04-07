@@ -2227,9 +2227,9 @@
         <option value="img"${injectorType==='img'?' selected':''}>International Medical Graduate (IMG)</option>
         <option value="nd"${injectorType==='nd'?' selected':''}>Naturopathic Doctor (ND)</option>
       </select>
-      <div style="display:flex;align-items:center;">
-        <span style="background:var(--warm);border:1px solid var(--border);border-right:none;border-radius:8px 0 0 8px;color:var(--muted);padding:0.55rem 0.6rem;font-size:0.9rem;">$</span>
-        <input type="number" min="1" max="99" step="0.50" placeholder="0.00" value="${price||''}" oninput="markDirty()" style="background:var(--warm);border:1px solid var(--border);border-left:none;border-radius:0 8px 8px 0;color:var(--deep);font-family:inherit;font-size:0.9rem;padding:0.55rem 0.6rem;outline:none;width:100%;-moz-appearance:textfield;" />
+      <div style="position:relative;min-width:0;overflow:hidden;">
+        <span style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:0.9rem;pointer-events:none;z-index:1;">$</span>
+        <input type="number" min="1" max="99" step="0.50" placeholder="0.00" value="${price||''}" oninput="markDirty()" style="background:var(--warm);border:1px solid var(--border);border-radius:8px;color:var(--deep);font-family:inherit;font-size:0.9rem;padding:0.52rem 0.4rem 0.52rem 1.4rem;outline:none;width:100%;box-sizing:border-box;-moz-appearance:textfield;" />
       </div>
       <button type="button" onclick="document.getElementById('portal-row-${rowId}').remove();markDirty();" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;padding:0;line-height:1;" onmouseover="this.style.color='var(--rose)'" onmouseout="this.style.color='var(--muted)'">✕</button>`;
     document.getElementById('portal-price-rows').appendChild(row);
