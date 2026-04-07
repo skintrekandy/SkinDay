@@ -888,7 +888,7 @@
       display: grid;
       grid-template-columns: 24px 1fr 1fr 36px;
       gap: 10px;
-      align-items: center;
+      align-items: end;
       padding: 8px 0;
       border-bottom: 1px solid var(--border);
     }
@@ -1045,7 +1045,7 @@
 
         <!-- Price rows -->
         <div class="field-label" style="margin-bottom:0.5rem;">Add / update prices</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 90px 28px;gap:6px;margin-bottom:0.4rem;">
+        <div style="display:grid;grid-template-columns:1fr 1fr minmax(90px,1fr) 28px;gap:6px;margin-bottom:0.4rem;">
           <div style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;">Brand</div>
           <div style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;">Injector type</div>
           <div style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;">Price / unit</div>
@@ -2209,7 +2209,7 @@
     const rowId = ++portalRowCount;
     const row = document.createElement('div');
     row.id = `portal-row-${rowId}`;
-    row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 90px 28px;gap:6px;margin-bottom:0.5rem;align-items:center;width:100%;box-sizing:border-box;';
+    row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr minmax(90px,1fr) 28px;gap:6px;margin-bottom:0.5rem;align-items:center;width:100%;box-sizing:border-box;';
     const inpStyle = 'background:var(--warm);border:1px solid var(--border);border-radius:8px;color:var(--deep);font-family:inherit;font-size:0.9rem;padding:0.55rem 0.75rem;outline:none;width:100%;';
     row.innerHTML = `
       <select style="${inpStyle};cursor:pointer;" onchange="markDirty()">
