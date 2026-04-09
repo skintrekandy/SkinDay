@@ -2082,6 +2082,36 @@ document.addEventListener('click', function(e) {
   trackClick(btn.dataset.clinicId, btn.dataset.clickType, btn.dataset.neighbourhood);
 });
 
+function updateNeighbourhoodCounts() {
+  // Build a count map: neighbourhood slug → count
+  const counts = {};
+  clinics.forEach(c => {
+    if (!c.neighbourhood) return;
+    const slug = c.neighbourhood.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    counts[slug] = (counts[slug] || 0) + 1;
+  });
+
+  // Also build province counts for the filter pills
+  const provinceCounts = {};
+  clinics.forEach(c => {
+    if (!c.province) return;
+    provinceCounts[c.province] = (provinceCounts[c.province] || 0) + 1;
+  });
+
+  // Update each option in the neighbourhood dropdown
+  const select = document.getElementById('searchNeighbourhood');
+  if (!select) return;
+  Array.from(select.options).forEach(opt => {
+    if (opt.value === 'all' || opt.value === '') return;
+    const count = counts[opt.value];
+    if (count) {
+      // Strip any existing count suffix before adding new one
+      const baseName = opt.text.replace(/\s*\(\d+\)$/, '');
+      opt.text = baseName + ' (' + count + ')';
+    }
+  });
+}
+
 function renderCards() {
   if (!clinics || clinics.length === 0) return;
   const grid = document.getElementById('cardsGrid');
@@ -2437,6 +2467,7 @@ let compareList = [];
         o.id = Number(o.id) || o.id;
       });
       clinics = raw;
+      updateNeighbourhoodCounts();
       renderCards();
       setupInfiniteScroll();
       // Hash routing — open clinic if URL has #clinic/
