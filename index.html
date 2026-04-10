@@ -2825,11 +2825,13 @@ async function openCompareModal() {
   }).join('');
 
 
-  const consultCells = selected.map(c =>
-    c.consult_free
-      ? `<td><span style="display:inline-flex;align-items:center;gap:4px;color:#3D7A55;font-weight:500;font-size:0.85rem;">✓ Complimentary</span></td>`
-      : `<td><span style="color:var(--dim);font-style:italic;">Not offered</span></td>`
-  ).join('');
+  const consultCells = selected.map(c => {
+    if (c.consult_free === true)
+      return `<td><span style="display:inline-flex;align-items:center;gap:4px;color:#3D7A55;font-weight:500;font-size:0.85rem;">✓ Complimentary</span></td>`;
+    if (c.claimed)
+      return `<td><span style="color:var(--dim);font-style:italic;">Not offered</span></td>`;
+    return `<td><span style="color:var(--dim);font-style:italic;">—</span></td>`;
+  }).join('');
 
   const phoneCells = selected.map(c => {
     if (c.phone) {
