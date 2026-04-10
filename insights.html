@@ -281,7 +281,7 @@
     .density-list { display: flex; flex-direction: column; }
     .density-row {
       display: grid;
-      grid-template-columns: 1.8rem minmax(100px, 1.2fr) 2fr auto;
+      grid-template-columns: 1.8rem 1fr auto;
       align-items: center;
       gap: 0.75rem;
       padding: 0.85rem 0;
@@ -306,8 +306,7 @@
       padding: 1px 5px; margin-left: 5px;
     }
     .density-bar-wrap {
-      width: 100%; height: 4px;
-      background: var(--warm); border-radius: 2px; overflow: hidden;
+      display: none;
     }
     .density-bar {
       height: 100%;
@@ -319,11 +318,7 @@
       font-size: 0.82rem; font-weight: 500;
       color: var(--deep); text-align: right; min-width: 52px;
     }
-    .density-highlight {
-      background: linear-gradient(135deg, rgba(201,169,110,0.06), rgba(200,114,90,0.04));
-      border-radius: 6px; padding: 0 0.5rem;
-      margin: 0 -0.5rem;
-    }
+    .density-highlight {}
 
     /* ── CREDENTIAL GRID ── */
     .cred-grid {
@@ -667,13 +662,13 @@
       <div class="density-table-title">By clinics per 100K population</div>
       <div class="density-table-sub">City proper populations, 2021 Census. Suburban markets dominate — Toronto doesn't crack the top 5.</div>
       <div class="density-list">
-        <div class="density-row density-highlight">
+        <div class="density-row">
           <div class="density-rank gold">1</div>
           <div><span class="density-name">Richmond Hill</span><span class="density-province">ON</span></div>
           <div class="density-bar-wrap"><div class="density-bar" data-width="100"></div></div>
           <div class="density-count">56.4</div>
         </div>
-        <div class="density-row density-highlight">
+        <div class="density-row">
           <div class="density-rank gold">2</div>
           <div><span class="density-name">Richmond</span><span class="density-province">BC</span></div>
           <div class="density-bar-wrap"><div class="density-bar" data-width="76"></div></div>
