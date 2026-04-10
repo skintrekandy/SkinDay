@@ -878,13 +878,6 @@
           <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-size:0.82rem;color:#FAF7F2;background:rgba(234,226,216,0.05);border:1px solid rgba(234,226,216,0.12);border-radius:6px;padding:0.4rem 0.75rem;"><input type="checkbox" value="portuguese" style="accent-color:#C9A96E;" /> Portuguese</label>
         </div>
 
-        <!-- Consult free -->
-        <div class="form-section-label" style="margin-top:1.25rem;">Consultation</div>
-        <label style="display:flex;align-items:center;gap:0.6rem;cursor:pointer;font-size:0.82rem;color:#FAF7F2;background:rgba(234,226,216,0.05);border:1px solid rgba(234,226,216,0.12);border-radius:6px;padding:0.5rem 0.85rem;max-width:280px;">
-          <input type="checkbox" id="pi-consult-free" style="accent-color:#C9A96E;width:15px;height:15px;" />
-          Complimentary consultation
-        </label>
-
         <!-- Save button -->
         <div style="margin-top:1.5rem;display:flex;gap:0.75rem;align-items:center;">
           <button class="btn-submit-clinic" onclick="piSaveAll()">Save All →</button>
@@ -1428,8 +1421,7 @@ function piSelect(id, name, neighbourhood, area) {
   piRowCount = 0;
   piAddRow();
   document.querySelectorAll('#pi-creds input, #pi-langs input').forEach(cb => cb.checked = false);
-  const piCF = document.getElementById('pi-consult-free');
-  if (piCF) piCF.checked = false;
+
 
   // Chain detection
   const selectedClinic = piAllClinics.find(c => String(c.id) == String(id));
@@ -1468,11 +1460,7 @@ function piSelect(id, name, neighbourhood, area) {
     if (injector_credentials && injector_credentials.length) {
       document.querySelectorAll('#pi-creds input').forEach(cb => { cb.checked = injector_credentials.includes(cb.value); });
     }
-    // Restore consult_free from clinic data if available
-    if (res.data.consult_free !== undefined) {
-      const piConsult = document.getElementById('pi-consult-free');
-      if (piConsult) piConsult.checked = !!res.data.consult_free;
-    }
+
     if (languages && languages.length) {
       document.querySelectorAll('#pi-langs input').forEach(cb => { cb.checked = languages.includes(cb.value); });
     }
@@ -1521,8 +1509,7 @@ async function piSaveAll() {
   const rows = piGetRows();
   const creds = [...document.querySelectorAll('#pi-creds input:checked')].map(cb => cb.value);
   const langs = [...document.querySelectorAll('#pi-langs input:checked')].map(cb => cb.value);
-  const consultFreeVal = document.getElementById('pi-consult-free')?.checked;
-  if (!rows.length && !creds.length && !langs.length && consultFreeVal === false) { piStatus('error', 'Enter at least one price, credential, or language.'); return; }
+  if (!rows.length && !creds.length && !langs.length) { piStatus('error', 'Enter at least one price, credential, or language.'); return; }
 
   const applyAll = document.getElementById('pi-chain-all')?.checked;
   const allIds = applyAll && piChainIds.length ? [piSelectedId, ...piChainIds] : [piSelectedId];
@@ -1533,11 +1520,10 @@ async function piSaveAll() {
       const res = await apiCall({ action: 'set-prices', clinic_id: cid, prices: rows });
       if (!res.ok || !res.data.success) errors.push(res.data?.error || 'Save failed');
     }
-    if (creds.length || langs.length || consultFreeVal !== undefined) {
+    if (creds.length || langs.length) {
       await apiCall({ action: 'set-clinic-info', clinic_id: cid,
         ...(creds.length ? { injector_credentials: creds } : {}),
-        ...(langs.length ? { languages: langs } : {}),
-        consult_free: !!consultFreeVal });
+        ...(langs.length ? { languages: langs } : {}) });
     }
   }
 
