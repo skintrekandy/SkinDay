@@ -1373,10 +1373,10 @@ let piRowCount      = 0;
 
 function piLoadClinics() {
   if (piClinicsLoaded) return;
-  fetch('/api/get-clinics')
+  fetch('/api/get-clinics?mode=index')
     .then(r => r.ok ? r.json() : [])
     .then(data => {
-      const raw = Array.isArray(data) ? data : (data.clinics || data.data || []);
+      const raw = Array.isArray(data) ? data : [];
       raw.forEach(o => { o.id = Number(o.id) || o.id; });
       piAllClinics = raw;
       piClinicsLoaded = true;
@@ -1560,10 +1560,10 @@ let pracSelectedId = null;
 
 function pracLoadClinics() {
   if (pracClinicsLoaded) return;
-  fetch('/api/get-clinics')
+  fetch('/api/get-clinics?mode=index')
     .then(r => r.ok ? r.json() : [])
     .then(data => {
-      const raw = Array.isArray(data) ? data : (data.clinics || data.data || []);
+      const raw = Array.isArray(data) ? data : [];
       raw.forEach(o => { o.id = Number(o.id) || o.id; });
       pracAllClinics = raw;
       pracClinicsLoaded = true;
