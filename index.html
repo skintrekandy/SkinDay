@@ -2017,15 +2017,37 @@
   }
 })();
 
-// ─── DATA (loaded from Supabase) ───────────────────────
-let clinics = [];
+// ─── DATA ────────────────────────────────────────────────────
+// clinicsIndex: lightweight {id, name, neighbourhood, province} — fetched once
+// used by Near Me, compare slots, hash routing
+let clinicsIndex = [];
 
+// currentPageClinics: full card data for visible cards only
+let currentPageClinics = [];
+
+// Pagination state
+let currentPage = 0;
+let currentTotal = 0;
+let isLoading = false;
+
+// Filter / sort state
 let currentFilter = 'all';
 let currentSort = 'rating';
-let visibleCount = 24;
-let userLocation = null; // { lat, lon } set when Near Me is used
+let currentNameQuery = '';
+let currentInjectorFilter = 'all';
+let userLocation = null;
 let currentClinic = null;
+let compareList = [];
 
+// ─── PROVINCE MAP ─────────────────────────────────────────────
+const PROVINCE_MAP = {
+  'ontario': 'ON',
+  'british-columbia': 'BC',
+  'alberta': 'AB',
+  'quebec': 'QC',
+};
+
+// ─── HELPERS ──────────────────────────────────────────────────
 function renderStars(rating) {
   if (rating === null || rating === undefined) return '☆☆☆☆☆';
   const full = Math.floor(rating);
@@ -2038,18 +2060,17 @@ function getBadgeHTML(badges, hasPromo) {
   let html = '';
   if (badges.includes('verified')) html += '<span class="badge badge-verified">Price Verified</span>';
   if (badges.includes('transparent')) html += '<span class="badge badge-transparent">Price Transparent</span>';
-  if (hasPromo) html += '<span class="badge badge-promo">Promo Available</span>';  return html;
+  if (hasPromo) html += '<span class="badge badge-promo">Promo Available</span>';
+  return html;
 }
 
 function getRankLabel(rank, price) {
-  // If we have a live price, derive rank dynamically
   if (price !== null && price !== undefined) {
-    if (price < 9)        return { cls: 'rank-low',  label: '$' };
-    if (price < 12)       return { cls: 'rank-low',  label: '$$' };
-    if (price < 15)       return { cls: 'rank-mid',  label: '$$$' };
-    return                       { cls: 'rank-high', label: '$$$$' };
+    if (price < 9)  return { cls: 'rank-low',  label: '$' };
+    if (price < 12) return { cls: 'rank-low',  label: '$$' };
+    if (price < 15) return { cls: 'rank-mid',  label: '$$$' };
+    return                  { cls: 'rank-high', label: '$$$$' };
   }
-  // Fall back to static rank for clinics without a price
   if (rank === 'low')  return { cls: 'rank-low',  label: '$$' };
   if (rank === 'mid')  return { cls: 'rank-mid',  label: '$$$' };
   if (rank === 'high') return { cls: 'rank-high', label: '$$$$' };
@@ -2057,7 +2078,7 @@ function getRankLabel(rank, price) {
 }
 
 function getToxinLabel(toxin) {
-  const map = { botox: 'Botox', dysport: 'Dysport', xeomin: 'Xeomin', nuceiva: 'Nuceiva', letybo: 'Letybo' };
+  const map = { botox:'Botox', dysport:'Dysport', xeomin:'Xeomin', nuceiva:'Nuceiva', letybo:'Letybo' };
   return map[toxin] || 'Botox';
 }
 
@@ -2067,100 +2088,114 @@ function formatPriceDate(dateStr) {
   return d.toLocaleDateString('en-CA', { month: 'long', year: 'numeric' });
 }
 
-// ─── CLICK TRACKING ─────────────────────────────────────────
+function normaliseClinic(o) {
+  ['injector_credentials', 'languages'].forEach(field => {
+    if (typeof o[field] === 'string') {
+      try { o[field] = JSON.parse(o[field]); } catch(e) { o[field] = []; }
+    }
+    if (!Array.isArray(o[field])) o[field] = [];
+  });
+  o.id = Number(o.id) || o.id;
+  return o;
+}
+
+function getScore(c) {
+  const price = c.price !== null ? c.price : 999;
+  const priceScore = Math.max(0, 1 - price / 30);
+  const ratingScore = (c.rating || 0) / 5;
+  return (priceScore + ratingScore) / 2;
+}
+
+// ─── CLINIC LOOKUP ────────────────────────────────────────────
+// Look up a clinic by id — checks current page first, then index
+function findClinic(id) {
+  const fromPage = currentPageClinics.find(c => c.id == id);
+  if (fromPage) return fromPage;
+  return clinicsIndex.find(c => c.id == id) || null;
+}
+
+// ─── COMPARE BUTTON SYNC ──────────────────────────────────────
+function syncCompareButtons() {
+  document.querySelectorAll('.btn-compare-card').forEach(b => {
+    const rawId = b.id.replace('cmp-', '');
+    const cardId = isNaN(rawId) ? rawId : parseInt(rawId);
+    if (compareList.includes(cardId)) {
+      b.classList.add('selected');
+      b.textContent = '✓ Added';
+      b.disabled = false;
+      b.style.opacity = '';
+      b.style.cursor = '';
+    } else {
+      b.classList.remove('selected');
+      b.textContent = '+ Compare';
+      if (compareList.length >= 3) {
+        b.disabled = true;
+        b.style.opacity = '0.35';
+        b.style.cursor = 'not-allowed';
+      } else {
+        b.disabled = false;
+        b.style.opacity = '';
+        b.style.cursor = '';
+      }
+    }
+  });
+  document.querySelectorAll('.clinic-card').forEach(card => {
+    const rawCid = card.dataset.id;
+    const cid = isNaN(rawCid) ? rawCid : parseInt(rawCid);
+    if (compareList.includes(cid)) card.classList.add('comparing');
+    else card.classList.remove('comparing');
+  });
+}
+
+// ─── CLICK TRACKING ───────────────────────────────────────────
 function trackClick(clinicId, clickType, neighbourhood) {
   fetch('/api/track-click', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ clinic_id: String(clinicId), click_type: clickType, neighbourhood: neighbourhood || null })
-  }).then(r => r.text()).then(t => console.log('[track-click]', t)).catch(e => console.warn('[track-click error]', e));
+  }).catch(e => console.warn('[track-click error]', e));
 }
 
-// Delegated listener for card Book Now buttons (data-attribute approach)
 document.addEventListener('click', function(e) {
   const btn = e.target.closest('.book-now-btn');
   if (!btn) return;
   trackClick(btn.dataset.clinicId, btn.dataset.clickType, btn.dataset.neighbourhood);
 });
 
-function updateNeighbourhoodCounts() {
-  // Build a count map: neighbourhood slug → count
-  const counts = {};
-  clinics.forEach(c => {
-    if (!c.neighbourhood) return;
-    const slug = c.neighbourhood.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-    counts[slug] = (counts[slug] || 0) + 1;
-  });
+// ─── BUILD API URL ─────────────────────────────────────────────
+function buildApiUrl(page) {
+  const params = new URLSearchParams();
+  params.set('page', page);
+  params.set('sort', currentSort);
 
-  // Also build province counts for the filter pills
-  const provinceCounts = {};
-  clinics.forEach(c => {
-    if (!c.province) return;
-    provinceCounts[c.province] = (provinceCounts[c.province] || 0) + 1;
-  });
-
-  // Update each option in the neighbourhood dropdown
-  const select = document.getElementById('searchNeighbourhood');
-  if (!select) return;
-  Array.from(select.options).forEach(opt => {
-    if (opt.value === 'all' || opt.value === '') return;
-    const count = counts[opt.value];
-    if (count) {
-      // Strip any existing count suffix before adding new one
-      const baseName = opt.text.replace(/\s*\(\d+\)$/, '');
-      opt.text = baseName + ' (' + count + ')';
-    }
-  });
-}
-
-function renderCards() {
-  if (!clinics || clinics.length === 0) return;
-  const grid = document.getElementById('cardsGrid');
-  let filtered = clinics.filter(c => {
-    // Name search — takes priority, ignores neighbourhood filter
-    if (currentNameQuery) {
-      return c.name.toLowerCase().includes(currentNameQuery);
-    }
-    if (currentFilter === 'all') return true;
-    if (currentFilter === 'promo') return c.promo && c.promo_text;
-    const province = (c.province || '').toUpperCase();
-    const hood = (c.neighbourhood || '').toLowerCase().replace(/\s+/g, '-');
-    // Province-level pills
-    const provinceMap = { 'ontario': 'ON', 'british-columbia': 'BC', 'alberta': 'AB', 'quebec': 'QC' };
-    if (provinceMap[currentFilter]) {
-      return province === provinceMap[currentFilter];
-    }
-    // City-level dropdown
-    return hood === currentFilter;
-  });
-
-  // Injector filter — layered on top
-  if (currentInjectorFilter !== 'all') {
-    filtered = filtered.filter(c =>
-      Array.isArray(c.injector_credentials) && c.injector_credentials.includes(currentInjectorFilter)
-    );
+  if (currentNameQuery) {
+    params.set('search', currentNameQuery);
+  } else if (currentFilter === 'promo') {
+    params.set('promo', 'true');
+  } else if (PROVINCE_MAP[currentFilter]) {
+    params.set('province', PROVINCE_MAP[currentFilter]);
+  } else if (currentFilter !== 'all') {
+    params.set('neighbourhood', currentFilter);
   }
 
-  if (currentSort === 'price-low') filtered.sort((a,b) => (a.price ?? 999) - (b.price ?? 999));
-  if (currentSort === 'price-high') filtered.sort((a,b) => (b.price ?? -1) - (a.price ?? -1));
-  if (currentSort === 'rating') filtered.sort((a,b) => (b.rating ?? 0) - (a.rating ?? 0));
-  if (currentSort === 'reviews') filtered.sort((a,b) => (b.reviews ?? 0) - (a.reviews ?? 0));
-  if (currentSort === 'best-value') filtered.sort((a,b) => getScore(b) - getScore(a));
+  if (currentInjectorFilter !== 'all') {
+    params.set('injector', currentInjectorFilter);
+  }
 
-  // Pin order: portal-claimed → inquiry-priced → unclaimed
-  filtered.sort((a, b) => {
-    const score = c => {
-      if (c.claimed) return 2;
-      if (c.price !== null && c.price !== undefined) return 1;
-      return 0;
-    };
-    return score(b) - score(a);
+  return '/api/get-clinics?' + params.toString();
+}
+
+// ─── RENDER CARDS ─────────────────────────────────────────────
+function renderPageCards(clinicsData, append) {
+  const grid = document.getElementById('cardsGrid');
+
+  // Client-side pin-order: claimed > priced > unclaimed
+  clinicsData.sort((a, b) => {
+    const s = c => c.claimed ? 2 : (c.price != null ? 1 : 0);
+    return s(b) - s(a);
   });
 
-  const visible = filtered.slice(0, visibleCount);
-  document.getElementById('loadMoreBtn').style.display = filtered.length <= visibleCount ? 'none' : 'inline-block';
-
-  grid.innerHTML = visible.map(c => {
+  const html = clinicsData.map(c => {
     const { cls, label } = getRankLabel(c.rank, c.price);
     const hasPrice = c.price !== null && c.price !== undefined;
     const toxinLabel = getToxinLabel(c.toxin_type);
@@ -2175,7 +2210,6 @@ function renderCards() {
            <span class="price-unit">/ unit · ${toxinLabel}</span>
          </div>`
       : `<div class="price-not-listed">Price not listed</div>`;
-    const rankHTML = '';
     const badgeHTML = [
       (c.promo && c.promo_text) ? '<span class="badge badge-promo">Promo Available</span>' : '',
     ].filter(Boolean).join('');
@@ -2232,35 +2266,142 @@ function renderCards() {
       </div>
     `;
   }).join('');
+
+  if (append) {
+    const sentinel = grid.querySelector('.load-more-sentinel');
+    if (sentinel) sentinel.remove();
+    grid.insertAdjacentHTML('beforeend', html);
+  } else {
+    grid.innerHTML = html;
+  }
+
+  syncCompareButtons();
 }
 
+// ─── FETCH PAGE ────────────────────────────────────────────────
+async function fetchPage(page, append) {
+  if (isLoading) return;
+  isLoading = true;
+
+  const grid = document.getElementById('cardsGrid');
+  const loadMoreBtn = document.getElementById('loadMoreBtn');
+
+  if (!append) {
+    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60px 0;color:var(--muted);font-size:0.9rem;letter-spacing:0.03em;">Loading clinics…</div>';
+  } else {
+    grid.insertAdjacentHTML('beforeend', '<div class="load-more-sentinel" style="grid-column:1/-1;text-align:center;padding:24px 0;color:var(--muted);font-size:0.85rem;">Loading more…</div>');
+  }
+
+  if (loadMoreBtn) loadMoreBtn.style.display = 'none';
+
+  try {
+    const res = await fetch(buildApiUrl(page));
+    if (!res.ok) throw new Error(res.status);
+    const data = await res.json();
+
+    const raw = (data.clinics || []).map(normaliseClinic);
+
+    if (append) {
+      currentPageClinics = currentPageClinics.concat(raw);
+    } else {
+      currentPageClinics = raw;
+    }
+
+    currentPage  = data.page ?? page;
+    currentTotal = data.total ?? 0;
+
+    if (raw.length === 0 && !append) {
+      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60px 0;color:var(--muted);font-size:0.9rem;">No clinics found. Try adjusting your filters.</div>';
+    } else {
+      renderPageCards(raw, append);
+    }
+
+    if (loadMoreBtn) loadMoreBtn.style.display = data.hasMore ? 'inline-block' : 'none';
+
+  } catch (err) {
+    console.error('Failed to load clinics:', err);
+    if (!append) {
+      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60px 0;color:var(--muted);font-size:0.9rem;">Unable to load clinics. Please refresh the page.</div>';
+    }
+  } finally {
+    isLoading = false;
+    const sentinel = grid.querySelector('.load-more-sentinel');
+    if (sentinel) sentinel.remove();
+  }
+}
+
+// ─── LOAD MORE ─────────────────────────────────────────────────
+function loadMore() {
+  fetchPage(currentPage + 1, true);
+}
+
+// ─── FILTER & SORT ─────────────────────────────────────────────
 function applySearch() {
-  const neighbourhood = document.getElementById('searchNeighbourhood').value;
-  const nameQuery     = (document.getElementById('searchClinicName').value || '').trim().toLowerCase();
-  const injector      = document.getElementById('searchInjector').value;
+  const neighbourhood   = document.getElementById('searchNeighbourhood').value;
+  const nameQuery       = (document.getElementById('searchClinicName').value || '').trim().toLowerCase();
+  const injector        = document.getElementById('searchInjector').value;
 
-  currentFilter        = neighbourhood;
-  currentNameQuery     = nameQuery;
+  currentFilter         = neighbourhood;
+  currentNameQuery      = nameQuery;
   currentInjectorFilter = injector;
-  visibleCount         = 24;
 
-  // Sync filter buttons only when no name query active
   if (!nameQuery) {
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
     const matchBtn = [...document.querySelectorAll('.filter-btn')].find(b => b.getAttribute('onclick')?.includes(`'${neighbourhood}'`));
     if (matchBtn) matchBtn.classList.add('active');
-    else document.querySelector('.filter-btn').classList.add('active');
+    else document.querySelector('.filter-btn')?.classList.add('active');
   }
 
-  renderCards();
+  fetchPage(0, false);
 
-  // Only scroll if user clicked Search button (not live typing)
   if (!nameQuery) {
     document.getElementById('prices').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 }
 
-// Approximate centre coords per neighbourhood for Near Me matching
+function filterCards(filter, btn) {
+  currentFilter    = filter;
+  currentNameQuery = '';
+  document.getElementById('searchClinicName').value = '';
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  fetchPage(0, false);
+}
+
+function filterByPill(area) {
+  currentFilter    = area;
+  currentNameQuery = '';
+  document.getElementById('searchClinicName').value = '';
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  fetchPage(0, false);
+}
+
+function sortCards(val) {
+  currentSort = val;
+  fetchPage(0, false);
+}
+
+// ─── NEIGHBOURHOOD COUNTS (from index) ────────────────────────
+function updateNeighbourhoodCounts() {
+  const counts = {};
+  clinicsIndex.forEach(c => {
+    if (!c.neighbourhood) return;
+    const slug = c.neighbourhood.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    counts[slug] = (counts[slug] || 0) + 1;
+  });
+  const select = document.getElementById('searchNeighbourhood');
+  if (!select) return;
+  Array.from(select.options).forEach(opt => {
+    if (opt.value === 'all' || opt.value === '') return;
+    const count = counts[opt.value];
+    if (count) {
+      const baseName = opt.text.replace(/\s*\(\d+\)$/, '');
+      opt.text = baseName + ' (' + count + ')';
+    }
+  });
+}
+
+// ─── NEAR ME ───────────────────────────────────────────────────
 const HOOD_COORDS = {
   'toronto': [43.6532, -79.3832],
   'north-york': [43.7615, -79.4111],
@@ -2347,7 +2488,6 @@ function useNearMe() {
       const userLon = pos.coords.longitude;
       userLocation = { lat: userLat, lon: userLon };
 
-      // Find nearest neighbourhood
       let nearest = null, nearestDist = Infinity;
       for (const [hood, [lat, lon]] of Object.entries(HOOD_COORDS)) {
         const d = haversineKm(userLat, userLon, lat, lon);
@@ -2358,27 +2498,24 @@ function useNearMe() {
       btn.disabled = false;
 
       if (nearest && nearestDist < 60) {
-        // Filter to nearest neighbourhood
-        currentFilter = nearest;
+        currentFilter    = nearest;
         currentNameQuery = '';
-        visibleCount = 24;
         document.getElementById('searchClinicName').value = '';
-        // Sync filter buttons
         document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
         const matchBtn = [...document.querySelectorAll('.filter-btn')]
           .find(b => b.getAttribute('onclick')?.includes(`'${nearest}'`));
         if (matchBtn) matchBtn.classList.add('active');
-        renderCards();
+        fetchPage(0, false);
         const hoodLabel = matchBtn ? matchBtn.querySelector('.filter-label')?.textContent || nearest : nearest;
         showToast(`Showing clinics near ${hoodLabel.trim()}`);
       } else {
         currentFilter = 'all';
-        renderCards();
+        fetchPage(0, false);
         showToast('Showing all clinics — location outside coverage area.');
       }
       document.getElementById('prices').scrollIntoView({ behavior: 'smooth', block: 'start' });
     },
-    (err) => {
+    () => {
       btn.textContent = '📍 Near Me';
       btn.disabled = false;
       showToast('Location access denied. Try selecting a neighbourhood instead.');
@@ -2387,6 +2524,7 @@ function useNearMe() {
   );
 }
 
+// ─── TOAST ─────────────────────────────────────────────────────
 function showToast(msg) {
   let toast = document.getElementById('toast');
   if (!toast) {
@@ -2400,89 +2538,51 @@ function showToast(msg) {
   setTimeout(() => { toast.style.opacity = '0'; }, 3000);
 }
 
-function filterCards(filter, btn) {
-  currentFilter = filter;
-  currentNameQuery = '';
-  document.getElementById('searchClinicName').value = '';
-  visibleCount = 24;
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  renderCards();
-}
-
-// Called from neighbourhood pills — no btn reference needed
-function filterByPill(area) {
-  currentFilter = area;
-  currentNameQuery = '';
-  document.getElementById('searchClinicName').value = '';
-  visibleCount = 24;
-  // Sync filter buttons
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  const matchBtn = [...document.querySelectorAll('.filter-btn')]
-    .find(b => b.getAttribute('onclick')?.includes(`''`));
-  if (matchBtn) matchBtn.classList.add('active');
-  renderCards();
-}
-
-function sortCards(val) {
-  currentSort = val;
-  renderCards();
-}
-
-function getScore(c) {
-  // Best Value: low price + high rating. Normalise each to 0-1, weight equally.
-  const price = c.price !== null ? c.price : 999;
-  const maxPrice = 30;
-  const priceScore = Math.max(0, 1 - price / maxPrice);
-  const ratingScore = (c.rating || 0) / 5;
-  return (priceScore + ratingScore) / 2;
-}
-
-function loadMore() {
-  visibleCount += 12;
-  renderCards();
-}
-
-// Infinite scroll is set up in setupInfiniteScroll() called after data loads
-
-let currentNameQuery = '';
-let currentInjectorFilter = 'all';
-let compareList = [];
-
-// ─── INIT — fetch all clinics from Supabase then render ──────
-(function loadClinics() {
+// ─── INIT ──────────────────────────────────────────────────────
+(async function init() {
   const grid = document.getElementById('cardsGrid');
   grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60px 0;color:var(--muted);font-size:0.9rem;letter-spacing:0.03em;">Loading clinics…</div>';
 
-  fetch('/api/get-clinics')
-    .then(r => r.ok ? r.json() : Promise.reject(r.status))
-    .then(data => {
-      const raw = Array.isArray(data) ? data : (data.clinics || data.data || []);
-      raw.forEach(o => {
-        ['injector_credentials', 'languages'].forEach(field => {
-          if (typeof o[field] === 'string') {
-            try { o[field] = JSON.parse(o[field]); } catch(e) { o[field] = []; }
-          }
-          if (!Array.isArray(o[field])) o[field] = [];
-        });
-        o.id = Number(o.id) || o.id;
-      });
-      clinics = raw;
-      updateNeighbourhoodCounts();
-      renderCards();
-      setupInfiniteScroll();
-      // Hash routing — open clinic if URL has #clinic/
-      const hash = window.location.hash;
-      if (hash.startsWith('#clinic/')) {
-        const slug = hash.replace('#clinic/', '');
-        const clinic = clinics.find(c => cmToSlug(c.name) === slug);
-        if (clinic) openClinicModal(clinic.id);
-      }
-    })
-    .catch(err => {
-      console.error('Failed to load clinics:', err);
-      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60px 0;color:var(--muted);font-size:0.9rem;">Unable to load clinics. Please refresh the page.</div>';
-    });
+  // Fetch index + first page in parallel
+  const [indexRes, pageRes] = await Promise.allSettled([
+    fetch('/api/get-clinics?mode=index').then(r => r.ok ? r.json() : []),
+    fetch(buildApiUrl(0)).then(r => r.ok ? r.json() : { clinics: [], total: 0, hasMore: false }),
+  ]);
+
+  // Populate index
+  if (indexRes.status === 'fulfilled' && Array.isArray(indexRes.value)) {
+    clinicsIndex = indexRes.value.map(o => { o.id = Number(o.id) || o.id; return o; });
+    updateNeighbourhoodCounts();
+  }
+
+  // Render first page
+  if (pageRes.status === 'fulfilled') {
+    const data = pageRes.value;
+    const raw = (data.clinics || []).map(normaliseClinic);
+    currentPageClinics = raw;
+    currentPage  = 0;
+    currentTotal = data.total || 0;
+
+    if (raw.length === 0) {
+      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60px 0;color:var(--muted);font-size:0.9rem;">No clinics found.</div>';
+    } else {
+      renderPageCards(raw, false);
+    }
+
+    const loadMoreBtn = document.getElementById('loadMoreBtn');
+    if (loadMoreBtn) loadMoreBtn.style.display = data.hasMore ? 'inline-block' : 'none';
+  } else {
+    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60px 0;color:var(--muted);font-size:0.9rem;">Unable to load clinics. Please refresh the page.</div>';
+  }
+
+  // Hash routing
+  const hash = window.location.hash;
+  if (hash.startsWith('#clinic/')) {
+    const slug = hash.replace('#clinic/', '');
+    const target = currentPageClinics.find(c => cmToSlug(c.name) === slug)
+                || clinicsIndex.find(c => cmToSlug(c.name) === slug);
+    if (target) openClinicModal(target.id);
+  }
 })();
 
 function setupInfiniteScroll() {
@@ -2578,9 +2678,9 @@ function updateCompareUI() {
   slotEls.forEach((el, i) => {
     const cid = compareList[i];
     if (cid !== undefined) {
-      const clinic = clinics.find(c => c.id == cid);
+      const clinic = findClinic(cid);
       el.classList.add('filled');
-      el.innerHTML = `<span class="compare-slot-name">${clinic.name}</span><button class="compare-slot-remove" onclick="toggleCompare('${cid}')">✕</button>`;
+      el.innerHTML = `<span class="compare-slot-name">${clinic ? clinic.name : '...'}</span><button class="compare-slot-remove" onclick="toggleCompare('${cid}')">✕</button>`;
       el.style.display = 'flex';
     } else {
       el.classList.remove('filled');
@@ -2629,7 +2729,7 @@ function clearCompare() {
 }
 
 async function openCompareModal() {
-  const selected = compareList.map(id => clinics.find(c => c.id == id));
+  const selected = compareList.map(id => findClinic(id)).filter(Boolean);
 
   // Fetch practitioners for any clinic that doesn't have them loaded yet
   const SUPABASE_URL_CMP = 'https://vefldlqtyxdywbzdjuia.supabase.co';
@@ -3038,7 +3138,7 @@ function cmRenderStars(rating, container) {
 }
 
 function openClinicModal(clinicId) {
-  const clinic = clinics.find(c => c.id == clinicId);
+  const clinic = findClinic(clinicId);
   if (!clinic) return;
 
   // Claimed proxy: has price or promo — swap for clinic.claimed once backend arrives
