@@ -537,7 +537,6 @@
       padding: 0.2rem 0.55rem;
       border-radius: 3px;
     }
-    .badge-consult { background: rgba(61,122,85,0.09); color: #3D7A55; border-color: rgba(61,122,85,0.22); }
     .badge-transparent {
       background: rgba(61,122,85,0.1);
       color: var(--green);
@@ -2214,7 +2213,6 @@ function renderPageCards(clinicsData, append) {
       : `<div class="price-not-listed">Price not listed</div>`;
     const badgeHTML = [
       (c.promo && c.promo_text) ? '<span class="badge badge-promo">Promo Available</span>' : '',
-      c.consult_free ? '<span class="badge badge-consult">Free Consult</span>' : '',
     ].filter(Boolean).join('');
     const credMap = { physician:'MD / Physician', np:'NP', rn:'RN/RPN/LPN', img:'IMG', nd:'ND' };
     const langMap = { english:'EN', mandarin:'中文', cantonese:'粵', farsi:'فا', french:'FR', korean:'한', hindi:'हि', arabic:'عر', punjabi:'ਪੰ', portuguese:'PT' };
@@ -2224,7 +2222,6 @@ function renderPageCards(clinicsData, append) {
     return `
       <div class="clinic-card${hasPrice ? '' : ' no-price'}" data-id="${c.id}">
         ${(c.promo && c.promo_text) ? '<span class="badge badge-promo">Promo</span>' : ''}
-        ${c.consult_free ? '<span class="badge badge-consult" style="position:absolute;top:12px;right:12px;">Free Consult</span>' : ''}
         <div class="card-header">
           <div class="card-badges"></div>
           <div class="clinic-name">
@@ -2825,14 +2822,6 @@ async function openCompareModal() {
   }).join('');
 
 
-  const consultCells = selected.map(c => {
-    if (c.consult_free === true)
-      return `<td><span style="display:inline-flex;align-items:center;gap:4px;color:#3D7A55;font-weight:500;font-size:0.85rem;">✓ Complimentary</span></td>`;
-    if (c.claimed)
-      return `<td><span style="color:var(--dim);font-style:italic;">Not offered</span></td>`;
-    return `<td><span style="color:var(--dim);font-style:italic;">—</span></td>`;
-  }).join('');
-
   const phoneCells = selected.map(c => {
     if (c.phone) {
       return `<td><a href="tel:${c.phone.replace(/\s/g,'')}" style="color:var(--deep);text-decoration:none;border-bottom:1px solid var(--border);">${c.phone}</a></td>`;
@@ -2877,7 +2866,6 @@ async function openCompareModal() {
       <tr><th>Practitioners</th>${practitionerCells}</tr>
       <tr><th>Languages</th>${langCells}</tr>
       <tr><th>Neighbourhood</th>${areaCells}</tr>
-      <tr><th>Free consultation</th>${consultCells}</tr>
       <tr><th>Current promo</th>${promoCells}</tr>
       <tr><th>Phone</th>${phoneCells}</tr>
       <tr><th>Directions</th>${mapsCells}</tr>
