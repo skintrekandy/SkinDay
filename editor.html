@@ -1085,6 +1085,17 @@
           <textarea class="field-textarea" id="field-promo-text" placeholder="e.g. 20% off first visit — mention SkinDay at booking" oninput="markDirty()"></textarea>
           <div class="field-hint">Keep it short and scannable — 1–2 sentences max.</div>
         </div>
+
+        <div class="toggle-row" style="margin-top:16px;">
+          <div>
+            <div class="toggle-label">Complimentary Consultation</div>
+            <div class="toggle-desc">Show a “Free Consult” badge on your listing</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="field-consult-free" onchange="markDirty()" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
       </div>
     </div>
 
@@ -1545,6 +1556,8 @@
 
     const promoCheck = document.getElementById('field-promo');
     promoCheck.checked = !!c.promo;
+    const consultCheck = document.getElementById('field-consult-free');
+    if (consultCheck) consultCheck.checked = !!c.consult_free;
     togglePromoText();
 
     // Photos
@@ -1576,6 +1589,7 @@
       booking_url: c.booking_url || '',
       promo: !!c.promo,
       promo_text: c.promo_text || '',
+      consult_free: !!c.consult_free,
       hours: JSON.parse(JSON.stringify(c.hours || {})),
       photos: [...photos],
       injector_credentials: [...savedCreds],
@@ -1768,6 +1782,8 @@
     setVal('field-booking', c.booking_url);
     setVal('field-promo-text', c.promo_text);
     document.getElementById('field-promo').checked = c.promo;
+    const cfc = document.getElementById('field-consult-free');
+    if (cfc) cfc.checked = !!c.consult_free;
     togglePromoText();
     photos = [...c.photos];
     buildPhotoGrid();
@@ -1817,6 +1833,7 @@
         booking_url: document.getElementById('field-booking').value.trim(),
         promo: document.getElementById('field-promo').checked,
         promo_text: document.getElementById('field-promo-text').value.trim(),
+        consult_free: document.getElementById('field-consult-free')?.checked || false,
         hours: collectHours(),
         photos: allPhotoUrls,
         logo_url: logoUrl,
