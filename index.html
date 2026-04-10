@@ -1950,8 +1950,8 @@
         <div class="stat-strip-desc">of clinics rated 4.8+ stars — across Canada</div>
       </div>
       <div class="stat-strip-item">
-        <div class="stat-strip-num"><em>42</em></div>
-        <div class="stat-strip-desc">clinics per 100k in <strong>Richmond BC</strong> — highest density in Canada</div>
+        <div class="stat-strip-num"><em>56</em></div>
+        <div class="stat-strip-desc">clinics per 100k in <strong>Richmond Hill, ON</strong> — highest density in Canada</div>
       </div>
       <div class="stat-strip-item">
         <div class="stat-strip-num"><em>5×</em></div>
@@ -2231,7 +2231,7 @@ function renderPageCards(clinicsData, append) {
           ${c.practitioners && c.practitioners.length > 0
             ? `<div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.2rem;">${c.practitioners[0].name}${c.practitioners[0].designation ? ' · ' + c.practitioners[0].designation : ''}</div>`
             : ''}
-          <div class="clinic-meta">📍 ${c.neighbourhood}${(() => {
+          <div class="clinic-meta">📍 ${c.neighbourhood}${c.province ? `, ${c.province}` : ''}${(() => {
             if (!userLocation) return '';
             const match = c.maps_url?.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
             const coords = match ? [parseFloat(match[1]), parseFloat(match[2])] : (HOOD_COORDS[c.neighbourhood?.toLowerCase().replace(/\s+/g,'-')]);
