@@ -1462,8 +1462,11 @@ function piSelect(id, name, neighbourhood, area) {
     } else { existingEl.style.display = 'none'; }
     if (injector_credentials && injector_credentials.length) {
       document.querySelectorAll('#pi-creds input').forEach(cb => { cb.checked = injector_credentials.includes(cb.value); });
+    }
+    // Restore consult_free from clinic data if available
+    if (res.data.consult_free !== undefined) {
       const piConsult = document.getElementById('pi-consult-free');
-      if (piConsult) piConsult.checked = !!clinicData.consult_free;
+      if (piConsult) piConsult.checked = !!res.data.consult_free;
     }
     if (languages && languages.length) {
       document.querySelectorAll('#pi-langs input').forEach(cb => { cb.checked = languages.includes(cb.value); });
@@ -1513,7 +1516,8 @@ async function piSaveAll() {
   const rows = piGetRows();
   const creds = [...document.querySelectorAll('#pi-creds input:checked')].map(cb => cb.value);
   const langs = [...document.querySelectorAll('#pi-langs input:checked')].map(cb => cb.value);
-  if (!rows.length && !creds.length && !langs.length) { piStatus('error', 'Enter at least one price, credential, or language.'); return; }
+  const consultFreeVal = document.getElementById('pi-consult-free')?.checked;
+  if (!rows.length && !creds.length && !langs.length && consultFreeVal === false) { piStatus('error', 'Enter at least one price, credential, or language.'); return; }
 
   const applyAll = document.getElementById('pi-chain-all')?.checked;
   const allIds = applyAll && piChainIds.length ? [piSelectedId, ...piChainIds] : [piSelectedId];
@@ -1524,12 +1528,11 @@ async function piSaveAll() {
       const res = await apiCall({ action: 'set-prices', clinic_id: cid, prices: rows });
       if (!res.ok || !res.data.success) errors.push(res.data?.error || 'Save failed');
     }
-    const consultFree = document.getElementById('pi-consult-free')?.checked;
-    if (creds.length || langs.length || consultFree !== undefined) {
+    if (creds.length || langs.length || consultFreeVal !== undefined) {
       await apiCall({ action: 'set-clinic-info', clinic_id: cid,
         ...(creds.length ? { injector_credentials: creds } : {}),
         ...(langs.length ? { languages: langs } : {}),
-        consult_free: !!consultFree });
+        consult_free: !!consultFreeVal });
     }
   }
 
