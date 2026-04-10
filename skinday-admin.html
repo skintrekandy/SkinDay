@@ -1045,17 +1045,31 @@ function updateStats() {
   document.getElementById('stat-rejected').textContent = r;
   document.getElementById('stats-bar').style.display = 'grid';
 
-  // Fetch all distinct clinic_ids from clinic_prices, count client-side
-  fetch(`${SUPABASE_URL_ADMIN}/rest/v1/clinic_prices?select=clinic_id`, {
-    headers: {
-      'apikey': SUPABASE_KEY_ADMIN,
-      'Authorization': `Bearer ${SUPABASE_KEY_ADMIN}`,
-    }
-  }).then(r => r.ok ? r.json() : []).then(rows => {
-    const distinct = new Set(rows.map(r => r.clinic_id)).size;
-    const el = document.getElementById('stat-priced');
-    if (el && distinct) el.textContent = distinct;
-  }).catch(() => {});
+  // Fetch distinct priced clinics count from Supabase
+  fetch(`${SUPABASE_URL_ADMIN}/rest/v1/clinic_prices?select=clinic_id&limit=1`, {
+    headers: { 'apikey': SUPABASE_KEY_ADMIN, 'Prefer': 'count=exact', 'Range-Unit': 'items', 'Range': '0-0' }
+  }).then(async r => {
+    // exact count is in Content-Range header: "0-0/29"
+    const range = r.headers.get('Content-Range') || '';
+    const total = range.split('/')[1];
+    // That counts rows, not distinct clinics — do a proper distinct count
+    return fetch(`${SUPABASE_URL_ADMIN}/rest/v1/rpc/count_priced_clinics`, {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY_ADMIN, 'Content-Type': 'application/json' },
+      body: '{}'
+    });
+  }).then(r => r.json()).then(n => {
+    if (typeof n === 'number') document.getElementById('stat-priced').textContent = n;
+  }).catch(() => {
+    // Fallback: count rows in clinic_prices as proxy
+    fetch(`${SUPABASE_URL_ADMIN}/rest/v1/clinic_prices?select=clinic_id`, {
+      headers: { 'apikey': SUPABASE_KEY_ADMIN, 'Prefer': 'count=exact', 'Range': '0-0' }
+    }).then(r => {
+      const range = r.headers.get('Content-Range') || '';
+      const total = range.split('/')[1];
+      if (total) document.getElementById('stat-priced').textContent = total + '*';
+    }).catch(() => {});
+  });
 
   // Tab counts
   setCount('pending',  p);
@@ -1359,7 +1373,6 @@ let piRowCount      = 0;
 
 function piLoadClinics() {
   if (piClinicsLoaded) return;
-  // Use index mode — returns all clinic names/neighbourhoods without pagination
   fetch('/api/get-clinics?mode=index')
     .then(r => r.ok ? r.json() : [])
     .then(data => {
@@ -1404,7 +1417,6 @@ function piSelect(id, name, neighbourhood, area) {
   piAddRow();
   document.querySelectorAll('#pi-creds input, #pi-langs input').forEach(cb => cb.checked = false);
 
-
   // Chain detection
   const selectedClinic = piAllClinics.find(c => String(c.id) == String(id));
   const chainBox = document.getElementById('pi-chain-box');
@@ -1442,7 +1454,6 @@ function piSelect(id, name, neighbourhood, area) {
     if (injector_credentials && injector_credentials.length) {
       document.querySelectorAll('#pi-creds input').forEach(cb => { cb.checked = injector_credentials.includes(cb.value); });
     }
-
     if (languages && languages.length) {
       document.querySelectorAll('#pi-langs input').forEach(cb => { cb.checked = languages.includes(cb.value); });
     }
