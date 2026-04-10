@@ -1045,34 +1045,16 @@ function updateStats() {
   document.getElementById('stat-rejected').textContent = r;
   document.getElementById('stats-bar').style.display = 'grid';
 
-  // Fetch distinct priced clinics — use clinic_prices with Prefer: count=exact
-  // then get unique via selecting distinct clinic_id
+  // Fetch all distinct clinic_ids from clinic_prices, count client-side
   fetch(`${SUPABASE_URL_ADMIN}/rest/v1/clinic_prices?select=clinic_id`, {
     headers: {
       'apikey': SUPABASE_KEY_ADMIN,
       'Authorization': `Bearer ${SUPABASE_KEY_ADMIN}`,
-      'Prefer': 'count=exact',
-      'Range': '0-0'
     }
-  }).then(r => {
-    const range = r.headers.get('content-range') || '';
-    const total = parseInt(range.split('/')[1] || '0', 10);
-    if (total) {
-      // total = rows not distinct, but close enough for display
-      // do a proper distinct via rpc
-      return fetch(`${SUPABASE_URL_ADMIN}/rest/v1/rpc/count_priced_clinics`, {
-        method: 'POST',
-        headers: {
-          'apikey': SUPABASE_KEY_ADMIN,
-          'Authorization': `Bearer ${SUPABASE_KEY_ADMIN}`,
-          'Content-Type': 'application/json'
-        },
-        body: '{}'
-      }).then(r2 => r2.json()).then(n => {
-        const el = document.getElementById('stat-priced');
-        if (el) el.textContent = typeof n === 'number' ? n : total;
-      });
-    }
+  }).then(r => r.ok ? r.json() : []).then(rows => {
+    const distinct = new Set(rows.map(r => r.clinic_id)).size;
+    const el = document.getElementById('stat-priced');
+    if (el && distinct) el.textContent = distinct;
   }).catch(() => {});
 
   // Tab counts
