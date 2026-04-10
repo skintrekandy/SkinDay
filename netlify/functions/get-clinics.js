@@ -4,7 +4,7 @@ const CARD_FIELDS = `
   id, name, neighbourhood, area, province, region,
   rating, reviews, place_id, maps_url, rank,
   phone, website, booking_url, logo_url,
-  claimed, approved, promo, promo_text,
+  claimed, approved, promo, promo_text, consult_free,
   toxin_type, injector_credentials, languages,
   price, price_source, price_date,
   practitioners (id, name, designation, display_order)
@@ -146,7 +146,7 @@ exports.handler = async (event) => {
       'rating','reviews','place_id','maps_url','rank',
       'phone','website','booking_url','logo_url',
       'claimed','approved','promo','promo_text',
-      'toxin_type','injector_credentials','languages',
+      'toxin_type','injector_credentials','languages','consult_free',
       'price','price_source','price_date',
     ];
 
@@ -162,6 +162,8 @@ exports.handler = async (event) => {
         out[k] = v;
       });
 
+      // Always include consult_free as explicit boolean (false would be stripped by null check above)
+      out.consult_free = clinic.consult_free === true;
       out.practitioners = practitioners;
 
       const clinicPrices = pricesMap[String(clinic.id)];
