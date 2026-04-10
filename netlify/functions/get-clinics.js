@@ -21,26 +21,22 @@ exports.handler = async (event) => {
 
     const params = event.queryStringParameters || {};
 
-    // ── MODE: lightweight index for Near Me / compare / hash routing ──
-    // Called once on page load: /api/get-clinics?mode=index
+    // ── MODE: lightweight index ──────────────────────────────
     if (params.mode === 'index') {
       const { data, error } = await supabase
         .from('clinics')
         .select('id, name, neighbourhood, province')
         .eq('approved', true)
         .order('id', { ascending: true })
-        .range(0, 29999); // covers full Canada expansion
+        .range(0, 29999);
 
-      if (error) {
-        return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
-      }
+      if (error) return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
 
       return {
         statusCode: 200,
         headers: {
           'Content-Type': 'application/json',
           'Access-Control-Allow-Origin': '*',
-          // Index changes rarely — cache for 10 minutes
           'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=120',
           'Vary': 'Accept-Encoding',
         },
@@ -48,68 +44,48 @@ exports.handler = async (event) => {
       };
     }
 
-    // ── MODE: paginated card data (default) ──
-    const page        = Math.max(0, parseInt(params.page || '0', 10));
-    const sort        = params.sort || 'rating';
-    const province    = params.province || '';      // e.g. 'ON', 'BC'
-    const neighbourhood = params.neighbourhood || ''; // slug e.g. 'yorkville'
-    const injector    = params.injector || '';      // e.g. 'physician'
-    const search      = (params.search || '').trim().toLowerCase();
-    const promo       = params.promo === 'true';
-    const countOnly   = params.count === 'true';
+    // ── MODE: paginated card data ────────────────────────────
+    const page          = Math.max(0, parseInt(params.page || '0', 10));
+    const sort          = params.sort || 'rating';
+    const province      = params.province || '';
+    const neighbourhood = params.neighbourhood || '';
+    const injector      = params.injector || '';
+    const search        = (params.search || '').trim();
+    const promo         = params.promo === 'true';
+    const countOnly     = params.count === 'true';
 
     const from = page * PAGE_SIZE;
-    const to   = from + PAGE_SIZE - 1;
+    const needed = from + PAGE_SIZE;
 
-    // ── Build base query ──
-    let query = supabase
-      .from('clinics')
-      .select(CARD_FIELDS, { count: 'exact' })
-      .eq('approved', true);
+    // ── Build base filter query ───────────────────────────────
+    const buildBase = () => {
+      let q = supabase
+        .from('clinics')
+        .select(CARD_FIELDS, { count: 'exact' })
+        .eq('approved', true);
 
-    // ── Filters ──
-    if (search) {
-      query = query.ilike('name', `%${search}%`);
-    } else {
-      if (province) {
-        query = query.eq('province', province);
+      if (search) {
+        q = q.ilike('name', `%${search}%`);
+      } else {
+        if (province)      q = q.eq('province', province);
+        if (neighbourhood) q = q.ilike('neighbourhood', neighbourhood.replace(/-/g, ' '));
+        if (promo)         q = q.eq('promo', true).not('promo_text', 'is', null);
+        if (injector)      q = q.contains('injector_credentials', [injector]);
       }
-      if (neighbourhood) {
-        // neighbourhood stored as display name; slug-match via ilike
-        const displayName = neighbourhood.replace(/-/g, ' ');
-        query = query.ilike('neighbourhood', displayName);
-      }
-      if (promo) {
-        query = query.eq('promo', true).not('promo_text', 'is', null);
-      }
-      if (injector) {
-        // injector_credentials is a text[] column — use contains
-        query = query.contains('injector_credentials', [injector]);
-      }
-    }
+      return q;
+    };
 
-    // ── Sorting ──
-    // Primary sort by business priority, secondary by user sort
-    // We apply the pin-order sort (claimed > priced > unclaimed) on the
-    // client side after receive since it requires derived logic.
-    // Server handles the metric sorts.
-    if (sort === 'price-low') {
-      query = query.order('price', { ascending: true, nullsFirst: false });
-    } else if (sort === 'price-high') {
-      query = query.order('price', { ascending: false, nullsFirst: false });
-    } else if (sort === 'reviews') {
-      query = query.order('reviews', { ascending: false, nullsFirst: false });
-    } else {
-      // Default: rating desc
-      query = query.order('rating', { ascending: false, nullsFirst: false });
-    }
+    // ── Apply metric sort ─────────────────────────────────────
+    const applySort = (q) => {
+      if (sort === 'price-low')  return q.order('price',   { ascending: true,  nullsFirst: false }).order('id', { ascending: true });
+      if (sort === 'price-high') return q.order('price',   { ascending: false, nullsFirst: false }).order('id', { ascending: true });
+      if (sort === 'reviews')    return q.order('reviews', { ascending: false, nullsFirst: false }).order('id', { ascending: true });
+      return q.order('rating', { ascending: false, nullsFirst: false }).order('id', { ascending: true });
+    };
 
-    // Secondary sort for stability
-    query = query.order('id', { ascending: true });
-
-    // ── Count only (for filter pill counts) ──
+    // ── Count only ────────────────────────────────────────────
     if (countOnly) {
-      const { count, error } = await query.range(0, 0);
+      const { count, error } = await buildBase().range(0, 0);
       if (error) return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
       return {
         statusCode: 200,
@@ -118,16 +94,35 @@ exports.handler = async (event) => {
       };
     }
 
-    // ── Execute paginated query ──
-    const { data: clinicsData, count: totalCount, error: clinicsError } = await query.range(from, to);
+    // ── Priority-aware three-bucket fetch ─────────────────────
+    // Supabase JS doesn't support computed ORDER BY, so we run three
+    // parallel queries by priority tier and merge them server-side.
+    // Bucket 2: claimed  |  Bucket 1: priced not claimed  |  Bucket 0: unpriced unclaimed
+    const [claimedRes, pricedRes, unpricedRes, countRes] = await Promise.all([
+      applySort(buildBase().eq('claimed', true)).range(0, needed - 1),
+      applySort(buildBase().eq('claimed', false).not('price', 'is', null)).range(0, needed - 1),
+      applySort(buildBase().eq('claimed', false).is('price', null)).range(0, needed - 1),
+      buildBase().select('id', { count: 'exact', head: true }),
+    ]);
 
-    if (clinicsError) {
-      console.error('Supabase clinics error:', clinicsError);
-      return { statusCode: 500, body: JSON.stringify({ error: clinicsError.message }) };
+    if (claimedRes.error || pricedRes.error || unpricedRes.error) {
+      const err = claimedRes.error || pricedRes.error || unpricedRes.error;
+      console.error('Supabase error:', err);
+      return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
     }
 
-    // ── Fetch prices only for this page's clinics ──
-    const clinicIds = (clinicsData || []).map(c => String(c.id));
+    // Merge: claimed → priced → unpriced, then slice page window
+    const pool = [
+      ...(claimedRes.data  || []),
+      ...(pricedRes.data   || []),
+      ...(unpricedRes.data || []),
+    ];
+
+    const totalCount = countRes.count || 0;
+    const pageSlice  = pool.slice(from, from + PAGE_SIZE);
+
+    // ── Fetch prices for this page only ──────────────────────
+    const clinicIds = pageSlice.map(c => String(c.id));
     let pricesMap = {};
 
     if (clinicIds.length > 0) {
@@ -145,7 +140,7 @@ exports.handler = async (event) => {
       }
     }
 
-    // ── Merge + strip nulls ──
+    // ── Merge + strip nulls ───────────────────────────────────
     const keep = [
       'id','name','neighbourhood','area','province','region',
       'rating','reviews','place_id','maps_url','rank',
@@ -155,7 +150,7 @@ exports.handler = async (event) => {
       'price','price_source','price_date',
     ];
 
-    const merged = (clinicsData || []).map(clinic => {
+    const merged = pageSlice.map(clinic => {
       const practitioners = (clinic.practitioners || [])
         .sort((a, b) => a.display_order - b.display_order);
 
@@ -184,22 +179,20 @@ exports.handler = async (event) => {
       return out;
     });
 
-    // ── Response ──
     return {
       statusCode: 200,
       headers: {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
-        // Paginated results: shorter cache, vary by query string
         'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=60',
         'Vary': 'Accept-Encoding',
       },
       body: JSON.stringify({
         clinics: merged,
-        total: totalCount || 0,
+        total: totalCount,
         page,
         pageSize: PAGE_SIZE,
-        hasMore: (from + merged.length) < (totalCount || 0),
+        hasMore: (from + merged.length) < totalCount,
       }),
     };
 
