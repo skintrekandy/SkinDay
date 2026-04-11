@@ -2682,15 +2682,32 @@ function useNearMe() {
         const matchBtn = [...document.querySelectorAll('.filter-btn')]
           .find(b => b.getAttribute('onclick')?.includes(`'${nearest}'`));
         if (matchBtn) matchBtn.classList.add('active');
-        fetchPage(0, false);
-        const hoodLabel = matchBtn ? matchBtn.querySelector('.filter-label')?.textContent || nearest : nearest;
-        showToast(`Showing clinics near ${hoodLabel.trim()}`);
+
+        if (currentView === 'map' && _map) {
+          // Pan and zoom map to user's location directly
+          _map.setCenter({ lat: userLat, lng: userLon });
+          _map.setZoom(13);
+          initMap(); // re-fetch filtered clinics
+          showToast(`Showing clinics near you`);
+        } else {
+          fetchPage(0, false);
+          const hoodLabel = matchBtn ? matchBtn.querySelector('.filter-label')?.textContent || nearest : nearest;
+          showToast(`Showing clinics near ${hoodLabel.trim()}`);
+          document.getElementById('prices').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
       } else {
         currentFilter = 'all';
-        fetchPage(0, false);
-        showToast('Showing all clinics — location outside coverage area.');
+        if (currentView === 'map' && _map) {
+          _map.setCenter({ lat: userLat, lng: userLon });
+          _map.setZoom(12);
+          initMap();
+          showToast('Showing all clinics near you.');
+        } else {
+          fetchPage(0, false);
+          showToast('Showing all clinics — location outside coverage area.');
+          document.getElementById('prices').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
       }
-      document.getElementById('prices').scrollIntoView({ behavior: 'smooth', block: 'start' });
     },
     () => {
       btn.textContent = '📍 Near Me';
@@ -3710,28 +3727,42 @@ function placeMarkers() {
 
   const icon = {
     path: 'M 0,0 C -2,-20 -10,-22 -10,-30 A 10,10 0 1,1 10,-30 C 10,-22 2,-20 0,0 z',
-    fillColor: '#1C1714',
-    fillOpacity: 1,
-    strokeColor: '#fff',
-    strokeWeight: 1.5,
-    scale: 1,
-    labelOrigin: new google.maps.Point(0, -30)
+    fillColor: '#1C1714', fillOpacity: 1,
+    strokeColor: '#fff', strokeWeight: 1.5,
+    scale: 1, labelOrigin: new google.maps.Point(0, -30)
   };
+  const iconHover = { ...icon, fillColor: '#C8725A', scale: 1.3 };
   const labelStyle = { color: '#ffffff', fontSize: '10px', fontWeight: '700', fontFamily: 'DM Sans, sans-serif' };
 
   const gmMarkers = _allClinics.filter(c => c.lat && c.lng).map(c => {
     const cid = String(c.id);
     const marker = new google.maps.Marker({
       position: { lat: +c.lat, lng: +c.lng },
-      optimized: true,
+      optimized: false,
       title: c.name,
       icon: { ...icon },
       label: { ...labelStyle, text: '1' }
     });
     marker._cid = cid;
+    marker._icon = icon;
+    marker._iconHover = iconHover;
+
     marker.addListener('click', () => onPinClick(cid, marker));
-    marker.addListener('mouseover', () => { if (_activeCid !== cid) marker.setIcon({ ...marker.getIcon(), fillColor: '#C8725A' }); });
-    marker.addListener('mouseout',  () => { if (_activeCid !== cid) marker.setIcon({ ...marker.getIcon(), fillColor: '#1C1714' }); });
+    marker.addListener('mouseover', () => {
+      if (_activeCid !== cid) {
+        marker.setIcon({ ...iconHover });
+        marker.setLabel({ ...labelStyle, text: '1' });
+        highlightCard(cid, false);
+      }
+    });
+    marker.addListener('mouseout', () => {
+      if (_activeCid !== cid) {
+        marker.setIcon({ ...icon });
+        marker.setLabel({ ...labelStyle, text: '1' });
+        document.querySelectorAll(`[data-cid="${cid}"]`).forEach(c => c.classList.remove('highlighted'));
+      }
+    });
+
     _markers.push(marker);
     return marker;
   });
@@ -3867,13 +3898,17 @@ function highlightCard(cid, scroll) {
 
 function highlightPinById(cid) {
   const m = findMarker(cid);
-  if (m && _activeCid !== String(cid)) m.setIcon({ ...m.getIcon(), fillColor: '#C8725A' });
+  if (m && _activeCid !== String(cid)) {
+    m.setIcon({ ...m._iconHover });
+    highlightCard(cid, false);
+  }
 }
 
 function unhighlightPinById(cid) {
   if (_activeCid === String(cid)) return;
   const m = findMarker(cid);
-  if (m) m.setIcon({ ...m.getIcon(), fillColor: '#1C1714' });
+  if (m) m.setIcon({ ...m._icon });
+  document.querySelectorAll(`[data-cid="${cid}"]`).forEach(c => c.classList.remove('highlighted'));
 }
 
 function findMarker(cid) {
