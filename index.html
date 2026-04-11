@@ -1758,6 +1758,7 @@
 </style>
   <!-- Google Maps JS (M18) -->
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAiUKLofb5BbJQab0CX4GtuHnLeE_jOwCc"></script>
+  <script src="https://unpkg.com/@googlemaps/markerclusterer/dist/index.min.js"></script>
 
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="/favicon-32x32.png" type="image/png" sizes="32x32">
@@ -3664,12 +3665,12 @@ async function initMap() {
 
   if (!_map) {
     _map = new google.maps.Map(document.getElementById('google-map'), {
-      zoom: 10,
-      center: { lat: 43.6532, lng: -79.3832 },
-      mapId: 'skinday_map',
+      zoom: 6,
+      center: { lat: 56.1304, lng: -106.3468 },
       mapTypeControl: false,
       streetViewControl: false,
       fullscreenControl: false,
+      gestureHandling: 'greedy',
       styles: [
         { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] },
         { featureType: 'transit', elementType: 'labels', stylers: [{ visibility: 'off' }] }
@@ -3692,45 +3693,76 @@ async function initMap() {
 }
 
 // ─── PLACE MARKERS ────────────────────────────────────────────
+let _clusterer = null;
+
 function placeMarkers() {
+  // Remove old clusterer and markers
+  if (_clusterer) { _clusterer.clearMarkers(); _clusterer = null; }
   _markers.forEach(m => m.setMap(null));
   _markers = [];
 
-  _allClinics.filter(c => c.lat && c.lng).forEach(c => {
+  const gmMarkers = _allClinics.filter(c => c.lat && c.lng).map(c => {
     const cid = String(c.id);
-    const el = document.createElement('div');
-    el.className = 'map-pin';
-    el.innerHTML = '<span class="map-pin-label">1</span>';
-    el._cid = cid;
+    const marker = new google.maps.Marker({
+      position: { lat: +c.lat, lng: +c.lng },
+      map: null, // clusterer will manage map assignment
+      title: c.name,
+      icon: {
+        path: 'M 0,0 C -2,-20 -10,-22 -10,-30 A 10,10 0 1,1 10,-30 C 10,-22 2,-20 0,0 z',
+        fillColor: '#1C1714',
+        fillOpacity: 1,
+        strokeColor: '#fff',
+        strokeWeight: 1.5,
+        scale: 1,
+        labelOrigin: new google.maps.Point(0, -30)
+      },
+      label: { text: '1', color: '#ffffff', fontSize: '10px', fontWeight: '700', fontFamily: 'DM Sans, sans-serif' }
+    });
 
-    const overlay = new google.maps.OverlayView();
-    overlay.onAdd = function() {
-      this.getPanes().overlayMouseTarget.appendChild(el);
-    };
-    overlay.draw = function() {
-      const point = this.getProjection().fromLatLngToDivPixel(new google.maps.LatLng(+c.lat, +c.lng));
-      if (point) {
-        el.style.position = 'absolute';
-        el.style.left = (point.x - 18) + 'px';
-        el.style.top  = (point.y - 36) + 'px';
-      }
-    };
-    overlay.onRemove = function() { if (el.parentNode) el.parentNode.removeChild(el); };
-    overlay.setMap(_map);
+    marker._cid = cid;
 
-    el.addEventListener('click', () => onPinClick(cid, el));
-    el.addEventListener('mouseenter', () => { if (_activeCid !== cid) el.classList.add('pin-hover'); });
-    el.addEventListener('mouseleave', () => { if (_activeCid !== cid) el.classList.remove('pin-hover'); });
+    marker.addListener('click', () => onPinClick(cid, marker));
+    marker.addListener('mouseover', () => {
+      if (_activeCid !== cid) marker.setIcon({ ...marker.getIcon(), fillColor: '#C8725A' });
+    });
+    marker.addListener('mouseout', () => {
+      if (_activeCid !== cid) marker.setIcon({ ...marker.getIcon(), fillColor: '#1C1714' });
+    });
 
-    _markers.push(overlay);
+    _markers.push(marker);
+    return marker;
   });
+
+  // Custom cluster renderer — same dark teardrop style
+  const renderer = {
+    render({ count, position }) {
+      return new google.maps.Marker({
+        position,
+        icon: {
+          path: 'M 0,0 C -2,-20 -10,-22 -10,-30 A 10,10 0 1,1 10,-30 C 10,-22 2,-20 0,0 z',
+          fillColor: '#1C1714',
+          fillOpacity: 1,
+          strokeColor: '#fff',
+          strokeWeight: 1.5,
+          scale: count > 100 ? 1.3 : count > 10 ? 1.15 : 1,
+          labelOrigin: new google.maps.Point(0, -30)
+        },
+        label: { text: count > 999 ? Math.round(count/1000)+'k' : String(count), color: '#ffffff', fontSize: '10px', fontWeight: '700', fontFamily: 'DM Sans, sans-serif' },
+        zIndex: Number(google.maps.Marker.MAX_ZINDEX) + count
+      });
+    }
+  };
+
+  _clusterer = new markerClusterer.MarkerClusterer({ map: _map, markers: gmMarkers, renderer });
 }
 
 // ─── PIN CLICK ────────────────────────────────────────────────
-function onPinClick(cid, el) {
-  getPinEls().forEach(p => p.classList.remove('pin-active', 'pin-hover'));
+function onPinClick(cid, marker) {
+  // Reset all markers to dark
+  _markers.forEach(m => m.setIcon({ ...m.getIcon(), fillColor: '#1C1714' }));
   _activeCid = cid;
-  if (el) el.classList.add('pin-active');
+  // Highlight clicked marker
+  if (marker) marker.setIcon({ ...marker.getIcon(), fillColor: '#C8725A' });
   highlightCard(cid, true);
   openMapModal(cid);
 }
@@ -3811,9 +3843,9 @@ function buildCard(c, carousel) {
 // ─── CARD → PIN INTERACTIONS ──────────────────────────────────
 function onCardClick(cid) {
   _activeCid = String(cid);
-  getPinEls().forEach(p => p.classList.remove('pin-active', 'pin-hover'));
-  const pin = findPinEl(cid);
-  if (pin) pin.classList.add('pin-active');
+  _markers.forEach(m => m.setIcon({ ...m.getIcon(), fillColor: '#1C1714' }));
+  const marker = findMarker(cid);
+  if (marker) marker.setIcon({ ...marker.getIcon(), fillColor: '#C8725A' });
   const clinic = _allClinics.find(c => String(c.id) === String(cid));
   if (clinic && _map) _map.panTo({ lat: +clinic.lat, lng: +clinic.lng });
   openMapModal(String(cid));
@@ -3828,23 +3860,22 @@ function highlightCard(cid, scroll) {
 }
 
 function highlightPinById(cid) {
-  const pin = findPinEl(cid);
-  if (pin && _activeCid !== String(cid)) pin.classList.add('pin-hover');
+  const m = findMarker(cid);
+  if (m && _activeCid !== String(cid)) m.setIcon({ ...m.getIcon(), fillColor: '#C8725A' });
 }
 
 function unhighlightPinById(cid) {
   if (_activeCid === String(cid)) return;
-  const pin = findPinEl(cid);
-  if (pin) pin.classList.remove('pin-hover');
+  const m = findMarker(cid);
+  if (m) m.setIcon({ ...m.getIcon(), fillColor: '#1C1714' });
 }
 
-function getPinEls() {
-  return Array.from(document.querySelectorAll('.map-pin'));
+function findMarker(cid) {
+  return _markers.find(m => m._cid == cid) || null;
 }
 
-function findPinEl(cid) {
-  return getPinEls().find(el => el._cid == cid) || null;
-}
+function getPinEls() { return []; }
+function findPinEl(cid) { return null; }
 
 // ─── STUBS ────────────────────────────────────────────────────
 function toggleMapDrawer() {}
