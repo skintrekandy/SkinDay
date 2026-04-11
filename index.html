@@ -3728,19 +3728,18 @@ function placeMarkers() {
 
   const PIN_PATH = 'M 0,0 C -2,-20 -10,-22 -10,-30 A 10,10 0 1,1 10,-30 C 10,-22 2,-20 0,0 z';
   const labelStyle = { color: '#ffffff', fontSize: '10px', fontWeight: '700', fontFamily: 'DM Sans, sans-serif' };
-  const zoom = _map.getZoom();
 
-  // Get clinics in viewport
   const bounds = _map.getBounds();
   const visible = bounds
     ? _allClinics.filter(c => c.lat && c.lng && bounds.contains({ lat: +c.lat, lng: +c.lng }))
     : _allClinics.filter(c => c.lat && c.lng);
 
-  const gmMarkers = visible.map(c => {
+  visible.forEach(c => {
     const cid = String(c.id);
     const m = new google.maps.Marker({
       position: { lat: +c.lat, lng: +c.lng },
-      optimized: false,  // always false — required for mouse events
+      map: _map,
+      optimized: false,
       icon: { path: PIN_PATH, fillColor: '#1C1714', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 1.5, scale: 1, labelOrigin: new google.maps.Point(0, -30) },
       label: { ...labelStyle, text: '1' }
     });
@@ -3761,40 +3760,13 @@ function placeMarkers() {
     });
 
     _markers.push(m);
-    return m;
-  });
-
-  // Always use clusterer — controls grouping at low zoom, shows individuals at high zoom
-  const renderer = {
-    render({ count, position }) {
-      return new google.maps.Marker({
-        position,
-        optimized: true,
-        icon: { path: PIN_PATH, fillColor: '#1C1714', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 1.5, scale: count > 500 ? 1.5 : count > 50 ? 1.25 : 1, labelOrigin: new google.maps.Point(0, -30) },
-        label: { ...labelStyle, text: count > 999 ? Math.round(count/1000)+'k' : String(count) },
-        zIndex: Number(google.maps.Marker.MAX_ZINDEX) + count
-      });
-    }
-  };
-
-  _clusterer = new markerClusterer.MarkerClusterer({
-    map: _map,
-    markers: gmMarkers,
-    renderer,
-    algorithmOptions: { maxZoom: 13, radius: 80 }
   });
 }
 
-// Re-render markers on zoom change only; update cards on every idle
 function setupMapListeners() {
-  let lastZoom = null;
   _map.addListener('idle', () => {
     renderCardList();
-    const currentZoom = _map.getZoom();
-    if (currentZoom !== lastZoom) {
-      lastZoom = currentZoom;
-      placeMarkers();
-    }
+    placeMarkers();
   });
 }
 
