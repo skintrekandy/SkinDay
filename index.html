@@ -3965,6 +3965,10 @@ function buildMapCard(c) {
           <span style="color:var(--dim)">(${(c.reviews||0).toLocaleString()})</span>
         </div>
         <a href="#" class="map-card-view" onclick="event.stopPropagation();openMapClinicModal(${c.id})">View →</a>
+      </div>
+    </div>`;
+}
+
 function renderMapCardList(clinics) {
   const listEl   = document.getElementById('mapCardList');
   const statusEl = document.getElementById('mapListStatus');
