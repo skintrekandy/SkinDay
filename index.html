@@ -365,7 +365,7 @@
 
   /* ─── MAP PANEL (right 60%) ─── */
   .map-panel { flex: 1; position: relative; }
-  #mapbox-map { position: absolute; inset: 0; width: 100%; height: 100%; }
+  #google-map { position: absolute; inset: 0; width: 100%; height: 100%; }
 
   /* ─── MAP CARD ─── */
   .map-clinic-card { background: var(--cream); border: 1.5px solid var(--border); border-radius: 8px; padding: 0.8rem 0.9rem; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; flex-shrink: 0; }
@@ -422,9 +422,6 @@
   .map-pin.pin-active { transform: scale(1.6) !important; z-index: 20 !important; }
   .map-pin.pin-active::before { background: #C8725A !important; }
 
-  /* Suppress any default Mapbox marker SVG (orange pin) */
-  .mapboxgl-marker svg { display: none !important; }
-  .mapboxgl-canvas-container .mapboxgl-marker:not(:has(.map-pin)):not(:has(.map-cluster)) { display: none !important; }
   .map-pin, .map-cluster { pointer-events: all; }
   .map-loading { position: absolute; inset: 0; background: var(--warm); display: flex; align-items: center; justify-content: center; font-size: 0.85rem; color: var(--muted); z-index: 5; transition: opacity 0.4s; }
   .map-loading.hidden { opacity: 0; pointer-events: none; }
@@ -1759,12 +1756,8 @@
   }
 
 </style>
-  <!-- Mapbox GL JS (M18) -->
-  <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
-  <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
-  <style>.mapboxgl-marker svg { display:none!important; }</style>
-  <!-- Supercluster for pin clustering -->
-  <script src="https://unpkg.com/supercluster@8.0.1/dist/supercluster.min.js"></script>
+  <!-- Google Maps JS (M18) -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAiUKLofb5BbJQab0CX4GtuHnLeE_jOwCc&libraries=marker"></script>
 
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="/favicon-32x32.png" type="image/png" sizes="32x32">
@@ -2007,7 +2000,7 @@
     </div>
     <!-- Right: Mapbox map -->
     <div class="map-panel" id="mapPanel">
-      <div id="mapbox-map"></div>
+      <div id="google-map"></div>
       <div class="map-loading" id="mapLoading">Loading map…</div>
       <div class="map-result-count" id="mapResultCount" style="display:none"></div>
       <!-- Mobile bottom carousel -->
@@ -3618,23 +3611,20 @@ function handleClinicReport(e) {
 
 <script>
 // ═══════════════════════════════════════════
-// MILESTONE 18 — MAP VIEW (v3 clean rewrite)
+// MILESTONE 18 — MAP VIEW (Google Maps)
 // ═══════════════════════════════════════════
 
-const MAPBOX_TOKEN = 'pk.eyJ1Ijoic2tpbmRheSIsImEiOiJjbW50b3Azd3MwcG9nMnNxMzlvdHN4YW1pIn0.lxzkZMxX5jrH_nw-_itnPw';
+const GMAPS_KEY = 'AIzaSyAiUKLofb5BbJQab0CX4GtuHnLeE_jOwCc';
 const SB_URL = 'https://vefldlqtyxdywbzdjuia.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlZmxkbHF0eXhkeXdiemRqdWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNDAwMjgsImV4cCI6MjA4NzkxNjAyOH0.o582sXiUkB3j4FiHEA5rE3ABy_pdTeeK1PnNpNirHZA';
 
-let _map = null;
-let _mapReady = false;
-let _sc = null;           // supercluster instance
-let _allClinics = [];     // full dataset for current filter
-let _markers = [];        // active mapboxgl.Marker objects
-let _activeCid = null;    // currently highlighted clinic id (string)
-let _moveHandler = null;  // stored moveend listener reference
+let _map        = null;
+let _markers    = [];
+let _allClinics = [];
+let _activeCid  = null;
 let currentView = 'grid';
 
-// ─── SWITCH VIEW ──────────────────────────────────────────────
+// ─── VIEW TOGGLE ──────────────────────────────────────────────
 function switchView(view) {
   currentView = view;
   document.getElementById('gridToggleBtn').classList.toggle('active', view === 'grid');
@@ -3642,28 +3632,24 @@ function switchView(view) {
   const gridSec = document.getElementById('prices');
   const mapSec  = document.getElementById('mapSection');
   const moreSec = document.querySelector('.load-more-wrap');
-
   if (view === 'map') {
-    gridSec.style.display  = 'none';
+    gridSec.style.display = 'none';
     if (moreSec) moreSec.style.display = 'none';
     mapSec.classList.add('active');
     initMap();
   } else {
     mapSec.classList.remove('active');
-    gridSec.style.display  = '';
+    gridSec.style.display = '';
     if (moreSec) moreSec.style.display = '';
-    fetchPage(0, false); // restore grid cards
+    fetchPage(0, false);
   }
 }
 
-// ─── FETCH CLINICS FOR MAP ────────────────────────────────────
+// ─── FETCH CLINICS ────────────────────────────────────────────
 async function fetchMapClinics() {
   let url = `${SB_URL}/rest/v1/clinics?select=id,name,neighbourhood,province,lat,lng,rating,reviews,claimed,price&approved=eq.true&lat=not.is.null&order=rating.desc.nullslast&limit=10000`;
-  if (PROVINCE_MAP[currentFilter]) {
-    url += `&province=eq.${PROVINCE_MAP[currentFilter]}`;
-  } else if (currentFilter !== 'all') {
-    url += `&neighbourhood=ilike.*${currentFilter.replace(/-/g,' ')}*`;
-  }
+  if (PROVINCE_MAP[currentFilter]) url += `&province=eq.${PROVINCE_MAP[currentFilter]}`;
+  else if (currentFilter !== 'all') url += `&neighbourhood=ilike.*${currentFilter.replace(/-/g,' ')}*`;
   const r = await fetch(url, { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } });
   if (!r.ok) throw new Error('fetch failed');
   return r.json();
@@ -3673,121 +3659,83 @@ async function fetchMapClinics() {
 async function initMap() {
   const loadingEl = document.getElementById('mapLoading');
 
-  if (!_mapReady) {
-    mapboxgl.accessToken = MAPBOX_TOKEN;
-    _map = new mapboxgl.Map({
-      container: 'mapbox-map',
-      style: 'mapbox://styles/mapbox/streets-v12',
-      center: [-79.3832, 43.6532],
-      zoom: 10,
-      attributionControl: false
-    });
-    _map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
-    _map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right');
-    await new Promise(res => _map.loaded() ? res() : _map.once('load', res));
-    _mapReady = true;
-  }
+  try { _allClinics = await fetchMapClinics(); }
+  catch(e) { if (loadingEl) loadingEl.textContent = 'Unable to load clinics.'; return; }
 
-  try {
-    _allClinics = await fetchMapClinics();
-  } catch(e) {
-    if (loadingEl) loadingEl.textContent = 'Unable to load clinics.';
-    return;
+  if (!_map) {
+    _map = new google.maps.Map(document.getElementById('google-map'), {
+      zoom: 10,
+      center: { lat: 43.6532, lng: -79.3832 },
+      mapTypeControl: false,
+      streetViewControl: false,
+      fullscreenControl: false,
+      styles: [
+        { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] },
+        { featureType: 'transit', elementType: 'labels', stylers: [{ visibility: 'off' }] }
+      ]
+    });
+    // Update card list on every idle (after pan/zoom settles)
+    _map.addListener('idle', () => renderCardList());
   }
 
   if (loadingEl) loadingEl.classList.add('hidden');
 
-  // Build supercluster
-  const features = _allClinics.filter(c => c.lat && c.lng).map(c => ({
-    type: 'Feature',
-    geometry: { type: 'Point', coordinates: [+c.lng, +c.lat] },
-    properties: { id: String(c.id) }
-  }));
-  _sc = new Supercluster({ radius: 55, maxZoom: 15 });
-  _sc.load(features);
+  // Place markers
+  placeMarkers();
 
-  // Wire moveend — remove old one first
-  if (_moveHandler) _map.off('moveend', _moveHandler);
-  _moveHandler = () => { renderPins(); renderCardList(); };
-  _map.on('moveend', _moveHandler);
-
-  // Fit to data, then render
-  if (features.length > 0) {
-    const lngs = features.map(f => f.geometry.coordinates[0]);
-    const lats  = features.map(f => f.geometry.coordinates[1]);
-    _map.fitBounds(
-      [[Math.min(...lngs)-0.05, Math.min(...lats)-0.05],
-       [Math.max(...lngs)+0.05, Math.max(...lats)+0.05]],
-      { padding: { top:40, bottom:80, left:20, right:20 }, maxZoom:13, duration:0 }
-    );
+  // Fit bounds to data
+  if (_allClinics.length > 0) {
+    const bounds = new google.maps.LatLngBounds();
+    _allClinics.forEach(c => { if (c.lat && c.lng) bounds.extend({ lat: +c.lat, lng: +c.lng }); });
+    _map.fitBounds(bounds, { top: 40, right: 20, bottom: 80, left: 20 });
   }
-  // Render immediately (duration:0 means map is already at final position)
-  renderPins();
-  renderCardList();
 }
 
-// ─── RENDER PINS ──────────────────────────────────────────────
-function renderPins() {
-  if (!_map || !_sc) return;
-  _markers.forEach(m => m.remove());
+// ─── PLACE MARKERS ────────────────────────────────────────────
+function placeMarkers() {
+  _markers.forEach(m => m.setMap(null));
   _markers = [];
 
-  const bounds  = _map.getBounds();
-  const bbox    = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()];
-  const zoom    = Math.floor(_map.getZoom());
-  const clusters = _sc.getClusters(bbox, zoom);
-
-  clusters.forEach(cl => {
-    const [lng, lat] = cl.geometry.coordinates;
+  _allClinics.filter(c => c.lat && c.lng).forEach(c => {
+    const cid = String(c.id);
     const el = document.createElement('div');
+    el.className = 'map-pin';
+    el.innerHTML = '<span class="map-pin-label">1</span>';
+    el._cid = cid;
 
-    if (cl.properties.cluster) {
-      // Cluster pin
-      const count = cl.properties.point_count;
-      el.className = 'map-cluster' + (count > 50 ? ' large' : '');
-      el.innerHTML = `<span class="map-cluster-label">${count > 999 ? Math.round(count/1000)+'k' : count}</span>`;
-      el.addEventListener('click', () => {
-        const z = Math.min(_sc.getClusterExpansionZoom(cl.properties.cluster_id), 15);
-        _map.easeTo({ center: [lng, lat], zoom: z, duration: 400 });
-      });
-    } else {
-      // Single clinic pin
-      const cid = cl.properties.id;
-      el.className = 'map-pin' + (cid === _activeCid ? ' pin-active' : '');
-      el.innerHTML = '<span class="map-pin-label">1</span>';
-      el._cid = cid;
-      el.addEventListener('click', () => onPinClick(cid, el));
-      el.addEventListener('mouseenter', () => highlightCard(cid));
-      el.addEventListener('mouseleave', () => unhighlightCard(cid));
-    }
+    const marker = new google.maps.marker.AdvancedMarkerElement({
+      map: _map,
+      position: { lat: +c.lat, lng: +c.lng },
+      content: el,
+      title: c.name
+    });
 
-    const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom', offset: [0, 0] })
-      .setLngLat([lng, lat])
-      .addTo(_map);
+    el.addEventListener('click', () => onPinClick(cid, el));
+    el.addEventListener('mouseenter', () => { if (_activeCid !== cid) el.classList.add('pin-hover'); });
+    el.addEventListener('mouseleave', () => { if (_activeCid !== cid) el.classList.remove('pin-hover'); });
+
     _markers.push(marker);
   });
 }
 
-// ─── PIN CLICK → OPEN MODAL ───────────────────────────────────
+// ─── PIN CLICK ────────────────────────────────────────────────
 function onPinClick(cid, el) {
+  // Reset all pins
+  _markers.forEach(m => {
+    const e = m.content;
+    if (e) { e.classList.remove('pin-active', 'pin-hover'); }
+  });
   _activeCid = cid;
-  document.querySelectorAll('.map-pin').forEach(p => { p.classList.remove('pin-active'); p.classList.remove('pin-hover'); });
   if (el) el.classList.add('pin-active');
-  // Scroll card into view
   highlightCard(cid, true);
-  // Open clinic modal — fetch full data first
   openMapModal(cid);
 }
 
+// ─── OPEN MODAL ───────────────────────────────────────────────
 async function openMapModal(cid) {
   const sid = String(cid);
-  // Check if already in currentPageClinics with full data
   const existing = currentPageClinics.find(c => String(c.id) === sid);
-  if (existing && existing.neighbourhood !== undefined) {
-    openClinicModal(existing.id);
-    return;
-  }
-  // Fetch full record from Supabase
+  if (existing && existing.neighbourhood !== undefined) { openClinicModal(existing.id); return; }
   try {
     const r = await fetch(`${SB_URL}/rest/v1/clinics?select=*&id=eq.${sid}&limit=1`,
       { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } });
@@ -3795,79 +3743,62 @@ async function openMapModal(cid) {
       const rows = await r.json();
       if (rows[0]) {
         const full = normaliseClinic(rows[0]);
-        // Ensure id is stored as string to match sid
-        full.id = rows[0].id; // use raw string id from Supabase
+        full.id = rows[0].id;
         currentPageClinics.push(full);
         openClinicModal(full.id);
         return;
       }
     }
-  } catch(e) { console.error('openMapModal error:', e); }
+  } catch(e) { console.error('openMapModal:', e); }
 }
 
 // ─── RENDER CARD LIST ─────────────────────────────────────────
 function renderCardList() {
   if (!_map) return;
-  const bounds  = _map.getBounds();
+  const bounds = _map.getBounds();
+  if (!bounds) return;
+
   const visible = _allClinics
-    .filter(c => c.lat && c.lng &&
-      +c.lat >= bounds.getSouth() && +c.lat <= bounds.getNorth() &&
-      +c.lng >= bounds.getWest()  && +c.lng <= bounds.getEast())
-    .sort((a, b) => {
-      const s = c => (c.claimed ? 2 : 0) + (c.price != null ? 1 : 0);
-      return s(b) - s(a);
-    });
+    .filter(c => c.lat && c.lng && bounds.contains({ lat: +c.lat, lng: +c.lng }))
+    .sort((a, b) => ((b.claimed ? 2 : 0) + (b.price != null ? 1 : 0)) - ((a.claimed ? 2 : 0) + (a.price != null ? 1 : 0)));
 
   // Update count badge
   const countEl = document.getElementById('mapResultCount');
-  if (countEl) {
-    countEl.textContent = visible.length.toLocaleString() + ' clinics in view';
-    countEl.style.display = 'block';
-  }
+  if (countEl) { countEl.textContent = visible.length.toLocaleString() + ' clinics in view'; countEl.style.display = 'block'; }
 
   // Desktop list
   const listEl = document.getElementById('mapCardList');
-  if (listEl) {
-    if (visible.length === 0) {
-      listEl.innerHTML = '<div class="map-list-status">No clinics in this area.<br>Zoom out to see more.</div>';
-    } else {
-      listEl.innerHTML = visible.map(buildCard).join('');
-    }
-  }
+  if (listEl) listEl.innerHTML = visible.length === 0
+    ? '<div class="map-list-status">No clinics in this area.<br>Zoom out to see more.</div>'
+    : visible.map(c => buildCard(c)).join('');
 
   // Mobile carousel
   const track = document.getElementById('mapCarouselTrack');
-  const countCarousel = document.getElementById('mapCarouselCount');
+  const countC = document.getElementById('mapCarouselCount');
   if (track) {
-    if (countCarousel) countCarousel.textContent = visible.length.toLocaleString() + ' clinics in view';
+    if (countC) countC.textContent = visible.length.toLocaleString() + ' clinics in view';
     track.innerHTML = visible.length === 0
       ? '<div style="padding:1rem;font-size:0.82rem;color:var(--muted);">No clinics in view</div>'
       : visible.map(c => buildCard(c, true)).join('');
   }
 }
 
-// ─── BUILD CARD HTML ──────────────────────────────────────────
+// ─── BUILD CARD ───────────────────────────────────────────────
 function buildCard(c, carousel) {
   const hasPrice = c.price != null;
   const cls = carousel ? 'map-carousel-card' : 'map-clinic-card';
   return `<div class="${cls}" data-cid="${c.id}"
     onclick="onCardClick('${c.id}')"
-    onmouseenter="highlightPin('${c.id}')"
-    onmouseleave="unhighlightPin('${c.id}')">
+    onmouseenter="highlightPinById('${c.id}')"
+    onmouseleave="unhighlightPinById('${c.id}')">
     <div class="map-card-name">
       ${c.claimed ? '<span class="verified-tick" style="width:14px;height:14px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;background:#3D7A55;border-radius:50%;"><svg viewBox="0 0 12 12" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 6 5 9 10 3"/></svg></span>' : ''}
       ${c.name}
     </div>
     <div class="map-card-meta">📍 ${c.neighbourhood}${c.province ? ', '+c.province : ''}</div>
-    ${hasPrice
-      ? `<div><span class="map-card-price">$${c.price}</span> <span class="map-card-price-unit">/ unit · Botox</span></div>`
-      : `<div class="map-card-no-price">Price not listed</div>`}
+    ${hasPrice ? `<div><span class="map-card-price">$${c.price}</span> <span class="map-card-price-unit">/ unit · Botox</span></div>` : `<div class="map-card-no-price">Price not listed</div>`}
     <div class="map-card-footer">
-      <div class="map-card-rating">
-        <span class="star">★</span>
-        <span>${c.rating ? c.rating.toFixed(1) : '—'}</span>
-        <span style="color:var(--dim)">(${(c.reviews||0).toLocaleString()})</span>
-      </div>
+      <div class="map-card-rating"><span class="star">★</span> <span>${c.rating ? c.rating.toFixed(1) : '—'}</span> <span style="color:var(--dim)">(${(c.reviews||0).toLocaleString()})</span></div>
       <a href="#" class="map-card-view" onclick="event.stopPropagation();openMapModal('${c.id}')">View →</a>
     </div>
   </div>`;
@@ -3876,14 +3807,11 @@ function buildCard(c, carousel) {
 // ─── CARD → PIN INTERACTIONS ──────────────────────────────────
 function onCardClick(cid) {
   _activeCid = String(cid);
-  document.querySelectorAll('.map-pin').forEach(p => { p.classList.remove('pin-active'); p.classList.remove('pin-hover'); });
-  const pin = findPin(cid);
+  _markers.forEach(m => { if (m.content) m.content.classList.remove('pin-active', 'pin-hover'); });
+  const pin = findPinEl(cid);
   if (pin) pin.classList.add('pin-active');
-  // Pan map to clinic
   const clinic = _allClinics.find(c => String(c.id) === String(cid));
-  if (clinic && clinic.lat && clinic.lng) {
-    _map.easeTo({ center: [+clinic.lng, +clinic.lat], duration: 350 });
-  }
+  if (clinic && _map) _map.panTo({ lat: +clinic.lat, lng: +clinic.lng });
   openMapModal(String(cid));
 }
 
@@ -3895,31 +3823,25 @@ function highlightCard(cid, scroll) {
   });
 }
 
-function unhighlightCard(cid) {
-  if (_activeCid == cid) return;
-  document.querySelectorAll(`[data-cid="${cid}"]`).forEach(c => c.classList.remove('highlighted'));
+function highlightPinById(cid) {
+  const pin = findPinEl(cid);
+  if (pin && _activeCid !== String(cid)) pin.classList.add('pin-hover');
 }
 
-function highlightPin(cid) {
-  const pin = findPin(cid);
-  if (pin && _activeCid != cid) pin.classList.add('pin-hover');
-}
-
-function unhighlightPin(cid) {
-  if (_activeCid == cid) return;
-  const pin = findPin(cid);
+function unhighlightPinById(cid) {
+  if (_activeCid === String(cid)) return;
+  const pin = findPinEl(cid);
   if (pin) pin.classList.remove('pin-hover');
 }
 
-function findPin(cid) {
+function findPinEl(cid) {
   for (const m of _markers) {
-    const el = m.getElement();
-    if (el && el._cid == cid) return el;
+    if (m.content && m.content._cid == cid) return m.content;
   }
   return null;
 }
 
-// ─── NO-OP stubs for any lingering HTML references ────────────
+// ─── STUBS ────────────────────────────────────────────────────
 function toggleMapDrawer() {}
 function activatePinById(id) { onCardClick(String(id)); }
 function openMapClinicModal(id) { openMapModal(String(id)); }
