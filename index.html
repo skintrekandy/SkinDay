@@ -2274,13 +2274,13 @@ function getScore(c) {
 // ─── CLINIC LOOKUP ────────────────────────────────────────────
 // Look up a clinic by id — checks current page first, then index
 function findClinic(id) {
-  const fromPage = currentPageClinics.find(c => c.id == id);
+  const sid = String(id);
+  const fromPage = currentPageClinics.find(c => String(c.id) === sid);
   if (fromPage) return fromPage;
-  const fromIndex = clinicsIndex.find(c => c.id == id);
+  const fromIndex = clinicsIndex.find(c => String(c.id) === sid);
   if (fromIndex) return fromIndex;
-  // Also search map clinics when in map view
   if (typeof mapAllClinics !== 'undefined') {
-    const fromMap = mapAllClinics.find(c => c.id == id);
+    const fromMap = mapAllClinics.find(c => String(c.id) === sid);
     if (fromMap) return fromMap;
   }
   return null;
@@ -3777,9 +3777,9 @@ function renderPins() {
       el.innerHTML = `
         <svg viewBox="0 0 30 38" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M15 0C6.72 0 0 6.72 0 15c0 11.25 15 23 15 23S30 26.25 30 15C30 6.72 23.28 0 15 0z" fill="#1C1714"/>
-          <circle cx="15" cy="14" r="6" fill="rgba(255,255,255,0.2)"/>
+          <circle cx="15" cy="14" r="6" fill="rgba(255,255,255,0.12)"/>
         </svg>
-        <span class="map-pin-label"></span>`;
+        <span class="map-pin-label">1</span>`;
       if (cid == activeMarkerId) el.classList.add('pin-active');
       el.addEventListener('click', () => activatePin(cid, el));
       el.addEventListener('mouseenter', () => highlightCard(cid));
@@ -3844,29 +3844,36 @@ function activatePin(clinicId, pinEl) {
 // Opens clinic modal — fetches full data from Supabase if the thin map record
 // doesn't have enough fields for the modal to render properly
 async function openMapClinicModal(clinicId) {
-  // First try existing full records
-  const fromPage = currentPageClinics.find(c => c.id == clinicId);
+  // Normalise ID — Supabase returns strings, currentPageClinics may have ints
+  const sid = String(clinicId);
+
+  // Check if we already have the full record
+  const fromPage = currentPageClinics.find(c => String(c.id) === sid);
   if (fromPage && fromPage.injector_credentials !== undefined) {
-    openClinicModal(clinicId);
+    openClinicModal(fromPage.id);
     return;
   }
-  // Fetch full clinic record from Supabase
+
+  // Fetch full record from Supabase
   try {
     const res = await fetch(
-      `${SB_URL}/rest/v1/clinics?select=*&id=eq.${encodeURIComponent(String(clinicId))}&limit=1`,
+      `${SB_URL}/rest/v1/clinics?select=*&id=eq.${sid}&limit=1`,
       { headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` } }
     );
     if (res.ok) {
       const rows = await res.json();
       if (rows && rows[0]) {
         const full = normaliseClinic(rows[0]);
-        // Add to currentPageClinics so findClinic can find it
-        const existing = currentPageClinics.findIndex(c => c.id == clinicId);
+        const existing = currentPageClinics.findIndex(c => String(c.id) === sid);
         if (existing > -1) currentPageClinics[existing] = full;
         else currentPageClinics.push(full);
+        openClinicModal(full.id);
+        return;
       }
     }
-  } catch(e) {}
+  } catch(e) { console.error('openMapClinicModal fetch error', e); }
+
+  // Fallback — try with whatever we have
   openClinicModal(clinicId);
 }
 
@@ -3983,11 +3990,8 @@ function buildMapCard(c) {
 }
 
 function renderMapCardList(clinics) {
-  const listEl   = document.getElementById('mapCardList');
-  const statusEl = document.getElementById('mapListStatus');
-  const labelEl  = document.getElementById('mapDrawerLabel');
-
-  statusEl.style.display = 'none';
+  const listEl = document.getElementById('mapCardList');
+  if (!listEl) return;
 
   if (clinics.length === 0) {
     listEl.innerHTML = '<div class="map-list-status">No clinics in this area. Zoom out to see more.</div>';
@@ -3995,12 +3999,7 @@ function renderMapCardList(clinics) {
     return;
   }
 
-  const html = clinics.map(buildMapCard).join('');
-  listEl.innerHTML = html;
-
-  if (labelEl) labelEl.textContent = `${clinics.length.toLocaleString()} clinics in view`;
-
-  // FIX 5: Mobile carousel
+  listEl.innerHTML = clinics.map(buildMapCard).join('');
   renderMobileCarousel(clinics);
 }
 
