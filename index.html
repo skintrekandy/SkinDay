@@ -4012,6 +4012,10 @@ function renderMobileCarousel(clinics) {
       <div class="map-card-footer" style="margin-top:0.45rem;">
         <div class="map-card-rating"><span class="star">★</span> <span>${c.rating ? c.rating.toFixed(1) : '—'}</span> <span style="color:var(--dim)">(${(c.reviews||0).toLocaleString()})</span></div>
         <a href="#" class="map-card-view" onclick="event.stopPropagation();openMapClinicModal(${c.id})">View →</a>
+      </div>
+    </div>`;
+  }).join('');
+}
 
 function scrollCarouselToCard(clinicId) {
   const track = document.getElementById('mapCarouselTrack');
