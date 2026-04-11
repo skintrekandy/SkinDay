@@ -435,6 +435,7 @@
     .map-carousel {
       position: absolute; bottom: 0; left: 0; right: 0; z-index: 10;
       padding-bottom: env(safe-area-inset-bottom, 8px);
+      min-height: 60px;
     }
     .map-carousel-count {
       text-align: center; font-size: 0.7rem; color: #fff;
@@ -3712,24 +3713,30 @@ function loadPinsAndCards() {
   sc = new Supercluster({ radius: 55, maxZoom: 15 });
   sc.load(features);
 
-  // Remove old listener
-  if (renderAtZoomFn) mapInstance.off('moveend', renderAtZoomFn);
+  // Remove old listeners
+  if (renderAtZoomFn) {
+    mapInstance.off('moveend', renderAtZoomFn);
+    mapInstance.off('zoomend', renderAtZoomFn);
+  }
 
-  // Every moveend: re-render pins for current zoom + update card list to viewport
+  // Fire on both moveend and zoomend to catch all interactions
   renderAtZoomFn = function() {
     renderPins();
     updateViewportCards();
   };
   mapInstance.on('moveend', renderAtZoomFn);
+  mapInstance.on('zoomend', renderAtZoomFn);
 
   if (features.length > 0) {
     const lngs = features.map(f => f.geometry.coordinates[0]);
     const lats  = features.map(f => f.geometry.coordinates[1]);
-    // fitBounds will trigger moveend when done, which renders pins + cards
     mapInstance.fitBounds(
       [[Math.min(...lngs)-0.05, Math.min(...lats)-0.05],[Math.max(...lngs)+0.05, Math.max(...lats)+0.05]],
-      { padding:{ top:40, bottom:80, left:20, right:20 }, maxZoom:13, duration:600 }
+      { padding:{ top:40, bottom:80, left:20, right:20 }, maxZoom:13, duration:0 }
     );
+    // duration:0 means instant — moveend fires immediately, cards populate right away
+    renderPins();
+    updateViewportCards();
   } else {
     renderPins();
     updateViewportCards();
@@ -3791,11 +3798,17 @@ function renderPins() {
 // FIX 2 & 3 & 5: Filter card list to clinics visible in current map bounds
 function updateViewportCards() {
   const bounds = mapInstance.getBounds();
-  const visible = mapAllClinics.filter(c =>
+  let visible = mapAllClinics.filter(c =>
     c.lat && c.lng &&
     +c.lat >= bounds.getSouth() && +c.lat <= bounds.getNorth() &&
     +c.lng >= bounds.getWest()  && +c.lng <= bounds.getEast()
   );
+
+  // Sort: claimed+priced → claimed only → priced only → unclaimed/unpriced
+  visible.sort((a, b) => {
+    const score = c => (c.claimed ? 2 : 0) + (c.price != null ? 1 : 0);
+    return score(b) - score(a);
+  });
 
   mapVisibleIds = new Set(visible.map(c => c.id));
 
