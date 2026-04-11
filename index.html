@@ -344,128 +344,95 @@
   ═══════════════════════════════════════════ */
 
   /* ─── VIEW TOGGLE ─── */
-  .view-toggle {
-    display: flex;
-    align-items: center;
-    gap: 0;
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    overflow: hidden;
-    margin-left: 0.5rem;
-    flex-shrink: 0;
-  }
-  .view-toggle-btn {
-    background: transparent;
-    border: none;
-    color: var(--muted);
-    padding: 0.38rem 0.85rem;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.78rem;
-    font-weight: 500;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-    transition: background 0.18s, color 0.18s;
-    white-space: nowrap;
-  }
+  .view-toggle { display: flex; align-items: center; border: 1px solid var(--border); border-radius: 20px; overflow: hidden; margin-left: 0.5rem; flex-shrink: 0; }
+  .view-toggle-btn { background: transparent; border: none; color: var(--muted); padding: 0.38rem 0.85rem; font-family: 'DM Sans', sans-serif; font-size: 0.78rem; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.35rem; transition: background 0.18s, color 0.18s; white-space: nowrap; }
   .view-toggle-btn svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   .view-toggle-btn.active { background: var(--deep); color: var(--cream); }
   .view-toggle-btn:not(.active):hover { background: var(--warm); color: var(--deep); }
 
   /* ─── MAP SECTION ─── */
-  .map-section { display: none; background: var(--warm); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
-  .map-section.active { display: flex; }
+  .map-section { display: none; }
+  .map-section.active { display: block; }
 
   /* ─── SPLIT LAYOUT ─── */
-  .map-split { display: flex; width: 100%; height: calc(100vh - 64px); max-height: 820px; min-height: 500px; }
+  .map-split { display: flex; width: 100%; height: calc(100vh - 130px); max-height: 860px; min-height: 520px; }
 
   /* ─── CARD LIST (left 40%) ─── */
-  .map-card-list {
-    width: 40%; flex-shrink: 0; overflow-y: auto;
-    background: var(--warm); border-right: 1px solid var(--border);
-    padding: 1rem; display: flex; flex-direction: column; gap: 0.65rem;
-    scroll-behavior: smooth;
-  }
+  .map-card-list { width: 40%; flex-shrink: 0; overflow-y: auto; background: var(--warm); border-right: 1px solid var(--border); padding: 0.85rem; display: flex; flex-direction: column; gap: 0.6rem; }
   .map-card-list::-webkit-scrollbar { width: 4px; }
   .map-card-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .map-list-header { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); padding: 0.2rem 0.2rem 0.4rem; flex-shrink: 0; }
 
   /* ─── MAP PANEL (right 60%) ─── */
-  .map-panel { flex: 1; position: relative; background: #e8e0d8; }
+  .map-panel { flex: 1; position: relative; }
   #mapbox-map { position: absolute; inset: 0; width: 100%; height: 100%; }
 
-  /* ─── MAP CARD (narrower variant) ─── */
-  .map-clinic-card {
-    background: var(--cream); border: 1px solid var(--border); border-radius: 8px;
-    padding: 0.85rem 1rem; cursor: pointer;
-    transition: border-color 0.18s, box-shadow 0.18s, transform 0.15s; flex-shrink: 0;
-  }
-  .map-clinic-card:hover { border-color: var(--rose-m); box-shadow: 0 4px 16px rgba(28,23,20,0.08); transform: translateY(-1px); }
-  .map-clinic-card.highlighted { border-color: var(--rose); box-shadow: 0 0 0 2px rgba(200,114,90,0.25), 0 6px 20px rgba(28,23,20,0.12); }
-  .map-card-name { font-family: 'Cormorant Garamond', serif; font-size: 1.05rem; font-weight: 500; color: var(--deep); line-height: 1.2; margin-bottom: 0.2rem; display: flex; align-items: center; gap: 5px; }
-  .map-card-meta { font-size: 0.73rem; color: var(--muted); margin-bottom: 0.35rem; display: flex; align-items: center; gap: 0.3rem; flex-wrap: wrap; }
-  .map-card-price { font-family: 'Cormorant Garamond', serif; font-size: 1.3rem; font-weight: 400; color: var(--deep); line-height: 1; }
-  .map-card-price-unit { font-size: 0.72rem; color: var(--muted); font-family: 'DM Sans', sans-serif; }
-  .map-card-no-price { font-size: 0.78rem; color: var(--dim); font-style: italic; }
-  .map-card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 0.5rem; }
-  .map-card-rating { display: flex; align-items: center; gap: 0.3rem; font-size: 0.75rem; color: var(--muted); }
-  .map-card-rating .star { color: var(--gold); font-size: 0.7rem; }
-  .map-card-view { font-size: 0.73rem; font-weight: 500; color: var(--rose); text-decoration: none; letter-spacing: 0.02em; }
-  .map-list-status { text-align: center; padding: 2rem 1rem; font-size: 0.85rem; color: var(--muted); }
+  /* ─── MAP CARD ─── */
+  .map-clinic-card { background: var(--cream); border: 1.5px solid var(--border); border-radius: 8px; padding: 0.8rem 0.9rem; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; flex-shrink: 0; }
+  .map-clinic-card:hover { border-color: var(--rose-m); box-shadow: 0 3px 12px rgba(28,23,20,0.08); }
+  .map-clinic-card.highlighted { border-color: var(--rose) !important; box-shadow: 0 0 0 2px rgba(200,114,90,0.2), 0 4px 16px rgba(28,23,20,0.1); }
+  .map-card-name { font-family: 'Cormorant Garamond', serif; font-size: 1rem; font-weight: 500; color: var(--deep); line-height: 1.2; margin-bottom: 0.15rem; display: flex; align-items: center; gap: 4px; }
+  .map-card-meta { font-size: 0.71rem; color: var(--muted); margin-bottom: 0.3rem; }
+  .map-card-price { font-family: 'Cormorant Garamond', serif; font-size: 1.25rem; font-weight: 400; color: var(--deep); }
+  .map-card-price-unit { font-size: 0.68rem; color: var(--muted); font-family: 'DM Sans', sans-serif; }
+  .map-card-no-price { font-size: 0.75rem; color: var(--dim); font-style: italic; }
+  .map-card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 0.4rem; }
+  .map-card-rating { display: flex; align-items: center; gap: 0.25rem; font-size: 0.72rem; color: var(--muted); }
+  .map-card-rating .star { color: var(--gold); }
+  .map-card-view { font-size: 0.72rem; font-weight: 500; color: var(--rose); text-decoration: none; }
+  .map-list-status { text-align: center; padding: 2rem 1rem; font-size: 0.82rem; color: var(--muted); }
 
   /* ─── PIN STYLES ─── */
-  .map-pin {
-    width: 26px; height: 26px; border-radius: 50% 50% 50% 0;
-    transform: rotate(-45deg); border: 2px solid white;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.22); cursor: pointer;
-    transition: transform 0.15s, box-shadow 0.15s;
-  }
-  .map-pin:hover { transform: rotate(-45deg) scale(1.15); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
-  .map-pin.pin-rose  { background: var(--rose); }
-  .map-pin.pin-gold  { background: var(--gold); }
-  .map-pin.pin-grey  { background: #B5A898; }
-  .map-pin.pin-active { transform: rotate(-45deg) scale(1.3) !important; box-shadow: 0 0 0 3px rgba(200,114,90,0.4), 0 4px 16px rgba(0,0,0,0.3) !important; }
+  .map-pin { width: 22px; height: 22px; border-radius: 50%; border: 2.5px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.32); cursor: pointer; background: var(--deep); transition: transform 0.15s, box-shadow 0.15s; }
+  .map-pin:hover { transform: scale(1.2); }
+  .map-pin.pin-active { transform: scale(1.4) !important; box-shadow: 0 0 0 3px rgba(28,23,20,0.25), 0 4px 14px rgba(0,0,0,0.3) !important; z-index: 20 !important; }
 
-  /* Cluster bubble */
-  .map-cluster {
-    width: 36px; height: 36px; border-radius: 50%;
-    background: var(--deep); border: 2.5px solid var(--cream);
-    color: var(--cream); font-family: 'DM Sans', sans-serif;
-    font-size: 0.7rem; font-weight: 600;
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,0.25);
-    transition: transform 0.15s;
-  }
+  /* Cluster — white circle, dark number (Realtor.ca style) */
+  .map-cluster { width: 36px; height: 36px; border-radius: 50%; background: #fff; border: 2px solid rgba(28,23,20,0.18); color: var(--deep); font-family: 'DM Sans', sans-serif; font-size: 0.68rem; font-weight: 700; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,0.2); transition: transform 0.15s; }
   .map-cluster:hover { transform: scale(1.1); }
-  .map-cluster.large { width: 44px; height: 44px; font-size: 0.76rem; }
+  .map-cluster.large { width: 44px; height: 44px; font-size: 0.74rem; }
 
-  /* Map loading */
-  .map-loading { position: absolute; inset: 0; background: var(--warm); display: flex; align-items: center; justify-content: center; font-size: 0.85rem; color: var(--muted); z-index: 5; pointer-events: none; transition: opacity 0.3s; }
+  /* Loading overlay */
+  .map-loading { position: absolute; inset: 0; background: var(--warm); display: flex; align-items: center; justify-content: center; font-size: 0.85rem; color: var(--muted); z-index: 5; transition: opacity 0.4s; }
   .map-loading.hidden { opacity: 0; pointer-events: none; }
 
   /* Result count badge */
-  .map-result-count { position: absolute; top: 12px; left: 12px; background: white; border-radius: 6px; padding: 0.35rem 0.75rem; font-size: 0.75rem; font-weight: 500; color: var(--deep); box-shadow: 0 2px 8px rgba(0,0,0,0.15); z-index: 5; pointer-events: none; }
+  .map-result-count { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); background: rgba(28,23,20,0.82); backdrop-filter: blur(6px); color: #FAF7F2; border-radius: 20px; padding: 0.3rem 0.9rem; font-size: 0.72rem; font-weight: 500; letter-spacing: 0.04em; z-index: 5; pointer-events: none; white-space: nowrap; }
 
-  /* ─── MOBILE MAP ─── */
+  /* ─── MOBILE: full-screen map + bottom carousel ─── */
   @media (max-width: 768px) {
-    .map-split { flex-direction: column; height: 100svh; max-height: none; }
-    .map-card-list { display: none; }
-    .map-panel { flex: 1; min-height: 0; }
-    .map-drawer {
-      position: absolute; bottom: 0; left: 0; right: 0;
-      background: var(--cream); border-radius: 20px 20px 0 0;
-      box-shadow: 0 -4px 24px rgba(28,23,20,0.18); z-index: 10;
-      transform: translateY(calc(100% - 72px));
-      transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-      max-height: 70vh; display: flex; flex-direction: column;
+    .map-split { flex-direction: column; height: calc(100svh - 64px); max-height: none; min-height: 0; }
+    .map-card-list { display: none; } /* replaced by carousel on mobile */
+    .map-panel { flex: 1; min-height: 0; position: relative; }
+
+    /* Bottom card carousel */
+    .map-carousel {
+      position: absolute; bottom: 0; left: 0; right: 0; z-index: 10;
+      padding-bottom: env(safe-area-inset-bottom, 8px);
     }
-    .map-drawer.expanded { transform: translateY(0); }
-    .map-drawer-handle-row { padding: 10px 16px 6px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
-    .map-drawer-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; }
-    .map-drawer-label { font-size: 0.78rem; font-weight: 500; color: var(--deep); text-align: center; padding-bottom: 6px; flex-shrink: 0; }
-    .map-drawer-cards { overflow-y: auto; padding: 0 1rem 1.5rem; flex: 1; display: flex; flex-direction: column; gap: 0.65rem; -webkit-overflow-scrolling: touch; }
+    .map-carousel-count {
+      text-align: center; font-size: 0.7rem; color: #fff;
+      background: rgba(28,23,20,0.6); backdrop-filter: blur(4px);
+      display: inline-block; padding: 0.2rem 0.75rem; border-radius: 20px;
+      margin: 0 auto 6px; position: relative; left: 50%; transform: translateX(-50%);
+    }
+    .map-carousel-track {
+      display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch; scrollbar-width: none;
+      padding: 0 16px 14px;
+    }
+    .map-carousel-track::-webkit-scrollbar { display: none; }
+    .map-carousel-card {
+      flex: 0 0 78vw; max-width: 320px; scroll-snap-align: start;
+      background: var(--cream); border-radius: 12px; padding: 0.9rem 1rem;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.22); cursor: pointer;
+      border: 1.5px solid transparent; transition: border-color 0.15s;
+    }
+    .map-carousel-card.highlighted { border-color: var(--rose); }
   }
-  @media (min-width: 769px) { .map-drawer { display: none !important; } }
+  @media (min-width: 769px) {
+    .map-carousel { display: none !important; }
+  }
 
   /* ─── SEARCH WIDGET ─── */
     .search-wrap {
@@ -1994,22 +1961,20 @@
 <!-- M18: MAP VIEW SECTION -->
 <section class="map-section" id="mapSection" style="padding:0;">
   <div class="map-split" id="mapSplit">
-    <!-- Left: scrollable card list -->
+    <!-- Left: scrollable card list (desktop only) -->
     <div class="map-card-list" id="mapCardList">
-      <div class="map-list-status" id="mapListStatus">Loading clinics…</div>
+      <div class="map-list-header" id="mapListHeader">All clinics</div>
+      <div class="map-list-status" id="mapListStatus">Loading…</div>
     </div>
     <!-- Right: Mapbox map -->
     <div class="map-panel" id="mapPanel">
       <div id="mapbox-map"></div>
       <div class="map-loading" id="mapLoading">Loading map…</div>
       <div class="map-result-count" id="mapResultCount" style="display:none"></div>
-      <!-- Mobile pull-up drawer -->
-      <div class="map-drawer" id="mapDrawer">
-        <div class="map-drawer-handle-row" onclick="toggleMapDrawer()">
-          <div class="map-drawer-handle"></div>
-        </div>
-        <div class="map-drawer-label" id="mapDrawerLabel">Show list</div>
-        <div class="map-drawer-cards" id="mapDrawerCards"></div>
+      <!-- Mobile bottom carousel -->
+      <div class="map-carousel" id="mapCarousel">
+        <div class="map-carousel-count" id="mapCarouselCount"></div>
+        <div class="map-carousel-track" id="mapCarouselTrack"></div>
       </div>
     </div>
   </div>
@@ -3607,30 +3572,33 @@ function handleClinicReport(e) {
 
 <script>
 // ═══════════════════════════════════════════
-// MILESTONE 18 — MAP VIEW
+// MILESTONE 18 — MAP VIEW (v2)
+// Fixes: pin colours, viewport-aware card list,
+//        mobile swipe carousel, drawer toggle
 // ═══════════════════════════════════════════
 
 const MAPBOX_TOKEN = 'pk.eyJ1Ijoic2tpbmRheSIsImEiOiJjbW50b3Azd3MwcG9nMnNxMzlvdHN4YW1pIn0.lxzkZMxX5jrH_nw-_itnPw';
+const SB_URL = 'https://vefldlqtyxdywbzdjuia.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlZmxkbHF0eXhkeXdiemRqdWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNDAwMjgsImV4cCI6MjA4NzkxNjAyOH0.o582sXiUkB3j4FiHEA5rE3ABy_pdTeeK1PnNpNirHZA';
 
-let mapInstance = null;       // Mapbox GL map
-let mapInitialized = false;
-let mapClinicsData = [];      // all approved clinics with coords from Supabase
-let mapMarkers = [];          // current Mapbox Marker objects
-let activeMarkerId = null;    // currently highlighted marker
+let mapInstance     = null;
+let mapInitialized  = false;
+let mapAllClinics   = [];   // full dataset (filtered by province/hood)
+let mapVisibleIds   = new Set(); // ids in current viewport
+let mapMarkers      = [];
+let activeMarkerId  = null;
 let mapDrawerExpanded = false;
-let currentView = 'grid';     // 'grid' | 'map'
-
-// Supercluster instance
-let sc = null;
+let currentView     = 'grid';
+let sc              = null;
+let renderAtZoomFn  = null; // stored so we can remove listener
 
 // ─── VIEW TOGGLE ──────────────────────────────────────────────
 function switchView(view) {
   currentView = view;
-
-  const gridBtn     = document.getElementById('gridToggleBtn');
-  const mapBtn      = document.getElementById('mapToggleBtn');
-  const gridSection = document.querySelector('.comparison-section');
-  const mapSection  = document.getElementById('mapSection');
+  const gridBtn      = document.getElementById('gridToggleBtn');
+  const mapBtn       = document.getElementById('mapToggleBtn');
+  const gridSection  = document.querySelector('.comparison-section');
+  const mapSection   = document.getElementById('mapSection');
   const loadMoreWrap = document.querySelector('.load-more-wrap');
 
   if (view === 'map') {
@@ -3649,179 +3617,158 @@ function switchView(view) {
   }
 }
 
-// ─── FETCH MAP CLINICS ────────────────────────────────────────
-// Fetch ALL approved clinics with lat/lng from Supabase directly
+// ─── FETCH ALL MAP CLINICS ────────────────────────────────────
 async function fetchMapClinics() {
-  const SUPABASE_URL = 'https://vefldlqtyxdywbzdjuia.supabase.co';
-  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlZmxkbHF0eXhkeXdiemRqdWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNDAwMjgsImV4cCI6MjA4NzkxNjAyOH0.o582sXiUkB3j4FiHEA5rE3ABy_pdTeeK1PnNpNirHZA';
-
-  // Build filter matching current directory filters
-  let query = `${SUPABASE_URL}/rest/v1/clinics?select=id,name,neighbourhood,province,lat,lng,rating,reviews,claimed,price,maps_url,logo_url&approved=eq.true&lat=not.is.null&order=rating.desc.nullslast&limit=10000`;
-
-  // Province filter
+  let query = `${SB_URL}/rest/v1/clinics?select=id,name,neighbourhood,province,lat,lng,rating,reviews,claimed,price,maps_url&approved=eq.true&lat=not.is.null&order=rating.desc.nullslast&limit=10000`;
   if (PROVINCE_MAP[currentFilter]) {
     query += `&province=eq.${PROVINCE_MAP[currentFilter]}`;
-  } else if (currentFilter !== 'all' && !PROVINCE_MAP[currentFilter]) {
-    // neighbourhood filter — use ilike for fuzzy match
+  } else if (currentFilter !== 'all') {
     const hood = currentFilter.replace(/-/g, ' ');
     query += `&neighbourhood=ilike.*${encodeURIComponent(hood)}*`;
   }
-
-  const res = await fetch(query, {
-    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
-  });
-  if (!res.ok) throw new Error('Supabase fetch failed');
-  return await res.json();
+  const res = await fetch(query, { headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` } });
+  if (!res.ok) throw new Error('fetch failed');
+  return res.json();
 }
 
-// ─── INIT MAP VIEW ─────────────────────────────────────────────
+// ─── INIT MAP ─────────────────────────────────────────────────
 async function initMapView() {
   const loading = document.getElementById('mapLoading');
 
   if (!mapInitialized) {
-    // Init Mapbox
     mapboxgl.accessToken = MAPBOX_TOKEN;
     mapInstance = new mapboxgl.Map({
       container: 'mapbox-map',
-      style: 'mapbox://styles/mapbox/light-v11',
-      center: [-79.3832, 43.6532], // Toronto default
+      // FIX 1: Use streets-v12 so map has colour/labels (light-v11 needs account setup)
+      style: 'mapbox://styles/mapbox/streets-v12',
+      center: [-79.3832, 43.6532],
       zoom: 10,
       attributionControl: false
     });
     mapInstance.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
     mapInstance.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right');
     mapInitialized = true;
-
-    await new Promise(resolve => {
-      if (mapInstance.loaded()) resolve();
-      else mapInstance.once('load', resolve);
-    });
+    await new Promise(r => mapInstance.loaded() ? r() : mapInstance.once('load', r));
   }
 
-  // Load clinic data if not yet loaded
-  if (mapClinicsData.length === 0) {
-    try {
-      mapClinicsData = await fetchMapClinics();
-    } catch(e) {
-      document.getElementById('mapListStatus').textContent = 'Unable to load clinics.';
-      if (loading) loading.classList.add('hidden');
-      return;
-    }
-  } else {
-    // Re-fetch when filter changes
-    try {
-      mapClinicsData = await fetchMapClinics();
-    } catch(e) {}
-  }
-
-  if (loading) loading.classList.add('hidden');
-
-  renderMapClinics(mapClinicsData);
-}
-
-// ─── RENDER PINS & CARDS ──────────────────────────────────────
-function renderMapClinics(clinics) {
-  // Clear existing markers
-  mapMarkers.forEach(m => m.remove());
-  mapMarkers = [];
-  activeMarkerId = null;
-
-  // Update result count
-  const countEl = document.getElementById('mapResultCount');
-  if (countEl) {
-    countEl.textContent = clinics.length.toLocaleString() + ' clinics';
-    countEl.style.display = 'block';
-  }
-
-  if (clinics.length === 0) {
-    document.getElementById('mapListStatus').textContent = 'No clinics found for this filter.';
-    document.getElementById('mapListStatus').style.display = 'block';
+  try {
+    mapAllClinics = await fetchMapClinics();
+  } catch(e) {
+    document.getElementById('mapListStatus').textContent = 'Unable to load clinics.';
+    if (loading) loading.classList.add('hidden');
     return;
   }
 
-  // Build Supercluster GeoJSON features
-  const features = clinics
-    .filter(c => c.lat && c.lng)
-    .map(c => ({
-      type: 'Feature',
-      geometry: { type: 'Point', coordinates: [parseFloat(c.lng), parseFloat(c.lat)] },
-      properties: { id: c.id, claimed: c.claimed, price: c.price }
-    }));
-
-  sc = new Supercluster({ radius: 60, maxZoom: 14 });
-  sc.load(features);
-
-  // Render at current zoom
-  function renderAtZoom() {
-    mapMarkers.forEach(m => m.remove());
-    mapMarkers = [];
-
-    const bounds = mapInstance.getBounds();
-    const bbox = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()];
-    const zoom = Math.floor(mapInstance.getZoom());
-    const clusters = sc.getClusters(bbox, zoom);
-
-    clusters.forEach(cluster => {
-      const [lng, lat] = cluster.geometry.coordinates;
-      const el = document.createElement('div');
-
-      if (cluster.properties.cluster) {
-        // Cluster bubble
-        const count = cluster.properties.point_count;
-        el.className = 'map-cluster' + (count > 50 ? ' large' : '');
-        el.textContent = count > 999 ? Math.round(count/1000) + 'k' : count;
-        el.addEventListener('click', () => {
-          const expansionZoom = Math.min(sc.getClusterExpansionZoom(cluster.properties.cluster_id), 15);
-          mapInstance.easeTo({ center: [lng, lat], zoom: expansionZoom, duration: 400 });
-        });
-      } else {
-        // Individual pin
-        const cid   = cluster.properties.id;
-        const price = cluster.properties.price;
-        const clmd  = cluster.properties.claimed;
-        const pinClass = price !== null ? 'pin-rose' : (clmd ? 'pin-gold' : 'pin-grey');
-        el.className = `map-pin ${pinClass}`;
-        if (cid == activeMarkerId) el.classList.add('pin-active');
-        el.addEventListener('click', () => activatePin(cid, el));
-        el.addEventListener('mouseenter', () => highlightCard(cid));
-        el.addEventListener('mouseleave', () => unhighlightCard(cid));
-        el._clinicId = cid;
-      }
-
-      const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
-        .setLngLat([lng, lat])
-        .addTo(mapInstance);
-      mapMarkers.push(marker);
-    });
-  }
-
-  renderAtZoom();
-  mapInstance.off('moveend', renderAtZoom);
-  mapInstance.on('moveend', renderAtZoom);
-
-  // Fit bounds to clinics
-  if (features.length > 0) {
-    const lngs = features.map(f => f.geometry.coordinates[0]);
-    const lats = features.map(f => f.geometry.coordinates[1]);
-    const pad  = 0.05;
-    mapInstance.fitBounds(
-      [[Math.min(...lngs) - pad, Math.min(...lats) - pad], [Math.max(...lngs) + pad, Math.max(...lats) + pad]],
-      { padding: { top: 40, bottom: 60, left: 20, right: 20 }, maxZoom: 13, duration: 800 }
-    );
-  }
-
-  // Render card list
-  renderMapCardList(clinics);
+  if (loading) loading.classList.add('hidden');
+  loadPinsAndCards();
 }
 
-// ─── PIN → CARD INTERACTION ───────────────────────────────────
+// ─── LOAD PINS + WIRE VIEWPORT LISTENER ───────────────────────
+function loadPinsAndCards() {
+  // Build supercluster from all clinics
+  const features = mapAllClinics.filter(c => c.lat && c.lng).map(c => ({
+    type: 'Feature',
+    geometry: { type: 'Point', coordinates: [+c.lng, +c.lat] },
+    properties: { id: c.id, claimed: !!c.claimed, price: c.price }
+  }));
+  sc = new Supercluster({ radius: 55, maxZoom: 15 });
+  sc.load(features);
+
+  // Remove old listener if any
+  if (renderAtZoomFn) mapInstance.off('moveend', renderAtZoomFn);
+
+  // FIX 2 & 3 & 5: On every map move, re-render pins AND update card list to viewport clinics
+  renderAtZoomFn = function() {
+    renderPins();
+    updateViewportCards();
+  };
+  mapInstance.on('moveend', renderAtZoomFn);
+
+  renderPins();
+
+  // Fit to clinics on first load
+  if (features.length > 0) {
+    const lngs = features.map(f => f.geometry.coordinates[0]);
+    const lats  = features.map(f => f.geometry.coordinates[1]);
+    mapInstance.fitBounds(
+      [[Math.min(...lngs)-0.05, Math.min(...lats)-0.05],[Math.max(...lngs)+0.05, Math.max(...lats)+0.05]],
+      { padding:{ top:40, bottom:80, left:20, right:20 }, maxZoom:13, duration:800 }
+    );
+    // After fit animates, update cards
+    mapInstance.once('moveend', updateViewportCards);
+  } else {
+    updateViewportCards();
+  }
+}
+
+// ─── RENDER PINS ──────────────────────────────────────────────
+function renderPins() {
+  mapMarkers.forEach(m => m.remove());
+  mapMarkers = [];
+
+  const bounds  = mapInstance.getBounds();
+  const bbox    = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()];
+  const zoom    = Math.floor(mapInstance.getZoom());
+  const clusters = sc.getClusters(bbox, zoom);
+
+  clusters.forEach(cluster => {
+    const [lng, lat] = cluster.geometry.coordinates;
+    const el = document.createElement('div');
+
+    if (cluster.properties.cluster) {
+      const count = cluster.properties.point_count;
+      el.className = 'map-cluster' + (count > 50 ? ' large' : '');
+      el.textContent = count > 999 ? Math.round(count/1000)+'k' : count;
+      el.addEventListener('click', () => {
+        const z = Math.min(sc.getClusterExpansionZoom(cluster.properties.cluster_id), 15);
+        mapInstance.easeTo({ center:[lng,lat], zoom:z, duration:400 });
+      });
+    } else {
+      const cid   = cluster.properties.id;
+      el.className = 'map-pin';
+      if (cid == activeMarkerId) el.classList.add('pin-active');
+      el.addEventListener('click', () => activatePin(cid, el));
+      el.addEventListener('mouseenter', () => highlightCard(cid));
+      el.addEventListener('mouseleave', () => unhighlightCard(cid));
+      el._clinicId = cid;
+    }
+
+    const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
+      .setLngLat([lng, lat])
+      .addTo(mapInstance);
+    mapMarkers.push(marker);
+  });
+}
+
+// ─── VIEWPORT CARD UPDATE ────────────────────────────────────
+// FIX 2 & 3 & 5: Filter card list to clinics visible in current map bounds
+function updateViewportCards() {
+  const bounds = mapInstance.getBounds();
+  const visible = mapAllClinics.filter(c =>
+    c.lat && c.lng &&
+    +c.lat >= bounds.getSouth() && +c.lat <= bounds.getNorth() &&
+    +c.lng >= bounds.getWest()  && +c.lng <= bounds.getEast()
+  );
+
+  mapVisibleIds = new Set(visible.map(c => c.id));
+
+  const countEl = document.getElementById('mapResultCount');
+  if (countEl) {
+    countEl.textContent = visible.length.toLocaleString() + ' clinics in view';
+    countEl.style.display = 'block';
+  }
+
+  renderMapCardList(visible);
+}
+
+// ─── PIN ↔ CARD INTERACTION ───────────────────────────────────
 function activatePin(clinicId, pinEl) {
-  // Deactivate previous
   document.querySelectorAll('.map-pin.pin-active').forEach(p => p.classList.remove('pin-active'));
-  if (activeMarkerId === clinicId) {
+  if (activeMarkerId == clinicId) {
     activeMarkerId = null;
-    // Open clinic modal
-    openClinicModal(clinicId);
+    // Find the clinic data and open modal
+    const clinic = mapAllClinics.find(c => c.id == clinicId);
+    if (clinic) openClinicModal(clinicId);
     return;
   }
   activeMarkerId = clinicId;
@@ -3830,82 +3777,35 @@ function activatePin(clinicId, pinEl) {
 }
 
 function highlightCard(clinicId, scroll) {
-  // Desktop list
   document.querySelectorAll('.map-clinic-card').forEach(card => {
     if (card.dataset.id == clinicId) {
       card.classList.add('highlighted');
-      if (scroll) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      if (scroll) card.scrollIntoView({ behavior:'smooth', block:'nearest' });
     } else {
       card.classList.remove('highlighted');
     }
   });
+  // Also scroll mobile carousel to matching card
+  if (scroll) scrollCarouselToCard(clinicId);
 }
 
 function unhighlightCard(clinicId) {
-  if (activeMarkerId == clinicId) return; // keep highlighted if active
+  if (activeMarkerId == clinicId) return;
   document.querySelectorAll(`.map-clinic-card[data-id="${clinicId}"]`).forEach(c => c.classList.remove('highlighted'));
 }
 
-// ─── CARD LIST RENDER ─────────────────────────────────────────
-function buildMapCard(c) {
-  const hasPrice = c.price !== null && c.price !== undefined;
-  const stars    = '★'.repeat(Math.floor(c.rating || 0)) + '☆'.repeat(5 - Math.floor(c.rating || 0));
-  return `
-    <div class="map-clinic-card" data-id="${c.id}"
-      onclick="activatePinById(${c.id})"
-      onmouseenter="highlightPinById(${c.id})"
-      onmouseleave="unhighlightPinById(${c.id})">
-      <div class="map-card-name">
-        ${c.claimed ? `<span class="verified-tick" style="flex-shrink:0;"><svg viewBox="0 0 12 12" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 6 5 9 10 3"/></svg></span>` : ''}
-        ${c.name}
-      </div>
-      <div class="map-card-meta">
-        📍 ${c.neighbourhood}${c.province ? ', ' + c.province : ''}
-      </div>
-      ${hasPrice
-        ? `<span class="map-card-price">$${c.price}</span> <span class="map-card-price-unit">/ unit · Botox</span>`
-        : `<span class="map-card-no-price">Price not listed</span>`
-      }
-      <div class="map-card-footer">
-        <div class="map-card-rating">
-          <span class="star">★</span>
-          <span>${c.rating ? c.rating.toFixed(1) : '—'}</span>
-          <span>(${(c.reviews || 0).toLocaleString()})</span>
-        </div>
-        <a href="#" class="map-card-view" onclick="event.stopPropagation(); openClinicModal(${c.id})">View →</a>
-      </div>
-    </div>`;
-}
-
-function renderMapCardList(clinics) {
-  const listEl   = document.getElementById('mapCardList');
-  const drawerEl = document.getElementById('mapDrawerCards');
-  const statusEl = document.getElementById('mapListStatus');
-  const labelEl  = document.getElementById('mapDrawerLabel');
-
-  statusEl.style.display = 'none';
-
-  const html = clinics.map(buildMapCard).join('');
-  listEl.innerHTML   = html;
-  drawerEl.innerHTML = html;
-
-  if (labelEl) labelEl.textContent = `${clinics.length.toLocaleString()} clinics — tap to expand`;
-}
-
-// ─── CARD → PIN INTERACTION ───────────────────────────────────
 function activatePinById(clinicId) {
   const pinEl = findPinElement(clinicId);
   activatePin(clinicId, pinEl);
-  // Pan map to pin
-  const clinic = mapClinicsData.find(c => c.id == clinicId);
+  const clinic = mapAllClinics.find(c => c.id == clinicId);
   if (clinic && clinic.lat && clinic.lng) {
-    mapInstance.easeTo({ center: [parseFloat(clinic.lng), parseFloat(clinic.lat)], duration: 350 });
+    mapInstance.easeTo({ center:[+clinic.lng, +clinic.lat], duration:350 });
   }
 }
 
 function highlightPinById(clinicId) {
   const pinEl = findPinElement(clinicId);
-  if (pinEl && activeMarkerId !== clinicId) pinEl.classList.add('pin-active');
+  if (pinEl && activeMarkerId != clinicId) pinEl.classList.add('pin-active');
 }
 
 function unhighlightPinById(clinicId) {
@@ -3915,30 +3815,115 @@ function unhighlightPinById(clinicId) {
 }
 
 function findPinElement(clinicId) {
-  for (const marker of mapMarkers) {
-    const el = marker.getElement();
+  for (const m of mapMarkers) {
+    const el = m.getElement();
     if (el && el._clinicId == clinicId) return el;
   }
   return null;
 }
 
-// ─── MOBILE DRAWER ────────────────────────────────────────────
-function toggleMapDrawer() {
-  const drawer = document.getElementById('mapDrawer');
-  const label  = document.getElementById('mapDrawerLabel');
-  mapDrawerExpanded = !mapDrawerExpanded;
-  drawer.classList.toggle('expanded', mapDrawerExpanded);
-  if (label) label.textContent = mapDrawerExpanded ? 'Drag down to close' : `${mapClinicsData.length.toLocaleString()} clinics — tap to expand`;
+// ─── CARD HTML ────────────────────────────────────────────────
+function buildMapCard(c) {
+  const hasPrice = c.price !== null && c.price !== undefined;
+  return `
+    <div class="map-clinic-card" data-id="${c.id}"
+      onclick="activatePinById(${c.id})"
+      onmouseenter="highlightPinById(${c.id})"
+      onmouseleave="unhighlightPinById(${c.id})">
+      <div class="map-card-name">
+        ${c.claimed ? `<span class="verified-tick" style="width:14px;height:14px;flex-shrink:0;"><svg viewBox="0 0 12 12" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 6 5 9 10 3"/></svg></span>` : ''}
+        ${c.name}
+      </div>
+      <div class="map-card-meta">📍 ${c.neighbourhood}${c.province ? ', '+c.province : ''}</div>
+      ${hasPrice
+        ? `<div><span class="map-card-price">$${c.price}</span> <span class="map-card-price-unit">/ unit · Botox</span></div>`
+        : `<div class="map-card-no-price">Price not listed</div>`}
+      <div class="map-card-footer">
+        <div class="map-card-rating">
+          <span class="star">★</span>
+          <span>${c.rating ? c.rating.toFixed(1) : '—'}</span>
+          <span style="color:var(--dim)">(${(c.reviews||0).toLocaleString()})</span>
+        </div>
+        <a href="#" class="map-card-view" onclick="event.stopPropagation();openClinicModal(${c.id})">View →</a>
+      </div>
+    </div>`;
 }
 
-// ─── RE-RENDER MAP ON FILTER CHANGE ──────────────────────────
-// Hook into existing fetchPage so map re-renders when filters change
+// ─── RENDER CARD LIST (desktop left panel + mobile carousel) ──
+function renderMapCardList(clinics) {
+  const listEl   = document.getElementById('mapCardList');
+  const statusEl = document.getElementById('mapListStatus');
+  const labelEl  = document.getElementById('mapDrawerLabel');
+
+  statusEl.style.display = 'none';
+
+  if (clinics.length === 0) {
+    listEl.innerHTML = '<div class="map-list-status">No clinics in this area. Zoom out to see more.</div>';
+    renderMobileCarousel([]);
+    return;
+  }
+
+  const html = clinics.map(buildMapCard).join('');
+  listEl.innerHTML = html;
+
+  if (labelEl) labelEl.textContent = `${clinics.length.toLocaleString()} clinics in view`;
+
+  // FIX 5: Mobile carousel
+  renderMobileCarousel(clinics);
+}
+
+// ─── FIX 5: MOBILE HORIZONTAL SWIPE CAROUSEL ─────────────────
+function renderMobileCarousel(clinics) {
+  const track   = document.getElementById('mapCarouselTrack');
+  const countEl = document.getElementById('mapCarouselCount');
+  if (!track) return;
+
+  if (clinics.length === 0) {
+    track.innerHTML = '<div style="padding:1rem;font-size:0.82rem;color:var(--muted);">No clinics in view</div>';
+    if (countEl) countEl.textContent = '';
+    return;
+  }
+
+  if (countEl) countEl.textContent = `${clinics.length.toLocaleString()} clinics in view`;
+
+  track.innerHTML = clinics.map(c => {
+    const hasPrice = c.price !== null && c.price !== undefined;
+    return `<div class="map-carousel-card" data-id="${c.id}" onclick="activatePinById(${c.id})">
+      <div class="map-card-name" style="font-size:0.92rem;margin-bottom:0.15rem;">${c.claimed ? `<span class="verified-tick" style="width:13px;height:13px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;background:var(--green);border-radius:50%;margin-right:3px;"><svg viewBox="0 0 12 12" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 6 5 9 10 3"/></svg></span>` : ''}${c.name}</div>
+      <div class="map-card-meta" style="font-size:0.7rem;margin-bottom:0.3rem;">📍 ${c.neighbourhood}${c.province ? ', '+c.province : ''}</div>
+      ${hasPrice
+        ? `<div><span class="map-card-price" style="font-size:1.15rem;">$${c.price}</span> <span class="map-card-price-unit">/unit · Botox</span></div>`
+        : `<div class="map-card-no-price">Price not listed</div>`}
+      <div class="map-card-footer" style="margin-top:0.45rem;">
+        <div class="map-card-rating"><span class="star">★</span> <span>${c.rating ? c.rating.toFixed(1) : '—'}</span> <span style="color:var(--dim)">(${(c.reviews||0).toLocaleString()})</span></div>
+        <a href="#" class="map-card-view" onclick="event.stopPropagation();openClinicModal(${c.id})">View →</a>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function scrollCarouselToCard(clinicId) {
+  const track = document.getElementById('mapCarouselTrack');
+  if (!track) return;
+  const card = track.querySelector(`.map-carousel-card[data-id="${clinicId}"]`);
+  if (card) card.scrollIntoView({ behavior:'smooth', block:'nearest', inline:'center' });
+  // Also highlight in carousel
+  track.querySelectorAll('.map-carousel-card').forEach(c => c.classList.toggle('highlighted', c.dataset.id == clinicId));
+}
+
+// ─── FIX 4: No drawer on mobile — carousel only ───────────────
+// (Drawer removed; carousel is always visible at bottom of map)
+function toggleMapDrawer() { /* no-op, kept for any lingering refs */ }
+function updateDrawerLabel() { /* no-op */ }
+
+// Wire up: none needed for carousel
+
+// ─── RE-RENDER ON FILTER CHANGE ───────────────────────────────
 const _origFetchPage = fetchPage;
 async function fetchPage(page, append) {
   await _origFetchPage(page, append);
-  // If map is visible, re-fetch map data for current filters
   if (currentView === 'map') {
-    mapClinicsData = [];
+    mapAllClinics = [];
     await initMapView();
   }
 }
