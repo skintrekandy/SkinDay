@@ -3728,45 +3728,88 @@ function placeMarkers() {
 
   const PIN_PATH = 'M 0,0 C -2,-20 -10,-22 -10,-30 A 10,10 0 1,1 10,-30 C 10,-22 2,-20 0,0 z';
   const labelStyle = { color: '#ffffff', fontSize: '10px', fontWeight: '700', fontFamily: 'DM Sans, sans-serif' };
+  const zoom = _map.getZoom();
 
   const bounds = _map.getBounds();
-  const visible = bounds
-    ? _allClinics.filter(c => c.lat && c.lng && bounds.contains({ lat: +c.lat, lng: +c.lng }))
-    : _allClinics.filter(c => c.lat && c.lng);
 
-  visible.forEach(c => {
-    const cid = String(c.id);
-    const m = new google.maps.Marker({
-      position: { lat: +c.lat, lng: +c.lng },
-      map: _map,
-      optimized: false,
-      icon: { path: PIN_PATH, fillColor: '#1C1714', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 1.5, scale: 1, labelOrigin: new google.maps.Point(0, -30) },
-      label: { ...labelStyle, text: '1' }
+  // At high zoom: only viewport clinics, optimized:false, full hover
+  if (zoom >= 13) {
+    const visible = bounds
+      ? _allClinics.filter(c => c.lat && c.lng && bounds.contains({ lat: +c.lat, lng: +c.lng }))
+      : [];
+
+    visible.forEach(c => {
+      const cid = String(c.id);
+      const m = new google.maps.Marker({
+        position: { lat: +c.lat, lng: +c.lng },
+        map: _map,
+        optimized: false,
+        icon: { path: PIN_PATH, fillColor: '#1C1714', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 1.5, scale: 1, labelOrigin: new google.maps.Point(0, -30) },
+        label: { ...labelStyle, text: '1' }
+      });
+      m._cid = cid;
+      m.addListener('click', () => onPinClick(cid, m));
+      m.addListener('mouseover', () => {
+        if (_activeCid !== cid) {
+          m.setIcon({ path: PIN_PATH, fillColor: '#C8725A', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 1.5, scale: 1.4, labelOrigin: new google.maps.Point(0, -30) });
+          highlightCard(cid, false);
+        }
+      });
+      m.addListener('mouseout', () => {
+        if (_activeCid !== cid) {
+          m.setIcon({ path: PIN_PATH, fillColor: '#1C1714', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 1.5, scale: 1, labelOrigin: new google.maps.Point(0, -30) });
+          document.querySelectorAll(`[data-cid="${cid}"]`).forEach(el => el.classList.remove('highlighted'));
+        }
+      });
+      _markers.push(m);
     });
-    m._cid = cid;
 
-    m.addListener('click', () => onPinClick(cid, m));
-    m.addListener('mouseover', () => {
-      if (_activeCid !== cid) {
-        m.setIcon({ path: PIN_PATH, fillColor: '#C8725A', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 1.5, scale: 1.4, labelOrigin: new google.maps.Point(0, -30) });
-        highlightCard(cid, false);
+  } else {
+    // At low zoom: all clinics via clusterer, optimized:true
+    const allWithCoords = _allClinics.filter(c => c.lat && c.lng);
+    const gmMarkers = allWithCoords.map(c => {
+      const cid = String(c.id);
+      const m = new google.maps.Marker({
+        position: { lat: +c.lat, lng: +c.lng },
+        optimized: true,
+        icon: { path: PIN_PATH, fillColor: '#1C1714', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 1.5, scale: 1, labelOrigin: new google.maps.Point(0, -30) },
+        label: { ...labelStyle, text: '1' }
+      });
+      m._cid = cid;
+      m.addListener('click', () => onPinClick(cid, m));
+      _markers.push(m);
+      return m;
+    });
+
+    const renderer = {
+      render({ count, position }) {
+        return new google.maps.Marker({
+          position, optimized: true,
+          icon: { path: PIN_PATH, fillColor: '#1C1714', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 1.5, scale: count > 500 ? 1.5 : count > 50 ? 1.25 : 1, labelOrigin: new google.maps.Point(0, -30) },
+          label: { ...labelStyle, text: count > 999 ? Math.round(count/1000)+'k' : String(count) },
+          zIndex: Number(google.maps.Marker.MAX_ZINDEX) + count
+        });
       }
-    });
-    m.addListener('mouseout', () => {
-      if (_activeCid !== cid) {
-        m.setIcon({ path: PIN_PATH, fillColor: '#1C1714', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 1.5, scale: 1, labelOrigin: new google.maps.Point(0, -30) });
-        document.querySelectorAll(`[data-cid="${cid}"]`).forEach(el => el.classList.remove('highlighted'));
-      }
-    });
+    };
 
-    _markers.push(m);
-  });
+    _clusterer = new markerClusterer.MarkerClusterer({
+      map: _map, markers: gmMarkers, renderer,
+      algorithmOptions: { maxZoom: 12, radius: 80 }
+    });
+  }
 }
 
 function setupMapListeners() {
+  let lastZoom = null;
   _map.addListener('idle', () => {
     renderCardList();
-    placeMarkers();
+    const z = _map.getZoom();
+    // At high zoom: re-render on every pan (viewport changes matter)
+    // At low zoom: only re-render on zoom change (clusterer handles viewport)
+    if (z >= 13 || z !== lastZoom) {
+      lastZoom = z;
+      placeMarkers();
+    }
   });
 }
 
