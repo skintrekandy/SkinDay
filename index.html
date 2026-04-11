@@ -2526,6 +2526,8 @@ function applySearch() {
     else document.querySelector('.filter-btn')?.classList.add('active');
   }
 
+  if (currentView === 'map') { initMap(); return; }
+
   fetchPage(0, false);
 
   if (!nameQuery) {
@@ -2539,6 +2541,7 @@ function filterCards(filter, btn) {
   document.getElementById('searchClinicName').value = '';
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
+  if (currentView === 'map') { initMap(); return; }
   fetchPage(0, false);
 }
 
@@ -3670,6 +3673,8 @@ async function initMap() {
       mapTypeControl: false,
       streetViewControl: false,
       fullscreenControl: false,
+      zoomControl: true,
+      zoomControlOptions: { position: google.maps.ControlPosition.RIGHT_BOTTOM },
       gestureHandling: 'greedy',
       styles: [
         { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] },
@@ -3681,10 +3686,9 @@ async function initMap() {
 
   if (loadingEl) loadingEl.classList.add('hidden');
 
-  // Place markers
   placeMarkers();
 
-  // Fit bounds to data
+  // Always fit bounds to current data — zooms to selected region
   if (_allClinics.length > 0) {
     const bounds = new google.maps.LatLngBounds();
     _allClinics.forEach(c => { if (c.lat && c.lng) bounds.extend({ lat: +c.lat, lng: +c.lng }); });
@@ -3696,64 +3700,62 @@ async function initMap() {
 let _clusterer = null;
 
 function placeMarkers() {
-  // Remove old clusterer and markers
   if (_clusterer) { _clusterer.clearMarkers(); _clusterer = null; }
   _markers.forEach(m => m.setMap(null));
   _markers = [];
+
+  const icon = {
+    path: 'M 0,0 C -2,-20 -10,-22 -10,-30 A 10,10 0 1,1 10,-30 C 10,-22 2,-20 0,0 z',
+    fillColor: '#1C1714',
+    fillOpacity: 1,
+    strokeColor: '#fff',
+    strokeWeight: 1.5,
+    scale: 1,
+    labelOrigin: new google.maps.Point(0, -30)
+  };
+  const labelStyle = { color: '#ffffff', fontSize: '10px', fontWeight: '700', fontFamily: 'DM Sans, sans-serif' };
 
   const gmMarkers = _allClinics.filter(c => c.lat && c.lng).map(c => {
     const cid = String(c.id);
     const marker = new google.maps.Marker({
       position: { lat: +c.lat, lng: +c.lng },
-      map: null, // clusterer will manage map assignment
+      optimized: true,
       title: c.name,
-      icon: {
-        path: 'M 0,0 C -2,-20 -10,-22 -10,-30 A 10,10 0 1,1 10,-30 C 10,-22 2,-20 0,0 z',
-        fillColor: '#1C1714',
-        fillOpacity: 1,
-        strokeColor: '#fff',
-        strokeWeight: 1.5,
-        scale: 1,
-        labelOrigin: new google.maps.Point(0, -30)
-      },
-      label: { text: '1', color: '#ffffff', fontSize: '10px', fontWeight: '700', fontFamily: 'DM Sans, sans-serif' }
+      icon: { ...icon },
+      label: { ...labelStyle, text: '1' }
     });
-
     marker._cid = cid;
-
     marker.addListener('click', () => onPinClick(cid, marker));
-    marker.addListener('mouseover', () => {
-      if (_activeCid !== cid) marker.setIcon({ ...marker.getIcon(), fillColor: '#C8725A' });
-    });
-    marker.addListener('mouseout', () => {
-      if (_activeCid !== cid) marker.setIcon({ ...marker.getIcon(), fillColor: '#1C1714' });
-    });
-
+    marker.addListener('mouseover', () => { if (_activeCid !== cid) marker.setIcon({ ...marker.getIcon(), fillColor: '#C8725A' }); });
+    marker.addListener('mouseout',  () => { if (_activeCid !== cid) marker.setIcon({ ...marker.getIcon(), fillColor: '#1C1714' }); });
     _markers.push(marker);
     return marker;
   });
 
-  // Custom cluster renderer — same dark teardrop style
   const renderer = {
     render({ count, position }) {
       return new google.maps.Marker({
         position,
+        optimized: true,
         icon: {
           path: 'M 0,0 C -2,-20 -10,-22 -10,-30 A 10,10 0 1,1 10,-30 C 10,-22 2,-20 0,0 z',
-          fillColor: '#1C1714',
-          fillOpacity: 1,
-          strokeColor: '#fff',
-          strokeWeight: 1.5,
-          scale: count > 100 ? 1.3 : count > 10 ? 1.15 : 1,
+          fillColor: '#1C1714', fillOpacity: 1,
+          strokeColor: '#fff', strokeWeight: 1.5,
+          scale: count > 500 ? 1.4 : count > 50 ? 1.2 : 1,
           labelOrigin: new google.maps.Point(0, -30)
         },
-        label: { text: count > 999 ? Math.round(count/1000)+'k' : String(count), color: '#ffffff', fontSize: '10px', fontWeight: '700', fontFamily: 'DM Sans, sans-serif' },
+        label: { ...labelStyle, text: count > 999 ? Math.round(count/1000)+'k' : String(count) },
         zIndex: Number(google.maps.Marker.MAX_ZINDEX) + count
       });
     }
   };
 
-  _clusterer = new markerClusterer.MarkerClusterer({ map: _map, markers: gmMarkers, renderer });
+  _clusterer = new markerClusterer.MarkerClusterer({
+    map: _map,
+    markers: gmMarkers,
+    renderer,
+    algorithmOptions: { maxZoom: 14, radius: 80 }
+  });
 }
 
 // ─── PIN CLICK ────────────────────────────────────────────────
