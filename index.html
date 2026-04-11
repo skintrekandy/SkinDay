@@ -474,7 +474,7 @@
       padding: 8px;
       display: flex; gap: 0; align-items: stretch;
       box-shadow: 0 12px 48px rgba(28,23,20,0.3);
-      transform: translateY(28px);
+    transform: translateY(0);
     }
     .search-field {
       flex: 1;
@@ -3728,10 +3728,9 @@ function loadPinsAndCards() {
     const lats  = features.map(f => f.geometry.coordinates[1]);
     mapInstance.fitBounds(
       [[Math.min(...lngs)-0.05, Math.min(...lats)-0.05],[Math.max(...lngs)+0.05, Math.max(...lats)+0.05]],
-      { padding:{ top:40, bottom:80, left:20, right:20 }, maxZoom:13, duration:800 }
+      { padding:{ top:40, bottom:80, left:20, right:20 }, maxZoom:13, duration:600 }
     );
-    // Show all clinics immediately, list will refine as map settles
-    updateViewportCards();
+    // updateViewportCards fires via moveend after fitBounds completes
   } else {
     updateViewportCards();
   }
@@ -3811,17 +3810,51 @@ function updateViewportCards() {
 
 // ─── PIN ↔ CARD INTERACTION ───────────────────────────────────
 function activatePin(clinicId, pinEl) {
-  document.querySelectorAll('.map-pin.pin-active').forEach(p => p.classList.remove('pin-active'));
-  if (activeMarkerId == clinicId) {
-    activeMarkerId = null;
-    // Find the clinic data and open modal
-    const clinic = mapAllClinics.find(c => c.id == clinicId);
-    if (clinic) openClinicModal(clinicId);
+  // Deactivate previous active pin
+  document.querySelectorAll('.map-pin.pin-active').forEach(p => {
+    p.classList.remove('pin-active');
+    const path = p.querySelector('path');
+    if (path) path.setAttribute('fill', '#1C1714');
+  });
+
+  activeMarkerId = clinicId;
+  if (pinEl) {
+    pinEl.classList.add('pin-active');
+    const path = pinEl.querySelector('path');
+    if (path) path.setAttribute('fill', '#C8725A');
+  }
+  highlightCard(clinicId, true);
+  // Single click opens modal immediately
+  openMapClinicModal(clinicId);
+}
+
+// Opens clinic modal — fetches full data from Supabase if the thin map record
+// doesn't have enough fields for the modal to render properly
+async function openMapClinicModal(clinicId) {
+  // First try existing full records
+  const fromPage = currentPageClinics.find(c => c.id == clinicId);
+  if (fromPage && fromPage.injector_credentials !== undefined) {
+    openClinicModal(clinicId);
     return;
   }
-  activeMarkerId = clinicId;
-  if (pinEl) pinEl.classList.add('pin-active');
-  highlightCard(clinicId, true);
+  // Fetch full clinic record from Supabase
+  try {
+    const res = await fetch(
+      `${SB_URL}/rest/v1/clinics?select=*&id=eq.${encodeURIComponent(String(clinicId))}&limit=1`,
+      { headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` } }
+    );
+    if (res.ok) {
+      const rows = await res.json();
+      if (rows && rows[0]) {
+        const full = normaliseClinic(rows[0]);
+        // Add to currentPageClinics so findClinic can find it
+        const existing = currentPageClinics.findIndex(c => c.id == clinicId);
+        if (existing > -1) currentPageClinics[existing] = full;
+        else currentPageClinics.push(full);
+      }
+    }
+  } catch(e) {}
+  openClinicModal(clinicId);
 }
 
 function highlightCard(clinicId, scroll) {
@@ -3862,7 +3895,20 @@ function unhighlightCard(clinicId) {
 
 function activatePinById(clinicId) {
   const pinEl = findPinElement(clinicId);
-  activatePin(clinicId, pinEl);
+  // Highlight pin
+  document.querySelectorAll('.map-pin.pin-active').forEach(p => {
+    p.classList.remove('pin-active');
+    const path = p.querySelector('path');
+    if (path) path.setAttribute('fill', '#1C1714');
+  });
+  activeMarkerId = clinicId;
+  if (pinEl) {
+    pinEl.classList.add('pin-active');
+    const path = pinEl.querySelector('path');
+    if (path) path.setAttribute('fill', '#C8725A');
+  }
+  highlightCard(clinicId, true);
+  // Pan map to pin
   const clinic = mapAllClinics.find(c => c.id == clinicId);
   if (clinic && clinic.lat && clinic.lng) {
     mapInstance.easeTo({ center:[+clinic.lng, +clinic.lat], duration:350 });
@@ -3918,12 +3964,7 @@ function buildMapCard(c) {
           <span>${c.rating ? c.rating.toFixed(1) : '—'}</span>
           <span style="color:var(--dim)">(${(c.reviews||0).toLocaleString()})</span>
         </div>
-        <a href="#" class="map-card-view" onclick="event.stopPropagation();openClinicModal(${c.id})">View →</a>
-      </div>
-    </div>`;
-}
-
-// ─── RENDER CARD LIST (desktop left panel + mobile carousel) ──
+        <a href="#" class="map-card-view" onclick="event.stopPropagation();openMapClinicModal(${c.id})">View →</a>
 function renderMapCardList(clinics) {
   const listEl   = document.getElementById('mapCardList');
   const statusEl = document.getElementById('mapListStatus');
@@ -3970,11 +4011,7 @@ function renderMobileCarousel(clinics) {
         : `<div class="map-card-no-price">Price not listed</div>`}
       <div class="map-card-footer" style="margin-top:0.45rem;">
         <div class="map-card-rating"><span class="star">★</span> <span>${c.rating ? c.rating.toFixed(1) : '—'}</span> <span style="color:var(--dim)">(${(c.reviews||0).toLocaleString()})</span></div>
-        <a href="#" class="map-card-view" onclick="event.stopPropagation();openClinicModal(${c.id})">View →</a>
-      </div>
-    </div>`;
-  }).join('');
-}
+        <a href="#" class="map-card-view" onclick="event.stopPropagation();openMapClinicModal(${c.id})">View →</a>
 
 function scrollCarouselToCard(clinicId) {
   const track = document.getElementById('mapCarouselTrack');
