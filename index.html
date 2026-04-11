@@ -344,11 +344,11 @@
   ═══════════════════════════════════════════ */
 
   /* ─── VIEW TOGGLE ─── */
-  .view-toggle { display: flex; align-items: center; border: 1px solid var(--border); border-radius: 20px; overflow: hidden; margin-left: 0.5rem; flex-shrink: 0; }
-  .view-toggle-btn { background: transparent; border: none; color: var(--muted); padding: 0.38rem 0.85rem; font-family: 'DM Sans', sans-serif; font-size: 0.78rem; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.35rem; transition: background 0.18s, color 0.18s; white-space: nowrap; }
+  .view-toggle { display: flex; align-items: center; border: 1px solid rgba(255,255,255,0.15); border-radius: 20px; overflow: hidden; flex-shrink: 0; }
+  .view-toggle-btn { background: transparent; border: none; color: rgba(255,255,255,0.5); padding: 0.42rem 1.1rem; font-family: 'DM Sans', sans-serif; font-size: 0.8rem; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.35rem; transition: background 0.18s, color 0.18s; white-space: nowrap; }
   .view-toggle-btn svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-  .view-toggle-btn.active { background: var(--deep); color: var(--cream); }
-  .view-toggle-btn:not(.active):hover { background: var(--warm); color: var(--deep); }
+  .view-toggle-btn.active { background: var(--cream); color: var(--deep); }
+  .view-toggle-btn:not(.active):hover { background: rgba(255,255,255,0.1); color: var(--cream); }
 
   /* ─── MAP SECTION ─── */
   .map-section { display: none; }
@@ -382,44 +382,41 @@
   .map-card-view { font-size: 0.72rem; font-weight: 500; color: var(--rose); text-decoration: none; }
   .map-list-status { text-align: center; padding: 2rem 1rem; font-size: 0.82rem; color: var(--muted); }
 
-  /* ─── PIN STYLES — dark teardrop, same for singles and clusters ─── */
+  /* ─── PIN STYLES — SVG-based, no rotation issues ─── */
   .map-pin {
-    min-width: 28px; height: 32px; border-radius: 14px 14px 14px 0;
-    transform: rotate(-45deg);
-    background: var(--deep); border: 2px solid rgba(255,255,255,0.3);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+    width: 30px; height: 38px;
     cursor: pointer;
+    position: relative;
+    transition: transform 0.15s;
     display: flex; align-items: center; justify-content: center;
-    transition: transform 0.15s, box-shadow 0.15s;
-    padding: 0 5px;
   }
-  .map-pin-inner {
-    transform: rotate(45deg);
+  .map-pin:hover { transform: scale(1.2) translateY(-2px); }
+  .map-pin.pin-active { transform: scale(1.35) translateY(-3px) !important; filter: brightness(1.3); z-index: 20 !important; }
+  .map-pin svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .map-pin-label {
+    position: relative; z-index: 1;
+    color: #fff; font-family: 'DM Sans', sans-serif;
+    font-size: 0.62rem; font-weight: 700; line-height: 1;
+    text-align: center; margin-top: -6px;
+  }
+  /* clusters — wider to fit numbers */
+  .map-cluster {
+    height: 38px; min-width: 36px;
+    cursor: pointer;
+    position: relative;
+    transition: transform 0.15s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .map-cluster:hover { transform: scale(1.15) translateY(-2px); }
+  .map-cluster svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .map-cluster-label {
+    position: relative; z-index: 1;
     color: #fff; font-family: 'DM Sans', sans-serif;
     font-size: 0.68rem; font-weight: 700; line-height: 1;
-    white-space: nowrap;
+    text-align: center; margin-top: -6px;
   }
-  .map-pin:hover { transform: rotate(-45deg) scale(1.25); box-shadow: 0 4px 14px rgba(0,0,0,0.4); }
-  .map-pin.pin-active { transform: rotate(-45deg) scale(1.45) !important; background: var(--rose) !important; box-shadow: 0 0 0 3px rgba(200,114,90,0.35), 0 4px 14px rgba(0,0,0,0.4) !important; z-index: 20 !important; }
-  /* clusters same shape but slightly wider */
-  .map-cluster {
-    min-width: 34px; height: 38px; border-radius: 17px 17px 17px 0;
-    transform: rotate(-45deg);
-    background: var(--deep); border: 2px solid rgba(255,255,255,0.3);
-    box-shadow: 0 2px 10px rgba(0,0,0,0.35);
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    transition: transform 0.15s;
-    padding: 0 6px;
-  }
-  .map-cluster-inner {
-    transform: rotate(45deg);
-    color: #fff; font-family: 'DM Sans', sans-serif;
-    font-size: 0.72rem; font-weight: 700; line-height: 1;
-    white-space: nowrap;
-  }
-  .map-cluster:hover { transform: rotate(-45deg) scale(1.1); }
-  .map-cluster.large { min-width: 40px; height: 44px; border-radius: 20px 20px 20px 0; }
+  .map-cluster.large { height: 44px; min-width: 42px; }
+  .map-cluster.large .map-cluster-label { font-size: 0.72rem; }
 
   /* Loading overlay */
   .map-loading { position: absolute; inset: 0; background: var(--warm); display: flex; align-items: center; justify-content: center; font-size: 0.85rem; color: var(--muted); z-index: 5; transition: opacity 0.4s; }
@@ -1938,6 +1935,20 @@
   </div>
 </div>
 
+<!-- M18: View toggle strip -->
+<div id="viewToggleStrip" style="background:var(--deep);padding:12px 5%;display:flex;justify-content:center;align-items:center;">
+  <div class="view-toggle" id="viewToggle">
+    <button class="view-toggle-btn active" id="gridToggleBtn" onclick="switchView('grid')" title="Grid view">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Grid
+    </button>
+    <button class="view-toggle-btn" id="mapToggleBtn" onclick="switchView('map')" title="Map view">
+      <svg viewBox="0 0 24 24"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+      Map
+    </button>
+  </div>
+</div>
+
 <!-- PRICE COMPARISON SECTION -->
 <section class="comparison-section" id="prices">
   <div class="section-header">
@@ -1960,17 +1971,7 @@
       <option value="reviews">Sort: Most Reviews</option>
       <option value="best-value">Sort: Best Value</option>
     </select>
-    <!-- M18: Grid/Map toggle -->
-    <div class="view-toggle" id="viewToggle">
-      <button class="view-toggle-btn active" id="gridToggleBtn" onclick="switchView('grid')" title="Grid view">
-        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-        Grid
-      </button>
-      <button class="view-toggle-btn" id="mapToggleBtn" onclick="switchView('map')" title="Map view">
-        <svg viewBox="0 0 24 24"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
-        Map
-      </button>
-    </div>
+    <!-- M18: Grid/Map toggle moved below search bar -->
   </div>
 
   <div class="cards-grid" id="cardsGrid">
@@ -2274,7 +2275,14 @@ function getScore(c) {
 function findClinic(id) {
   const fromPage = currentPageClinics.find(c => c.id == id);
   if (fromPage) return fromPage;
-  return clinicsIndex.find(c => c.id == id) || null;
+  const fromIndex = clinicsIndex.find(c => c.id == id);
+  if (fromIndex) return fromIndex;
+  // Also search map clinics when in map view
+  if (typeof mapAllClinics !== 'undefined') {
+    const fromMap = mapAllClinics.find(c => c.id == id);
+    if (fromMap) return fromMap;
+  }
+  return null;
 }
 
 // ─── COMPARE BUTTON SYNC ──────────────────────────────────────
@@ -3706,15 +3714,11 @@ function loadPinsAndCards() {
   // Remove old listener if any
   if (renderAtZoomFn) mapInstance.off('moveend', renderAtZoomFn);
 
-  // Debounced handler: re-render pins + update card list as map moves
-  let _moveTimer = null;
   renderAtZoomFn = function() {
     renderPins();
-    clearTimeout(_moveTimer);
-    _moveTimer = setTimeout(updateViewportCards, 120);
+    updateViewportCards();
   };
-  mapInstance.on('move', renderAtZoomFn);
-  mapInstance.on('zoom', renderAtZoomFn);
+  mapInstance.on('moveend', renderAtZoomFn);
 
   renderPins();
 
@@ -3749,8 +3753,14 @@ function renderPins() {
 
     if (cluster.properties.cluster) {
       const count = cluster.properties.point_count;
+      const label = count > 999 ? Math.round(count/1000)+'k' : count;
       el.className = 'map-cluster' + (count > 50 ? ' large' : '');
-      el.innerHTML = `<span class="map-cluster-inner">${count > 999 ? Math.round(count/1000)+'k' : count}</span>`;
+      el.innerHTML = `
+        <svg viewBox="0 0 36 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M18 0C8.06 0 0 8.06 0 18c0 13.5 18 26 18 26S36 31.5 36 18C36 8.06 27.94 0 18 0z" fill="#1C1714"/>
+          <circle cx="18" cy="17" r="10" fill="rgba(255,255,255,0.12)"/>
+        </svg>
+        <span class="map-cluster-label">${label}</span>`;
       el.addEventListener('click', () => {
         const z = Math.min(sc.getClusterExpansionZoom(cluster.properties.cluster_id), 15);
         mapInstance.easeTo({ center:[lng,lat], zoom:z, duration:400 });
@@ -3758,7 +3768,12 @@ function renderPins() {
     } else {
       const cid = cluster.properties.id;
       el.className = 'map-pin';
-      el.innerHTML = '<span class="map-pin-inner"></span>';
+      el.innerHTML = `
+        <svg viewBox="0 0 30 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M15 0C6.72 0 0 6.72 0 15c0 11.25 15 23 15 23S30 26.25 30 15C30 6.72 23.28 0 15 0z" fill="#1C1714"/>
+          <circle cx="15" cy="14" r="6" fill="rgba(255,255,255,0.2)"/>
+        </svg>
+        <span class="map-pin-label"></span>`;
       if (cid == activeMarkerId) el.classList.add('pin-active');
       el.addEventListener('click', () => activatePin(cid, el));
       el.addEventListener('mouseenter', () => highlightCard(cid));
@@ -3822,12 +3837,13 @@ function highlightCard(clinicId, scroll) {
   mapMarkers.forEach(m => {
     const el = m.getElement();
     if (!el || !el._clinicId) return;
+    const path = el.querySelector('path');
     if (el._clinicId == clinicId) {
       el.classList.add('pin-active');
-      el.style.background = '#C8725A';
+      if (path) path.setAttribute('fill', '#C8725A');
     } else if (el._clinicId != activeMarkerId) {
       el.classList.remove('pin-active');
-      el.style.background = '';
+      if (path) path.setAttribute('fill', '#1C1714');
     }
   });
   if (scroll) scrollCarouselToCard(clinicId);
@@ -3837,7 +3853,11 @@ function unhighlightCard(clinicId) {
   if (activeMarkerId == clinicId) return;
   document.querySelectorAll(`.map-clinic-card[data-id="${clinicId}"]`).forEach(c => c.classList.remove('highlighted'));
   const pinEl = findPinElement(clinicId);
-  if (pinEl) { pinEl.classList.remove('pin-active'); pinEl.style.background = ''; }
+  if (pinEl) {
+    pinEl.classList.remove('pin-active');
+    const path = pinEl.querySelector('path');
+    if (path) path.setAttribute('fill', '#1C1714');
+  }
 }
 
 function activatePinById(clinicId) {
@@ -3853,7 +3873,8 @@ function highlightPinById(clinicId) {
   const pinEl = findPinElement(clinicId);
   if (pinEl && activeMarkerId != clinicId) {
     pinEl.classList.add('pin-active');
-    pinEl.style.background = '#C8725A';
+    const path = pinEl.querySelector('path');
+    if (path) path.setAttribute('fill', '#C8725A');
   }
 }
 
@@ -3862,7 +3883,8 @@ function unhighlightPinById(clinicId) {
   const pinEl = findPinElement(clinicId);
   if (pinEl) {
     pinEl.classList.remove('pin-active');
-    pinEl.style.background = '';
+    const path = pinEl.querySelector('path');
+    if (path) path.setAttribute('fill', '#1C1714');
   }
 }
 
