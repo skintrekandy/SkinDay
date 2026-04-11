@@ -384,11 +384,9 @@
 
   /* ─── PIN STYLES — simple teardrop via CSS only ─── */
   .map-pin {
-    width: 32px; height: 40px;
+    width: 36px; height: 36px;
     cursor: pointer;
     position: relative;
-    display: flex; align-items: flex-start; justify-content: center;
-    padding-top: 7px;
     transition: transform 0.15s;
   }
   .map-pin::before {
@@ -400,20 +398,25 @@
     box-shadow: 0 2px 8px rgba(0,0,0,0.35);
     transition: background 0.15s;
   }
-  .map-pin:hover { transform: scale(1.2) translateY(-2px); }
+  .map-pin:hover { transform: scale(1.2); }
   .map-pin.pin-active::before { background: #C8725A !important; }
-  .map-pin.pin-active { transform: scale(1.35) translateY(-3px) !important; z-index: 20 !important; }
+  .map-pin.pin-active { transform: scale(1.3) !important; z-index: 20 !important; }
+  .map-pin.pin-hover::before { background: #C8725A !important; }
+  .map-pin.pin-hover { transform: scale(1.15) !important; z-index: 10 !important; }
   .map-pin-label {
-    position: relative; z-index: 1;
-    color: #fff; font-family: 'DM Sans', sans-serif;
-    font-size: 0.62rem; font-weight: 700; line-height: 1;
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -60%);
+    color: #fff;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.65rem; font-weight: 700; line-height: 1;
+    z-index: 1;
+    pointer-events: none;
   }
   .map-cluster {
-    height: 38px; min-width: 36px;
+    height: 36px; min-width: 36px;
     cursor: pointer;
     position: relative;
-    display: flex; align-items: flex-start; justify-content: center;
-    padding-top: 8px;
     transition: transform 0.15s;
   }
   .map-cluster::before {
@@ -424,16 +427,24 @@
     transform: rotate(-45deg);
     box-shadow: 0 2px 10px rgba(0,0,0,0.35);
   }
-  .map-cluster:hover { transform: scale(1.15) translateY(-2px); }
+  .map-cluster:hover { transform: scale(1.15); }
   .map-cluster-label {
-    position: relative; z-index: 1;
-    color: #fff; font-family: 'DM Sans', sans-serif;
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -60%);
+    color: #fff;
+    font-family: 'DM Sans', sans-serif;
     font-size: 0.68rem; font-weight: 700; line-height: 1;
+    z-index: 1;
+    pointer-events: none;
   }
-  .map-cluster.large { height: 44px; min-width: 42px; padding-top: 10px; }
+  .map-cluster.large { height: 42px; min-width: 42px; }
   .map-cluster.large .map-cluster-label { font-size: 0.72rem; }
 
-  /* Loading overlay */
+  /* Suppress Mapbox default orange marker completely */
+  .mapboxgl-marker > svg,
+  .mapboxgl-marker > .mapboxgl-marker-anchor { display: none !important; }
+  .map-pin, .map-cluster { pointer-events: all; }
   .map-loading { position: absolute; inset: 0; background: var(--warm); display: flex; align-items: center; justify-content: center; font-size: 0.85rem; color: var(--muted); z-index: 5; transition: opacity 0.4s; }
   .map-loading.hidden { opacity: 0; pointer-events: none; }
 
@@ -3768,7 +3779,7 @@ function renderPins() {
       el.addEventListener('mouseleave', () => unhighlightCard(cid));
     }
 
-    const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
+    const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom', offset: [0, 0] })
       .setLngLat([lng, lat])
       .addTo(_map);
     _markers.push(marker);
@@ -3777,9 +3788,8 @@ function renderPins() {
 
 // ─── PIN CLICK → OPEN MODAL ───────────────────────────────────
 function onPinClick(cid, el) {
-  // Update active state
   _activeCid = cid;
-  document.querySelectorAll('.map-pin').forEach(p => p.classList.remove('pin-active'));
+  document.querySelectorAll('.map-pin').forEach(p => { p.classList.remove('pin-active'); p.classList.remove('pin-hover'); });
   if (el) el.classList.add('pin-active');
   // Scroll card into view
   highlightCard(cid, true);
@@ -3788,26 +3798,29 @@ function onPinClick(cid, el) {
 }
 
 async function openMapModal(cid) {
-  // Already in currentPageClinics with full data?
-  const existing = currentPageClinics.find(c => String(c.id) === cid);
+  const sid = String(cid);
+  // Check if already in currentPageClinics with full data
+  const existing = currentPageClinics.find(c => String(c.id) === sid);
   if (existing && existing.neighbourhood !== undefined) {
     openClinicModal(existing.id);
     return;
   }
-  // Fetch full record
+  // Fetch full record from Supabase
   try {
-    const r = await fetch(`${SB_URL}/rest/v1/clinics?select=*&id=eq.${cid}&limit=1`,
+    const r = await fetch(`${SB_URL}/rest/v1/clinics?select=*&id=eq.${sid}&limit=1`,
       { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } });
     if (r.ok) {
       const rows = await r.json();
       if (rows[0]) {
         const full = normaliseClinic(rows[0]);
+        // Ensure id is stored as string to match sid
+        full.id = rows[0].id; // use raw string id from Supabase
         currentPageClinics.push(full);
         openClinicModal(full.id);
         return;
       }
     }
-  } catch(e) {}
+  } catch(e) { console.error('openMapModal error:', e); }
 }
 
 // ─── RENDER CARD LIST ─────────────────────────────────────────
@@ -3881,7 +3894,7 @@ function buildCard(c, carousel) {
 // ─── CARD → PIN INTERACTIONS ──────────────────────────────────
 function onCardClick(cid) {
   _activeCid = String(cid);
-  document.querySelectorAll('.map-pin').forEach(p => p.classList.remove('pin-active'));
+  document.querySelectorAll('.map-pin').forEach(p => { p.classList.remove('pin-active'); p.classList.remove('pin-hover'); });
   const pin = findPin(cid);
   if (pin) pin.classList.add('pin-active');
   // Pan map to clinic
@@ -3907,13 +3920,13 @@ function unhighlightCard(cid) {
 
 function highlightPin(cid) {
   const pin = findPin(cid);
-  if (pin && _activeCid != cid) pin.classList.add('pin-active');
+  if (pin && _activeCid != cid) pin.classList.add('pin-hover');
 }
 
 function unhighlightPin(cid) {
   if (_activeCid == cid) return;
   const pin = findPin(cid);
-  if (pin) pin.classList.remove('pin-active');
+  if (pin) pin.classList.remove('pin-hover');
 }
 
 function findPin(cid) {
