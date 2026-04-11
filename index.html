@@ -3634,7 +3634,7 @@ function switchView(view) {
   currentView = view;
   const gridBtn      = document.getElementById('gridToggleBtn');
   const mapBtn       = document.getElementById('mapToggleBtn');
-  const gridSection  = document.querySelector('.comparison-section');
+  const gridSection  = document.getElementById('prices');
   const mapSection   = document.getElementById('mapSection');
   const loadMoreWrap = document.querySelector('.load-more-wrap');
 
@@ -3651,6 +3651,8 @@ function switchView(view) {
     mapSection.classList.remove('active');
     gridSection.style.display = '';
     if (loadMoreWrap) loadMoreWrap.style.display = '';
+    // Re-fetch grid so cards are visible again
+    fetchPage(0, false);
   }
 }
 
@@ -3702,7 +3704,6 @@ async function initMapView() {
 
 // ─── LOAD PINS + WIRE VIEWPORT LISTENER ───────────────────────
 function loadPinsAndCards() {
-  // Build supercluster from all clinics
   const features = mapAllClinics.filter(c => c.lat && c.lng).map(c => ({
     type: 'Feature',
     geometry: { type: 'Point', coordinates: [+c.lng, +c.lat] },
@@ -3711,27 +3712,26 @@ function loadPinsAndCards() {
   sc = new Supercluster({ radius: 55, maxZoom: 15 });
   sc.load(features);
 
-  // Remove old listener if any
+  // Remove old listener
   if (renderAtZoomFn) mapInstance.off('moveend', renderAtZoomFn);
 
+  // Every moveend: re-render pins for current zoom + update card list to viewport
   renderAtZoomFn = function() {
     renderPins();
     updateViewportCards();
   };
   mapInstance.on('moveend', renderAtZoomFn);
 
-  renderPins();
-
-  // Fit to clinics on first load
   if (features.length > 0) {
     const lngs = features.map(f => f.geometry.coordinates[0]);
     const lats  = features.map(f => f.geometry.coordinates[1]);
+    // fitBounds will trigger moveend when done, which renders pins + cards
     mapInstance.fitBounds(
       [[Math.min(...lngs)-0.05, Math.min(...lats)-0.05],[Math.max(...lngs)+0.05, Math.max(...lats)+0.05]],
       { padding:{ top:40, bottom:80, left:20, right:20 }, maxZoom:13, duration:600 }
     );
-    // updateViewportCards fires via moveend after fitBounds completes
   } else {
+    renderPins();
     updateViewportCards();
   }
 }
@@ -4036,16 +4036,6 @@ function toggleMapDrawer() { /* no-op, kept for any lingering refs */ }
 function updateDrawerLabel() { /* no-op */ }
 
 // Wire up: none needed for carousel
-
-// ─── RE-RENDER ON FILTER CHANGE ───────────────────────────────
-const _origFetchPage = fetchPage;
-async function fetchPage(page, append) {
-  await _origFetchPage(page, append);
-  if (currentView === 'map') {
-    mapAllClinics = [];
-    await initMapView();
-  }
-}
 
 </script>
 <!-- MISSING CLINIC MODAL -->
