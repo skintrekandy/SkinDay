@@ -1757,7 +1757,7 @@
 
 </style>
   <!-- Google Maps JS (M18) -->
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAiUKLofb5BbJQab0CX4GtuHnLeE_jOwCc&libraries=marker"></script>
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAiUKLofb5BbJQab0CX4GtuHnLeE_jOwCc"></script>
 
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="/favicon-32x32.png" type="image/png" sizes="32x32">
@@ -3666,6 +3666,7 @@ async function initMap() {
     _map = new google.maps.Map(document.getElementById('google-map'), {
       zoom: 10,
       center: { lat: 43.6532, lng: -79.3832 },
+      mapId: 'skinday_map',
       mapTypeControl: false,
       streetViewControl: false,
       fullscreenControl: false,
@@ -3674,7 +3675,6 @@ async function initMap() {
         { featureType: 'transit', elementType: 'labels', stylers: [{ visibility: 'off' }] }
       ]
     });
-    // Update card list on every idle (after pan/zoom settles)
     _map.addListener('idle', () => renderCardList());
   }
 
@@ -3703,28 +3703,32 @@ function placeMarkers() {
     el.innerHTML = '<span class="map-pin-label">1</span>';
     el._cid = cid;
 
-    const marker = new google.maps.marker.AdvancedMarkerElement({
-      map: _map,
-      position: { lat: +c.lat, lng: +c.lng },
-      content: el,
-      title: c.name
-    });
+    const overlay = new google.maps.OverlayView();
+    overlay.onAdd = function() {
+      this.getPanes().overlayMouseTarget.appendChild(el);
+    };
+    overlay.draw = function() {
+      const point = this.getProjection().fromLatLngToDivPixel(new google.maps.LatLng(+c.lat, +c.lng));
+      if (point) {
+        el.style.position = 'absolute';
+        el.style.left = (point.x - 18) + 'px';
+        el.style.top  = (point.y - 36) + 'px';
+      }
+    };
+    overlay.onRemove = function() { if (el.parentNode) el.parentNode.removeChild(el); };
+    overlay.setMap(_map);
 
     el.addEventListener('click', () => onPinClick(cid, el));
     el.addEventListener('mouseenter', () => { if (_activeCid !== cid) el.classList.add('pin-hover'); });
     el.addEventListener('mouseleave', () => { if (_activeCid !== cid) el.classList.remove('pin-hover'); });
 
-    _markers.push(marker);
+    _markers.push(overlay);
   });
 }
 
 // ─── PIN CLICK ────────────────────────────────────────────────
 function onPinClick(cid, el) {
-  // Reset all pins
-  _markers.forEach(m => {
-    const e = m.content;
-    if (e) { e.classList.remove('pin-active', 'pin-hover'); }
-  });
+  getPinEls().forEach(p => p.classList.remove('pin-active', 'pin-hover'));
   _activeCid = cid;
   if (el) el.classList.add('pin-active');
   highlightCard(cid, true);
@@ -3807,7 +3811,7 @@ function buildCard(c, carousel) {
 // ─── CARD → PIN INTERACTIONS ──────────────────────────────────
 function onCardClick(cid) {
   _activeCid = String(cid);
-  _markers.forEach(m => { if (m.content) m.content.classList.remove('pin-active', 'pin-hover'); });
+  getPinEls().forEach(p => p.classList.remove('pin-active', 'pin-hover'));
   const pin = findPinEl(cid);
   if (pin) pin.classList.add('pin-active');
   const clinic = _allClinics.find(c => String(c.id) === String(cid));
@@ -3834,11 +3838,12 @@ function unhighlightPinById(cid) {
   if (pin) pin.classList.remove('pin-hover');
 }
 
+function getPinEls() {
+  return Array.from(document.querySelectorAll('.map-pin'));
+}
+
 function findPinEl(cid) {
-  for (const m of _markers) {
-    if (m.content && m.content._cid == cid) return m.content;
-  }
-  return null;
+  return getPinEls().find(el => el._cid == cid) || null;
 }
 
 // ─── STUBS ────────────────────────────────────────────────────
