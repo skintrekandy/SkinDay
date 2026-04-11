@@ -382,15 +382,44 @@
   .map-card-view { font-size: 0.72rem; font-weight: 500; color: var(--rose); text-decoration: none; }
   .map-list-status { text-align: center; padding: 2rem 1rem; font-size: 0.82rem; color: var(--muted); }
 
-  /* ─── PIN STYLES ─── */
-  .map-pin { width: 22px; height: 22px; border-radius: 50%; border: 2.5px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.32); cursor: pointer; background: var(--deep); transition: transform 0.15s, box-shadow 0.15s; }
-  .map-pin:hover { transform: scale(1.2); }
-  .map-pin.pin-active { transform: scale(1.4) !important; box-shadow: 0 0 0 3px rgba(28,23,20,0.25), 0 4px 14px rgba(0,0,0,0.3) !important; z-index: 20 !important; }
-
-  /* Cluster — white circle, dark number (Realtor.ca style) */
-  .map-cluster { width: 36px; height: 36px; border-radius: 50%; background: #fff; border: 2px solid rgba(28,23,20,0.18); color: var(--deep); font-family: 'DM Sans', sans-serif; font-size: 0.68rem; font-weight: 700; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,0.2); transition: transform 0.15s; }
-  .map-cluster:hover { transform: scale(1.1); }
-  .map-cluster.large { width: 44px; height: 44px; font-size: 0.74rem; }
+  /* ─── PIN STYLES — dark teardrop, same for singles and clusters ─── */
+  .map-pin {
+    min-width: 28px; height: 32px; border-radius: 14px 14px 14px 0;
+    transform: rotate(-45deg);
+    background: var(--deep); border: 2px solid rgba(255,255,255,0.3);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: transform 0.15s, box-shadow 0.15s;
+    padding: 0 5px;
+  }
+  .map-pin-inner {
+    transform: rotate(45deg);
+    color: #fff; font-family: 'DM Sans', sans-serif;
+    font-size: 0.68rem; font-weight: 700; line-height: 1;
+    white-space: nowrap;
+  }
+  .map-pin:hover { transform: rotate(-45deg) scale(1.25); box-shadow: 0 4px 14px rgba(0,0,0,0.4); }
+  .map-pin.pin-active { transform: rotate(-45deg) scale(1.45) !important; background: var(--rose) !important; box-shadow: 0 0 0 3px rgba(200,114,90,0.35), 0 4px 14px rgba(0,0,0,0.4) !important; z-index: 20 !important; }
+  /* clusters same shape but slightly wider */
+  .map-cluster {
+    min-width: 34px; height: 38px; border-radius: 17px 17px 17px 0;
+    transform: rotate(-45deg);
+    background: var(--deep); border: 2px solid rgba(255,255,255,0.3);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.35);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: transform 0.15s;
+    padding: 0 6px;
+  }
+  .map-cluster-inner {
+    transform: rotate(45deg);
+    color: #fff; font-family: 'DM Sans', sans-serif;
+    font-size: 0.72rem; font-weight: 700; line-height: 1;
+    white-space: nowrap;
+  }
+  .map-cluster:hover { transform: rotate(-45deg) scale(1.1); }
+  .map-cluster.large { min-width: 40px; height: 44px; border-radius: 20px 20px 20px 0; }
 
   /* Loading overlay */
   .map-loading { position: absolute; inset: 0; background: var(--warm); display: flex; align-items: center; justify-content: center; font-size: 0.85rem; color: var(--muted); z-index: 5; transition: opacity 0.4s; }
@@ -3677,12 +3706,15 @@ function loadPinsAndCards() {
   // Remove old listener if any
   if (renderAtZoomFn) mapInstance.off('moveend', renderAtZoomFn);
 
-  // FIX 2 & 3 & 5: On every map move, re-render pins AND update card list to viewport clinics
+  // Debounced handler: re-render pins + update card list as map moves
+  let _moveTimer = null;
   renderAtZoomFn = function() {
     renderPins();
-    updateViewportCards();
+    clearTimeout(_moveTimer);
+    _moveTimer = setTimeout(updateViewportCards, 120);
   };
-  mapInstance.on('moveend', renderAtZoomFn);
+  mapInstance.on('move', renderAtZoomFn);
+  mapInstance.on('zoom', renderAtZoomFn);
 
   renderPins();
 
@@ -3694,8 +3726,8 @@ function loadPinsAndCards() {
       [[Math.min(...lngs)-0.05, Math.min(...lats)-0.05],[Math.max(...lngs)+0.05, Math.max(...lats)+0.05]],
       { padding:{ top:40, bottom:80, left:20, right:20 }, maxZoom:13, duration:800 }
     );
-    // After fit animates, update cards
-    mapInstance.once('moveend', updateViewportCards);
+    // Show all clinics immediately, list will refine as map settles
+    updateViewportCards();
   } else {
     updateViewportCards();
   }
@@ -3718,14 +3750,15 @@ function renderPins() {
     if (cluster.properties.cluster) {
       const count = cluster.properties.point_count;
       el.className = 'map-cluster' + (count > 50 ? ' large' : '');
-      el.textContent = count > 999 ? Math.round(count/1000)+'k' : count;
+      el.innerHTML = `<span class="map-cluster-inner">${count > 999 ? Math.round(count/1000)+'k' : count}</span>`;
       el.addEventListener('click', () => {
         const z = Math.min(sc.getClusterExpansionZoom(cluster.properties.cluster_id), 15);
         mapInstance.easeTo({ center:[lng,lat], zoom:z, duration:400 });
       });
     } else {
-      const cid   = cluster.properties.id;
+      const cid = cluster.properties.id;
       el.className = 'map-pin';
+      el.innerHTML = '<span class="map-pin-inner"></span>';
       if (cid == activeMarkerId) el.classList.add('pin-active');
       el.addEventListener('click', () => activatePin(cid, el));
       el.addEventListener('mouseenter', () => highlightCard(cid));
@@ -3785,13 +3818,26 @@ function highlightCard(clinicId, scroll) {
       card.classList.remove('highlighted');
     }
   });
-  // Also scroll mobile carousel to matching card
+  // Highlight the pin too
+  mapMarkers.forEach(m => {
+    const el = m.getElement();
+    if (!el || !el._clinicId) return;
+    if (el._clinicId == clinicId) {
+      el.classList.add('pin-active');
+      el.style.background = '#C8725A';
+    } else if (el._clinicId != activeMarkerId) {
+      el.classList.remove('pin-active');
+      el.style.background = '';
+    }
+  });
   if (scroll) scrollCarouselToCard(clinicId);
 }
 
 function unhighlightCard(clinicId) {
   if (activeMarkerId == clinicId) return;
   document.querySelectorAll(`.map-clinic-card[data-id="${clinicId}"]`).forEach(c => c.classList.remove('highlighted'));
+  const pinEl = findPinElement(clinicId);
+  if (pinEl) { pinEl.classList.remove('pin-active'); pinEl.style.background = ''; }
 }
 
 function activatePinById(clinicId) {
@@ -3805,13 +3851,19 @@ function activatePinById(clinicId) {
 
 function highlightPinById(clinicId) {
   const pinEl = findPinElement(clinicId);
-  if (pinEl && activeMarkerId != clinicId) pinEl.classList.add('pin-active');
+  if (pinEl && activeMarkerId != clinicId) {
+    pinEl.classList.add('pin-active');
+    pinEl.style.background = '#C8725A';
+  }
 }
 
 function unhighlightPinById(clinicId) {
   if (activeMarkerId == clinicId) return;
   const pinEl = findPinElement(clinicId);
-  if (pinEl) pinEl.classList.remove('pin-active');
+  if (pinEl) {
+    pinEl.classList.remove('pin-active');
+    pinEl.style.background = '';
+  }
 }
 
 function findPinElement(clinicId) {
