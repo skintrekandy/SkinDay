@@ -3747,7 +3747,7 @@ function placeMarkers() {
 
   // Group nearby clinics into clusters manually at low zoom
   const zoom = _map.getZoom();
-  if (zoom < 11) {
+  if (zoom < 13) {
     // Use MarkerClusterer at low zoom for performance
     const gmMarkers = visible.map(c => {
       const m = new google.maps.Marker({
@@ -3775,7 +3775,7 @@ function placeMarkers() {
 
     _clusterer = new markerClusterer.MarkerClusterer({
       map: _map, markers: gmMarkers, renderer,
-      algorithmOptions: { maxZoom: 10, radius: 80 }
+      algorithmOptions: { maxZoom: 12, radius: 80 }
     });
 
   } else {
@@ -3821,11 +3821,18 @@ function setupMapListeners() {
 // ─── PIN CLICK ────────────────────────────────────────────────
 function onPinClick(cid, marker) {
   const pinPath = 'M 0,0 C -2,-20 -10,-22 -10,-30 A 10,10 0 1,1 10,-30 C 10,-22 2,-20 0,0 z';
+  const isMobile = window.matchMedia('(hover: none)').matches;
+
   _markers.forEach(m => m.setIcon && m.setIcon({ path: pinPath, fillColor: '#1C1714', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 1.5, scale: 1, labelOrigin: new google.maps.Point(0, -30) }));
   _activeCid = cid;
   if (marker) marker.setIcon({ path: pinPath, fillColor: '#C8725A', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 1.5, scale: 1.4, labelOrigin: new google.maps.Point(0, -30) });
   highlightCard(cid, true);
-  openMapModal(cid);
+
+  // On desktop, pin click opens modal directly
+  // On mobile (no hover), pin click only highlights — View → opens modal
+  if (!isMobile) {
+    openMapModal(cid);
+  }
 }
 
 // ─── OPEN MODAL ───────────────────────────────────────────────
@@ -3904,13 +3911,15 @@ function buildCard(c, carousel) {
 // ─── CARD → PIN INTERACTIONS ──────────────────────────────────
 function onCardClick(cid) {
   const pinPath = 'M 0,0 C -2,-20 -10,-22 -10,-30 A 10,10 0 1,1 10,-30 C 10,-22 2,-20 0,0 z';
+  const isMobile = window.matchMedia('(hover: none)').matches;
   _activeCid = String(cid);
   _markers.forEach(m => { if (m.setIcon) m.setIcon({ path: pinPath, fillColor: '#1C1714', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 1.5, scale: 1, labelOrigin: new google.maps.Point(0, -30) }); });
   const marker = findMarker(cid);
   if (marker) marker.setIcon({ path: pinPath, fillColor: '#C8725A', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 1.5, scale: 1.4, labelOrigin: new google.maps.Point(0, -30) });
   const clinic = _allClinics.find(c => String(c.id) === String(cid));
   if (clinic && _map) _map.panTo({ lat: +clinic.lat, lng: +clinic.lng });
-  openMapModal(String(cid));
+  // On desktop, card click opens modal. On mobile, only View → opens modal
+  if (!isMobile) openMapModal(String(cid));
 }
 
 function highlightCard(cid, scroll) {
