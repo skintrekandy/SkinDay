@@ -378,6 +378,18 @@
     transition: background 0.18s, color 0.18s;
   }
   .map-compact-search .btn-nearby:hover { background: var(--gold); color: var(--deep); }
+  .map-back-btn {
+    display: none; /* desktop: hidden */
+    background: transparent; border: none;
+    color: rgba(255,255,255,0.6); cursor: pointer;
+    padding: 0.3rem; flex-shrink: 0;
+    align-items: center; justify-content: center;
+    transition: color 0.15s;
+  }
+  .map-back-btn:hover { color: var(--cream); }
+  @media (max-width: 768px) {
+    body.map-open .map-back-btn { display: flex; }
+  }
 
   /* ─── SPLIT LAYOUT ─── */
   .map-split { display: flex; width: 100%; flex: 1; min-height: 0; }
@@ -387,6 +399,7 @@
     width: 40%; flex-shrink: 0; overflow-y: auto;
     background: #fff; border-right: 1px solid var(--border);
     padding: 0.75rem; display: flex; flex-direction: column; gap: 0.55rem;
+    padding-top: 0.9rem;
   }
   .map-card-list::-webkit-scrollbar { width: 4px; }
   .map-card-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
@@ -439,7 +452,17 @@
 
   /* ─── MOBILE ─── */
   @media (max-width: 768px) {
-    .map-section.active { height: calc(100svh - 64px); }
+    /* When map is active: full-screen takeover */
+    body.map-open .search-wrap { display: none; }
+    body.map-open #viewToggleStrip { display: none; }
+    body.map-open #mapSection {
+      position: fixed; inset: 0; z-index: 100;
+      height: 100svh !important;
+      overflow: hidden;
+    }
+    body.map-open { overflow: hidden; }
+
+    .map-section.active { height: 100%; }
     .map-split { flex-direction: column; }
     .map-card-list { display: none; }
     .map-panel { flex: 1; min-height: 0; position: relative; }
@@ -2002,6 +2025,9 @@
 <section class="map-section" id="mapSection" style="padding:0;">
   <!-- Compact search — always visible inside map view -->
   <div class="map-compact-search" id="mapCompactSearch">
+    <button class="map-back-btn" id="mapBackBtn" onclick="switchView('grid')" title="Back to grid">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
     <select id="mapCompactSel" onchange="onCompactSearch()">
       <option value="all">Anywhere in Canada</option>
       <optgroup label="── Ontario ──────────────────">
@@ -3743,10 +3769,18 @@ function switchView(view) {
   const gridSec = document.getElementById('prices');
   const mapSec  = document.getElementById('mapSection');
   const moreSec = document.querySelector('.load-more-wrap');
+  const isMobile = window.matchMedia('(max-width: 768px)').matches;
+
   if (view === 'map') {
     gridSec.style.display = 'none';
     if (moreSec) moreSec.style.display = 'none';
     mapSec.classList.add('active');
+    if (isMobile) {
+      // Preserve scroll position, lock body, full-screen map
+      const scrollY = window.scrollY;
+      document.body.dataset.scrollY = scrollY;
+      document.body.classList.add('map-open');
+    }
     // Sync compact dropdown to current filter
     const sel = document.getElementById('mapCompactSel');
     if (sel) sel.value = currentFilter || 'all';
@@ -3755,6 +3789,11 @@ function switchView(view) {
     mapSec.classList.remove('active');
     gridSec.style.display = '';
     if (moreSec) moreSec.style.display = '';
+    if (isMobile) {
+      document.body.classList.remove('map-open');
+      const scrollY = parseInt(document.body.dataset.scrollY || '0');
+      window.scrollTo(0, scrollY);
+    }
     fetchPage(0, false);
   }
 }
@@ -3917,21 +3956,23 @@ function placeMarkers() {
 
 function wireMarkerEvents(m, c, isCluster) {
   const cid = String(c.id);
-  const idleIcon  = { ...PIN_IDLE,  scale: m.icon?.scale || 1, label: m.label };
+  const canHover = window.matchMedia('(hover: hover)').matches;
   const hoverIcon = { ...PIN_HOVER, scale: (m.icon?.scale || 1) * 1.2 };
 
-  m.addListener('mouseover', () => {
-    if (_activeCid !== cid) {
-      m.setIcon(hoverIcon);
-      if (!isCluster) highlightCard(cid, false);
-    }
-  });
-  m.addListener('mouseout', () => {
-    if (_activeCid !== cid) {
-      m.setIcon({ ...PIN_IDLE, scale: m.icon?.scale || 1 });
-      if (!isCluster) document.querySelectorAll(`[data-cid="${cid}"]`).forEach(el => el.classList.remove('highlighted'));
-    }
-  });
+  if (canHover) {
+    m.addListener('mouseover', () => {
+      if (_activeCid !== cid) {
+        m.setIcon(hoverIcon);
+        if (!isCluster) highlightCard(cid, false);
+      }
+    });
+    m.addListener('mouseout', () => {
+      if (_activeCid !== cid) {
+        m.setIcon({ ...PIN_IDLE, scale: m.icon?.scale || 1 });
+        if (!isCluster) document.querySelectorAll(`[data-cid="${cid}"]`).forEach(el => el.classList.remove('highlighted'));
+      }
+    });
+  }
   m.addListener('click', () => {
     if (isCluster) {
       // Zoom in on cluster click
@@ -4037,10 +4078,13 @@ function buildCard(c, carousel) {
     ? `<div style="margin-bottom:0.3rem;"><span class="map-card-price">$${c.price}</span> <span class="map-card-price-unit">/ unit · Botox</span></div>`
     : `<div class="map-card-no-price" style="margin-bottom:0.3rem;">Price not listed</div>`;
 
+  const hoverAttrs = window.matchMedia('(hover: hover)').matches
+    ? `onmouseenter="highlightPinById('${c.id}')" onmouseleave="unhighlightPinById('${c.id}')"`
+    : '';
+
   return `<div class="${cls}" data-cid="${c.id}"
     onclick="onCardClick('${c.id}')"
-    onmouseenter="highlightPinById('${c.id}')"
-    onmouseleave="unhighlightPinById('${c.id}')">
+    ${hoverAttrs}>
     <div class="map-card-top">
       ${logoHTML}
       <div class="map-card-name-block">
@@ -4064,10 +4108,13 @@ function buildCard(c, carousel) {
 // ─── CARD ↔ PIN SYNC ──────────────────────────────────────────
 function onCardClick(cid) {
   const isMobile = window.matchMedia('(hover: none)').matches;
+  // Clear all card highlights first
+  document.querySelectorAll('.map-clinic-card,.map-carousel-card').forEach(el => el.classList.remove('highlighted'));
   _activeCid = String(cid);
   _markers.forEach(m => { if (m._cid === cid) m.setIcon(PIN_ACTIVE); else m.setIcon({...PIN_IDLE, scale: m.icon?.scale||1}); });
   const clinic = _allClinics.find(c => String(c.id) === cid);
   if (clinic && _map) _map.panTo({ lat: +clinic.lat, lng: +clinic.lng });
+  highlightCard(cid, !isMobile); // scroll into view on desktop only
   if (!isMobile) openMapModal(cid);
 }
 
@@ -4080,6 +4127,7 @@ function highlightCard(cid, scroll) {
 }
 
 function highlightPinById(cid) {
+  if (!window.matchMedia('(hover: hover)').matches) return;
   const m = _markers.find(m => m._cid === cid && !m._count);
   if (m && _activeCid !== cid) {
     m.setIcon(PIN_HOVER);
@@ -4088,6 +4136,7 @@ function highlightPinById(cid) {
 }
 
 function unhighlightPinById(cid) {
+  if (!window.matchMedia('(hover: hover)').matches) return;
   if (_activeCid === cid) return;
   const m = _markers.find(m => m._cid === cid && !m._count);
   if (m) m.setIcon({...PIN_IDLE, scale: m.icon?.scale||1});
