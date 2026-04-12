@@ -354,15 +354,16 @@
   .map-section { display: none; }
   .map-section.active { display: flex; flex-direction: column; }
 
-  /* ─── COMPACT SEARCH (shown inside map section) ─── */
+  /* ─── COMPACT SEARCH (one unified bar when map is active) ─── */
   .map-compact-search {
-    background: var(--deep); padding: 8px 16px;
-    display: flex; gap: 8px; align-items: center;
+    background: var(--deep); padding: 10px 5%;
+    display: flex; gap: 10px; align-items: center;
     border-bottom: 1px solid rgba(255,255,255,0.07); flex-shrink: 0;
   }
   .map-compact-search select {
-    flex: 1; background: rgba(255,255,255,0.09); border: 1px solid rgba(255,255,255,0.16);
-    border-radius: 8px; padding: 0.5rem 2rem 0.5rem 0.85rem;
+    flex: 1; max-width: 360px;
+    background: rgba(255,255,255,0.09); border: 1px solid rgba(255,255,255,0.16);
+    border-radius: 8px; padding: 0.52rem 2rem 0.52rem 0.9rem;
     font-family: 'DM Sans', sans-serif; font-size: 0.88rem; font-weight: 500;
     color: var(--cream); outline: none; cursor: pointer;
     appearance: none; -webkit-appearance: none;
@@ -372,12 +373,37 @@
   .map-compact-search select option { background: var(--deep2); color: var(--cream); }
   .map-compact-search .btn-nearby {
     background: transparent; border: 1.5px solid var(--gold); color: var(--gold);
-    border-radius: 8px; padding: 0.5rem 0.9rem;
+    border-radius: 8px; padding: 0.52rem 1rem;
     font-family: 'DM Sans', sans-serif; font-size: 0.82rem; font-weight: 500;
     cursor: pointer; white-space: nowrap; flex-shrink: 0;
     transition: background 0.18s, color 0.18s;
+    display: flex; align-items: center; gap: 0.3rem;
   }
   .map-compact-search .btn-nearby:hover { background: var(--gold); color: var(--deep); }
+  /* Spacer pushes toggle to the right */
+  .map-compact-spacer { flex: 1; }
+  /* Inline view toggle inside compact bar */
+  .map-compact-toggle {
+    display: flex; align-items: center;
+    border: 1px solid rgba(255,255,255,0.15); border-radius: 20px; overflow: hidden;
+    flex-shrink: 0;
+  }
+  .map-compact-toggle button {
+    background: transparent; border: none;
+    color: rgba(255,255,255,0.5); padding: 0.38rem 1rem;
+    font-family: 'DM Sans', sans-serif; font-size: 0.8rem; font-weight: 500;
+    cursor: pointer; display: flex; align-items: center; gap: 0.3rem;
+    transition: background 0.18s, color 0.18s; white-space: nowrap;
+  }
+  .map-compact-toggle button svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .map-compact-toggle button.active { background: var(--cream); color: var(--deep); }
+  .map-compact-toggle button:not(.active):hover { background: rgba(255,255,255,0.1); color: var(--cream); }
+
+  /* Desktop: when map active, hide full search bar and original toggle strip */
+  @media (min-width: 769px) {
+    html.map-view-active .search-wrap { display: none; }
+    html.map-view-active #viewToggleStrip { display: none; }
+  }
   .map-back-btn {
     display: none; /* desktop: hidden */
     background: transparent; border: none;
@@ -452,6 +478,9 @@
 
   /* ─── MOBILE ─── */
   @media (max-width: 768px) {
+    /* Hide the inline toggle on mobile — back chevron handles return */
+    .map-compact-toggle { display: none; }
+    .map-compact-spacer { display: none; }
     /* When map is active: full-screen takeover */
     body.map-open .search-wrap { display: none; }
     body.map-open #viewToggleStrip { display: none; }
@@ -2025,6 +2054,7 @@
 <section class="map-section" id="mapSection" style="padding:0;">
   <!-- Compact search — always visible inside map view -->
   <div class="map-compact-search" id="mapCompactSearch">
+    <!-- Mobile only: back chevron -->
     <button class="map-back-btn" id="mapBackBtn" onclick="switchView('grid')" title="Back to grid">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><polyline points="15 18 9 12 15 6"/></svg>
     </button>
@@ -2090,6 +2120,18 @@
       </optgroup>
     </select>
     <button class="btn-nearby" onclick="useNearMe()">📍 Near Me</button>
+    <div class="map-compact-spacer"></div>
+    <!-- Grid/Map toggle — desktop only, hidden on mobile -->
+    <div class="map-compact-toggle" id="mapCompactToggle">
+      <button id="mapCompactGridBtn" onclick="switchView('grid')">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Grid
+      </button>
+      <button id="mapCompactMapBtn" class="active" onclick="switchView('map')">
+        <svg viewBox="0 0 24 24"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+        Map
+      </button>
+    </div>
   </div>
 
   <div class="map-split" id="mapSplit">
@@ -3775,18 +3817,22 @@ function switchView(view) {
     gridSec.style.display = 'none';
     if (moreSec) moreSec.style.display = 'none';
     mapSec.classList.add('active');
+    document.documentElement.classList.add('map-view-active');
     if (isMobile) {
-      // Preserve scroll position, lock body, full-screen map
       const scrollY = window.scrollY;
       document.body.dataset.scrollY = scrollY;
       document.body.classList.add('map-open');
     }
-    // Sync compact dropdown to current filter
+    // Sync compact dropdown
     const sel = document.getElementById('mapCompactSel');
     if (sel) sel.value = currentFilter || 'all';
+    // Sync compact toggle active state
+    document.getElementById('mapCompactGridBtn')?.classList.remove('active');
+    document.getElementById('mapCompactMapBtn')?.classList.add('active');
     initMap();
   } else {
     mapSec.classList.remove('active');
+    document.documentElement.classList.remove('map-view-active');
     gridSec.style.display = '';
     if (moreSec) moreSec.style.display = '';
     if (isMobile) {
@@ -3794,6 +3840,9 @@ function switchView(view) {
       const scrollY = parseInt(document.body.dataset.scrollY || '0');
       window.scrollTo(0, scrollY);
     }
+    // Sync compact toggle active state
+    document.getElementById('mapCompactGridBtn')?.classList.add('active');
+    document.getElementById('mapCompactMapBtn')?.classList.remove('active');
     fetchPage(0, false);
   }
 }
@@ -4108,14 +4157,16 @@ function buildCard(c, carousel) {
 // ─── CARD ↔ PIN SYNC ──────────────────────────────────────────
 function onCardClick(cid) {
   const isMobile = window.matchMedia('(hover: none)').matches;
-  // Clear all card highlights first
-  document.querySelectorAll('.map-clinic-card,.map-carousel-card').forEach(el => el.classList.remove('highlighted'));
   _activeCid = String(cid);
-  _markers.forEach(m => { if (m._cid === cid) m.setIcon(PIN_ACTIVE); else m.setIcon({...PIN_IDLE, scale: m.icon?.scale||1}); });
-  const clinic = _allClinics.find(c => String(c.id) === cid);
-  if (clinic && _map) _map.panTo({ lat: +clinic.lat, lng: +clinic.lng });
-  highlightCard(cid, !isMobile); // scroll into view on desktop only
-  if (!isMobile) openMapModal(cid);
+  document.querySelectorAll('.map-clinic-card,.map-carousel-card').forEach(el => el.classList.remove('highlighted'));
+  highlightCard(cid, false);
+  if (!isMobile) {
+    _markers.forEach(m => { if (m._cid === cid) m.setIcon(PIN_ACTIVE); else m.setIcon({...PIN_IDLE, scale: m.icon?.scale||1}); });
+    const clinic = _allClinics.find(c => String(c.id) === cid);
+    if (clinic && _map) _map.panTo({ lat: +clinic.lat, lng: +clinic.lng });
+  }
+  // Open modal on both desktop and mobile
+  openMapModal(cid);
 }
 
 function highlightCard(cid, scroll) {
