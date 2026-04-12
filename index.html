@@ -344,6 +344,7 @@
   ═══════════════════════════════════════════ */
 
   /* ─── VIEW TOGGLE ─── */
+  #viewToggleStrip { display: flex; }
   .view-toggle { display: flex; align-items: center; border: 1px solid rgba(255,255,255,0.15); border-radius: 20px; overflow: hidden; flex-shrink: 0; }
   .view-toggle-btn { background: transparent; border: none; color: rgba(255,255,255,0.5); padding: 0.42rem 1.1rem; font-family: 'DM Sans', sans-serif; font-size: 0.8rem; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.35rem; transition: background 0.18s, color 0.18s; white-space: nowrap; }
   .view-toggle-btn svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
@@ -2025,7 +2026,7 @@
 </div>
 
 <!-- M18: View toggle strip -->
-<div id="viewToggleStrip" style="background:var(--deep);padding:12px 5%;display:flex;justify-content:center;align-items:center;">
+<div id="viewToggleStrip" style="background:var(--deep);padding:12px 5%;justify-content:center;align-items:center;">
   <div class="view-toggle" id="viewToggle">
     <button class="view-toggle-btn active" id="gridToggleBtn" onclick="switchView('grid')" title="Grid view">
       <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
@@ -3968,11 +3969,16 @@ async function reloadMap() {
 
 // ─── MAP IDLE ─────────────────────────────────────────────────
 let _lastZoom = null;
+let _idleTimer = null;
 function onMapIdle() {
   const z = _map.getZoom();
-  placeMarkers();
-  renderCardList();
-  _lastZoom = z;
+  // Small debounce so a tap-triggered pan doesn't immediately redraw cards
+  clearTimeout(_idleTimer);
+  _idleTimer = setTimeout(() => {
+    placeMarkers();
+    renderCardList();
+    _lastZoom = z;
+  }, 120);
 }
 
 // ─── PLACE MARKERS ────────────────────────────────────────────
@@ -4126,29 +4132,35 @@ function onMapSort(val) {
 }
 
 function renderCardList() {
-  const sorted = sortClinics(_allClinics, _mapSort);
-  const bounds = _map?.getBounds();
-  const inView = bounds ? sorted.filter(c => bounds.contains({ lat:+c.lat, lng:+c.lng })) : sorted;
+  if (!_map) return;
+  const bounds = _map.getBounds();
+  if (!bounds) return;
+
+  // Always filter by current viewport — updates dynamically on pan/zoom
+  const inView = sortClinics(
+    _allClinics.filter(c => c.lat && c.lng && bounds.contains({ lat:+c.lat, lng:+c.lng })),
+    _mapSort
+  );
 
   // Map count badge
   const countEl = document.getElementById('mapResultCount');
-  if (countEl) { countEl.textContent = sorted.length.toLocaleString() + ' clinics'; countEl.style.display = 'block'; }
+  if (countEl) { countEl.textContent = inView.length.toLocaleString() + ' clinics'; countEl.style.display = 'block'; }
 
   // Desktop list header count
   const headerCount = document.getElementById('mapListCount');
-  if (headerCount) headerCount.textContent = sorted.length.toLocaleString() + ' clinics';
+  if (headerCount) headerCount.textContent = inView.length.toLocaleString() + ' clinics';
 
-  // Desktop list cards
+  // Desktop list cards — viewport only
   const cardsEl = document.getElementById('mapListCards');
-  if (cardsEl) cardsEl.innerHTML = sorted.length === 0
-    ? '<div class="map-list-status">No clinics found. Try a different area.</div>'
-    : sorted.map(c => buildCard(c, false)).join('');
+  if (cardsEl) cardsEl.innerHTML = inView.length === 0
+    ? '<div class="map-list-status">No clinics in this area.<br>Zoom out to see more.</div>'
+    : inView.map(c => buildCard(c, false)).join('');
 
-  // Mobile carousel
+  // Mobile carousel — same viewport clinics
   const track = document.getElementById('mapCarouselTrack');
   const countC = document.getElementById('mapCarouselCount');
   if (track) {
-    if (countC) countC.textContent = inView.length.toLocaleString() + ' in view';
+    if (countC) countC.textContent = inView.length.toLocaleString() + ' clinics in view';
     track.innerHTML = inView.length === 0
       ? '<div style="padding:1rem;font-size:0.82rem;color:var(--muted);">No clinics in view</div>'
       : inView.map(c => buildCard(c, true)).join('');
@@ -4203,7 +4215,7 @@ function buildCard(c, carousel) {
     ${pillsHTML}
     ${priceHTML}
     <div class="map-card-footer">
-      <a href="#" class="map-card-view" onclick="event.stopPropagation();openMapModal('${c.id}')">View Profile →</a>
+      <a href="#" class="map-card-view" onclick="event.preventDefault();event.stopPropagation();openMapModal('${c.id}')">View Profile →</a>
     </div>
   </div>`;
 }
