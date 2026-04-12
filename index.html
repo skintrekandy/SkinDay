@@ -3976,6 +3976,11 @@ function onMapIdle() {
   clearTimeout(_idleTimer);
   _idleTimer = setTimeout(() => {
     placeMarkers();
+    // Re-apply active pin state after markers are recreated
+    if (_activeCid) {
+      const activeMarker = _markers.find(m => m._cid === _activeCid && !m._count);
+      if (activeMarker) activeMarker.setIcon(PIN_ACTIVE);
+    }
     renderCardList();
     _lastZoom = z;
   }, 350);
