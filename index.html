@@ -375,6 +375,23 @@
   .map-clinic-card:hover { border-color: var(--rose-m); box-shadow: 0 3px 12px rgba(28,23,20,0.09); }
   .map-clinic-card.highlighted { border-color: var(--rose) !important; box-shadow: 0 0 0 2px rgba(200,114,90,0.2), 0 4px 16px rgba(28,23,20,0.1); }
 
+  /* Rating badge — top right of card */
+  .map-card-rating-badge {
+    display: flex; flex-direction: column; align-items: center;
+    flex-shrink: 0; margin-left: auto; padding-left: 0.5rem;
+  }
+  .map-card-rating-score {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.35rem; font-weight: 500; line-height: 1;
+    color: var(--deep);
+  }
+  .map-card-rating-star {
+    color: var(--gold); font-size: 0.75rem; line-height: 1; margin-top: 1px;
+  }
+  .map-card-rating-reviews {
+    font-size: 0.6rem; color: var(--muted); margin-top: 1px; white-space: nowrap;
+  }
+
   /* Card top row: logo + name block */
   .map-card-top { display: flex; align-items: flex-start; gap: 0.6rem; margin-bottom: 0.5rem; }
   .map-card-logo { width: 36px; height: 36px; border-radius: 6px; object-fit: contain; border: 1px solid var(--border); background: var(--cream); flex-shrink: 0; }
@@ -396,7 +413,7 @@
   .map-card-price-row { margin-bottom: 0.35rem; }
 
   /* Footer */
-  .map-card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 0.45rem; padding-top: 0.45rem; border-top: 1px solid var(--border); }
+  .map-card-footer { display: flex; align-items: center; justify-content: flex-end; margin-top: 0.45rem; padding-top: 0.45rem; border-top: 1px solid var(--border); }
   .map-card-rating { display: flex; align-items: center; gap: 0.25rem; font-size: 0.72rem; color: var(--muted); }
   .map-card-rating .star { color: var(--gold); }
   .map-card-view { font-size: 0.72rem; font-weight: 500; color: var(--rose); text-decoration: none; letter-spacing: 0.01em; }
@@ -496,15 +513,48 @@
   }
   #mapCompactNearMe:hover { background: var(--gold); color: var(--deep); }
 
-  /* Hide the full search wrap and toggle strip when map is active (desktop) */
+  /* When map is active (desktop): hide full search, keep toggle strip fixed */
   .map-view-active .search-wrap { display: none; }
-  .map-view-active #viewToggleStrip { display: none; }
-  /* Map section fills the space below nav */
-  .map-view-active #mapSection {
-    position: fixed; top: 64px; left: 0; right: 0; bottom: 0; z-index: 50;
+  .map-view-active #viewToggleStrip {
+    position: fixed; top: 64px; left: 0; right: 0; z-index: 55;
+    padding: 8px 16px;
+    display: flex; justify-content: space-between; align-items: center;
   }
-  .map-view-active #mapSection .map-split {
-    height: 100%;
+  /* Compact search shown inline in toggle strip on desktop when map active */
+  #mapCompactInStrip {
+    display: none;
+    flex: 1; gap: 8px; align-items: center; margin-right: 16px;
+  }
+  .map-view-active #mapCompactInStrip { display: flex; }
+  #mapCompactInStrip select {
+    flex: 1; max-width: 320px;
+    background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 8px; padding: 0.45rem 2rem 0.45rem 0.85rem;
+    font-family: 'DM Sans', sans-serif; font-size: 0.85rem; font-weight: 500;
+    color: var(--cream); outline: none; cursor: pointer;
+    appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23B5A89F' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 10px center;
+  }
+  #mapCompactInStrip select option { background: var(--deep2); color: var(--cream); }
+  #mapStripNearMe {
+    background: transparent; border: 1.5px solid var(--gold);
+    color: var(--gold); border-radius: 8px;
+    padding: 0.45rem 0.85rem; font-family: 'DM Sans', sans-serif;
+    font-size: 0.8rem; font-weight: 500; cursor: pointer;
+    white-space: nowrap; display: flex; align-items: center; gap: 0.3rem;
+    transition: background 0.2s, color 0.2s; flex-shrink: 0;
+  }
+  #mapStripNearMe:hover { background: var(--gold); color: var(--deep); }
+
+  /* Map section fills the space below nav + toggle strip (64+48=112px) */
+  .map-view-active #mapSection {
+    position: fixed; top: 112px; left: 0; right: 0; bottom: 0; z-index: 50;
+  }
+  .map-view-active #mapSection .map-split { height: 100%; }
+  /* Hide in-section compact bar on desktop — we use the strip version */
+  @media (min-width: 769px) {
+    .map-section.active #mapCompactSearch { display: none !important; }
   }
 
   /* ─── MOBILE: full-screen fixed map (Realtor.ca style) ─── */
@@ -516,11 +566,21 @@
     }
     body.map-active nav { z-index: 160; }
 
-    /* Mobile map active: hide full search, toggle strip stays fixed */
+    /* Mobile map active: hide full search, show compact search, fix toggle strip */
     body.map-active .search-wrap { display: none; }
     body.map-active #viewToggleStrip {
       position: fixed; left: 0; right: 0; z-index: 155;
       top: 64px !important;
+      padding: 8px 16px !important;
+      justify-content: center !important;
+    }
+    /* Hide the strip compact search on mobile — use in-section one instead */
+    body.map-active #mapCompactInStrip { display: none !important; }
+    /* Show in-section compact search on mobile */
+    body.map-active .map-section.active #mapCompactSearch { display: flex !important; }
+    /* Map section sits below nav + toggle strip (64+48=112px) on mobile */
+    body.map-active .map-section {
+      top: 112px !important;
     }
 
     .map-split { flex-direction: column; height: 100%; max-height: none; min-height: 0; }
@@ -2032,6 +2092,55 @@
 
 <!-- M18: View toggle strip -->
 <div id="viewToggleStrip" style="background:var(--deep);padding:12px 5%;display:flex;justify-content:center;align-items:center;">
+  <!-- Compact search — shown inline here on desktop when map is active -->
+  <div id="mapCompactInStrip">
+    <select id="mapCompactInStripSel" onchange="applyMapCompactSearch()">
+      <option value="all">Anywhere in Canada</option>
+      <optgroup label="── Ontario ──────────────────"></optgroup>
+      <optgroup label="City of Toronto">
+        <option value="toronto">Toronto</option>
+        <option value="north-york">North York</option>
+        <option value="scarborough">Scarborough</option>
+        <option value="etobicoke">Etobicoke</option>
+      </optgroup>
+      <optgroup label="York Region">
+        <option value="markham">Markham</option>
+        <option value="vaughan">Vaughan</option>
+        <option value="richmond-hill">Richmond Hill</option>
+        <option value="thornhill">Thornhill</option>
+        <option value="newmarket">Newmarket</option>
+      </optgroup>
+      <optgroup label="Peel Region">
+        <option value="mississauga">Mississauga</option>
+        <option value="brampton">Brampton</option>
+      </optgroup>
+      <optgroup label="Durham Region">
+        <option value="oshawa">Oshawa</option>
+        <option value="ajax">Ajax</option>
+      </optgroup>
+      <optgroup label="Eastern Ontario">
+        <option value="ottawa">Ottawa</option>
+      </optgroup>
+      <optgroup label="── British Columbia ─────────"></optgroup>
+      <optgroup label="Metro Vancouver">
+        <option value="vancouver">Vancouver</option>
+        <option value="richmond">Richmond</option>
+        <option value="burnaby">Burnaby</option>
+        <option value="surrey">Surrey</option>
+      </optgroup>
+      <optgroup label="── Alberta ──────────────────"></optgroup>
+      <optgroup label="Alberta">
+        <option value="calgary">Calgary</option>
+        <option value="edmonton">Edmonton</option>
+      </optgroup>
+      <optgroup label="── Quebec ───────────────────"></optgroup>
+      <optgroup label="Quebec">
+        <option value="montreal">Montreal</option>
+        <option value="quebec-city">Quebec City</option>
+      </optgroup>
+    </select>
+    <button id="mapStripNearMe" onclick="useNearMe()">📍 Near Me</button>
+  </div>
   <div class="view-toggle" id="viewToggle">
     <button class="view-toggle-btn active" id="gridToggleBtn" onclick="switchView('grid')" title="Grid view">
       <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
@@ -3916,7 +4025,7 @@ function makePinElement(color, scale, label) {
   `;
   div.innerHTML = `
     <svg width="${s}" height="${Math.round(s*1.35)}" viewBox="0 0 28 38" fill="none" xmlns="http://www.w3.org/2000/svg"
-         style="position:absolute;top:0;left:0;">
+         style="position:absolute;top:0;left:0;pointer-events:none;">
       <path d="M14 0C6.268 0 0 6.268 0 14c0 9.333 14 24 14 24s14-14.667 14-24C28 6.268 21.732 0 14 0z"
             fill="${color}" stroke="#fff" stroke-width="1.5"/>
     </svg>
@@ -3956,7 +4065,8 @@ function placeMarkers() {
       el.addEventListener('click', () => onPinClick(cid, m));
       el.addEventListener('mouseenter', () => {
         if (_activeCid !== cid) {
-          el.firstElementChild.setAttribute('fill', '#C8725A');
+          const path = el.querySelector('path');
+          if (path) path.setAttribute('fill', '#C8725A');
           el.style.transform = 'scale(1.4)';
           el.style.zIndex = '10';
           highlightCard(cid, false);
@@ -3964,7 +4074,8 @@ function placeMarkers() {
       });
       el.addEventListener('mouseleave', () => {
         if (_activeCid !== cid) {
-          el.firstElementChild.setAttribute('fill', '#1C1714');
+          const path = el.querySelector('path');
+          if (path) path.setAttribute('fill', '#1C1714');
           el.style.transform = '';
           el.style.zIndex = '';
           document.querySelectorAll(`[data-cid="${cid}"]`).forEach(e => e.classList.remove('highlighted'));
@@ -3986,7 +4097,26 @@ function placeMarkers() {
       });
       m._cid = cid;
       m._el  = el;
+      // Full hover + click on clustered individual pins
       el.addEventListener('click', () => onPinClick(cid, m));
+      el.addEventListener('mouseenter', () => {
+        if (_activeCid !== cid) {
+          const path = el.querySelector('path');
+          if (path) path.setAttribute('fill', '#C8725A');
+          el.style.transform = 'scale(1.4)';
+          el.style.zIndex = '10';
+          highlightCard(cid, false);
+        }
+      });
+      el.addEventListener('mouseleave', () => {
+        if (_activeCid !== cid) {
+          const path = el.querySelector('path');
+          if (path) path.setAttribute('fill', '#1C1714');
+          el.style.transform = '';
+          el.style.zIndex = '';
+          document.querySelectorAll(`[data-cid="${cid}"]`).forEach(e => e.classList.remove('highlighted'));
+        }
+      });
       _markers.push(m);
       return m;
     });
@@ -3996,10 +4126,22 @@ function placeMarkers() {
         const scale = count > 500 ? 1.5 : count > 50 ? 1.25 : 1;
         const label = count > 999 ? Math.round(count/1000)+'k' : String(count);
         const el = makePinElement('#1C1714', scale, label);
-        return new AdvancedMarkerElement({
+        // Hover effect on cluster pins
+        el.addEventListener('mouseenter', () => {
+          const path = el.querySelector('path');
+          if (path) path.setAttribute('fill', '#C8725A');
+          el.style.transform = 'scale(1.15)';
+        });
+        el.addEventListener('mouseleave', () => {
+          const path = el.querySelector('path');
+          if (path) path.setAttribute('fill', '#1C1714');
+          el.style.transform = '';
+        });
+        const marker = new AdvancedMarkerElement({
           position, map: _map, content: el,
           zIndex: Number(google.maps.Marker.MAX_ZINDEX) + count
         });
+        return marker;
       }
     };
 
@@ -4078,27 +4220,38 @@ async function openMapModal(cid) {
 function renderCardList() {
   if (!_map) return;
   const bounds = _map.getBounds();
-  if (!bounds) return;
 
-  const visible = _allClinics
-    .filter(c => c.lat && c.lng && bounds.contains({ lat: +c.lat, lng: +c.lng }))
+  // Card list: show all filtered clinics (Supabase already filtered by neighbourhood/province)
+  // Don't re-filter by bounds — that would drop clinics just outside the initial viewport
+  const listClinics = _allClinics
+    .filter(c => c.lat && c.lng)
     .sort((a, b) => ((b.claimed ? 2 : 0) + (b.price != null ? 1 : 0)) - ((a.claimed ? 2 : 0) + (a.price != null ? 1 : 0)));
 
+  // Count badge: show how many are in the current viewport
+  const inView = bounds
+    ? listClinics.filter(c => bounds.contains({ lat: +c.lat, lng: +c.lng }))
+    : listClinics;
   const countEl = document.getElementById('mapResultCount');
-  if (countEl) { countEl.textContent = visible.length.toLocaleString() + ' clinics in view'; countEl.style.display = 'block'; }
+  if (countEl) {
+    const label = currentFilter !== 'all'
+      ? listClinics.length.toLocaleString() + ' clinics'
+      : inView.length.toLocaleString() + ' clinics in view';
+    countEl.textContent = label;
+    countEl.style.display = 'block';
+  }
 
   const listEl = document.getElementById('mapCardList');
-  if (listEl) listEl.innerHTML = visible.length === 0
-    ? '<div class="map-list-status">No clinics in this area.<br>Zoom out to see more.</div>'
-    : visible.map(c => buildCard(c, false)).join('');
+  if (listEl) listEl.innerHTML = listClinics.length === 0
+    ? '<div class="map-list-status">No clinics found.<br>Try a different area.</div>'
+    : listClinics.map(c => buildCard(c, false)).join('');
 
   const track = document.getElementById('mapCarouselTrack');
   const countC = document.getElementById('mapCarouselCount');
   if (track) {
-    if (countC) countC.textContent = visible.length.toLocaleString() + ' clinics in view';
-    track.innerHTML = visible.length === 0
-      ? '<div style="padding:1rem;font-size:0.82rem;color:var(--muted);">No clinics in view</div>'
-      : visible.map(c => buildCard(c, true)).join('');
+    if (countC) countC.textContent = listClinics.length.toLocaleString() + ' clinics';
+    track.innerHTML = listClinics.length === 0
+      ? '<div style="padding:1rem;font-size:0.82rem;color:var(--muted);">No clinics found</div>'
+      : listClinics.map(c => buildCard(c, true)).join('');
   }
 }
 
@@ -4136,6 +4289,13 @@ function buildCard(c, carousel) {
     ? `<div class="map-card-price-row"><span class="map-card-price">$${c.price}</span> <span class="map-card-price-unit">/ unit · Botox</span></div>`
     : `<div class="map-card-no-price">Price not listed</div>`;
 
+  const ratingBadge = `
+    <div class="map-card-rating-badge">
+      <div class="map-card-rating-score">${c.rating ? c.rating.toFixed(1) : '—'}</div>
+      <div class="map-card-rating-star">★★★★★</div>
+      <div class="map-card-rating-reviews">${(c.reviews||0).toLocaleString()} reviews</div>
+    </div>`;
+
   return `<div class="${cls}" data-cid="${c.id}"
     onclick="onCardClick('${c.id}')"
     onmouseenter="highlightPinById('${c.id}')"
@@ -4146,12 +4306,12 @@ function buildCard(c, carousel) {
         <div class="map-card-name">${c.name}${verifiedBadge}</div>
         ${practHTML}
       </div>
+      ${ratingBadge}
     </div>
     ${pillsHTML}
     <div class="map-card-meta">📍 ${c.neighbourhood || ''}${c.province ? ', '+c.province : ''}</div>
     ${priceHTML}
     <div class="map-card-footer">
-      <div class="map-card-rating"><span class="star">★</span> <span>${c.rating ? c.rating.toFixed(1) : '—'}</span> <span style="color:var(--dim)">(${(c.reviews||0).toLocaleString()})</span></div>
       <a href="#" class="map-card-view" onclick="event.stopPropagation();openMapModal('${c.id}')">View Profile →</a>
     </div>
   </div>`;
@@ -4222,7 +4382,11 @@ function findMarker(cid) {
 
 // ─── COMPACT MAP SEARCH ──────────────────────────────────────
 function applyMapCompactSearch() {
-  const val = document.getElementById('mapCompactNeighbourhood')?.value || 'all';
+  // Read from whichever compact select is visible
+  const stripVal = document.getElementById('mapCompactInStripSel')?.value;
+  const mobileVal = document.getElementById('mapCompactNeighbourhood')?.value;
+  const val = (stripVal !== undefined ? stripVal : mobileVal) || 'all';
+  syncCompactSearch(val);
   // Sync with main search select
   const mainSel = document.getElementById('searchNeighbourhood');
   if (mainSel) mainSel.value = val;
@@ -4242,8 +4406,10 @@ function applyMapCompactSearch() {
 
 // Keep compact dropdown in sync when main search changes
 function syncCompactSearch(val) {
-  const compact = document.getElementById('mapCompactNeighbourhood');
-  if (compact) compact.value = val;
+  ['mapCompactNeighbourhood', 'mapCompactInStripSel'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = val;
+  });
 }
 
 // ─── STUBS ────────────────────────────────────────────────────
