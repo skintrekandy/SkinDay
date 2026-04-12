@@ -368,19 +368,39 @@
   #google-map { position: absolute; inset: 0; width: 100%; height: 100%; }
 
   /* ─── MAP CARD ─── */
-  .map-clinic-card { background: var(--cream); border: 1.5px solid var(--border); border-radius: 8px; padding: 0.8rem 0.9rem; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; flex-shrink: 0; }
-  .map-clinic-card:hover { border-color: var(--rose-m); box-shadow: 0 3px 12px rgba(28,23,20,0.08); }
+  .map-clinic-card { background: #fff; border: 1.5px solid var(--border); border-radius: 10px; padding: 0.85rem 1rem; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; flex-shrink: 0; }
+  .map-clinic-card:hover { border-color: var(--rose-m); box-shadow: 0 3px 12px rgba(28,23,20,0.09); }
   .map-clinic-card.highlighted { border-color: var(--rose) !important; box-shadow: 0 0 0 2px rgba(200,114,90,0.2), 0 4px 16px rgba(28,23,20,0.1); }
-  .map-card-name { font-family: 'Cormorant Garamond', serif; font-size: 1rem; font-weight: 500; color: var(--deep); line-height: 1.2; margin-bottom: 0.15rem; display: flex; align-items: center; gap: 4px; }
-  .map-card-meta { font-size: 0.71rem; color: var(--muted); margin-bottom: 0.3rem; }
-  .map-card-price { font-family: 'Cormorant Garamond', serif; font-size: 1.25rem; font-weight: 400; color: var(--deep); }
+
+  /* Card top row: logo + name block */
+  .map-card-top { display: flex; align-items: flex-start; gap: 0.6rem; margin-bottom: 0.5rem; }
+  .map-card-logo { width: 36px; height: 36px; border-radius: 6px; object-fit: contain; border: 1px solid var(--border); background: var(--cream); flex-shrink: 0; }
+  .map-card-logo-placeholder { width: 36px; height: 36px; border-radius: 6px; background: var(--warm); border: 1px solid var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; color: var(--muted); font-weight: 600; letter-spacing: 0.04em; }
+  .map-card-name-block { flex: 1; min-width: 0; }
+  .map-card-name { font-family: 'Cormorant Garamond', serif; font-size: 1.05rem; font-weight: 500; color: var(--deep); line-height: 1.2; display: flex; align-items: center; gap: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .map-card-practitioner { font-size: 0.71rem; color: var(--muted); margin-top: 0.1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* Pills row */
+  .map-card-pills { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 0.45rem; }
+
+  /* Location */
+  .map-card-meta { font-size: 0.71rem; color: var(--muted); margin-bottom: 0.35rem; }
+
+  /* Price */
+  .map-card-price { font-family: 'Cormorant Garamond', serif; font-size: 1.3rem; font-weight: 400; color: var(--deep); }
   .map-card-price-unit { font-size: 0.68rem; color: var(--muted); font-family: 'DM Sans', sans-serif; }
   .map-card-no-price { font-size: 0.75rem; color: var(--dim); font-style: italic; }
-  .map-card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 0.4rem; }
+  .map-card-price-row { margin-bottom: 0.35rem; }
+
+  /* Footer */
+  .map-card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 0.45rem; padding-top: 0.45rem; border-top: 1px solid var(--border); }
   .map-card-rating { display: flex; align-items: center; gap: 0.25rem; font-size: 0.72rem; color: var(--muted); }
   .map-card-rating .star { color: var(--gold); }
-  .map-card-view { font-size: 0.72rem; font-weight: 500; color: var(--rose); text-decoration: none; }
+  .map-card-view { font-size: 0.72rem; font-weight: 500; color: var(--rose); text-decoration: none; letter-spacing: 0.01em; }
   .map-list-status { text-align: center; padding: 2rem 1rem; font-size: 0.82rem; color: var(--muted); }
+
+  /* Card list background: white instead of warm */
+  .map-card-list { background: #fff !important; }
 
   /* ─── PIN STYLES ─── */
   .map-pin, .map-cluster {
@@ -429,6 +449,34 @@
   /* Result count badge */
   .map-result-count { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); background: rgba(28,23,20,0.82); backdrop-filter: blur(6px); color: #FAF7F2; border-radius: 20px; padding: 0.3rem 0.9rem; font-size: 0.72rem; font-weight: 500; letter-spacing: 0.04em; z-index: 5; pointer-events: none; white-space: nowrap; }
 
+  /* ─── PROVINCE LAYER ─── */
+  .province-label {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    background: rgba(28,23,20,0.72);
+    backdrop-filter: blur(4px);
+    color: #FAF7F2;
+    border-radius: 20px;
+    padding: 0.22rem 0.7rem;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.7rem; font-weight: 600;
+    letter-spacing: 0.05em;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 3;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+  /* Back button shown when province is selected in map */
+  .map-province-back {
+    position: absolute; top: 12px; left: 12px; z-index: 6;
+    background: rgba(28,23,20,0.82); backdrop-filter: blur(6px);
+    color: #FAF7F2; border: none; border-radius: 20px;
+    padding: 0.3rem 0.9rem; font-family: 'DM Sans', sans-serif;
+    font-size: 0.72rem; font-weight: 500; letter-spacing: 0.04em;
+    cursor: pointer; display: none;
+  }
+  .map-province-back.visible { display: block; }
+
   /* ─── MOBILE: full-screen map + bottom carousel ─── */
   @media (max-width: 768px) {
     .map-split { flex-direction: column; height: calc(100svh - 64px); max-height: none; min-height: 0; }
@@ -454,9 +502,9 @@
     }
     .map-carousel-track::-webkit-scrollbar { display: none; }
     .map-carousel-card {
-      flex: 0 0 78vw; max-width: 320px; scroll-snap-align: start;
-      background: var(--cream); border-radius: 12px; padding: 0.9rem 1rem;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.22); cursor: pointer;
+      flex: 0 0 82vw; max-width: 340px; scroll-snap-align: start;
+      background: #fff; border-radius: 14px; padding: 1rem 1.1rem;
+      box-shadow: 0 6px 24px rgba(0,0,0,0.22); cursor: pointer;
       border: 1.5px solid transparent; transition: border-color 0.15s;
     }
     .map-carousel-card.highlighted { border-color: var(--rose); }
@@ -1756,8 +1804,8 @@
   }
 
 </style>
-  <!-- Google Maps JS (M18) -->
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAiUKLofb5BbJQab0CX4GtuHnLeE_jOwCc"></script>
+  <!-- Google Maps JS (M18.5) -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAiUKLofb5BbJQab0CX4GtuHnLeE_jOwCc&libraries=marker&map_ids=9dfc7ec7cc449f8614cc8ddd"></script>
   <script src="https://unpkg.com/@googlemaps/markerclusterer/dist/index.min.js"></script>
 
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -2003,6 +2051,7 @@
     <div class="map-panel" id="mapPanel">
       <div id="google-map"></div>
       <div class="map-loading" id="mapLoading">Loading map…</div>
+      <button class="map-province-back" id="mapProvinceBack" onclick="resetToProvinceView()">← All Canada</button>
       <div class="map-result-count" id="mapResultCount" style="display:none"></div>
       <!-- Mobile bottom carousel -->
       <div class="map-carousel" id="mapCarousel">
@@ -3632,18 +3681,139 @@ function handleClinicReport(e) {
 
 <script>
 // ═══════════════════════════════════════════
-// MILESTONE 18 — MAP VIEW (Google Maps)
+// MILESTONE 18.5 — MAP VIEW (Google Maps)
 // ═══════════════════════════════════════════
 
 const GMAPS_KEY = 'AIzaSyAiUKLofb5BbJQab0CX4GtuHnLeE_jOwCc';
+const GMAPS_MAP_ID = '9dfc7ec7cc449f8614cc8ddd';
 const SB_URL = 'https://vefldlqtyxdywbzdjuia.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlZmxkbHF0eXhkeXdiemRqdWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNDAwMjgsImV4cCI6MjA4NzkxNjAyOH0.o582sXiUkB3j4FiHEA5rE3ABy_pdTeeK1PnNpNirHZA';
 
 let _map        = null;
-let _markers    = [];
+let _markers    = [];       // AdvancedMarkerElement array
 let _allClinics = [];
 let _activeCid  = null;
 let currentView = 'grid';
+let _provinceLayerActive = true;  // true = showing province view, false = pin view
+let _dataLayer  = null;
+let _provinceLabels = [];  // overlay label elements
+
+// ─── PROVINCE CENTROIDS (lat/lng for clinic count labels) ──────
+const PROVINCE_CENTROIDS = {
+  'ON': { lat: 50.0, lng: -85.0 },
+  'BC': { lat: 53.7, lng: -127.6 },
+  'AB': { lat: 53.9, lng: -116.5 },
+  'QC': { lat: 52.9, lng: -73.5 },
+  'SK': { lat: 52.9, lng: -106.4 },
+  'MB': { lat: 53.7, lng: -98.8 },
+  'NS': { lat: 45.1, lng: -62.7 },
+  'NB': { lat: 46.5, lng: -66.5 },
+  'NL': { lat: 53.1, lng: -57.6 },
+  'PE': { lat: 46.5, lng: -63.4 },
+  'YT': { lat: 64.0, lng: -135.0 },
+  'NT': { lat: 64.8, lng: -124.8 },
+  'NU': { lat: 70.3, lng: -86.5 },
+};
+
+// Province → filter slug mapping (reverse of PROVINCE_MAP)
+const PROVINCE_SLUG = {
+  'ON': 'ontario',
+  'BC': 'british-columbia',
+  'AB': 'alberta',
+  'QC': 'quebec',
+};
+
+// Province bounds for zoom-to
+const PROVINCE_BOUNDS = {
+  'ON': { s: 41.7, w: -95.2, n: 56.9, e: -74.3 },
+  'BC': { s: 48.2, w: -139.1, n: 60.0, e: -114.0 },
+  'AB': { s: 48.9, w: -120.0, n: 60.0, e: -110.0 },
+  'QC': { s: 44.9, w: -79.8, n: 62.6, e: -57.1 },
+  'SK': { s: 48.9, w: -110.0, n: 60.0, e: -101.3 },
+  'MB': { s: 48.9, w: -102.1, n: 60.0, e: -88.9 },
+  'NS': { s: 43.3, w: -66.4, n: 47.1, e: -59.6 },
+  'NB': { s: 44.5, w: -69.1, n: 48.1, e: -63.7 },
+  'NL': { s: 46.6, w: -67.8, n: 60.4, e: -52.6 },
+  'PE': { s: 45.9, w: -64.5, n: 47.1, e: -61.9 },
+  'YT': { s: 59.9, w: -141.0, n: 70.0, e: -123.8 },
+  'NT': { s: 59.9, w: -136.5, n: 78.1, e: -101.9 },
+  'NU': { s: 61.5, w: -120.0, n: 83.1, e: -61.1 },
+};
+
+// ─── SIMPLIFIED CANADA PROVINCES GEOJSON ──────────────────────
+// Simplified polygons — accurate enough for Data layer shading
+const CANADA_PROVINCES_GEOJSON = {
+  "type": "FeatureCollection",
+  "features": [
+    { "type": "Feature", "properties": { "abbr": "BC", "name": "British Columbia" },
+      "geometry": { "type": "Polygon", "coordinates": [[
+        [-139.06,60.0],[-136.5,59.5],[-132.7,56.2],[-130.0,54.5],[-124.9,49.0],[-123.3,49.0],
+        [-116.5,49.0],[-114.0,49.0],[-114.0,60.0],[-139.06,60.0]
+      ]]}},
+    { "type": "Feature", "properties": { "abbr": "AB", "name": "Alberta" },
+      "geometry": { "type": "Polygon", "coordinates": [[
+        [-120.0,49.0],[-114.0,49.0],[-110.0,49.0],[-110.0,60.0],[-114.0,60.0],[-120.0,60.0],[-120.0,49.0]
+      ]]}},
+    { "type": "Feature", "properties": { "abbr": "SK", "name": "Saskatchewan" },
+      "geometry": { "type": "Polygon", "coordinates": [[
+        [-110.0,49.0],[-101.35,49.0],[-101.35,60.0],[-110.0,60.0],[-110.0,49.0]
+      ]]}},
+    { "type": "Feature", "properties": { "abbr": "MB", "name": "Manitoba" },
+      "geometry": { "type": "Polygon", "coordinates": [[
+        [-101.35,49.0],[-95.15,49.0],[-88.0,49.0],[-88.0,52.0],[-89.5,56.0],[-96.0,58.5],
+        [-101.35,59.0],[-101.35,49.0]
+      ]]}},
+    { "type": "Feature", "properties": { "abbr": "ON", "name": "Ontario" },
+      "geometry": { "type": "Polygon", "coordinates": [[
+        [-95.15,49.0],[-84.0,46.0],[-84.0,42.3],[-79.0,43.3],[-76.5,44.2],[-75.0,45.0],
+        [-74.7,45.5],[-79.8,56.9],[-88.0,52.0],[-88.0,49.0],[-95.15,49.0]
+      ]]}},
+    { "type": "Feature", "properties": { "abbr": "QC", "name": "Quebec" },
+      "geometry": { "type": "Polygon", "coordinates": [[
+        [-79.5,45.0],[-74.7,45.5],[-71.5,45.0],[-66.5,44.8],[-64.5,47.7],[-64.0,49.0],
+        [-65.0,50.5],[-64.5,58.0],[-68.0,59.6],[-73.5,61.5],[-77.5,62.5],[-79.5,56.9],
+        [-79.8,56.9],[-74.7,45.5],[-79.5,45.0]
+      ]]}},
+    { "type": "Feature", "properties": { "abbr": "NB", "name": "New Brunswick" },
+      "geometry": { "type": "Polygon", "coordinates": [[
+        [-67.8,45.2],[-64.5,44.6],[-64.0,46.2],[-66.0,48.0],[-69.1,47.4],[-67.8,45.2]
+      ]]}},
+    { "type": "Feature", "properties": { "abbr": "NS", "name": "Nova Scotia" },
+      "geometry": { "type": "Polygon", "coordinates": [[
+        [-64.5,44.6],[-60.6,43.4],[-59.6,46.3],[-64.0,46.2],[-64.5,44.6]
+      ]]}},
+    { "type": "Feature", "properties": { "abbr": "PE", "name": "PEI" },
+      "geometry": { "type": "Polygon", "coordinates": [[
+        [-64.4,46.1],[-61.9,46.0],[-62.1,47.1],[-64.4,46.9],[-64.4,46.1]
+      ]]}},
+    { "type": "Feature", "properties": { "abbr": "NL", "name": "Newfoundland & Labrador" },
+      "geometry": { "type": "MultiPolygon", "coordinates": [
+        [[[-67.8,52.0],[-64.5,52.5],[-64.0,58.0],[-73.5,61.5],[-68.0,59.6],[-64.5,58.0],[-67.8,52.0]]],
+        [[[-52.6,46.6],[-53.5,46.6],[-55.0,47.5],[-59.5,50.5],[-59.0,47.0],[-52.6,46.6]]]
+      ]}},
+    { "type": "Feature", "properties": { "abbr": "YT", "name": "Yukon" },
+      "geometry": { "type": "Polygon", "coordinates": [[
+        [-141.0,60.0],[-136.5,59.5],[-139.06,60.0],[-139.0,68.0],[-136.5,69.0],[-132.0,69.5],
+        [-130.0,65.0],[-133.0,60.0],[-141.0,60.0]
+      ]]}},
+    { "type": "Feature", "properties": { "abbr": "NT", "name": "Northwest Territories" },
+      "geometry": { "type": "Polygon", "coordinates": [[
+        [-136.5,60.0],[-114.0,60.0],[-110.0,60.0],[-101.35,60.0],[-101.35,66.0],
+        [-95.0,69.0],[-101.0,72.0],[-110.0,72.0],[-120.0,69.0],[-132.0,69.5],
+        [-136.5,69.0],[-139.0,68.0],[-136.5,60.0]
+      ]]}},
+    { "type": "Feature", "properties": { "abbr": "NU", "name": "Nunavut" },
+      "geometry": { "type": "Polygon", "coordinates": [[
+        [-101.35,60.0],[-88.0,60.0],[-75.0,62.5],[-64.5,65.0],[-68.0,72.0],[-77.0,78.0],
+        [-90.0,83.0],[-110.0,83.0],[-110.0,72.0],[-101.0,72.0],[-95.0,69.0],[-101.35,66.0],
+        [-101.35,60.0]
+      ]]}},
+  ]
+};
+
+// ─── CREDENTIAL & LANGUAGE MAPS ────────────────────────────────
+const CRED_MAP = { physician:'MD', np:'NP', rn:'RN', img:'IMG', nd:'ND' };
+const LANG_MAP = { english:'EN', mandarin:'中文', cantonese:'粵', farsi:'فا', french:'FR', korean:'한', hindi:'हि', arabic:'عر', punjabi:'ਪੰ', portuguese:'PT' };
 
 // ─── VIEW TOGGLE ──────────────────────────────────────────────
 function switchView(view) {
@@ -3668,10 +3838,9 @@ function switchView(view) {
 
 // ─── FETCH CLINICS ────────────────────────────────────────────
 async function fetchMapClinics() {
-  let url = `${SB_URL}/rest/v1/clinics?select=id,name,neighbourhood,province,lat,lng,rating,reviews,claimed,price&approved=eq.true&lat=not.is.null&order=rating.desc.nullslast&limit=10000`;
+  let url = `${SB_URL}/rest/v1/clinics?select=id,name,neighbourhood,province,lat,lng,rating,reviews,claimed,price,logo_url,injector_credentials,languages&approved=eq.true&lat=not.is.null&order=rating.desc.nullslast&limit=10000`;
   if (PROVINCE_MAP[currentFilter]) url += `&province=eq.${PROVINCE_MAP[currentFilter]}`;
   else if (currentFilter !== 'all') {
-    // Exact match on neighbourhood slug — convert slug back to title case
     const hood = currentFilter.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
     url += `&neighbourhood=eq.${encodeURIComponent(hood)}`;
   }
@@ -3680,59 +3849,264 @@ async function fetchMapClinics() {
   return r.json();
 }
 
+// ─── FETCH PROVINCE COUNTS ────────────────────────────────────
+async function fetchProvinceCounts() {
+  const provinces = ['ON','BC','AB','QC','SK','MB','NS','NB','NL','PE','YT','NT','NU'];
+  const counts = {};
+  // Batch: fetch count for each province in parallel
+  await Promise.all(provinces.map(async prov => {
+    try {
+      const r = await fetch(
+        `${SB_URL}/rest/v1/clinics?select=id&approved=eq.true&province=eq.${prov}&limit=1`,
+        { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, Prefer: 'count=exact', Range: '0-0' } }
+      );
+      const cr = r.headers.get('content-range') || '';
+      counts[prov] = parseInt(cr.split('/')[1] || '0', 10);
+    } catch(e) { counts[prov] = 0; }
+  }));
+  return counts;
+}
+
 // ─── INIT MAP ─────────────────────────────────────────────────
 async function initMap() {
   const loadingEl = document.getElementById('mapLoading');
+
+  // If a province filter is already active, skip province view
+  const hasFilter = currentFilter !== 'all';
 
   try { _allClinics = await fetchMapClinics(); }
   catch(e) { if (loadingEl) loadingEl.textContent = 'Unable to load clinics.'; return; }
 
   if (!_map) {
     _map = new google.maps.Map(document.getElementById('google-map'), {
-      zoom: 6,
-      center: { lat: 56.1304, lng: -106.3468 },
+      zoom: 4,
+      center: { lat: 56.1304, lng: -96.3468 },
       mapTypeControl: false,
       streetViewControl: false,
       fullscreenControl: false,
       zoomControl: true,
       zoomControlOptions: { position: google.maps.ControlPosition.RIGHT_BOTTOM },
       gestureHandling: 'greedy',
-      styles: [
-        { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] },
-        { featureType: 'transit', elementType: 'labels', stylers: [{ visibility: 'off' }] }
-      ]
+      mapId: GMAPS_MAP_ID,
     });
     setupMapListeners();
+    _dataLayer = new google.maps.Data({ map: _map });
+    _dataLayer.addGeoJson(CANADA_PROVINCES_GEOJSON);
+    styleProvinceLayer();
+    setupProvinceLayerEvents();
   }
 
   if (loadingEl) loadingEl.classList.add('hidden');
 
-  // Fit bounds — idle fires after, triggering placeMarkers + renderCardList
-  if (_allClinics.length > 0) {
-    const bounds = new google.maps.LatLngBounds();
-    _allClinics.forEach(c => { if (c.lat && c.lng) bounds.extend({ lat: +c.lat, lng: +c.lng }); });
-    _map.fitBounds(bounds, { top: 40, right: 20, bottom: 80, left: 20 });
+  if (hasFilter) {
+    // Province already selected — show pins directly
+    hideProvinceLayer();
+    showPins();
   } else {
-    placeMarkers();
-    renderCardList();
+    // Show province view
+    showProvinceLayer();
   }
 }
 
-// ─── PLACE MARKERS ────────────────────────────────────────────
+// ─── PROVINCE LAYER ───────────────────────────────────────────
+function styleProvinceLayer() {
+  _dataLayer.setStyle({
+    fillColor: '#C8725A',
+    fillOpacity: 0.12,
+    strokeColor: '#C8725A',
+    strokeWeight: 1.2,
+    strokeOpacity: 0.5,
+    cursor: 'pointer',
+  });
+}
+
+function setupProvinceLayerEvents() {
+  _dataLayer.addListener('mouseover', function(e) {
+    _dataLayer.overrideStyle(e.feature, { fillOpacity: 0.3, strokeOpacity: 0.8 });
+    _map.getDiv().style.cursor = 'pointer';
+  });
+  _dataLayer.addListener('mouseout', function(e) {
+    _dataLayer.revertStyle(e.feature);
+    _map.getDiv().style.cursor = '';
+  });
+  _dataLayer.addListener('click', function(e) {
+    const abbr = e.feature.getProperty('abbr');
+    onProvinceClick(abbr);
+  });
+}
+
+async function showProvinceLayer() {
+  _provinceLayerActive = true;
+  _dataLayer.setMap(_map);
+  styleProvinceLayer();
+  document.getElementById('mapProvinceBack').classList.remove('visible');
+
+  // Clear pins
+  clearMarkers();
+  renderCardList(); // will show empty/placeholder
+
+  // Fit to Canada
+  _map.setCenter({ lat: 56.1304, lng: -96.3468 });
+  _map.setZoom(4);
+
+  // Render centroid labels with clinic counts
+  clearProvinceLabels();
+  const counts = await fetchProvinceCounts();
+  renderProvinceLabels(counts);
+}
+
+function hideProvinceLayer() {
+  _provinceLayerActive = false;
+  _dataLayer.setMap(null);
+  clearProvinceLabels();
+  document.getElementById('mapProvinceBack').classList.add('visible');
+}
+
+function renderProvinceLabels(counts) {
+  clearProvinceLabels();
+  Object.entries(PROVINCE_CENTROIDS).forEach(([abbr, pos]) => {
+    const count = counts[abbr] || 0;
+    if (count === 0) return;
+    const overlay = new ProvinceLabel(pos, abbr, count);
+    overlay.setMap(_map);
+    _provinceLabels.push(overlay);
+  });
+}
+
+function clearProvinceLabels() {
+  _provinceLabels.forEach(l => l.setMap(null));
+  _provinceLabels = [];
+}
+
+// Custom OverlayView for province count labels
+class ProvinceLabel extends google.maps.OverlayView {
+  constructor(position, abbr, count) {
+    super();
+    this.position = position;
+    this.abbr = abbr;
+    this.count = count;
+    this.div = null;
+  }
+  onAdd() {
+    const div = document.createElement('div');
+    div.className = 'province-label';
+    const displayAbbr = this.abbr;
+    const fmtCount = this.count >= 1000
+      ? (this.count / 1000).toFixed(1).replace(/\.0$/, '') + 'k'
+      : this.count.toLocaleString();
+    div.innerHTML = `<strong>${displayAbbr}</strong> <span style="opacity:0.7;">${fmtCount}</span>`;
+    this.div = div;
+    this.getPanes().overlayMouseTarget.appendChild(div);
+  }
+  draw() {
+    if (!this.div) return;
+    const proj = this.getProjection();
+    const point = proj.fromLatLngToDivPixel(new google.maps.LatLng(this.position.lat, this.position.lng));
+    if (point) {
+      this.div.style.left = point.x + 'px';
+      this.div.style.top  = point.y + 'px';
+    }
+  }
+  onRemove() {
+    if (this.div && this.div.parentNode) this.div.parentNode.removeChild(this.div);
+    this.div = null;
+  }
+}
+
+function onProvinceClick(abbr) {
+  const slug = PROVINCE_SLUG[abbr];
+  if (!slug) {
+    // Non-tracked province — just zoom to bounds
+    const b = PROVINCE_BOUNDS[abbr];
+    if (b) {
+      _map.fitBounds({ south: b.s, west: b.w, north: b.n, east: b.e });
+    }
+    hideProvinceLayer();
+    return;
+  }
+
+  // Set filter
+  currentFilter = slug;
+
+  // Sync filter pills
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('onclick')?.includes(`'${slug}'`));
+  });
+
+  hideProvinceLayer();
+
+  // Zoom to province bounds
+  const b = PROVINCE_BOUNDS[abbr];
+  if (b) {
+    _map.fitBounds({ south: b.s, west: b.w, north: b.n, east: b.e });
+  }
+
+  // Fetch province clinics and show pins
+  fetchMapClinics().then(clinics => {
+    _allClinics = clinics;
+    showPins();
+  }).catch(console.error);
+}
+
+function resetToProvinceView() {
+  // Reset filter to all
+  currentFilter = 'all';
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('onclick')?.includes("'all'"));
+  });
+  showProvinceLayer();
+}
+
+// ─── SHOW PINS ────────────────────────────────────────────────
+function showPins() {
+  const bounds = new google.maps.LatLngBounds();
+  _allClinics.forEach(c => { if (c.lat && c.lng) bounds.extend({ lat: +c.lat, lng: +c.lng }); });
+  if (!_allClinics.length) { placeMarkers(); renderCardList(); return; }
+  // After fitBounds, idle fires → placeMarkers + renderCardList
+  _map.fitBounds(bounds, { top: 40, right: 20, bottom: 80, left: 20 });
+}
+
+// ─── PLACE MARKERS (AdvancedMarkerElement) ─────────────────────
 let _clusterer = null;
 
-function placeMarkers() {
+function clearMarkers() {
   if (_clusterer) { _clusterer.clearMarkers(); _clusterer = null; }
-  _markers.forEach(m => m.setMap(null));
+  _markers.forEach(m => { m.map = null; });
   _markers = [];
+}
 
-  const PIN_PATH = 'M 0,0 C -2,-20 -10,-22 -10,-30 A 10,10 0 1,1 10,-30 C 10,-22 2,-20 0,0 z';
-  const labelStyle = { color: '#ffffff', fontSize: '10px', fontWeight: '700', fontFamily: 'DM Sans, sans-serif' };
+function makePinElement(color, scale, label) {
+  const div = document.createElement('div');
+  const s = 28 * scale;
+  div.style.cssText = `
+    width:${s}px; height:${s}px;
+    position:relative; cursor:pointer;
+    transition: transform 0.15s ease;
+    display:flex; align-items:center; justify-content:center;
+  `;
+  div.innerHTML = `
+    <svg width="${s}" height="${Math.round(s*1.35)}" viewBox="0 0 28 38" fill="none" xmlns="http://www.w3.org/2000/svg"
+         style="position:absolute;top:0;left:0;">
+      <path d="M14 0C6.268 0 0 6.268 0 14c0 9.333 14 24 14 24s14-14.667 14-24C28 6.268 21.732 0 14 0z"
+            fill="${color}" stroke="#fff" stroke-width="1.5"/>
+    </svg>
+    <span style="position:relative;z-index:1;color:#fff;font-family:'DM Sans',sans-serif;
+                 font-size:${Math.round(9*scale)}px;font-weight:700;line-height:1;
+                 padding-bottom:${Math.round(6*scale)}px;pointer-events:none;">
+      ${label || ''}
+    </span>
+  `;
+  return div;
+}
+
+function placeMarkers() {
+  if (_provinceLayerActive) return;
+  clearMarkers();
+
+  const { AdvancedMarkerElement } = google.maps.marker;
   const zoom = _map.getZoom();
-
   const bounds = _map.getBounds();
 
-  // At high zoom: only viewport clinics, optimized:false, full hover
   if (zoom >= 13) {
     const visible = bounds
       ? _allClinics.filter(c => c.lat && c.lng && bounds.contains({ lat: +c.lat, lng: +c.lng }))
@@ -3740,53 +4114,61 @@ function placeMarkers() {
 
     visible.forEach(c => {
       const cid = String(c.id);
-      const m = new google.maps.Marker({
+      const el = makePinElement('#1C1714', 1, '');
+      const m = new AdvancedMarkerElement({
         position: { lat: +c.lat, lng: +c.lng },
         map: _map,
-        optimized: false,
-        icon: { path: PIN_PATH, fillColor: '#1C1714', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 1.5, scale: 1, labelOrigin: new google.maps.Point(0, -30) },
-        label: { ...labelStyle, text: '1' }
+        content: el,
+        title: c.name,
       });
       m._cid = cid;
-      m.addListener('click', () => onPinClick(cid, m));
-      m.addListener('mouseover', () => {
+      m._el  = el;
+
+      el.addEventListener('click', () => onPinClick(cid, m));
+      el.addEventListener('mouseenter', () => {
         if (_activeCid !== cid) {
-          m.setIcon({ path: PIN_PATH, fillColor: '#C8725A', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 1.5, scale: 1.4, labelOrigin: new google.maps.Point(0, -30) });
+          el.firstElementChild.setAttribute('fill', '#C8725A');
+          el.style.transform = 'scale(1.4)';
+          el.style.zIndex = '10';
           highlightCard(cid, false);
         }
       });
-      m.addListener('mouseout', () => {
+      el.addEventListener('mouseleave', () => {
         if (_activeCid !== cid) {
-          m.setIcon({ path: PIN_PATH, fillColor: '#1C1714', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 1.5, scale: 1, labelOrigin: new google.maps.Point(0, -30) });
-          document.querySelectorAll(`[data-cid="${cid}"]`).forEach(el => el.classList.remove('highlighted'));
+          el.firstElementChild.setAttribute('fill', '#1C1714');
+          el.style.transform = '';
+          el.style.zIndex = '';
+          document.querySelectorAll(`[data-cid="${cid}"]`).forEach(e => e.classList.remove('highlighted'));
         }
       });
       _markers.push(m);
     });
 
   } else {
-    // At low zoom: all clinics via clusterer, optimized:true
     const allWithCoords = _allClinics.filter(c => c.lat && c.lng);
     const gmMarkers = allWithCoords.map(c => {
       const cid = String(c.id);
-      const m = new google.maps.Marker({
+      const el = makePinElement('#1C1714', 1, '');
+      const m = new AdvancedMarkerElement({
         position: { lat: +c.lat, lng: +c.lng },
-        optimized: true,
-        icon: { path: PIN_PATH, fillColor: '#1C1714', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 1.5, scale: 1, labelOrigin: new google.maps.Point(0, -30) },
-        label: { ...labelStyle, text: '1' }
+        map: _map,
+        content: el,
+        title: c.name,
       });
       m._cid = cid;
-      m.addListener('click', () => onPinClick(cid, m));
+      m._el  = el;
+      el.addEventListener('click', () => onPinClick(cid, m));
       _markers.push(m);
       return m;
     });
 
     const renderer = {
       render({ count, position }) {
-        return new google.maps.Marker({
-          position, optimized: true,
-          icon: { path: PIN_PATH, fillColor: '#1C1714', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 1.5, scale: count > 500 ? 1.5 : count > 50 ? 1.25 : 1, labelOrigin: new google.maps.Point(0, -30) },
-          label: { ...labelStyle, text: count > 999 ? Math.round(count/1000)+'k' : String(count) },
+        const scale = count > 500 ? 1.5 : count > 50 ? 1.25 : 1;
+        const label = count > 999 ? Math.round(count/1000)+'k' : String(count);
+        const el = makePinElement('#1C1714', scale, label);
+        return new AdvancedMarkerElement({
+          position, map: _map, content: el,
           zIndex: Number(google.maps.Marker.MAX_ZINDEX) + count
         });
       }
@@ -3802,10 +4184,9 @@ function placeMarkers() {
 function setupMapListeners() {
   let lastZoom = null;
   _map.addListener('idle', () => {
+    if (_provinceLayerActive) return;
     renderCardList();
     const z = _map.getZoom();
-    // At high zoom: re-render on every pan (viewport changes matter)
-    // At low zoom: only re-render on zoom change (clusterer handles viewport)
     if (z >= 13 || z !== lastZoom) {
       lastZoom = z;
       placeMarkers();
@@ -3815,16 +4196,30 @@ function setupMapListeners() {
 
 // ─── PIN CLICK ────────────────────────────────────────────────
 function onPinClick(cid, marker) {
-  const pinPath = 'M 0,0 C -2,-20 -10,-22 -10,-30 A 10,10 0 1,1 10,-30 C 10,-22 2,-20 0,0 z';
   const isMobile = window.matchMedia('(hover: none)').matches;
 
-  _markers.forEach(m => m.setIcon && m.setIcon({ path: pinPath, fillColor: '#1C1714', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 1.5, scale: 1, labelOrigin: new google.maps.Point(0, -30) }));
+  // Reset all pins
+  _markers.forEach(m => {
+    if (m._el) {
+      const path = m._el.querySelector('path');
+      if (path) path.setAttribute('fill', '#1C1714');
+      m._el.style.transform = '';
+      m._el.style.zIndex = '';
+    }
+  });
+
   _activeCid = cid;
-  if (marker) marker.setIcon({ path: pinPath, fillColor: '#C8725A', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 1.5, scale: 1.4, labelOrigin: new google.maps.Point(0, -30) });
+
+  // Highlight clicked pin
+  if (marker && marker._el) {
+    const path = marker._el.querySelector('path');
+    if (path) path.setAttribute('fill', '#C8725A');
+    marker._el.style.transform = 'scale(1.4)';
+    marker._el.style.zIndex = '20';
+  }
+
   highlightCard(cid, true);
 
-  // On desktop, pin click opens modal directly
-  // On mobile (no hover), pin click only highlights — View → opens modal
   if (!isMobile) {
     openMapModal(cid);
   }
@@ -3854,6 +4249,16 @@ async function openMapModal(cid) {
 // ─── RENDER CARD LIST ─────────────────────────────────────────
 function renderCardList() {
   if (!_map) return;
+  if (_provinceLayerActive) {
+    const listEl = document.getElementById('mapCardList');
+    if (listEl) listEl.innerHTML = '<div class="map-list-status" style="padding-top:3rem;">Click a province to explore clinics</div>';
+    const track = document.getElementById('mapCarouselTrack');
+    const countC = document.getElementById('mapCarouselCount');
+    if (track) track.innerHTML = '';
+    if (countC) countC.textContent = '';
+    return;
+  }
+
   const bounds = _map.getBounds();
   if (!bounds) return;
 
@@ -3861,17 +4266,14 @@ function renderCardList() {
     .filter(c => c.lat && c.lng && bounds.contains({ lat: +c.lat, lng: +c.lng }))
     .sort((a, b) => ((b.claimed ? 2 : 0) + (b.price != null ? 1 : 0)) - ((a.claimed ? 2 : 0) + (a.price != null ? 1 : 0)));
 
-  // Update count badge
   const countEl = document.getElementById('mapResultCount');
   if (countEl) { countEl.textContent = visible.length.toLocaleString() + ' clinics in view'; countEl.style.display = 'block'; }
 
-  // Desktop list
   const listEl = document.getElementById('mapCardList');
   if (listEl) listEl.innerHTML = visible.length === 0
     ? '<div class="map-list-status">No clinics in this area.<br>Zoom out to see more.</div>'
-    : visible.map(c => buildCard(c)).join('');
+    : visible.map(c => buildCard(c, false)).join('');
 
-  // Mobile carousel
   const track = document.getElementById('mapCarouselTrack');
   const countC = document.getElementById('mapCarouselCount');
   if (track) {
@@ -3884,36 +4286,84 @@ function renderCardList() {
 
 // ─── BUILD CARD ───────────────────────────────────────────────
 function buildCard(c, carousel) {
-  const hasPrice = c.price != null;
   const cls = carousel ? 'map-carousel-card' : 'map-clinic-card';
+  const hasPrice = c.price != null;
+
+  // Normalise arrays
+  const creds = Array.isArray(c.injector_credentials) ? c.injector_credentials
+    : (typeof c.injector_credentials === 'string' ? (() => { try { return JSON.parse(c.injector_credentials); } catch(e) { return []; } })() : []);
+  const langs = Array.isArray(c.languages) ? c.languages
+    : (typeof c.languages === 'string' ? (() => { try { return JSON.parse(c.languages); } catch(e) { return []; } })() : []);
+
+  const credPills = creds.slice(0,2).map(v => `<span class="pill pill-cred">${CRED_MAP[v] || v.toUpperCase()}</span>`).join('');
+  const langPills = langs.slice(0,2).map(v => `<span class="pill pill-lang">${LANG_MAP[v] || v}</span>`).join('');
+  const pillsHTML = (credPills || langPills) ? `<div class="map-card-pills">${credPills}${langPills}</div>` : '';
+
+  const logoHTML = c.logo_url
+    ? `<img class="map-card-logo" src="${c.logo_url}" alt="${c.name}" onerror="this.style.display='none'">`
+    : `<div class="map-card-logo-placeholder">${c.name.charAt(0)}</div>`;
+
+  const verifiedBadge = c.claimed
+    ? `<span class="verified-tick" style="width:13px;height:13px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;background:#3D7A55;border-radius:50%;margin-left:2px;"><svg viewBox="0 0 12 12" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 6 5 9 10 3"/></svg></span>`
+    : '';
+
+  // Lead practitioner (pulled from cached practitioners if available)
+  const practitioners = Array.isArray(c.practitioners) ? c.practitioners : [];
+  const leadPractitioner = practitioners[0];
+  const practHTML = leadPractitioner
+    ? `<div class="map-card-practitioner">${leadPractitioner.name}${leadPractitioner.designation ? ' · ' + leadPractitioner.designation : ''}</div>`
+    : '';
+
+  const priceHTML = hasPrice
+    ? `<div class="map-card-price-row"><span class="map-card-price">$${c.price}</span> <span class="map-card-price-unit">/ unit · Botox</span></div>`
+    : `<div class="map-card-no-price">Price not listed</div>`;
+
   return `<div class="${cls}" data-cid="${c.id}"
     onclick="onCardClick('${c.id}')"
     onmouseenter="highlightPinById('${c.id}')"
     onmouseleave="unhighlightPinById('${c.id}')">
-    <div class="map-card-name">
-      ${c.claimed ? '<span class="verified-tick" style="width:14px;height:14px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;background:#3D7A55;border-radius:50%;"><svg viewBox="0 0 12 12" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 6 5 9 10 3"/></svg></span>' : ''}
-      ${c.name}
+    <div class="map-card-top">
+      ${logoHTML}
+      <div class="map-card-name-block">
+        <div class="map-card-name">${c.name}${verifiedBadge}</div>
+        ${practHTML}
+      </div>
     </div>
-    <div class="map-card-meta">📍 ${c.neighbourhood}${c.province ? ', '+c.province : ''}</div>
-    ${hasPrice ? `<div><span class="map-card-price">$${c.price}</span> <span class="map-card-price-unit">/ unit · Botox</span></div>` : `<div class="map-card-no-price">Price not listed</div>`}
+    ${pillsHTML}
+    <div class="map-card-meta">📍 ${c.neighbourhood || ''}${c.province ? ', '+c.province : ''}</div>
+    ${priceHTML}
     <div class="map-card-footer">
       <div class="map-card-rating"><span class="star">★</span> <span>${c.rating ? c.rating.toFixed(1) : '—'}</span> <span style="color:var(--dim)">(${(c.reviews||0).toLocaleString()})</span></div>
-      <a href="#" class="map-card-view" onclick="event.stopPropagation();openMapModal('${c.id}')">View →</a>
+      <a href="#" class="map-card-view" onclick="event.stopPropagation();openMapModal('${c.id}')">View Profile →</a>
     </div>
   </div>`;
 }
 
 // ─── CARD → PIN INTERACTIONS ──────────────────────────────────
 function onCardClick(cid) {
-  const pinPath = 'M 0,0 C -2,-20 -10,-22 -10,-30 A 10,10 0 1,1 10,-30 C 10,-22 2,-20 0,0 z';
   const isMobile = window.matchMedia('(hover: none)').matches;
   _activeCid = String(cid);
-  _markers.forEach(m => { if (m.setIcon) m.setIcon({ path: pinPath, fillColor: '#1C1714', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 1.5, scale: 1, labelOrigin: new google.maps.Point(0, -30) }); });
+
+  _markers.forEach(m => {
+    if (m._el) {
+      const path = m._el.querySelector('path');
+      if (path) path.setAttribute('fill', '#1C1714');
+      m._el.style.transform = '';
+      m._el.style.zIndex = '';
+    }
+  });
+
   const marker = findMarker(cid);
-  if (marker) marker.setIcon({ path: pinPath, fillColor: '#C8725A', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 1.5, scale: 1.4, labelOrigin: new google.maps.Point(0, -30) });
+  if (marker && marker._el) {
+    const path = marker._el.querySelector('path');
+    if (path) path.setAttribute('fill', '#C8725A');
+    marker._el.style.transform = 'scale(1.4)';
+    marker._el.style.zIndex = '20';
+  }
+
   const clinic = _allClinics.find(c => String(c.id) === String(cid));
   if (clinic && _map) _map.panTo({ lat: +clinic.lat, lng: +clinic.lng });
-  // On desktop, card click opens modal. On mobile, only View → opens modal
+
   if (!isMobile) openMapModal(String(cid));
 }
 
@@ -3926,9 +4376,13 @@ function highlightCard(cid, scroll) {
 }
 
 function highlightPinById(cid) {
+  if (_provinceLayerActive) return;
   const m = findMarker(cid);
-  if (m && _activeCid !== String(cid)) {
-    m.setIcon({ path: 'M 0,0 C -2,-20 -10,-22 -10,-30 A 10,10 0 1,1 10,-30 C 10,-22 2,-20 0,0 z', fillColor: '#C8725A', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 1.5, scale: 1.4, labelOrigin: new google.maps.Point(0, -30) });
+  if (m && m._el && _activeCid !== String(cid)) {
+    const path = m._el.querySelector('path');
+    if (path) path.setAttribute('fill', '#C8725A');
+    m._el.style.transform = 'scale(1.4)';
+    m._el.style.zIndex = '10';
     highlightCard(cid, false);
   }
 }
@@ -3936,16 +4390,18 @@ function highlightPinById(cid) {
 function unhighlightPinById(cid) {
   if (_activeCid === String(cid)) return;
   const m = findMarker(cid);
-  if (m) m.setIcon({ path: 'M 0,0 C -2,-20 -10,-22 -10,-30 A 10,10 0 1,1 10,-30 C 10,-22 2,-20 0,0 z', fillColor: '#1C1714', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 1.5, scale: 1, labelOrigin: new google.maps.Point(0, -30) });
+  if (m && m._el) {
+    const path = m._el.querySelector('path');
+    if (path) path.setAttribute('fill', '#1C1714');
+    m._el.style.transform = '';
+    m._el.style.zIndex = '';
+  }
   document.querySelectorAll(`[data-cid="${cid}"]`).forEach(el => el.classList.remove('highlighted'));
 }
 
 function findMarker(cid) {
   return _markers.find(m => m._cid == cid) || null;
 }
-
-function getPinEls() { return []; }
-function findPinEl(cid) { return null; }
 
 // ─── STUBS ────────────────────────────────────────────────────
 function toggleMapDrawer() {}
