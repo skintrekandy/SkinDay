@@ -3978,7 +3978,7 @@ function onMapIdle() {
     placeMarkers();
     renderCardList();
     _lastZoom = z;
-  }, 120);
+  }, 350);
 }
 
 // ─── PLACE MARKERS ────────────────────────────────────────────
@@ -4164,6 +4164,11 @@ function renderCardList() {
     track.innerHTML = inView.length === 0
       ? '<div style="padding:1rem;font-size:0.82rem;color:var(--muted);">No clinics in view</div>'
       : inView.map(c => buildCard(c, true)).join('');
+  }
+
+  // Re-apply active highlight after DOM rebuild
+  if (_activeCid) {
+    document.querySelectorAll(`[data-cid="${_activeCid}"]`).forEach(el => el.classList.add('highlighted'));
   }
 }
 
