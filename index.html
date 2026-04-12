@@ -340,7 +340,7 @@
   .missing-modal-success p { color: var(--deep); font-size: 0.95rem; margin: 0; }
 
   /* ═══════════════════════════════════════════
-     MILESTONE 18 — MAP VIEW STYLES
+     MILESTONE 18.5 — MAP VIEW STYLES
   ═══════════════════════════════════════════ */
 
   /* ─── VIEW TOGGLE ─── */
@@ -352,246 +352,100 @@
 
   /* ─── MAP SECTION ─── */
   .map-section { display: none; }
-  .map-section.active { display: block; }
+  .map-section.active { display: flex; flex-direction: column; }
 
-  /* ─── SPLIT LAYOUT ─── */
-  .map-split { display: flex; width: 100%; height: calc(100vh - 130px); max-height: 860px; min-height: 520px; }
-  /* When map is full-screen active on desktop */
-  .map-view-active #mapSection .map-split { height: 100%; max-height: none; }
-
-  /* ─── CARD LIST (left 40%) ─── */
-  .map-card-list { width: 40%; flex-shrink: 0; overflow-y: auto; background: #fff; border-right: 1px solid var(--border); padding: 0.85rem; display: flex; flex-direction: column; gap: 0.6rem; transition: width 0.35s ease; }
-  .map-card-list.collapsed { width: 0; padding: 0; border-right: none; overflow: hidden; }
-  .map-card-list::-webkit-scrollbar { width: 4px; }
-  .map-card-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-  .map-list-header { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); padding: 0.2rem 0.2rem 0.4rem; flex-shrink: 0; }
-
-  /* ─── MAP PANEL (right 60%) ─── */
-  .map-panel { flex: 1; position: relative; }
-  #google-map { position: absolute; inset: 0; width: 100%; height: 100%; }
-
-  /* ─── MAP CARD ─── */
-  .map-clinic-card { background: #fff; border: 1.5px solid var(--border); border-radius: 10px; padding: 0.85rem 1rem; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; flex-shrink: 0; }
-  .map-clinic-card:hover { border-color: var(--rose-m); box-shadow: 0 3px 12px rgba(28,23,20,0.09); }
-  .map-clinic-card.highlighted { border-color: var(--rose) !important; box-shadow: 0 0 0 2px rgba(200,114,90,0.2), 0 4px 16px rgba(28,23,20,0.1); }
-
-  /* Rating badge — top right of card */
-  .map-card-rating-badge {
-    display: flex; flex-direction: column; align-items: center;
-    flex-shrink: 0; margin-left: auto; padding-left: 0.5rem;
+  /* ─── COMPACT SEARCH (shown inside map section) ─── */
+  .map-compact-search {
+    background: var(--deep); padding: 8px 16px;
+    display: flex; gap: 8px; align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,0.07); flex-shrink: 0;
   }
-  .map-card-rating-score {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 1.35rem; font-weight: 500; line-height: 1;
-    color: var(--deep);
-  }
-  .map-card-rating-star {
-    color: var(--gold); font-size: 0.75rem; line-height: 1; margin-top: 1px;
-  }
-  .map-card-rating-reviews {
-    font-size: 0.6rem; color: var(--muted); margin-top: 1px; white-space: nowrap;
-  }
-
-  /* Card top row: logo + name block */
-  .map-card-top { display: flex; align-items: flex-start; gap: 0.6rem; margin-bottom: 0.5rem; }
-  .map-card-logo { width: 36px; height: 36px; border-radius: 6px; object-fit: contain; border: 1px solid var(--border); background: var(--cream); flex-shrink: 0; }
-  .map-card-logo-placeholder { width: 36px; height: 36px; border-radius: 6px; background: var(--warm); border: 1px solid var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; color: var(--muted); font-weight: 600; letter-spacing: 0.04em; }
-  .map-card-name-block { flex: 1; min-width: 0; }
-  .map-card-name { font-family: 'Cormorant Garamond', serif; font-size: 1.05rem; font-weight: 500; color: var(--deep); line-height: 1.2; display: flex; align-items: center; gap: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .map-card-practitioner { font-size: 0.71rem; color: var(--muted); margin-top: 0.1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-  /* Pills row */
-  .map-card-pills { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 0.45rem; }
-
-  /* Location */
-  .map-card-meta { font-size: 0.71rem; color: var(--muted); margin-bottom: 0.35rem; }
-
-  /* Price */
-  .map-card-price { font-family: 'Cormorant Garamond', serif; font-size: 1.3rem; font-weight: 400; color: var(--deep); }
-  .map-card-price-unit { font-size: 0.68rem; color: var(--muted); font-family: 'DM Sans', sans-serif; }
-  .map-card-no-price { font-size: 0.75rem; color: var(--dim); font-style: italic; }
-  .map-card-price-row { margin-bottom: 0.35rem; }
-
-  /* Footer */
-  .map-card-footer { display: flex; align-items: center; justify-content: flex-end; margin-top: 0.45rem; padding-top: 0.45rem; border-top: 1px solid var(--border); }
-  .map-card-rating { display: flex; align-items: center; gap: 0.25rem; font-size: 0.72rem; color: var(--muted); }
-  .map-card-rating .star { color: var(--gold); }
-  .map-card-view { font-size: 0.72rem; font-weight: 500; color: var(--rose); text-decoration: none; letter-spacing: 0.01em; }
-  .map-list-status { text-align: center; padding: 2rem 1rem; font-size: 0.82rem; color: var(--muted); }
-
-  /* Card list background: white */
-
-  /* ─── PIN STYLES ─── */
-  .map-pin, .map-cluster {
-    cursor: pointer;
-    position: relative;
-    transition: transform 0.15s;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .map-pin { width: 34px; height: 34px; }
-  .map-cluster { width: 40px; height: 40px; }
-  .map-cluster.large { width: 48px; height: 48px; }
-
-  .map-pin::before, .map-cluster::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: #1C1714;
-    border-radius: 50% 50% 50% 0;
-    transform: rotate(-45deg);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-    transition: background 0.15s, transform 0.15s;
-  }
-  .map-pin-label, .map-cluster-label {
-    position: relative; z-index: 1;
-    color: #fff;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.68rem; font-weight: 700; line-height: 1;
-    margin-bottom: 4px; /* nudge up to sit in circle part of teardrop */
-    pointer-events: none;
-  }
-  .map-cluster-label { font-size: 0.72rem; }
-  .map-cluster.large .map-cluster-label { font-size: 0.8rem; }
-
-  /* Hover — card hover over pin or pin mouseenter */
-  .map-pin.pin-hover { transform: scale(1.5) !important; z-index: 10 !important; }
-  .map-pin.pin-hover::before { background: #C8725A !important; }
-
-  /* Active — clicked */
-  .map-pin.pin-active { transform: scale(1.6) !important; z-index: 20 !important; }
-  .map-pin.pin-active::before { background: #C8725A !important; }
-
-  .map-pin, .map-cluster { pointer-events: all; }
-  .map-loading { position: absolute; inset: 0; background: var(--warm); display: flex; align-items: center; justify-content: center; font-size: 0.85rem; color: var(--muted); z-index: 5; transition: opacity 0.4s; }
-  .map-loading.hidden { opacity: 0; pointer-events: none; }
-
-  /* Result count badge */
-  .map-result-count { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); background: rgba(28,23,20,0.82); backdrop-filter: blur(6px); color: #FAF7F2; border-radius: 20px; padding: 0.3rem 0.9rem; font-size: 0.72rem; font-weight: 500; letter-spacing: 0.04em; z-index: 5; pointer-events: none; white-space: nowrap; }
-
-  /* Province layer removed M18.5 */
-
-  /* ─── COMPACT MAP SEARCH BAR (shown in map view, desktop + mobile) ─── */
-  #mapCompactSearch {
-    display: none; /* hidden by default */
-    background: var(--deep);
-    padding: 10px 16px;
-    gap: 10px; align-items: center;
-    border-bottom: 1px solid rgba(255,255,255,0.08);
-    flex-shrink: 0;
-  }
-  .map-section.active #mapCompactSearch { display: flex; }
-
-  #mapCompactSearch select {
-    flex: 1;
-    background: rgba(255,255,255,0.08);
-    border: 1px solid rgba(255,255,255,0.15);
-    border-radius: 10px;
-    padding: 0.6rem 1rem;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.9rem; font-weight: 500;
-    color: var(--cream);
-    outline: none; cursor: pointer;
-    appearance: none; -webkit-appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23B5A89F' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 12px center;
-    padding-right: 2rem;
-  }
-  #mapCompactSearch select option { background: var(--deep2); color: var(--cream); }
-  #mapCompactNearMe {
-    background: transparent;
-    border: 1.5px solid var(--gold);
-    color: var(--gold);
-    border-radius: 10px;
-    padding: 0.6rem 1rem;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.85rem; font-weight: 500;
-    cursor: pointer; white-space: nowrap;
-    display: flex; align-items: center; gap: 0.35rem;
-    flex-shrink: 0;
-    transition: background 0.2s, color 0.2s;
-  }
-  #mapCompactNearMe:hover { background: var(--gold); color: var(--deep); }
-
-  /* When map is active (desktop): hide full search, keep toggle strip fixed */
-  .map-view-active .search-wrap { display: none; }
-  .map-view-active #viewToggleStrip {
-    position: fixed; top: 64px; left: 0; right: 0; z-index: 55;
-    padding: 8px 16px;
-    display: flex; justify-content: space-between; align-items: center;
-  }
-  /* Compact search shown inline in toggle strip on desktop when map active */
-  #mapCompactInStrip {
-    display: none;
-    flex: 1; gap: 8px; align-items: center; margin-right: 16px;
-  }
-  .map-view-active #mapCompactInStrip { display: flex; }
-  #mapCompactInStrip select {
-    flex: 1; max-width: 320px;
-    background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.18);
-    border-radius: 8px; padding: 0.45rem 2rem 0.45rem 0.85rem;
-    font-family: 'DM Sans', sans-serif; font-size: 0.85rem; font-weight: 500;
+  .map-compact-search select {
+    flex: 1; background: rgba(255,255,255,0.09); border: 1px solid rgba(255,255,255,0.16);
+    border-radius: 8px; padding: 0.5rem 2rem 0.5rem 0.85rem;
+    font-family: 'DM Sans', sans-serif; font-size: 0.88rem; font-weight: 500;
     color: var(--cream); outline: none; cursor: pointer;
     appearance: none; -webkit-appearance: none;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23B5A89F' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
     background-repeat: no-repeat; background-position: right 10px center;
   }
-  #mapCompactInStrip select option { background: var(--deep2); color: var(--cream); }
-  #mapStripNearMe {
-    background: transparent; border: 1.5px solid var(--gold);
-    color: var(--gold); border-radius: 8px;
-    padding: 0.45rem 0.85rem; font-family: 'DM Sans', sans-serif;
-    font-size: 0.8rem; font-weight: 500; cursor: pointer;
-    white-space: nowrap; display: flex; align-items: center; gap: 0.3rem;
-    transition: background 0.2s, color 0.2s; flex-shrink: 0;
+  .map-compact-search select option { background: var(--deep2); color: var(--cream); }
+  .map-compact-search .btn-nearby {
+    background: transparent; border: 1.5px solid var(--gold); color: var(--gold);
+    border-radius: 8px; padding: 0.5rem 0.9rem;
+    font-family: 'DM Sans', sans-serif; font-size: 0.82rem; font-weight: 500;
+    cursor: pointer; white-space: nowrap; flex-shrink: 0;
+    transition: background 0.18s, color 0.18s;
   }
-  #mapStripNearMe:hover { background: var(--gold); color: var(--deep); }
+  .map-compact-search .btn-nearby:hover { background: var(--gold); color: var(--deep); }
 
-  /* Map section fills the space below nav + toggle strip (64+48=112px) */
-  .map-view-active #mapSection {
-    position: fixed; top: 112px; left: 0; right: 0; bottom: 0; z-index: 50;
-  }
-  .map-view-active #mapSection .map-split { height: 100%; }
-  /* Hide in-section compact bar on desktop — we use the strip version */
-  @media (min-width: 769px) {
-    .map-section.active #mapCompactSearch { display: none !important; }
-  }
+  /* ─── SPLIT LAYOUT ─── */
+  .map-split { display: flex; width: 100%; flex: 1; min-height: 0; }
 
-  /* ─── MOBILE: full-screen fixed map (Realtor.ca style) ─── */
+  /* ─── CARD LIST (left 40%) ─── */
+  .map-card-list {
+    width: 40%; flex-shrink: 0; overflow-y: auto;
+    background: #fff; border-right: 1px solid var(--border);
+    padding: 0.75rem; display: flex; flex-direction: column; gap: 0.55rem;
+  }
+  .map-card-list::-webkit-scrollbar { width: 4px; }
+  .map-card-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* ─── MAP PANEL (right 60%) ─── */
+  .map-panel { flex: 1; position: relative; min-height: 0; }
+  #google-map { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+  /* ─── MAP CARD (desktop list) ─── */
+  .map-clinic-card {
+    background: #fff; border: 1.5px solid var(--border); border-radius: 10px;
+    padding: 0.8rem 0.9rem; cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s; flex-shrink: 0;
+  }
+  .map-clinic-card:hover { border-color: var(--rose-m); box-shadow: 0 2px 10px rgba(28,23,20,0.08); }
+  .map-clinic-card.highlighted { border-color: var(--rose) !important; box-shadow: 0 0 0 2px rgba(200,114,90,0.18), 0 3px 14px rgba(28,23,20,0.1); }
+
+  /* Card top row */
+  .map-card-top { display: flex; align-items: flex-start; gap: 0.55rem; margin-bottom: 0.45rem; }
+  .map-card-logo { width: 34px; height: 34px; border-radius: 6px; object-fit: contain; border: 1px solid var(--border); background: var(--cream); flex-shrink: 0; }
+  .map-card-logo-placeholder { width: 34px; height: 34px; border-radius: 6px; background: var(--warm); border: 1px solid var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 700; color: var(--muted); }
+  .map-card-name-block { flex: 1; min-width: 0; }
+  .map-card-name { font-family: 'Cormorant Garamond', serif; font-size: 1rem; font-weight: 500; color: var(--deep); line-height: 1.2; display: flex; align-items: center; gap: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .map-card-practitioner { font-size: 0.68rem; color: var(--muted); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* Rating badge top-right */
+  .map-card-rating-badge { flex-shrink: 0; text-align: center; padding-left: 0.4rem; }
+  .map-card-rating-score { font-family: 'Cormorant Garamond', serif; font-size: 1.3rem; font-weight: 500; line-height: 1; color: var(--deep); }
+  .map-card-rating-star { color: var(--gold); font-size: 0.62rem; line-height: 1; margin-top: 1px; }
+  .map-card-rating-reviews { font-size: 0.58rem; color: var(--muted); margin-top: 1px; white-space: nowrap; }
+
+  /* Pills */
+  .map-card-pills { display: flex; gap: 3px; flex-wrap: wrap; margin-bottom: 0.35rem; }
+
+  /* Location + price */
+  .map-card-meta { font-size: 0.68rem; color: var(--muted); margin-bottom: 0.3rem; }
+  .map-card-price { font-family: 'Cormorant Garamond', serif; font-size: 1.2rem; font-weight: 400; color: var(--deep); }
+  .map-card-price-unit { font-size: 0.65rem; color: var(--muted); }
+  .map-card-no-price { font-size: 0.72rem; color: var(--dim); font-style: italic; }
+
+  /* Footer */
+  .map-card-footer { display: flex; justify-content: flex-end; margin-top: 0.4rem; padding-top: 0.4rem; border-top: 1px solid var(--border); }
+  .map-card-view { font-size: 0.72rem; font-weight: 500; color: var(--rose); text-decoration: none; }
+  .map-list-status { text-align: center; padding: 2rem 1rem; font-size: 0.82rem; color: var(--muted); }
+
+  /* Loading + count badge */
+  .map-loading { position: absolute; inset: 0; background: rgba(250,247,242,0.9); display: flex; align-items: center; justify-content: center; font-size: 0.85rem; color: var(--muted); z-index: 5; transition: opacity 0.4s; }
+  .map-loading.hidden { opacity: 0; pointer-events: none; }
+  .map-result-count { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); background: rgba(28,23,20,0.82); backdrop-filter: blur(6px); color: #FAF7F2; border-radius: 20px; padding: 0.3rem 0.9rem; font-size: 0.72rem; font-weight: 500; letter-spacing: 0.04em; z-index: 5; pointer-events: none; white-space: nowrap; }
+
+  /* ─── MOBILE ─── */
   @media (max-width: 768px) {
-    /* When map is active, lock the page and float map over everything */
-    body.map-active { overflow: hidden; position: fixed; width: 100%; top: 0; }
-    body.map-active .map-section {
-      position: fixed; inset: 0; z-index: 150; display: block !important;
-    }
-    body.map-active nav { z-index: 160; }
-
-    /* Mobile map active: hide full search, show compact search, fix toggle strip */
-    body.map-active .search-wrap { display: none; }
-    body.map-active #viewToggleStrip {
-      position: fixed; left: 0; right: 0; z-index: 155;
-      top: 64px !important;
-      padding: 8px 16px !important;
-      justify-content: center !important;
-    }
-    /* Hide the strip compact search on mobile — use in-section one instead */
-    body.map-active #mapCompactInStrip { display: none !important; }
-    /* Show in-section compact search on mobile */
-    body.map-active .map-section.active #mapCompactSearch { display: flex !important; }
-    /* Map section sits below nav + toggle strip (64+48=112px) on mobile */
-    body.map-active .map-section {
-      top: 112px !important;
-    }
-
-    .map-split { flex-direction: column; height: 100%; max-height: none; min-height: 0; }
+    .map-section.active { height: calc(100svh - 64px); }
+    .map-split { flex-direction: column; }
     .map-card-list { display: none; }
     .map-panel { flex: 1; min-height: 0; position: relative; }
-
-    /* Bottom card carousel */
     .map-carousel {
       position: absolute; bottom: 0; left: 0; right: 0; z-index: 10;
       padding-bottom: env(safe-area-inset-bottom, 8px);
-      min-height: 60px;
     }
     .map-carousel-count {
       text-align: center; font-size: 0.7rem; color: #fff;
@@ -602,19 +456,20 @@
     .map-carousel-track {
       display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory;
       -webkit-overflow-scrolling: touch; scrollbar-width: none;
-      padding: 0 16px 14px;
+      padding: 0 16px 16px;
     }
     .map-carousel-track::-webkit-scrollbar { display: none; }
     .map-carousel-card {
-      flex: 0 0 82vw; max-width: 340px; scroll-snap-align: start;
-      background: #fff; border-radius: 14px; padding: 1rem 1.1rem;
-      box-shadow: 0 6px 24px rgba(0,0,0,0.22); cursor: pointer;
-      border: 1.5px solid transparent; transition: border-color 0.15s;
+      flex: 0 0 80vw; max-width: 320px; scroll-snap-align: start;
+      background: #fff; border-radius: 12px; padding: 0.9rem 1rem;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2); cursor: pointer;
+      border: 1.5px solid transparent; transition: border-color 0.15s; flex-shrink: 0;
     }
     .map-carousel-card.highlighted { border-color: var(--rose); }
   }
   @media (min-width: 769px) {
     .map-carousel { display: none !important; }
+    .map-section.active { height: calc(100vh - 130px); max-height: 860px; min-height: 520px; }
   }
 
   /* ─── SEARCH WIDGET ─── */
@@ -1908,8 +1763,8 @@
   }
 
 </style>
-  <!-- Google Maps JS (M18.5) -->
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAiUKLofb5BbJQab0CX4GtuHnLeE_jOwCc&libraries=marker&map_ids=9dfc7ec7cc449f8614cc8ddd"></script>
+  <!-- Google Maps JS (M18) -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAiUKLofb5BbJQab0CX4GtuHnLeE_jOwCc"></script>
   <script src="https://unpkg.com/@googlemaps/markerclusterer/dist/index.min.js"></script>
 
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -2092,55 +1947,6 @@
 
 <!-- M18: View toggle strip -->
 <div id="viewToggleStrip" style="background:var(--deep);padding:12px 5%;display:flex;justify-content:center;align-items:center;">
-  <!-- Compact search — shown inline here on desktop when map is active -->
-  <div id="mapCompactInStrip">
-    <select id="mapCompactInStripSel" onchange="applyMapCompactSearch()">
-      <option value="all">Anywhere in Canada</option>
-      <optgroup label="── Ontario ──────────────────"></optgroup>
-      <optgroup label="City of Toronto">
-        <option value="toronto">Toronto</option>
-        <option value="north-york">North York</option>
-        <option value="scarborough">Scarborough</option>
-        <option value="etobicoke">Etobicoke</option>
-      </optgroup>
-      <optgroup label="York Region">
-        <option value="markham">Markham</option>
-        <option value="vaughan">Vaughan</option>
-        <option value="richmond-hill">Richmond Hill</option>
-        <option value="thornhill">Thornhill</option>
-        <option value="newmarket">Newmarket</option>
-      </optgroup>
-      <optgroup label="Peel Region">
-        <option value="mississauga">Mississauga</option>
-        <option value="brampton">Brampton</option>
-      </optgroup>
-      <optgroup label="Durham Region">
-        <option value="oshawa">Oshawa</option>
-        <option value="ajax">Ajax</option>
-      </optgroup>
-      <optgroup label="Eastern Ontario">
-        <option value="ottawa">Ottawa</option>
-      </optgroup>
-      <optgroup label="── British Columbia ─────────"></optgroup>
-      <optgroup label="Metro Vancouver">
-        <option value="vancouver">Vancouver</option>
-        <option value="richmond">Richmond</option>
-        <option value="burnaby">Burnaby</option>
-        <option value="surrey">Surrey</option>
-      </optgroup>
-      <optgroup label="── Alberta ──────────────────"></optgroup>
-      <optgroup label="Alberta">
-        <option value="calgary">Calgary</option>
-        <option value="edmonton">Edmonton</option>
-      </optgroup>
-      <optgroup label="── Quebec ───────────────────"></optgroup>
-      <optgroup label="Quebec">
-        <option value="montreal">Montreal</option>
-        <option value="quebec-city">Quebec City</option>
-      </optgroup>
-    </select>
-    <button id="mapStripNearMe" onclick="useNearMe()">📍 Near Me</button>
-  </div>
   <div class="view-toggle" id="viewToggle">
     <button class="view-toggle-btn active" id="gridToggleBtn" onclick="switchView('grid')" title="Grid view">
       <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
@@ -2152,7 +1958,6 @@
     </button>
   </div>
 </div>
-
 
 <!-- PRICE COMPARISON SECTION -->
 <section class="comparison-section" id="prices">
@@ -2193,12 +1998,11 @@
   </div>
 </section>
 
-<!-- MAP VIEW SECTION -->
-<section class="map-section" id="mapSection" style="padding:0;display:flex;flex-direction:column;">
-
-  <!-- Compact search bar — shown whenever map view is active -->
-  <div id="mapCompactSearch">
-    <select id="mapCompactNeighbourhood" onchange="applyMapCompactSearch()">
+<!-- MAP VIEW SECTION (M18.5) -->
+<section class="map-section" id="mapSection" style="padding:0;">
+  <!-- Compact search — always visible inside map view -->
+  <div class="map-compact-search" id="mapCompactSearch">
+    <select id="mapCompactSel" onchange="onCompactSearch()">
       <option value="all">Anywhere in Canada</option>
       <optgroup label="── Ontario ──────────────────">
       </optgroup>
@@ -2222,9 +2026,19 @@
       <optgroup label="Durham Region">
         <option value="oshawa">Oshawa</option>
         <option value="ajax">Ajax</option>
+        <option value="whitby">Whitby</option>
+        <option value="pickering">Pickering</option>
+      </optgroup>
+      <optgroup label="Halton Region">
+        <option value="oakville">Oakville</option>
+        <option value="burlington">Burlington</option>
       </optgroup>
       <optgroup label="Eastern Ontario">
         <option value="ottawa">Ottawa</option>
+      </optgroup>
+      <optgroup label="Southwestern Ontario">
+        <option value="hamilton">Hamilton</option>
+        <option value="london">London</option>
       </optgroup>
       <optgroup label="── British Columbia ─────────">
       </optgroup>
@@ -2234,6 +2048,7 @@
         <option value="burnaby">Burnaby</option>
         <option value="surrey">Surrey</option>
         <option value="north-vancouver">North Vancouver</option>
+        <option value="coquitlam">Coquitlam</option>
       </optgroup>
       <optgroup label="── Alberta ──────────────────">
       </optgroup>
@@ -2248,16 +2063,15 @@
         <option value="quebec-city">Quebec City</option>
       </optgroup>
     </select>
-    <button id="mapCompactNearMe" onclick="useNearMe()">📍 Near Me</button>
+    <button class="btn-nearby" onclick="useNearMe()">📍 Near Me</button>
   </div>
 
-  <div class="map-split" id="mapSplit" style="flex:1;min-height:0;">
+  <div class="map-split" id="mapSplit">
     <!-- Left: scrollable card list (desktop only) -->
     <div class="map-card-list" id="mapCardList">
-      <div class="map-list-header" id="mapListHeader">All clinics</div>
-      <div class="map-list-status" id="mapListStatus">Loading…</div>
+      <div class="map-list-status" id="mapListStatus" style="padding-top:2rem;">Loading…</div>
     </div>
-    <!-- Right: Mapbox map -->
+    <!-- Right: map -->
     <div class="map-panel" id="mapPanel">
       <div id="google-map"></div>
       <div class="map-loading" id="mapLoading">Loading map…</div>
@@ -2784,14 +2598,10 @@ function applySearch() {
     else document.querySelector('.filter-btn')?.classList.add('active');
   }
 
-  syncCompactSearch(neighbourhood);
-
   if (currentView === 'map') {
-    // Expand card list when searching from main bar while in map view
-    const listEl = document.getElementById('mapCardList');
-    if (listEl) listEl.classList.remove('collapsed');
-    fetchMapClinics().then(clinics => { _allClinics = clinics; showPins(); }).catch(console.error);
-    return;
+    const sel = document.getElementById('mapCompactSel');
+    if (sel) sel.value = neighbourhood;
+    reloadMap(); return;
   }
 
   fetchPage(0, false);
@@ -2807,7 +2617,11 @@ function filterCards(filter, btn) {
   document.getElementById('searchClinicName').value = '';
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  if (currentView === 'map') { initMap(); return; }
+  if (currentView === 'map') {
+    const sel = document.getElementById('mapCompactSel');
+    if (sel) sel.value = filter;
+    reloadMap(); return;
+  }
   fetchPage(0, false);
 }
 
@@ -3898,24 +3712,28 @@ function handleClinicReport(e) {
 
 <script>
 // ═══════════════════════════════════════════
-// MILESTONE 18.5 — MAP VIEW (Google Maps)
+// MILESTONE 18.5 — MAP VIEW
+// Strategy: optimized:false markers always, viewport-only render, no clusterer lib
 // ═══════════════════════════════════════════
 
 const GMAPS_KEY = 'AIzaSyAiUKLofb5BbJQab0CX4GtuHnLeE_jOwCc';
-const GMAPS_MAP_ID = '9dfc7ec7cc449f8614cc8ddd';
-const SB_URL = 'https://vefldlqtyxdywbzdjuia.supabase.co';
-const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlZmxkbHF0eXhkeXdiemRqdWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNDAwMjgsImV4cCI6MjA4NzkxNjAyOH0.o582sXiUkB3j4FiHEA5rE3ABy_pdTeeK1PnNpNirHZA';
+const SB_URL    = 'https://vefldlqtyxdywbzdjuia.supabase.co';
+const SB_KEY    = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlZmxkbHF0eXhkeXdiemRqdWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNDAwMjgsImV4cCI6MjA4NzkxNjAyOH0.o582sXiUkB3j4FiHEA5rE3ABy_pdTeeK1PnNpNirHZA';
 
-let _map        = null;
-let _markers    = [];       // AdvancedMarkerElement array
-let _allClinics = [];
-let _activeCid  = null;
-let currentView = 'grid';
-// Province layer removed M18.5
-
-// ─── CREDENTIAL & LANGUAGE MAPS ────────────────────────────────
 const CRED_MAP = { physician:'MD', np:'NP', rn:'RN', img:'IMG', nd:'ND' };
 const LANG_MAP = { english:'EN', mandarin:'中文', cantonese:'粵', farsi:'فا', french:'FR', korean:'한', hindi:'हि', arabic:'عر', punjabi:'ਪੰ', portuguese:'PT' };
+
+let _map        = null;
+let _markers    = [];   // all current google.maps.Marker instances
+let _allClinics = [];   // full filtered set from Supabase
+let _activeCid  = null;
+let currentView = 'grid';
+
+const PIN_PATH = 'M 0,0 C -2,-20 -10,-22 -10,-30 A 10,10 0 1,1 10,-30 C 10,-22 2,-20 0,0 z';
+const PIN_IDLE   = { path: PIN_PATH, fillColor: '#1C1714', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 1.5, scale: 1,   labelOrigin: new google.maps.Point(0, -30) };
+const PIN_HOVER  = { path: PIN_PATH, fillColor: '#C8725A', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 1.5, scale: 1.35, labelOrigin: new google.maps.Point(0, -30) };
+const PIN_ACTIVE = { path: PIN_PATH, fillColor: '#C8725A', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2,   scale: 1.5,  labelOrigin: new google.maps.Point(0, -30) };
+const LABEL_STYLE = { color: '#fff', fontSize: '10px', fontWeight: '700', fontFamily: 'DM Sans, sans-serif' };
 
 // ─── VIEW TOGGLE ──────────────────────────────────────────────
 function switchView(view) {
@@ -3925,39 +3743,43 @@ function switchView(view) {
   const gridSec = document.getElementById('prices');
   const mapSec  = document.getElementById('mapSection');
   const moreSec = document.querySelector('.load-more-wrap');
-  const isMobile = window.matchMedia('(max-width: 768px)').matches;
-
   if (view === 'map') {
     gridSec.style.display = 'none';
     if (moreSec) moreSec.style.display = 'none';
     mapSec.classList.add('active');
-    document.documentElement.classList.add('map-view-active');
-    if (isMobile) {
-      const scrollY = window.scrollY;
-      document.body.style.top = '-' + scrollY + 'px';
-      document.body.classList.add('map-active');
-    }
+    // Sync compact dropdown to current filter
+    const sel = document.getElementById('mapCompactSel');
+    if (sel) sel.value = currentFilter || 'all';
     initMap();
   } else {
     mapSec.classList.remove('active');
-    document.documentElement.classList.remove('map-view-active');
     gridSec.style.display = '';
     if (moreSec) moreSec.style.display = '';
-    if (isMobile) {
-      const scrollY = Math.abs(parseInt(document.body.style.top || '0'));
-      document.body.classList.remove('map-active');
-      document.body.style.top = '';
-      window.scrollTo(0, scrollY);
-    }
     fetchPage(0, false);
   }
 }
 
-// ─── FETCH CLINICS ────────────────────────────────────────────
+// ─── COMPACT SEARCH ───────────────────────────────────────────
+function onCompactSearch() {
+  const val = document.getElementById('mapCompactSel').value;
+  currentFilter = val;
+  currentNameQuery = '';
+  // Sync main neighbourhood dropdown
+  const mainSel = document.getElementById('searchNeighbourhood');
+  if (mainSel) mainSel.value = val;
+  // Sync filter pills
+  document.querySelectorAll('.filter-btn').forEach(b => {
+    b.classList.toggle('active', b.getAttribute('onclick')?.includes(`'${val}'`) || (val === 'all' && b.getAttribute('onclick')?.includes("'all'")));
+  });
+  reloadMap();
+}
+
+// ─── FETCH ────────────────────────────────────────────────────
 async function fetchMapClinics() {
   let url = `${SB_URL}/rest/v1/clinics?select=id,name,neighbourhood,province,lat,lng,rating,reviews,claimed,price,logo_url,injector_credentials,languages&approved=eq.true&lat=not.is.null&order=rating.desc.nullslast&limit=10000`;
-  if (PROVINCE_MAP[currentFilter]) url += `&province=eq.${PROVINCE_MAP[currentFilter]}`;
-  else if (currentFilter !== 'all') {
+  if (PROVINCE_MAP[currentFilter]) {
+    url += `&province=eq.${PROVINCE_MAP[currentFilter]}`;
+  } else if (currentFilter && currentFilter !== 'all') {
     const hood = currentFilter.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
     url += `&neighbourhood=eq.${encodeURIComponent(hood)}`;
   }
@@ -3969,197 +3791,155 @@ async function fetchMapClinics() {
 // ─── INIT MAP ─────────────────────────────────────────────────
 async function initMap() {
   const loadingEl = document.getElementById('mapLoading');
+  if (loadingEl) { loadingEl.classList.remove('hidden'); }
 
   try { _allClinics = await fetchMapClinics(); }
   catch(e) { if (loadingEl) loadingEl.textContent = 'Unable to load clinics.'; return; }
 
   if (!_map) {
     _map = new google.maps.Map(document.getElementById('google-map'), {
-      zoom: 6,
-      center: { lat: 43.7, lng: -79.4 },
-      mapTypeControl: false,
-      streetViewControl: false,
-      fullscreenControl: false,
-      zoomControl: true,
+      zoom: 6, center: { lat: 43.7, lng: -79.4 },
+      mapTypeControl: false, streetViewControl: false,
+      fullscreenControl: false, zoomControl: true,
       zoomControlOptions: { position: google.maps.ControlPosition.RIGHT_BOTTOM },
       gestureHandling: 'greedy',
-      mapId: GMAPS_MAP_ID,
+      styles: [
+        { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] },
+        { featureType: 'transit', elementType: 'labels', stylers: [{ visibility: 'off' }] }
+      ]
     });
-    setupMapListeners();
+    _map.addListener('idle', onMapIdle);
   }
 
   if (loadingEl) loadingEl.classList.add('hidden');
 
-  // Expand card list and show pins directly
-  const listEl = document.getElementById('mapCardList');
-  if (listEl) listEl.classList.remove('collapsed');
-  showPins();
+  // Fit to clinics — idle fires after and renders markers + cards
+  if (_allClinics.length > 0) {
+    const bounds = new google.maps.LatLngBounds();
+    _allClinics.forEach(c => { if (c.lat && c.lng) bounds.extend({ lat: +c.lat, lng: +c.lng }); });
+    _map.fitBounds(bounds, { top: 50, right: 20, bottom: 80, left: 20 });
+  } else {
+    placeMarkers();
+    renderCardList();
+  }
 }
 
-// ─── SHOW PINS ────────────────────────────────────────────────
-function showPins() {
-  const bounds = new google.maps.LatLngBounds();
-  _allClinics.forEach(c => { if (c.lat && c.lng) bounds.extend({ lat: +c.lat, lng: +c.lng }); });
-  if (!_allClinics.length) { placeMarkers(); renderCardList(); return; }
-  // After fitBounds, idle fires → placeMarkers + renderCardList
-  _map.fitBounds(bounds, { top: 40, right: 20, bottom: 80, left: 20 });
+async function reloadMap() {
+  const loadingEl = document.getElementById('mapLoading');
+  if (loadingEl) loadingEl.classList.remove('hidden');
+  try { _allClinics = await fetchMapClinics(); }
+  catch(e) { if (loadingEl) loadingEl.textContent = 'Unable to load clinics.'; return; }
+  if (loadingEl) loadingEl.classList.add('hidden');
+  if (_allClinics.length > 0) {
+    const bounds = new google.maps.LatLngBounds();
+    _allClinics.forEach(c => { if (c.lat && c.lng) bounds.extend({ lat: +c.lat, lng: +c.lng }); });
+    _map.fitBounds(bounds, { top: 50, right: 20, bottom: 80, left: 20 });
+  } else {
+    clearMarkers();
+    renderCardList();
+  }
 }
 
-// ─── PLACE MARKERS (AdvancedMarkerElement) ─────────────────────
-let _clusterer = null;
+// ─── MAP IDLE ─────────────────────────────────────────────────
+let _lastZoom = null;
+function onMapIdle() {
+  const z = _map.getZoom();
+  placeMarkers();
+  renderCardList();
+  _lastZoom = z;
+}
 
+// ─── PLACE MARKERS ────────────────────────────────────────────
+// Always optimized:false so DOM events fire reliably.
+// At low zoom: cluster nearby coords into single pins with a count label.
+// At high zoom: one pin per clinic in viewport (max 300).
 function clearMarkers() {
-  if (_clusterer) { _clusterer.clearMarkers(); _clusterer = null; }
-  _markers.forEach(m => { m.map = null; });
+  _markers.forEach(m => m.setMap(null));
   _markers = [];
-}
-
-function makePinElement(color, scale, label) {
-  const div = document.createElement('div');
-  const s = 28 * scale;
-  div.style.cssText = `
-    width:${s}px; height:${s}px;
-    position:relative; cursor:pointer;
-    transition: transform 0.15s ease;
-    display:flex; align-items:center; justify-content:center;
-  `;
-  div.innerHTML = `
-    <svg width="${s}" height="${Math.round(s*1.35)}" viewBox="0 0 28 38" fill="none" xmlns="http://www.w3.org/2000/svg"
-         style="position:absolute;top:0;left:0;pointer-events:none;">
-      <path d="M14 0C6.268 0 0 6.268 0 14c0 9.333 14 24 14 24s14-14.667 14-24C28 6.268 21.732 0 14 0z"
-            fill="${color}" stroke="#fff" stroke-width="1.5"/>
-    </svg>
-    <span style="position:relative;z-index:1;color:#fff;font-family:'DM Sans',sans-serif;
-                 font-size:${Math.round(9*scale)}px;font-weight:700;line-height:1;
-                 padding-bottom:${Math.round(6*scale)}px;pointer-events:none;">
-      ${label || ''}
-    </span>
-  `;
-  return div;
 }
 
 function placeMarkers() {
   clearMarkers();
+  if (!_map || !_allClinics.length) return;
 
-  const { AdvancedMarkerElement } = google.maps.marker;
-  const zoom = _map.getZoom();
+  const zoom   = _map.getZoom();
   const bounds = _map.getBounds();
+  if (!bounds) return;
 
-  if (zoom >= 13) {
-    const visible = bounds
-      ? _allClinics.filter(c => c.lat && c.lng && bounds.contains({ lat: +c.lat, lng: +c.lng }))
-      : [];
+  const inView = _allClinics.filter(c => c.lat && c.lng && bounds.contains({ lat: +c.lat, lng: +c.lng }));
 
-    visible.forEach(c => {
-      const cid = String(c.id);
-      const el = makePinElement('#1C1714', 1, '');
-      const m = new AdvancedMarkerElement({
+  if (zoom >= 12) {
+    // High zoom — one pin per clinic, max 300
+    inView.slice(0, 300).forEach(c => {
+      const m = new google.maps.Marker({
         position: { lat: +c.lat, lng: +c.lng },
-        map: _map,
-        content: el,
-        title: c.name,
+        map: _map, optimized: false,
+        icon: PIN_IDLE,
+        label: { ...LABEL_STYLE, text: ' ' }
       });
-      m._cid = cid;
-      m._el  = el;
-
-      el.addEventListener('click', () => onPinClick(cid, m));
-      el.addEventListener('mouseenter', () => {
-        if (_activeCid !== cid) {
-          const path = el.querySelector('path');
-          if (path) path.setAttribute('fill', '#C8725A');
-          el.style.transform = 'scale(1.4)';
-          el.style.zIndex = '10';
-          highlightCard(cid, false);
-        }
-      });
-      el.addEventListener('mouseleave', () => {
-        if (_activeCid !== cid) {
-          const path = el.querySelector('path');
-          if (path) path.setAttribute('fill', '#1C1714');
-          el.style.transform = '';
-          el.style.zIndex = '';
-          document.querySelectorAll(`[data-cid="${cid}"]`).forEach(e => e.classList.remove('highlighted'));
-        }
-      });
+      m._cid = String(c.id);
+      wireMarkerEvents(m, c);
       _markers.push(m);
     });
-
   } else {
-    const allWithCoords = _allClinics.filter(c => c.lat && c.lng);
-    const gmMarkers = allWithCoords.map(c => {
-      const cid = String(c.id);
-      const el = makePinElement('#1C1714', 1, '');
-      const m = new AdvancedMarkerElement({
-        position: { lat: +c.lat, lng: +c.lng },
-        map: _map,
-        content: el,
-        title: c.name,
-      });
-      m._cid = cid;
-      m._el  = el;
-      // Full hover + click on clustered individual pins
-      el.addEventListener('click', () => onPinClick(cid, m));
-      el.addEventListener('mouseenter', () => {
-        if (_activeCid !== cid) {
-          const path = el.querySelector('path');
-          if (path) path.setAttribute('fill', '#C8725A');
-          el.style.transform = 'scale(1.4)';
-          el.style.zIndex = '10';
-          highlightCard(cid, false);
-        }
-      });
-      el.addEventListener('mouseleave', () => {
-        if (_activeCid !== cid) {
-          const path = el.querySelector('path');
-          if (path) path.setAttribute('fill', '#1C1714');
-          el.style.transform = '';
-          el.style.zIndex = '';
-          document.querySelectorAll(`[data-cid="${cid}"]`).forEach(e => e.classList.remove('highlighted'));
-        }
-      });
-      _markers.push(m);
-      return m;
+    // Low zoom — grid-cluster: bucket into cells, one pin per cell
+    const cellDeg = zoom >= 9 ? 0.15 : zoom >= 7 ? 0.5 : zoom >= 5 ? 1.5 : 4;
+    const cells = {};
+    inView.forEach(c => {
+      const key = `${Math.floor(+c.lat / cellDeg)},${Math.floor(+c.lng / cellDeg)}`;
+      if (!cells[key]) cells[key] = [];
+      cells[key].push(c);
     });
 
-    const renderer = {
-      render({ count, position }) {
-        const scale = count > 500 ? 1.5 : count > 50 ? 1.25 : 1;
-        const label = count > 999 ? Math.round(count/1000)+'k' : String(count);
-        const el = makePinElement('#1C1714', scale, label);
-        // Hover effect on cluster pins
-        el.addEventListener('mouseenter', () => {
-          const path = el.querySelector('path');
-          if (path) path.setAttribute('fill', '#C8725A');
-          el.style.transform = 'scale(1.15)';
-        });
-        el.addEventListener('mouseleave', () => {
-          const path = el.querySelector('path');
-          if (path) path.setAttribute('fill', '#1C1714');
-          el.style.transform = '';
-        });
-        const marker = new AdvancedMarkerElement({
-          position, map: _map, content: el,
-          zIndex: Number(google.maps.Marker.MAX_ZINDEX) + count
-        });
-        return marker;
-      }
-    };
+    Object.values(cells).forEach(group => {
+      const rep = group[0]; // use highest-rated (sorted by Supabase)
+      const count = group.length;
+      const label = count > 1
+        ? { ...LABEL_STYLE, text: count > 999 ? Math.round(count/1000)+'k' : String(count) }
+        : { ...LABEL_STYLE, text: ' ' };
+      const scale = count > 500 ? 1.5 : count > 50 ? 1.25 : count > 1 ? 1.1 : 1;
+      const icon = { ...PIN_IDLE, scale };
 
-    _clusterer = new markerClusterer.MarkerClusterer({
-      map: _map, markers: gmMarkers, renderer,
-      algorithmOptions: { maxZoom: 12, radius: 80 }
+      const m = new google.maps.Marker({
+        position: { lat: +rep.lat, lng: +rep.lng },
+        map: _map, optimized: false,
+        icon, label,
+        zIndex: count
+      });
+      m._cid   = String(rep.id);
+      m._count = count;
+      m._group = group;
+      wireMarkerEvents(m, rep, count > 1);
+      _markers.push(m);
     });
   }
 }
 
-function setupMapListeners() {
-  let lastZoom = null;
-  _map.addListener('idle', () => {
-    renderCardList();
-    const z = _map.getZoom();
-    if (z >= 13 || z !== lastZoom) {
-      lastZoom = z;
-      placeMarkers();
+function wireMarkerEvents(m, c, isCluster) {
+  const cid = String(c.id);
+  const idleIcon  = { ...PIN_IDLE,  scale: m.icon?.scale || 1, label: m.label };
+  const hoverIcon = { ...PIN_HOVER, scale: (m.icon?.scale || 1) * 1.2 };
+
+  m.addListener('mouseover', () => {
+    if (_activeCid !== cid) {
+      m.setIcon(hoverIcon);
+      if (!isCluster) highlightCard(cid, false);
+    }
+  });
+  m.addListener('mouseout', () => {
+    if (_activeCid !== cid) {
+      m.setIcon({ ...PIN_IDLE, scale: m.icon?.scale || 1 });
+      if (!isCluster) document.querySelectorAll(`[data-cid="${cid}"]`).forEach(el => el.classList.remove('highlighted'));
+    }
+  });
+  m.addListener('click', () => {
+    if (isCluster) {
+      // Zoom in on cluster click
+      const b = new google.maps.LatLngBounds();
+      m._group.forEach(g => b.extend({ lat: +g.lat, lng: +g.lng }));
+      _map.fitBounds(b, 80);
+    } else {
+      onPinClick(cid, m);
     }
   });
 }
@@ -4167,39 +3947,23 @@ function setupMapListeners() {
 // ─── PIN CLICK ────────────────────────────────────────────────
 function onPinClick(cid, marker) {
   const isMobile = window.matchMedia('(hover: none)').matches;
-
   // Reset all pins
   _markers.forEach(m => {
-    if (m._el) {
-      const path = m._el.querySelector('path');
-      if (path) path.setAttribute('fill', '#1C1714');
-      m._el.style.transform = '';
-      m._el.style.zIndex = '';
-    }
+    if (m._cid === _activeCid) m.setIcon({ ...PIN_IDLE, scale: m.icon?.scale || 1 });
   });
-
   _activeCid = cid;
-
-  // Highlight clicked pin
-  if (marker && marker._el) {
-    const path = marker._el.querySelector('path');
-    if (path) path.setAttribute('fill', '#C8725A');
-    marker._el.style.transform = 'scale(1.4)';
-    marker._el.style.zIndex = '20';
-  }
-
+  if (marker) marker.setIcon(PIN_ACTIVE);
   highlightCard(cid, true);
-
-  if (!isMobile) {
-    openMapModal(cid);
-  }
+  const clinic = _allClinics.find(c => String(c.id) === cid);
+  if (clinic) _map.panTo({ lat: +clinic.lat, lng: +clinic.lng });
+  if (!isMobile) openMapModal(cid);
 }
 
 // ─── OPEN MODAL ───────────────────────────────────────────────
 async function openMapModal(cid) {
   const sid = String(cid);
   const existing = currentPageClinics.find(c => String(c.id) === sid);
-  if (existing && existing.neighbourhood !== undefined) { openClinicModal(existing.id); return; }
+  if (existing?.neighbourhood !== undefined) { openClinicModal(existing.id); return; }
   try {
     const r = await fetch(`${SB_URL}/rest/v1/clinics?select=*&id=eq.${sid}&limit=1`,
       { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } });
@@ -4210,7 +3974,6 @@ async function openMapModal(cid) {
         full.id = rows[0].id;
         currentPageClinics.push(full);
         openClinicModal(full.id);
-        return;
       }
     }
   } catch(e) { console.error('openMapModal:', e); }
@@ -4218,83 +3981,61 @@ async function openMapModal(cid) {
 
 // ─── RENDER CARD LIST ─────────────────────────────────────────
 function renderCardList() {
-  if (!_map) return;
-  const bounds = _map.getBounds();
-
-  // Card list: show all filtered clinics (Supabase already filtered by neighbourhood/province)
-  // Don't re-filter by bounds — that would drop clinics just outside the initial viewport
-  const listClinics = _allClinics
+  const sorted = [..._allClinics]
     .filter(c => c.lat && c.lng)
-    .sort((a, b) => ((b.claimed ? 2 : 0) + (b.price != null ? 1 : 0)) - ((a.claimed ? 2 : 0) + (a.price != null ? 1 : 0)));
+    .sort((a, b) => ((b.claimed?2:0)+(b.price!=null?1:0)) - ((a.claimed?2:0)+(a.price!=null?1:0)));
 
-  // Count badge: show how many are in the current viewport
-  const inView = bounds
-    ? listClinics.filter(c => bounds.contains({ lat: +c.lat, lng: +c.lng }))
-    : listClinics;
+  // Count badge
+  const bounds = _map?.getBounds();
+  const inView = bounds ? sorted.filter(c => bounds.contains({ lat:+c.lat, lng:+c.lng })) : sorted;
   const countEl = document.getElementById('mapResultCount');
   if (countEl) {
-    const label = currentFilter !== 'all'
-      ? listClinics.length.toLocaleString() + ' clinics'
-      : inView.length.toLocaleString() + ' clinics in view';
-    countEl.textContent = label;
+    countEl.textContent = sorted.length.toLocaleString() + ' clinics';
     countEl.style.display = 'block';
   }
 
+  // Desktop list
   const listEl = document.getElementById('mapCardList');
-  if (listEl) listEl.innerHTML = listClinics.length === 0
-    ? '<div class="map-list-status">No clinics found.<br>Try a different area.</div>'
-    : listClinics.map(c => buildCard(c, false)).join('');
+  if (listEl) listEl.innerHTML = sorted.length === 0
+    ? '<div class="map-list-status">No clinics found. Try a different area.</div>'
+    : sorted.map(c => buildCard(c, false)).join('');
 
+  // Mobile carousel
   const track = document.getElementById('mapCarouselTrack');
   const countC = document.getElementById('mapCarouselCount');
   if (track) {
-    if (countC) countC.textContent = listClinics.length.toLocaleString() + ' clinics';
-    track.innerHTML = listClinics.length === 0
-      ? '<div style="padding:1rem;font-size:0.82rem;color:var(--muted);">No clinics found</div>'
-      : listClinics.map(c => buildCard(c, true)).join('');
+    if (countC) countC.textContent = inView.length.toLocaleString() + ' clinics in view';
+    track.innerHTML = inView.length === 0
+      ? '<div style="padding:1rem;font-size:0.82rem;color:var(--muted);">No clinics in view</div>'
+      : inView.map(c => buildCard(c, true)).join('');
   }
 }
 
 // ─── BUILD CARD ───────────────────────────────────────────────
 function buildCard(c, carousel) {
   const cls = carousel ? 'map-carousel-card' : 'map-clinic-card';
-  const hasPrice = c.price != null;
-
-  // Normalise arrays
   const creds = Array.isArray(c.injector_credentials) ? c.injector_credentials
-    : (typeof c.injector_credentials === 'string' ? (() => { try { return JSON.parse(c.injector_credentials); } catch(e) { return []; } })() : []);
+    : (() => { try { return JSON.parse(c.injector_credentials||'[]'); } catch(e){return[];} })();
   const langs = Array.isArray(c.languages) ? c.languages
-    : (typeof c.languages === 'string' ? (() => { try { return JSON.parse(c.languages); } catch(e) { return []; } })() : []);
+    : (() => { try { return JSON.parse(c.languages||'[]'); } catch(e){return[];} })();
 
-  const credPills = creds.slice(0,2).map(v => `<span class="pill pill-cred">${CRED_MAP[v] || v.toUpperCase()}</span>`).join('');
-  const langPills = langs.slice(0,2).map(v => `<span class="pill pill-lang">${LANG_MAP[v] || v}</span>`).join('');
-  const pillsHTML = (credPills || langPills) ? `<div class="map-card-pills">${credPills}${langPills}</div>` : '';
+  const credPills = creds.slice(0,2).map(v=>`<span class="pill pill-cred">${CRED_MAP[v]||v.toUpperCase()}</span>`).join('');
+  const langPills = langs.slice(0,2).map(v=>`<span class="pill pill-lang">${LANG_MAP[v]||v}</span>`).join('');
+  const pillsHTML = (credPills||langPills) ? `<div class="map-card-pills">${credPills}${langPills}</div>` : '';
 
   const logoHTML = c.logo_url
-    ? `<img class="map-card-logo" src="${c.logo_url}" alt="${c.name}" onerror="this.style.display='none'">`
+    ? `<img class="map-card-logo" src="${c.logo_url}" alt="" onerror="this.style.display='none'">`
     : `<div class="map-card-logo-placeholder">${c.name.charAt(0)}</div>`;
 
-  const verifiedBadge = c.claimed
-    ? `<span class="verified-tick" style="width:13px;height:13px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;background:#3D7A55;border-radius:50%;margin-left:2px;"><svg viewBox="0 0 12 12" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 6 5 9 10 3"/></svg></span>`
+  const tick = c.claimed
+    ? `<span class="verified-tick" style="width:12px;height:12px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;background:#3D7A55;border-radius:50%;"><svg viewBox="0 0 12 12" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 6 5 9 10 3"/></svg></span>`
     : '';
 
-  // Lead practitioner (pulled from cached practitioners if available)
-  const practitioners = Array.isArray(c.practitioners) ? c.practitioners : [];
-  const leadPractitioner = practitioners[0];
-  const practHTML = leadPractitioner
-    ? `<div class="map-card-practitioner">${leadPractitioner.name}${leadPractitioner.designation ? ' · ' + leadPractitioner.designation : ''}</div>`
-    : '';
-
-  const priceHTML = hasPrice
-    ? `<div class="map-card-price-row"><span class="map-card-price">$${c.price}</span> <span class="map-card-price-unit">/ unit · Botox</span></div>`
-    : `<div class="map-card-no-price">Price not listed</div>`;
-
-  const ratingBadge = `
-    <div class="map-card-rating-badge">
-      <div class="map-card-rating-score">${c.rating ? c.rating.toFixed(1) : '—'}</div>
-      <div class="map-card-rating-star">★★★★★</div>
-      <div class="map-card-rating-reviews">${(c.reviews||0).toLocaleString()} reviews</div>
-    </div>`;
+  const rating = c.rating ? c.rating.toFixed(1) : '—';
+  const reviews = (c.reviews||0).toLocaleString();
+  const priceHTML = c.price != null
+    ? `<div style="margin-bottom:0.3rem;"><span class="map-card-price">$${c.price}</span> <span class="map-card-price-unit">/ unit · Botox</span></div>`
+    : `<div class="map-card-no-price" style="margin-bottom:0.3rem;">Price not listed</div>`;
 
   return `<div class="${cls}" data-cid="${c.id}"
     onclick="onCardClick('${c.id}')"
@@ -4303,13 +4044,16 @@ function buildCard(c, carousel) {
     <div class="map-card-top">
       ${logoHTML}
       <div class="map-card-name-block">
-        <div class="map-card-name">${c.name}${verifiedBadge}</div>
-        ${practHTML}
+        <div class="map-card-name">${c.name}${tick}</div>
+        <div class="map-card-meta">📍 ${c.neighbourhood||''}${c.province?', '+c.province:''}</div>
       </div>
-      ${ratingBadge}
+      <div class="map-card-rating-badge">
+        <div class="map-card-rating-score">${rating}</div>
+        <div class="map-card-rating-star">★★★★★</div>
+        <div class="map-card-rating-reviews">${reviews} reviews</div>
+      </div>
     </div>
     ${pillsHTML}
-    <div class="map-card-meta">📍 ${c.neighbourhood || ''}${c.province ? ', '+c.province : ''}</div>
     ${priceHTML}
     <div class="map-card-footer">
       <a href="#" class="map-card-view" onclick="event.stopPropagation();openMapModal('${c.id}')">View Profile →</a>
@@ -4317,99 +4061,37 @@ function buildCard(c, carousel) {
   </div>`;
 }
 
-// ─── CARD → PIN INTERACTIONS ──────────────────────────────────
+// ─── CARD ↔ PIN SYNC ──────────────────────────────────────────
 function onCardClick(cid) {
   const isMobile = window.matchMedia('(hover: none)').matches;
   _activeCid = String(cid);
-
-  _markers.forEach(m => {
-    if (m._el) {
-      const path = m._el.querySelector('path');
-      if (path) path.setAttribute('fill', '#1C1714');
-      m._el.style.transform = '';
-      m._el.style.zIndex = '';
-    }
-  });
-
-  const marker = findMarker(cid);
-  if (marker && marker._el) {
-    const path = marker._el.querySelector('path');
-    if (path) path.setAttribute('fill', '#C8725A');
-    marker._el.style.transform = 'scale(1.4)';
-    marker._el.style.zIndex = '20';
-  }
-
-  const clinic = _allClinics.find(c => String(c.id) === String(cid));
+  _markers.forEach(m => { if (m._cid === cid) m.setIcon(PIN_ACTIVE); else m.setIcon({...PIN_IDLE, scale: m.icon?.scale||1}); });
+  const clinic = _allClinics.find(c => String(c.id) === cid);
   if (clinic && _map) _map.panTo({ lat: +clinic.lat, lng: +clinic.lng });
-
-  if (!isMobile) openMapModal(String(cid));
+  if (!isMobile) openMapModal(cid);
 }
 
 function highlightCard(cid, scroll) {
-  document.querySelectorAll('.map-clinic-card, .map-carousel-card').forEach(card => {
-    const active = card.dataset.cid == cid;
-    card.classList.toggle('highlighted', active);
-    if (active && scroll) card.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  document.querySelectorAll('.map-clinic-card,.map-carousel-card').forEach(el => {
+    const active = el.dataset.cid === cid;
+    el.classList.toggle('highlighted', active);
+    if (active && scroll) el.scrollIntoView({ behavior:'smooth', block:'nearest', inline:'center' });
   });
 }
 
 function highlightPinById(cid) {
-  const m = findMarker(cid);
-  if (m && m._el && _activeCid !== String(cid)) {
-    const path = m._el.querySelector('path');
-    if (path) path.setAttribute('fill', '#C8725A');
-    m._el.style.transform = 'scale(1.4)';
-    m._el.style.zIndex = '10';
+  const m = _markers.find(m => m._cid === cid && !m._count);
+  if (m && _activeCid !== cid) {
+    m.setIcon(PIN_HOVER);
     highlightCard(cid, false);
   }
 }
 
 function unhighlightPinById(cid) {
-  if (_activeCid === String(cid)) return;
-  const m = findMarker(cid);
-  if (m && m._el) {
-    const path = m._el.querySelector('path');
-    if (path) path.setAttribute('fill', '#1C1714');
-    m._el.style.transform = '';
-    m._el.style.zIndex = '';
-  }
+  if (_activeCid === cid) return;
+  const m = _markers.find(m => m._cid === cid && !m._count);
+  if (m) m.setIcon({...PIN_IDLE, scale: m.icon?.scale||1});
   document.querySelectorAll(`[data-cid="${cid}"]`).forEach(el => el.classList.remove('highlighted'));
-}
-
-function findMarker(cid) {
-  return _markers.find(m => m._cid == cid) || null;
-}
-
-// ─── COMPACT MAP SEARCH ──────────────────────────────────────
-function applyMapCompactSearch() {
-  // Read from whichever compact select is visible
-  const stripVal = document.getElementById('mapCompactInStripSel')?.value;
-  const mobileVal = document.getElementById('mapCompactNeighbourhood')?.value;
-  const val = (stripVal !== undefined ? stripVal : mobileVal) || 'all';
-  syncCompactSearch(val);
-  // Sync with main search select
-  const mainSel = document.getElementById('searchNeighbourhood');
-  if (mainSel) mainSel.value = val;
-  currentFilter = val;
-  currentNameQuery = '';
-  currentInjectorFilter = 'all';
-
-  // Expand card list
-  const listEl = document.getElementById('mapCardList');
-  if (listEl) listEl.classList.remove('collapsed');
-
-  fetchMapClinics().then(clinics => {
-    _allClinics = clinics;
-    showPins();
-  }).catch(console.error);
-}
-
-// Keep compact dropdown in sync when main search changes
-function syncCompactSearch(val) {
-  ['mapCompactNeighbourhood', 'mapCompactInStripSel'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = val;
-  });
 }
 
 // ─── STUBS ────────────────────────────────────────────────────
