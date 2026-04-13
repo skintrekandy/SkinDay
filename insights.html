@@ -990,70 +990,53 @@ async function submitLead() {
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-  (async function loadBrandChart() {
-    try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/clinic_prices?select=toxin`, {
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
-      });
-      const rows = await res.json();
+(async function loadBrandChart() {
+  const SB_URL = 'https://vefldlqtyxdywbzdjuia.supabase.co';
+  const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlZmxkbHF0eXhkeXdiemRqdWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNDAwMjgsImV4cCI6MjA4NzkxNjAyOH0.o582sXiUkB3j4FiHEA5rE3ABy_pdTeeK1PnNpNirHZA';
 
-      const BRAND_LABELS = {
-        'botox': 'Botox', 'dysport': 'Dysport', 'xeomin': 'Xeomin',
-        'nuceiva': 'Nuceiva', 'letybo': 'Letybo'
-      };
-      const BRAND_COLORS = {
-        'botox':   '#C9A96E',
-        'dysport': '#C8725A',
-        'xeomin':  '#8C7B6B',
-        'nuceiva': '#B5A898',
-        'letybo':  '#6B8C7B',
-      };
+  const BRAND_LABELS  = { botox:'Botox', dysport:'Dysport', xeomin:'Xeomin', nuceiva:'Nuceiva', letybo:'Letybo' };
+  const BRAND_COLORS  = { botox:'#C9A96E', dysport:'#C8725A', xeomin:'#8C7B6B', nuceiva:'#B5A898', letybo:'#6B8C7B' };
 
-      const counts = {};
-      rows.forEach(function(r) {
-        const t = (r.toxin || '').toLowerCase().trim();
-        if (BRAND_LABELS[t]) counts[t] = (counts[t] || 0) + 1;
-      });
+  try {
+    const res  = await fetch(`${SB_URL}/rest/v1/clinic_prices?select=toxin`, {
+      headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` }
+    });
+    const rows = await res.json();
 
-      const brands = Object.keys(counts).sort((a,b) => counts[b] - counts[a]);
-      if (!brands.length) return;
+    const counts = {};
+    rows.forEach(r => {
+      const t = (r.toxin || '').toLowerCase().trim();
+      if (BRAND_LABELS[t]) counts[t] = (counts[t] || 0) + 1;
+    });
 
-      const total = brands.reduce((s,b) => s + counts[b], 0);
-      const data   = brands.map(b => counts[b]);
-      const colors = brands.map(b => BRAND_COLORS[b] || '#B5A898');
-      const labels = brands.map(b => BRAND_LABELS[b]);
+    const brands = Object.keys(counts).sort((a,b) => counts[b] - counts[a]);
+    if (!brands.length) return;
 
-      new Chart(document.getElementById('brandDonut'), {
-        type: 'doughnut',
-        data: {
-          labels,
-          datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor: '#FAF7F2', hoverOffset: 8 }]
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          cutout: '62%',
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              callbacks: {
-                label: ctx => `${ctx.label}: ${ctx.raw} clinics (${Math.round(ctx.raw/total*100)}%)`
-              }
-            }
-          }
+    const total  = brands.reduce((s,b) => s + counts[b], 0);
+
+    new Chart(document.getElementById('brandDonut'), {
+      type: 'doughnut',
+      data: {
+        labels: brands.map(b => BRAND_LABELS[b]),
+        datasets: [{ data: brands.map(b => counts[b]), backgroundColor: brands.map(b => BRAND_COLORS[b]), borderWidth: 2, borderColor: '#FAF7F2', hoverOffset: 8 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: '62%',
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: ctx => `${ctx.label}: ${ctx.raw} clinics (${Math.round(ctx.raw/total*100)}%)` } }
         }
-      });
+      }
+    });
 
-      const legend = document.getElementById('brandLegend');
-      brands.forEach(b => {
-        const pct = Math.round(counts[b]/total*100);
-        const span = document.createElement('span');
-        span.style.cssText = 'display:flex;align-items:center;gap:6px;';
-        span.innerHTML = `<span style="width:10px;height:10px;border-radius:2px;background:${BRAND_COLORS[b]};display:inline-block;flex-shrink:0;"></span>${BRAND_LABELS[b]} — ${pct}%`;
-        legend.appendChild(span);
-      });
-    } catch(e) {}
-  })();
-});
+    const legend = document.getElementById('brandLegend');
+    brands.forEach(b => {
+      const span = document.createElement('span');
+      span.style.cssText = 'display:flex;align-items:center;gap:6px;';
+      span.innerHTML = `<span style="width:10px;height:10px;border-radius:2px;background:${BRAND_COLORS[b]};display:inline-block;flex-shrink:0;"></span>${BRAND_LABELS[b]} — ${Math.round(counts[b]/total*100)}%`;
+      legend.appendChild(span);
+    });
+  } catch(e) { console.error('Brand chart error:', e); }
+})();
 </body>
 </html>
