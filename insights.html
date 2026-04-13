@@ -9,6 +9,11 @@
   <meta property="og:description" content="Canada's most comprehensive cosmetic clinic dataset. Clinic counts by province, price ranges by market, credential breakdowns, and density leaders." />
   <meta property="og:url" content="https://skinday.ca/insights" />
 
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/favicon-32x32.png" type="image/png" sizes="32x32">
+  <link rel="icon" href="/favicon-16x16.png" type="image/png" sizes="16x16">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
@@ -507,8 +512,7 @@
 <nav>
   <a href="/" class="nav-logo">Skin<span>Day</span></a>
   <ul class="nav-links">
-    <li><a href="/">Directory</a></li>
-    <li><a href="/guide/botox-cost-toronto">Botox Guide</a></li>
+  </ul>
 
   </ul>
 </nav>
@@ -820,11 +824,26 @@
   <h2 class="section-title reveal">Neurotoxin brand share — Canada</h2>
   <p class="section-sub reveal">Among clinics with verified pricing data, which brands dominate? Botox leads nationally, but challenger brands are gaining share in competitive markets.</p>
 
-  <div style="position:relative;width:100%;max-width:560px;margin:0 auto 2rem;height:300px;" class="reveal">
-    <canvas id="brandDonut" role="img" aria-label="Donut chart showing neurotoxin brand share across Canada from SkinDay clinic pricing data.">Brand share data loading…</canvas>
+  <!-- BRAND CHART: pure SVG, no external deps -->
+  <div style="display:flex;flex-wrap:wrap;gap:2rem;align-items:center;justify-content:center;max-width:600px;margin:0 auto 1.5rem;" class="reveal">
+    <svg viewBox="0 0 300 300" width="240" height="240" role="img" aria-label="Donut chart of neurotoxin brand share in Canada">
+      <title>Neurotoxin brand share Canada</title>
+      <path d="M 150.00 30.00 A 120 120 0 0 1 199.99 259.09 L 179.16 213.64 A 70 70 0 0 0 150.00 80.00 Z" fill="#C9A96E" stroke="#FAF7F2" stroke-width="2"/>
+      <path d="M 199.99 259.09 A 120 120 0 0 1 34.42 117.74 L 82.58 131.18 A 70 70 0 0 0 179.16 213.64 Z" fill="#7DB88A" stroke="#FAF7F2" stroke-width="2"/>
+      <path d="M 34.42 117.74 A 120 120 0 0 1 84.95 49.16 L 112.05 91.18 A 70 70 0 0 0 82.58 131.18 Z" fill="#5B8DB8" stroke="#FAF7F2" stroke-width="2"/>
+      <path d="M 84.95 49.16 A 120 120 0 0 1 141.98 30.27 L 145.32 80.16 A 70 70 0 0 0 112.05 91.18 Z" fill="#C8725A" stroke="#FAF7F2" stroke-width="2"/>
+      <path d="M 141.98 30.27 A 120 120 0 0 1 150.00 30.00 L 150.00 80.00 A 70 70 0 0 0 145.32 80.16 Z" fill="#9AC4D4" stroke="#FAF7F2" stroke-width="2"/>
+      <text x="150" y="141" text-anchor="middle" font-family="Cormorant Garamond, serif" font-size="16" fill="#1C1714">Botox</text>
+      <text x="150" y="162" text-anchor="middle" font-family="DM Sans, sans-serif" font-size="11" fill="rgba(28,23,20,0.5)">Brands</text>
+    </svg>
+    <div style="display:flex;flex-direction:column;gap:10px;min-width:180px;font-size:0.85rem;color:var(--deep);">
+      <div style="display:flex;align-items:center;gap:8px;"><span style="width:10px;height:10px;border-radius:2px;background:#C9A96E;flex-shrink:0;display:inline-block;"></span><span>Botox</span><span style="margin-left:auto;font-weight:500;">43%</span><span style="color:rgba(28,23,20,0.45);font-size:0.78rem;">(284)</span></div>
+      <div style="display:flex;align-items:center;gap:8px;"><span style="width:10px;height:10px;border-radius:2px;background:#7DB88A;flex-shrink:0;display:inline-block;"></span><span>Dysport</span><span style="margin-left:auto;font-weight:500;">36%</span><span style="color:rgba(28,23,20,0.45);font-size:0.78rem;">(238)</span></div>
+      <div style="display:flex;align-items:center;gap:8px;"><span style="width:10px;height:10px;border-radius:2px;background:#5B8DB8;flex-shrink:0;display:inline-block;"></span><span>Xeomin</span><span style="margin-left:auto;font-weight:500;">12%</span><span style="color:rgba(28,23,20,0.45);font-size:0.78rem;">(76)</span></div>
+      <div style="display:flex;align-items:center;gap:8px;"><span style="width:10px;height:10px;border-radius:2px;background:#C8725A;flex-shrink:0;display:inline-block;"></span><span>Nuceiva</span><span style="margin-left:auto;font-weight:500;">8%</span><span style="color:rgba(28,23,20,0.45);font-size:0.78rem;">(53)</span></div>
+      <div style="display:flex;align-items:center;gap:8px;"><span style="width:10px;height:10px;border-radius:2px;background:#9AC4D4;flex-shrink:0;display:inline-block;"></span><span>Letybo</span><span style="margin-left:auto;font-weight:500;">1%</span><span style="color:rgba(28,23,20,0.45);font-size:0.78rem;">(7)</span></div>
+    </div>
   </div>
-
-  <div id="brandLegend" class="reveal" style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-bottom:1.5rem;font-size:0.82rem;color:var(--deep);"></div>
 
 </section>
 
@@ -988,55 +1007,5 @@ async function submitLead() {
 }
 </script>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script>
-(async function loadBrandChart() {
-  const SB_URL = 'https://vefldlqtyxdywbzdjuia.supabase.co';
-  const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlZmxkbHF0eXhkeXdiemRqdWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNDAwMjgsImV4cCI6MjA4NzkxNjAyOH0.o582sXiUkB3j4FiHEA5rE3ABy_pdTeeK1PnNpNirHZA';
-
-  const BRAND_LABELS  = { botox:'Botox', dysport:'Dysport', xeomin:'Xeomin', nuceiva:'Nuceiva', letybo:'Letybo' };
-  const BRAND_COLORS  = { botox:'#C9A96E', dysport:'#C8725A', xeomin:'#8C7B6B', nuceiva:'#B5A898', letybo:'#6B8C7B' };
-
-  try {
-    const res  = await fetch(`${SB_URL}/rest/v1/clinic_prices?select=toxin`, {
-      headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` }
-    });
-    const rows = await res.json();
-
-    const counts = {};
-    rows.forEach(r => {
-      const t = (r.toxin || '').toLowerCase().trim();
-      if (BRAND_LABELS[t]) counts[t] = (counts[t] || 0) + 1;
-    });
-
-    const brands = Object.keys(counts).sort((a,b) => counts[b] - counts[a]);
-    if (!brands.length) return;
-
-    const total  = brands.reduce((s,b) => s + counts[b], 0);
-
-    new Chart(document.getElementById('brandDonut'), {
-      type: 'doughnut',
-      data: {
-        labels: brands.map(b => BRAND_LABELS[b]),
-        datasets: [{ data: brands.map(b => counts[b]), backgroundColor: brands.map(b => BRAND_COLORS[b]), borderWidth: 2, borderColor: '#FAF7F2', hoverOffset: 8 }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false, cutout: '62%',
-        plugins: {
-          legend: { display: false },
-          tooltip: { callbacks: { label: ctx => `${ctx.label}: ${ctx.raw} clinics (${Math.round(ctx.raw/total*100)}%)` } }
-        }
-      }
-    });
-
-    const legend = document.getElementById('brandLegend');
-    brands.forEach(b => {
-      const span = document.createElement('span');
-      span.style.cssText = 'display:flex;align-items:center;gap:6px;';
-      span.innerHTML = `<span style="width:10px;height:10px;border-radius:2px;background:${BRAND_COLORS[b]};display:inline-block;flex-shrink:0;"></span>${BRAND_LABELS[b]} — ${Math.round(counts[b]/total*100)}%`;
-      legend.appendChild(span);
-    });
-  } catch(e) { console.error('Brand chart error:', e); }
-})();
 </body>
 </html>
