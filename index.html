@@ -593,6 +593,20 @@
       appearance: none; -webkit-appearance: none;
     }
     .search-field select option { color: var(--deep); background: var(--cream); }
+    /* Thin scrollbar on neighbourhood dropdown — Realtor.ca style */
+    #searchNeighbourhood, #mapCompactSel {
+      scrollbar-width: thin;
+      scrollbar-color: var(--gold) transparent;
+    }
+    #searchNeighbourhood::-webkit-scrollbar,
+    #mapCompactSel::-webkit-scrollbar { width: 5px; }
+    #searchNeighbourhood::-webkit-scrollbar-track,
+    #mapCompactSel::-webkit-scrollbar-track { background: transparent; }
+    #searchNeighbourhood::-webkit-scrollbar-thumb,
+    #mapCompactSel::-webkit-scrollbar-thumb {
+      background: var(--gold);
+      border-radius: 3px;
+    }
     /* Province scroll indicator badge */
     .neighbourhood-wrap { position: relative; display: flex; align-items: center; gap: 0.5rem; }
     .province-badge {
@@ -2598,31 +2612,7 @@ function buildApiUrl(page) {
   } else if (PROVINCE_MAP[currentFilter]) {
     params.set('province', PROVINCE_MAP[currentFilter]);
   } else if (currentFilter !== 'all') {
-    const SLUG_TO_DB = {
-      'toronto': 'Toronto', 'north-york': 'North York', 'scarborough': 'Scarborough',
-      'etobicoke': 'Etobicoke', 'mississauga': 'Mississauga', 'brampton': 'Brampton',
-      'markham': 'Markham', 'vaughan': 'Vaughan', 'woodbridge': 'Woodbridge',
-      'richmond-hill': 'Richmond Hill', 'thornhill': 'Thornhill', 'aurora': 'Aurora',
-      'newmarket': 'Newmarket', 'oshawa': 'Oshawa', 'whitby': 'Whitby',
-      'ajax': 'Ajax', 'pickering': 'Pickering', 'oakville': 'Oakville',
-      'burlington': 'Burlington', 'milton': 'Milton', 'ottawa': 'Ottawa',
-      'hamilton': 'Hamilton', 'london': 'London',
-      'vancouver': 'Vancouver', 'richmond': 'Richmond', 'burnaby': 'Burnaby',
-      'surrey': 'Surrey', 'coquitlam': 'Coquitlam', 'north-vancouver': 'North Vancouver',
-      'port-coquitlam': 'Port Coquitlam', 'west-vancouver': 'West Vancouver',
-      'delta': 'Delta', 'port-moody': 'Port Moody', 'white-rock': 'White Rock',
-      'langley': 'Langley', 'abbotsford': 'Abbotsford',
-      'calgary': 'Calgary', 'edmonton': 'Edmonton',
-      'montreal': 'Montreal', 'laval': 'Laval', 'quebec-city': 'Quebec City',
-      'winnipeg': 'Winnipeg',
-      'saskatoon': 'Saskatoon', 'regina': 'Regina',
-      'halifax': 'Halifax',
-      'moncton': 'Moncton', 'fredericton': 'Fredericton', 'saint-john': 'Saint John',
-      'charlottetown': 'Charlottetown',
-      'st-johns': 'St. Johns',
-      'whitehorse': 'Whitehorse', 'yellowknife': 'Yellowknife',
-    };
-    params.set('neighbourhood', SLUG_TO_DB[currentFilter] || currentFilter);
+    params.set('neighbourhood', currentFilter);
   }
 
   if (currentInjectorFilter !== 'all') {
@@ -4074,33 +4064,8 @@ async function fetchMapClinics() {
   if (PROVINCE_MAP[currentFilter]) {
     url += `&province=eq.${PROVINCE_MAP[currentFilter]}`;
   } else if (currentFilter && currentFilter !== 'all') {
-    // Map dropdown slugs to exact DB neighbourhood values (title case)
-    const SLUG_TO_DB = {
-      'toronto': 'Toronto', 'north-york': 'North York', 'scarborough': 'Scarborough',
-      'etobicoke': 'Etobicoke', 'mississauga': 'Mississauga', 'brampton': 'Brampton',
-      'markham': 'Markham', 'vaughan': 'Vaughan', 'woodbridge': 'Woodbridge',
-      'richmond-hill': 'Richmond Hill', 'thornhill': 'Thornhill', 'aurora': 'Aurora',
-      'newmarket': 'Newmarket', 'oshawa': 'Oshawa', 'whitby': 'Whitby',
-      'ajax': 'Ajax', 'pickering': 'Pickering', 'oakville': 'Oakville',
-      'burlington': 'Burlington', 'milton': 'Milton', 'ottawa': 'Ottawa',
-      'hamilton': 'Hamilton', 'london': 'London',
-      'vancouver': 'Vancouver', 'richmond': 'Richmond', 'burnaby': 'Burnaby',
-      'surrey': 'Surrey', 'coquitlam': 'Coquitlam', 'north-vancouver': 'North Vancouver',
-      'port-coquitlam': 'Port Coquitlam', 'west-vancouver': 'West Vancouver',
-      'delta': 'Delta', 'port-moody': 'Port Moody', 'white-rock': 'White Rock',
-      'langley': 'Langley', 'abbotsford': 'Abbotsford',
-      'calgary': 'Calgary', 'edmonton': 'Edmonton',
-      'montreal': 'Montreal', 'laval': 'Laval', 'quebec-city': 'Quebec City',
-      'winnipeg': 'Winnipeg',
-      'saskatoon': 'Saskatoon', 'regina': 'Regina',
-      'halifax': 'Halifax',
-      'moncton': 'Moncton', 'fredericton': 'Fredericton', 'saint-john': 'Saint John',
-      'charlottetown': 'Charlottetown',
-      'st-johns': 'St. Johns',
-      'whitehorse': 'Whitehorse', 'yellowknife': 'Yellowknife',
-    };
-    const dbVal = SLUG_TO_DB[currentFilter] || currentFilter;
-    url += `&neighbourhood=eq.${encodeURIComponent(dbVal)}`;
+    const hood = currentFilter.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    url += `&neighbourhood=eq.${encodeURIComponent(hood)}`;
   }
   const r = await fetch(url, { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } });
   if (!r.ok) throw new Error('fetch failed');
