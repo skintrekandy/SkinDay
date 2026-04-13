@@ -95,13 +95,48 @@ exports.handler = async (event) => {
     }
 
     // ── Priority-aware three-bucket fetch ─────────────────────
-    // Supabase JS doesn't support computed ORDER BY, so we run three
-    // parallel queries by priority tier and merge them server-side.
-    // Bucket 2: claimed  |  Bucket 1: priced not claimed  |  Bucket 0: unpriced unclaimed
+    // Bucket 2: claimed
+    // Bucket 1: priced (clinics.price NOT null OR has clinic_prices rows)
+    // Bucket 0: unpriced unclaimed
+    //
+    // First, get all clinic_ids that have clinic_prices rows matching
+    // this filter — so clinics like Rosa (price in clinic_prices but
+    // null in clinics.price) sort into bucket 1, not bucket 0.
+
+    // Get IDs with clinic_prices entries for this filter scope
+    let pricedFromTableIds = new Set();
+    {
+      // We need to scope this to the current filter (province/neighbourhood etc.)
+      // so we fetch matching clinic ids that have any clinic_prices row
+      const baseIds = await buildBase()
+        .select('id')
+        .range(0, 9999);
+
+      if (baseIds.data && baseIds.data.length > 0) {
+        const ids = baseIds.data.map(r => String(r.id));
+        const { data: cpRows } = await supabase
+          .from('clinic_prices')
+          .select('clinic_id')
+          .in('clinic_id', ids);
+        if (cpRows) cpRows.forEach(r => pricedFromTableIds.add(String(r.clinic_id)));
+      }
+    }
+
     const [claimedRes, pricedRes, unpricedRes, countRes] = await Promise.all([
       applySort(buildBase().eq('claimed', true)).range(0, needed - 1),
-      applySort(buildBase().eq('claimed', false).not('price', 'is', null)).range(0, needed - 1),
-      applySort(buildBase().eq('claimed', false).is('price', null)).range(0, needed - 1),
+      // Priced bucket: has clinics.price OR is in pricedFromTableIds
+      applySort(
+        buildBase()
+          .eq('claimed', false)
+          .or(`price.not.is.null,id.in.(${[...pricedFromTableIds].join(',') || '0'})`)
+      ).range(0, needed - 1),
+      // Unpriced bucket: not claimed AND no clinics.price AND no clinic_prices rows
+      applySort(
+        buildBase()
+          .eq('claimed', false)
+          .is('price', null)
+          .not('id', 'in', `(${[...pricedFromTableIds].join(',') || '0'})`)
+      ).range(0, needed - 1),
       buildBase().select('id', { count: 'exact', head: true }),
     ]);
 
