@@ -593,6 +593,18 @@
       appearance: none; -webkit-appearance: none;
     }
     .search-field select option { color: var(--deep); background: var(--cream); }
+    /* Province scroll indicator badge */
+    .neighbourhood-wrap { position: relative; display: flex; align-items: center; gap: 0.5rem; }
+    .province-badge {
+      display: none;
+      font-size: 0.62rem; font-weight: 700; letter-spacing: 0.08em;
+      text-transform: uppercase;
+      background: var(--gold); color: var(--deep);
+      padding: 0.15rem 0.4rem; border-radius: 4px;
+      white-space: nowrap; pointer-events: none;
+      opacity: 0; transition: opacity 0.2s;
+    }
+    .province-badge.visible { display: inline-block; opacity: 1; }
     .search-actions {
       display: flex; gap: 0.5rem; align-items: center;
       padding: 0 0.6rem 0 0.9rem;
@@ -1931,7 +1943,10 @@
       <input type="text" id="searchClinicName" placeholder="Search clinics…" oninput="applySearch()" autocomplete="off">
     </div>
     <div class="search-field">
-      <div class="search-field-label">Neighbourhood</div>
+      <div class="neighbourhood-wrap">
+        <div class="search-field-label">Neighbourhood</div>
+        <span class="province-badge" id="provinceBadge"></span>
+      </div>
       <select id="searchNeighbourhood" onchange="applySearch()">
         <option value="all">Anywhere in Canada</option>
         <optgroup label="── Ontario ─────────────────────">
@@ -1993,54 +2008,36 @@
           <option value="abbotsford">Abbotsford</option>
         </optgroup>
         <optgroup label="── Alberta ──────────────────────">
-        </optgroup>
-        <optgroup label="Alberta">
           <option value="calgary">Calgary</option>
           <option value="edmonton">Edmonton</option>
         </optgroup>
         <optgroup label="── Quebec ───────────────────────">
-        </optgroup>
-        <optgroup label="Quebec">
           <option value="montreal">Montréal</option>
           <option value="laval">Laval</option>
           <option value="quebec-city">Québec City</option>
         </optgroup>
         <optgroup label="── Manitoba ─────────────────────">
-        </optgroup>
-        <optgroup label="Manitoba">
           <option value="winnipeg">Winnipeg</option>
         </optgroup>
         <optgroup label="── Saskatchewan ─────────────────">
-        </optgroup>
-        <optgroup label="Saskatchewan">
           <option value="saskatoon">Saskatoon</option>
           <option value="regina">Regina</option>
         </optgroup>
         <optgroup label="── Nova Scotia ──────────────────">
-        </optgroup>
-        <optgroup label="Nova Scotia">
           <option value="halifax">Halifax</option>
         </optgroup>
         <optgroup label="── New Brunswick ────────────────">
-        </optgroup>
-        <optgroup label="New Brunswick">
           <option value="moncton">Moncton</option>
           <option value="fredericton">Fredericton</option>
           <option value="saint-john">Saint John</option>
         </optgroup>
         <optgroup label="── Prince Edward Island ─────────">
-        </optgroup>
-        <optgroup label="Prince Edward Island">
           <option value="charlottetown">Charlottetown</option>
         </optgroup>
         <optgroup label="── Newfoundland & Labrador ──────">
-        </optgroup>
-        <optgroup label="Newfoundland & Labrador">
           <option value="st-johns">St. John's</option>
         </optgroup>
         <optgroup label="── Territories ──────────────────">
-        </optgroup>
-        <optgroup label="Territories">
           <option value="whitehorse">Whitehorse</option>
           <option value="yellowknife">Yellowknife</option>
         </optgroup>
@@ -2186,41 +2183,27 @@
         <option value="quebec-city">Quebec City</option>
       </optgroup>
       <optgroup label="── Manitoba ─────────────────">
-      </optgroup>
-      <optgroup label="Manitoba">
         <option value="winnipeg">Winnipeg</option>
       </optgroup>
       <optgroup label="── Saskatchewan ─────────────">
-      </optgroup>
-      <optgroup label="Saskatchewan">
         <option value="saskatoon">Saskatoon</option>
         <option value="regina">Regina</option>
       </optgroup>
       <optgroup label="── Nova Scotia ──────────────">
-      </optgroup>
-      <optgroup label="Nova Scotia">
         <option value="halifax">Halifax</option>
       </optgroup>
       <optgroup label="── New Brunswick ────────────">
-      </optgroup>
-      <optgroup label="New Brunswick">
         <option value="moncton">Moncton</option>
         <option value="fredericton">Fredericton</option>
         <option value="saint-john">Saint John</option>
       </optgroup>
       <optgroup label="── Prince Edward Island ─────">
-      </optgroup>
-      <optgroup label="Prince Edward Island">
         <option value="charlottetown">Charlottetown</option>
       </optgroup>
       <optgroup label="── Newfoundland & Labrador ──">
-      </optgroup>
-      <optgroup label="Newfoundland & Labrador">
         <option value="st-johns">St. John's</option>
       </optgroup>
       <optgroup label="── Territories ──────────────">
-      </optgroup>
-      <optgroup label="Territories">
         <option value="whitehorse">Whitehorse</option>
         <option value="yellowknife">Yellowknife</option>
       </optgroup>
@@ -2778,6 +2761,43 @@ function loadMore() {
 // ─── FILTER & SORT ─────────────────────────────────────────────
 function applySearch() {
   const neighbourhood   = document.getElementById('searchNeighbourhood').value;
+
+  // Update province badge
+  const badge = document.getElementById('provinceBadge');
+  if (badge) {
+    const sel = document.getElementById('searchNeighbourhood');
+    const selectedOpt = sel.options[sel.selectedIndex];
+    const optgroup = selectedOpt?.closest ? null : null; // can't traverse optgroup in all browsers
+    // Map city values to province abbreviations
+    const CITY_PROVINCE = {
+      toronto:'ON', 'north-york':'ON', scarborough:'ON', etobicoke:'ON',
+      mississauga:'ON', brampton:'ON', markham:'ON', vaughan:'ON',
+      woodbridge:'ON', 'richmond-hill':'ON', thornhill:'ON', aurora:'ON',
+      newmarket:'ON', oshawa:'ON', whitby:'ON', ajax:'ON', pickering:'ON',
+      oakville:'ON', burlington:'ON', milton:'ON', ottawa:'ON',
+      hamilton:'ON', london:'ON',
+      vancouver:'BC', richmond:'BC', burnaby:'BC', surrey:'BC',
+      coquitlam:'BC', 'north-vancouver':'BC', 'port-coquitlam':'BC',
+      'west-vancouver':'BC', delta:'BC', 'port-moody':'BC', 'white-rock':'BC',
+      langley:'BC', abbotsford:'BC',
+      calgary:'AB', edmonton:'AB',
+      montreal:'QC', laval:'QC', 'quebec-city':'QC',
+      winnipeg:'MB',
+      saskatoon:'SK', regina:'SK',
+      halifax:'NS',
+      moncton:'NB', fredericton:'NB', 'saint-john':'NB',
+      charlottetown:'PE',
+      'st-johns':'NL',
+      whitehorse:'YT', yellowknife:'NT',
+    };
+    const prov = CITY_PROVINCE[neighbourhood];
+    if (prov && neighbourhood !== 'all') {
+      badge.textContent = prov;
+      badge.classList.add('visible');
+    } else {
+      badge.classList.remove('visible');
+    }
+  }
   const nameQuery       = (document.getElementById('searchClinicName').value || '').trim().toLowerCase();
   const injector        = document.getElementById('searchInjector').value;
 
