@@ -1905,10 +1905,10 @@
   <div class="hero-inner">
     <div class="hero-eyebrow">Canada</div>
     <h1>Find the right cosmetic clinic for you.</h1>
-    <p class="hero-sub"><strong style="color:var(--cream);font-weight:500;">When every clinic looks perfect, but not every clinic is the same.</strong><br>See what actually separates them: injector expertise, experience, and overall fit. Browse <span id="heroClinicCount">3,888+</span> clinics across Canada with real context.</p>
+    <p class="hero-sub"><strong style="color:var(--cream);font-weight:500;">When every clinic looks perfect, but not every clinic is the same.</strong><br>See what actually separates them: injector expertise, experience, and overall fit. Browse <span id="heroClinicCount">4,300+</span> clinics across Canada with real context.</p>
     <div class="hero-stats">
       <div>
-        <div class="stat-num" id="statClinicCount">3,888+</div>
+        <div class="stat-num" id="statClinicCount">4,300+</div>
         <div class="stat-label">Clinics Listed</div>
       </div>
       <div>
@@ -2004,6 +2004,45 @@
           <option value="montreal">Montréal</option>
           <option value="laval">Laval</option>
           <option value="quebec-city">Québec City</option>
+        </optgroup>
+        <optgroup label="── Manitoba ─────────────────────">
+        </optgroup>
+        <optgroup label="Manitoba">
+          <option value="winnipeg">Winnipeg</option>
+        </optgroup>
+        <optgroup label="── Saskatchewan ─────────────────">
+        </optgroup>
+        <optgroup label="Saskatchewan">
+          <option value="saskatoon">Saskatoon</option>
+          <option value="regina">Regina</option>
+        </optgroup>
+        <optgroup label="── Nova Scotia ──────────────────">
+        </optgroup>
+        <optgroup label="Nova Scotia">
+          <option value="halifax">Halifax</option>
+        </optgroup>
+        <optgroup label="── New Brunswick ────────────────">
+        </optgroup>
+        <optgroup label="New Brunswick">
+          <option value="moncton">Moncton</option>
+          <option value="fredericton">Fredericton</option>
+          <option value="saint-john">Saint John</option>
+        </optgroup>
+        <optgroup label="── Prince Edward Island ─────────">
+        </optgroup>
+        <optgroup label="Prince Edward Island">
+          <option value="charlottetown">Charlottetown</option>
+        </optgroup>
+        <optgroup label="── Newfoundland & Labrador ──────">
+        </optgroup>
+        <optgroup label="Newfoundland & Labrador">
+          <option value="st-johns">St. John's</option>
+        </optgroup>
+        <optgroup label="── Territories ──────────────────">
+        </optgroup>
+        <optgroup label="Territories">
+          <option value="whitehorse">Whitehorse</option>
+          <option value="yellowknife">Yellowknife</option>
         </optgroup>
       </select>
     </div>
@@ -2146,6 +2185,45 @@
         <option value="montreal">Montreal</option>
         <option value="quebec-city">Quebec City</option>
       </optgroup>
+      <optgroup label="── Manitoba ─────────────────">
+      </optgroup>
+      <optgroup label="Manitoba">
+        <option value="winnipeg">Winnipeg</option>
+      </optgroup>
+      <optgroup label="── Saskatchewan ─────────────">
+      </optgroup>
+      <optgroup label="Saskatchewan">
+        <option value="saskatoon">Saskatoon</option>
+        <option value="regina">Regina</option>
+      </optgroup>
+      <optgroup label="── Nova Scotia ──────────────">
+      </optgroup>
+      <optgroup label="Nova Scotia">
+        <option value="halifax">Halifax</option>
+      </optgroup>
+      <optgroup label="── New Brunswick ────────────">
+      </optgroup>
+      <optgroup label="New Brunswick">
+        <option value="moncton">Moncton</option>
+        <option value="fredericton">Fredericton</option>
+        <option value="saint-john">Saint John</option>
+      </optgroup>
+      <optgroup label="── Prince Edward Island ─────">
+      </optgroup>
+      <optgroup label="Prince Edward Island">
+        <option value="charlottetown">Charlottetown</option>
+      </optgroup>
+      <optgroup label="── Newfoundland & Labrador ──">
+      </optgroup>
+      <optgroup label="Newfoundland & Labrador">
+        <option value="st-johns">St. John's</option>
+      </optgroup>
+      <optgroup label="── Territories ──────────────">
+      </optgroup>
+      <optgroup label="Territories">
+        <option value="whitehorse">Whitehorse</option>
+        <option value="yellowknife">Yellowknife</option>
+      </optgroup>
     </select>
     <button class="btn-nearby" onclick="useNearMe()">📍 Near Me</button>
     <div class="map-compact-spacer"></div>
@@ -2202,7 +2280,7 @@
       <ul class="claim-perks">
         <li>Attract patients who match your practice — price, credentials, and style visible upfront</li>
         <li>Stand out in a saturated market — context converts when ratings no longer do</li>
-        <li>Priority placement above unmanaged listings across 3,888+ Canadian clinics</li>
+        <li>Priority placement above unmanaged listings across 4,300+ Canadian clinics</li>
         <li>Free forever. No subscription, no commission, no catch.</li>
       </ul>
     </div>
@@ -2232,8 +2310,9 @@
         { label: 'Quebec',           abbr: 'QC', count: 658,  filter: 'quebec',           color: '#C8725A' },
         { label: 'Alberta',          abbr: 'AB', count: 563,  filter: 'alberta',          color: '#8C7B6B' },
         { label: 'British Columbia', abbr: 'BC', count: 514,  filter: 'british-columbia', color: '#B5A898' },
+        { label: 'Manitoba',         abbr: 'MB', count: 167,  filter: 'manitoba',         color: '#C9A96E' },
       ];
-      var total = 3888;
+      var total = 4365;
       var active = null;
       var container = document.getElementById('province-bars');
 
@@ -2285,7 +2364,7 @@
     </script>
     <div class="stat-strip-grid">
       <div class="stat-strip-item">
-        <div class="stat-strip-num"><em>3,888+</em></div>
+        <div class="stat-strip-num"><em>4,300+</em></div>
         <div class="stat-strip-desc">clinics listed across Canada</div>
       </div>
       <div class="stat-strip-item">
@@ -2390,6 +2469,15 @@ const PROVINCE_MAP = {
   'british-columbia': 'BC',
   'alberta': 'AB',
   'quebec': 'QC',
+  'manitoba': 'MB',
+  'saskatchewan': 'SK',
+  'nova-scotia': 'NS',
+  'new-brunswick': 'NB',
+  'pei': 'PE',
+  'newfoundland': 'NL',
+  'northwest-territories': 'NT',
+  'yukon': 'YT',
+  'nunavut': 'NU',
 };
 
 // ─── HELPERS ──────────────────────────────────────────────────
@@ -2825,6 +2913,17 @@ const HOOD_COORDS = {
   'montreal': [45.5017, -73.5673],
   'laval': [45.6066, -73.7124],
   'quebec-city': [46.8139, -71.2080],
+  'winnipeg': [49.8951, -97.1384],
+  'saskatoon': [52.1332, -106.6700],
+  'regina': [50.4452, -104.6189],
+  'halifax': [44.6488, -63.5752],
+  'moncton': [46.0878, -64.7782],
+  'fredericton': [45.9636, -66.6431],
+  'saint-john': [45.2733, -66.0633],
+  'charlottetown': [46.2382, -63.1311],
+  'st-johns': [47.5615, -52.7126],
+  'whitehorse': [60.7212, -135.0568],
+  'yellowknife': [62.4540, -114.3718],
 };
 
 function haversineKm(lat1, lon1, lat2, lon2) {
@@ -2833,6 +2932,26 @@ function haversineKm(lat1, lon1, lat2, lon2) {
   const dLon = (lon2 - lon1) * Math.PI / 180;
   const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLon/2)**2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function placeUserPin(lat, lng) {
+  if (_userMarker) { _userMarker.setMap(null); _userMarker = null; }
+  if (!_map) return;
+  _userMarker = new google.maps.Marker({
+    position: { lat, lng },
+    map: _map,
+    optimized: false,
+    zIndex: 9999,
+    icon: {
+      path: google.maps.SymbolPath.CIRCLE,
+      fillColor: '#4A90D9',
+      fillOpacity: 1,
+      strokeColor: '#ffffff',
+      strokeWeight: 3,
+      scale: 10,
+    },
+    title: 'Your location'
+  });
 }
 
 function useNearMe() {
@@ -2850,6 +2969,9 @@ function useNearMe() {
       const userLat = pos.coords.latitude;
       const userLon = pos.coords.longitude;
       userLocation = { lat: userLat, lon: userLon };
+
+      // Drop "You are here" pin on map if map is active
+      if (currentView === 'map') placeUserPin(userLat, userLon);
 
       let nearest = null, nearestDist = Infinity;
       for (const [hood, [lat, lon]] of Object.entries(HOOD_COORDS)) {
@@ -3832,6 +3954,7 @@ const LANG_MAP = { english:'EN', mandarin:'中文', cantonese:'粵', farsi:'فا
 
 let _map        = null;
 let _markers    = [];   // all current google.maps.Marker instances
+let _userMarker = null; // "You are here" pin
 let _allClinics = [];   // full filtered set from Supabase
 let _activeCid  = null;
 let currentView = 'grid';
@@ -3940,7 +4063,8 @@ async function initMap() {
 
   if (loadingEl) loadingEl.classList.add('hidden');
 
-  // Fit to clinics — idle fires after and renders markers + cards
+  // Re-place user pin if Near Me was already used
+  if (userLocation) placeUserPin(userLocation.lat, userLocation.lon);
   if (_allClinics.length > 0) {
     const bounds = new google.maps.LatLngBounds();
     _allClinics.forEach(c => { if (c.lat && c.lng) bounds.extend({ lat: +c.lat, lng: +c.lng }); });
