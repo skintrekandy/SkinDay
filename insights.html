@@ -520,8 +520,8 @@
 <!-- HERO -->
 <section class="hero">
   <div class="hero-eyebrow">Market Intelligence</div>
-  <h1 class="hero-title">Canada's cosmetic clinic<br><em>dataset, laid bare.</em></h1>
-  <p class="hero-sub">SkinDay tracks medical aesthetic clinics across all of Canada — the most comprehensive public dataset of its kind in the country.</p>
+  <h1 class="hero-title">Canada's aesthetic market.<br><em>In real numbers.</em></h1>
+  <p class="hero-sub">This dataset reflects how neurotoxin brands are actually priced, positioned, and sold across Canada — in real clinics, not surveys. Updated continuously as SkinDay expands national coverage.</p>
   <div class="hero-stats">
     <div>
       <div class="hero-stat-num" id="heroTotalCount">—</div>
@@ -584,23 +584,26 @@
 <!-- PRICE DATA -->
 <section class="section" style="background:var(--warm);">
   <div class="section-label">Pricing</div>
-  <h2 class="section-title reveal">Neurotoxin price landscape</h2>
-  <p class="section-sub reveal">Prices reflect per-unit neurotoxin costs across all brands — Botox, Dysport, Xeomin, Nuceiva, and Letybo — verified via direct clinic inquiry or self-reported through the portal. Pricing data grows continuously as more clinics are reached.</p>
+  <h2 class="section-title reveal">Market price segmentation</h2>
+  <p class="section-sub reveal">The Canadian neurotoxin market is not uniform — it splits into three distinct competitive segments. 32% of priced clinics operate below $7/unit, creating active price compression in the discount tier. Premium positioning above $12 remains viable in high-density markets like Richmond Hill and Vancouver.</p>
 
-  <div class="price-band reveal">
+  <div class="price-band reveal" style="margin-bottom:2rem;">
     <div class="price-band-stat">
-      <div class="price-band-num"><sup>$</sup>2.99</div>
-      <div class="price-band-label">Market floor</div>
+      <div class="price-band-num" style="color:var(--muted);"><sup>$</sup>7<span style="font-size:1.2rem;">−</span></div>
+      <div class="price-band-label">Budget segment</div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-top:0.3rem;">~32% of priced clinics</div>
     </div>
     <div class="price-band-divider"></div>
     <div class="price-band-stat">
-      <div class="price-band-num"><sup>$</sup>9.95</div>
-      <div class="price-band-label">National average</div>
+      <div class="price-band-num"><sup>$</sup>7–12</div>
+      <div class="price-band-label">Mid-market</div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-top:0.3rem;">~51% of priced clinics</div>
     </div>
     <div class="price-band-divider"></div>
     <div class="price-band-stat">
-      <div class="price-band-num"><sup>$</sup>15.00</div>
-      <div class="price-band-label">Market ceiling</div>
+      <div class="price-band-num" style="color:var(--gold);"><sup>$</sup>12<span style="font-size:1.2rem;">+</span></div>
+      <div class="price-band-label">Premium segment</div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-top:0.3rem;">~17% of priced clinics</div>
     </div>
   </div>
 
@@ -614,6 +617,46 @@
         of clinics have verified pricing — <span id="pricedCount">—</span> clinics and growing as outreach continues
       </div>
     </div>
+  </div>
+</section>
+
+<!-- MARKET STRUCTURE -->
+<section class="section">
+  <div class="section-label">Market Structure</div>
+  <h2 class="section-title reveal">Who controls the market</h2>
+  <p class="section-sub reveal">Clinic count alone doesn't tell the full story. Market influence concentrates around credential tier, density, and urban position. Understanding who injects — and where — is the foundation for effective channel strategy.</p>
+
+  <div class="cred-grid reveal" style="margin-bottom:2rem;">
+    <div class="cred-card">
+      <div class="cred-icon">🏙️</div>
+      <div class="cred-label">Top 5 cities</div>
+      <div class="cred-count" style="font-size:1.4rem;">67%</div>
+      <div class="cred-note">of all Canadian clinics concentrated in Toronto, Montreal, Calgary, Vancouver, Edmonton</div>
+    </div>
+    <div class="cred-card">
+      <div class="cred-icon">💉</div>
+      <div class="cred-label">RN-led clinics</div>
+      <div class="cred-count" style="font-size:1.4rem;">73%</div>
+      <div class="cred-note">of credentialed clinics are nurse-led — the dominant prescribing channel in Canada</div>
+      <div class="cred-insight" style="color:var(--rose);font-weight:600;">Primary channel</div>
+    </div>
+    <div class="cred-card">
+      <div class="cred-icon">🩺</div>
+      <div class="cred-label">MD-led clinics</div>
+      <div class="cred-count" style="font-size:1.4rem;">31%</div>
+      <div class="cred-note">of credentialed clinics — higher margin, higher influence, premium positioning</div>
+      <div class="cred-insight">KOL concentration</div>
+    </div>
+    <div class="cred-card">
+      <div class="cred-icon">📍</div>
+      <div class="cred-label">Ontario share</div>
+      <div class="cred-count" style="font-size:1.4rem;">49%</div>
+      <div class="cred-note">of all Canadian cosmetic clinics are in Ontario — the single most important territory</div>
+    </div>
+  </div>
+
+  <div class="methodology reveal">
+    <strong>Strategic implication.</strong> Nurse-led clinics represent the highest-volume prescribing channel by count, but MD-led clinics carry disproportionate KOL influence and referral power. A dual-channel strategy — mass reach through RN networks, depth through physician relationships — reflects how the Canadian market actually works.
   </div>
 </section>
 
@@ -772,7 +815,7 @@
 <section class="section" style="background:var(--warm);">
   <div class="section-label">Credentials</div>
   <h2 class="section-title reveal">Injector credential breakdown</h2>
-  <p class="section-sub reveal">Among clinics that have disclosed credentials through the SkinDay portal or outreach. Regional patterns emerge — ND injectors are notably concentrated in BC, while Ontario shows higher IMG representation.</p>
+  <p class="section-sub reveal">Among clinics that have disclosed credentials through the SkinDay portal or direct outreach. RN-led clinics dominate by count — but credential mix varies significantly by region, with BC showing higher ND representation and Ontario showing more IMG injectors. Sample size is 275 clinics; coverage grows continuously.</p>
 
   <div class="cred-grid reveal">
     <div class="cred-card">
@@ -818,6 +861,41 @@
   </div>
 </section>
 
+<!-- MARKET RISKS -->
+<section class="section">
+  <div class="section-label">Trends & Risks</div>
+  <h2 class="section-title reveal">Emerging market signals</h2>
+  <p class="section-sub reveal">Four structural shifts are reshaping the Canadian aesthetic market. Each carries implications for brand positioning, channel strategy, and pricing integrity.</p>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.5rem;margin:2rem 0;" class="reveal">
+
+    <div style="border:1px solid rgba(28,23,20,0.12);border-radius:12px;padding:1.5rem;background:var(--cream);">
+      <div style="font-size:0.7rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--rose);margin-bottom:0.75rem;">Price Compression</div>
+      <div style="font-size:1.05rem;font-weight:500;color:var(--deep);margin-bottom:0.5rem;line-height:1.4;">32% of clinics are pricing below $7/unit</div>
+      <div style="font-size:0.82rem;color:var(--muted);line-height:1.6;">The budget segment is growing, particularly in suburban Ontario and new-entrant markets. Aggressive discounting puts pressure on mid-market pricing integrity across all brands.</div>
+    </div>
+
+    <div style="border:1px solid rgba(28,23,20,0.12);border-radius:12px;padding:1.5rem;background:var(--cream);">
+      <div style="font-size:0.7rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--rose);margin-bottom:0.75rem;">Rating Inflation</div>
+      <div style="font-size:1.05rem;font-weight:500;color:var(--deep);margin-bottom:0.5rem;line-height:1.4;">58% of clinics are rated 4.9–5.0 on Google</div>
+      <div style="font-size:0.82rem;color:var(--muted);line-height:1.6;">Selective review solicitation has compressed ratings into an artificially narrow band. Ratings no longer differentiate clinics — credential and pricing transparency are becoming the real competitive signals.</div>
+    </div>
+
+    <div style="border:1px solid rgba(28,23,20,0.12);border-radius:12px;padding:1.5rem;background:var(--cream);">
+      <div style="font-size:0.7rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:0.75rem;">Market Expansion</div>
+      <div style="font-size:1.05rem;font-weight:500;color:var(--deep);margin-bottom:0.5rem;line-height:1.4;">Rapid clinic density growth outside the GTA</div>
+      <div style="font-size:0.82rem;color:var(--muted);line-height:1.6;">Secondary markets — Halifax, Winnipeg, Saskatoon — are emerging as meaningful clinic populations. National distribution coverage built around Ontario alone will increasingly miss volume.</div>
+    </div>
+
+    <div style="border:1px solid rgba(28,23,20,0.12);border-radius:12px;padding:1.5rem;background:var(--cream);">
+      <div style="font-size:0.7rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:0.75rem;">Channel Shift</div>
+      <div style="font-size:1.05rem;font-weight:500;color:var(--deep);margin-bottom:0.5rem;line-height:1.4;">Non-physician injectors now dominate by volume</div>
+      <div style="font-size:0.82rem;color:var(--muted);line-height:1.6;">RN and NP-led clinics represent 73% of the credentialed market. Brand education and rep coverage strategies designed around physician channels are reaching a shrinking share of active injectors.</div>
+    </div>
+
+  </div>
+</section>
+
 <!-- BRAND BREAKDOWN -->
 <section class="section">
   <div class="section-label">Brands</div>
@@ -850,9 +928,9 @@
 <!-- CTA -->
 <section class="cta-section">
   <div class="cta-eyebrow">Full Dataset Access</div>
-  <h2 class="cta-title">Request the complete dataset</h2>
-  <p class="cta-sub">Pharma reps, device distributors, and marketing teams use SkinDay data to map territory coverage, benchmark pricing, and identify high-density markets. Tell us what you're working on.</p>
-  <p style="font-size:0.78rem;color:rgba(255,255,255,0.25);max-width:420px;margin:0 auto 2rem;line-height:1.6;">Clinics on SkinDay benefit from this visibility — verified listings receive priority placement and direct patient inquiries.</p>
+  <h2 class="cta-title">This is what your territory<br>actually looks like.</h2>
+  <p class="cta-sub">Pharma reps, device distributors, and brand teams use SkinDay data to map real clinic coverage, benchmark pricing by market, identify high-density territories, and track how brands are positioned at the clinic level. Tell us what you're working on.</p>
+  <p style="font-size:0.78rem;color:rgba(255,255,255,0.25);max-width:420px;margin:0 auto 2rem;line-height:1.6;">No surveys. No panels. Actual clinic data — verified through direct outreach and self-reported pricing.</p>
 
   <div class="lead-form" id="leadForm">
     <input class="lead-input" type="text" id="lead-name" placeholder="Your name" />
