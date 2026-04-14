@@ -1997,10 +1997,31 @@
         </optgroup>
         <optgroup label="Eastern Ontario">
           <option value="ottawa">Ottawa</option>
+          <option value="kanata">Kanata</option>
+          <option value="kingston">Kingston</option>
         </optgroup>
         <optgroup label="Southwestern Ontario">
           <option value="hamilton">Hamilton</option>
           <option value="london">London</option>
+          <option value="kitchener">Kitchener</option>
+          <option value="waterloo">Waterloo</option>
+          <option value="cambridge">Cambridge</option>
+          <option value="guelph">Guelph</option>
+          <option value="brantford">Brantford</option>
+          <option value="windsor">Windsor</option>
+          <option value="sarnia">Sarnia</option>
+          <option value="st-catharines">St. Catharines</option>
+        </optgroup>
+        <optgroup label="Central Ontario">
+          <option value="barrie">Barrie</option>
+          <option value="peterborough">Peterborough</option>
+        </optgroup>
+        <optgroup label="Northern Ontario">
+          <option value="sudbury">Sudbury</option>
+          <option value="thunder-bay">Thunder Bay</option>
+          <option value="sault-ste-marie">Sault Ste. Marie</option>
+          <option value="north-bay">North Bay</option>
+          <option value="timmins">Timmins</option>
         </optgroup>
         <optgroup label="── British Columbia ─────────────">
         </optgroup>
@@ -2020,15 +2041,38 @@
         <optgroup label="Fraser Valley">
           <option value="langley">Langley</option>
           <option value="abbotsford">Abbotsford</option>
+          <option value="chilliwack">Chilliwack</option>
+        </optgroup>
+        <optgroup label="Vancouver Island">
+          <option value="victoria">Victoria</option>
+          <option value="nanaimo">Nanaimo</option>
+        </optgroup>
+        <optgroup label="BC Interior">
+          <option value="kelowna">Kelowna</option>
+          <option value="kamloops">Kamloops</option>
+          <option value="prince-george">Prince George</option>
         </optgroup>
         <optgroup label="── Alberta ──────────────────────">
           <option value="calgary">Calgary</option>
           <option value="edmonton">Edmonton</option>
+          <option value="red-deer">Red Deer</option>
+          <option value="lethbridge">Lethbridge</option>
+          <option value="medicine-hat">Medicine Hat</option>
+          <option value="grande-prairie">Grande Prairie</option>
+          <option value="st-albert">St. Albert</option>
+          <option value="sherwood-park">Sherwood Park</option>
+          <option value="airdrie">Airdrie</option>
+          <option value="okotoks">Okotoks</option>
+          <option value="fort-mcmurray">Fort McMurray</option>
         </optgroup>
         <optgroup label="── Quebec ───────────────────────">
           <option value="montreal">Montréal</option>
           <option value="laval">Laval</option>
           <option value="quebec-city">Québec City</option>
+          <option value="gatineau">Gatineau</option>
+          <option value="sherbrooke">Sherbrooke</option>
+          <option value="trois-rivieres">Trois-Rivières</option>
+          <option value="saguenay">Saguenay</option>
         </optgroup>
         <optgroup label="── Manitoba ─────────────────────">
           <option value="winnipeg">Winnipeg</option>
@@ -2832,14 +2876,21 @@ function applySearch() {
       mississauga:'ON', brampton:'ON', markham:'ON', vaughan:'ON',
       woodbridge:'ON', 'richmond-hill':'ON', thornhill:'ON', aurora:'ON',
       newmarket:'ON', oshawa:'ON', whitby:'ON', ajax:'ON', pickering:'ON',
-      oakville:'ON', burlington:'ON', milton:'ON', ottawa:'ON',
-      hamilton:'ON', london:'ON',
+      oakville:'ON', burlington:'ON', milton:'ON', ottawa:'ON', kanata:'ON',
+      hamilton:'ON', london:'ON', kitchener:'ON', waterloo:'ON', cambridge:'ON',
+      guelph:'ON', brantford:'ON', windsor:'ON', sarnia:'ON', 'st-catharines':'ON',
+      kingston:'ON', barrie:'ON', peterborough:'ON', sudbury:'ON',
+      'thunder-bay':'ON', 'sault-ste-marie':'ON', 'north-bay':'ON', timmins:'ON',
       vancouver:'BC', richmond:'BC', burnaby:'BC', surrey:'BC',
       coquitlam:'BC', 'north-vancouver':'BC', 'port-coquitlam':'BC',
       'west-vancouver':'BC', delta:'BC', 'port-moody':'BC', 'white-rock':'BC',
-      langley:'BC', abbotsford:'BC',
-      calgary:'AB', edmonton:'AB',
+      langley:'BC', abbotsford:'BC', chilliwack:'BC',
+      victoria:'BC', nanaimo:'BC', kelowna:'BC', kamloops:'BC', 'prince-george':'BC',
+      calgary:'AB', edmonton:'AB', 'red-deer':'AB', lethbridge:'AB',
+      'medicine-hat':'AB', 'grande-prairie':'AB', 'st-albert':'AB',
+      'sherwood-park':'AB', airdrie:'AB', okotoks:'AB', 'fort-mcmurray':'AB',
       montreal:'QC', laval:'QC', 'quebec-city':'QC',
+      gatineau:'QC', sherbrooke:'QC', 'trois-rivieres':'QC', saguenay:'QC',
       winnipeg:'MB',
       saskatoon:'SK', regina:'SK',
       halifax:'NS',
@@ -2966,12 +3017,22 @@ const HOOD_COORDS = {
   'brantford': [43.1394, -80.2644],
   'ancaster': [43.2181, -79.9897],
   'london': [42.9849, -81.2453],
+  'windsor': [42.3149, -83.0364],
+  'sarnia': [42.9745, -82.4066],
+  'st-catharines': [43.1594, -79.2469],
   'barrie': [44.3894, -79.6903],
   'kingston': [44.2312, -76.4860],
+  'kanata': [45.3094, -75.9003],
   'guelph': [43.5448, -80.2482],
   'cambridge': [43.3601, -80.3124],
   'waterloo': [43.4668, -80.5164],
   'kitchener': [43.4516, -80.4925],
+  'peterborough': [44.3091, -78.3197],
+  'sudbury': [46.4917, -80.9930],
+  'thunder-bay': [48.3809, -89.2477],
+  'sault-ste-marie': [46.5136, -84.3358],
+  'north-bay': [46.3091, -79.4608],
+  'timmins': [48.4758, -81.3305],
   'whitchurch-stouffville': [43.9712, -79.2519],
   'vancouver': [49.2827, -123.1207],
   'richmond': [49.1666, -123.1336],
@@ -2986,11 +3047,30 @@ const HOOD_COORDS = {
   'white-rock': [49.0253, -122.8027],
   'langley': [49.1044, -122.6604],
   'abbotsford': [49.0504, -122.3045],
+  'chilliwack': [49.1579, -121.9514],
+  'victoria': [48.4284, -123.3656],
+  'nanaimo': [49.1659, -123.9401],
+  'kelowna': [49.8880, -119.4960],
+  'kamloops': [50.6745, -120.3273],
+  'prince-george': [53.9171, -122.7497],
   'calgary': [51.0447, -114.0719],
   'edmonton': [53.5461, -113.4938],
+  'red-deer': [52.2681, -113.8112],
+  'lethbridge': [49.6956, -112.8451],
+  'medicine-hat': [50.0417, -110.6775],
+  'grande-prairie': [55.1707, -118.7948],
+  'st-albert': [53.6303, -113.6253],
+  'sherwood-park': [53.5344, -113.3184],
+  'airdrie': [51.2917, -114.0144],
+  'okotoks': [50.7257, -113.9754],
+  'fort-mcmurray': [56.7265, -111.3803],
   'montreal': [45.5017, -73.5673],
   'laval': [45.6066, -73.7124],
   'quebec-city': [46.8139, -71.2080],
+  'gatineau': [45.4765, -75.7013],
+  'sherbrooke': [45.4042, -71.8929],
+  'trois-rivieres': [46.3432, -72.5418],
+  'saguenay': [48.4286, -71.0668],
   'winnipeg': [49.8951, -97.1384],
   'saskatoon': [52.1332, -106.6700],
   'regina': [50.4452, -104.6189],
