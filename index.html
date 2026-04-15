@@ -2758,8 +2758,7 @@ function renderPageCards(clinicsData, append) {
             : ''}
           <div class="clinic-meta">📍 ${c.neighbourhood}${c.province ? `, ${c.province}` : ''}${(() => {
             if (!userLocation) return '';
-            const match = c.maps_url?.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-            const coords = match ? [parseFloat(match[1]), parseFloat(match[2])] : (HOOD_COORDS[c.neighbourhood?.toLowerCase().replace(/\s+/g,'-')]);
+            const coords = (c.lat && c.lng) ? [parseFloat(c.lat), parseFloat(c.lng)] : (c.maps_url?.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) ? [parseFloat(c.maps_url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/)[1]), parseFloat(c.maps_url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/)[2])] : HOOD_COORDS[c.neighbourhood?.toLowerCase().replace(/\s+/g,'-')]);
             if (!coords) return '';
             const d = haversineKm(userLocation.lat, userLocation.lon, coords[0], coords[1]);
             return ` <span class="dot">·</span> ${d < 1 ? (d * 1000).toFixed(0) + ' m' : d.toFixed(1) + ' km'} away`;
@@ -3491,6 +3490,10 @@ async function openCompareModal() {
   const mapsCells = selected.map(c => {
     if (c.maps_url) {
       return `<td><a href="${c.maps_url}" target="_blank" rel="noopener" style="color:var(--rose);text-decoration:none;border-bottom:1px solid var(--rose-bg);font-size:0.85rem;">Open in Maps →</a></td>`;
+    } else if (c.lat && c.lng) {
+      return `<td><a href="https://www.google.com/maps/search/?api=1&query=${c.lat},${c.lng}" target="_blank" rel="noopener" style="color:var(--rose);text-decoration:none;border-bottom:1px solid var(--rose-bg);font-size:0.85rem;">Open in Maps →</a></td>`;
+    } else {
+      return `<td style="color:var(--dim);font-size:0.85rem;">—</td>`;
     }
     return `<td><span style="color:var(--dim);font-style:italic">—</span></td>`;
   }).join('');
@@ -3822,7 +3825,7 @@ function openClinicModal(clinicId) {
   cmRenderStars(clinic.rating, document.getElementById('cm-stars'));
   document.getElementById('cm-rating-num').textContent = clinic.rating.toFixed(1);
   document.getElementById('cm-review-count').textContent = (clinic.reviews || 0).toLocaleString();
-  document.getElementById('cm-rating-link').href = clinic.maps_url || '#';
+  document.getElementById('cm-rating-link').href = clinic.maps_url || (clinic.lat && clinic.lng ? `https://www.google.com/maps/search/?api=1&query=${clinic.lat},${clinic.lng}` : '#');
 
   // Promo
   document.getElementById('cm-promo').style.display = clinic.promo ? 'inline-flex' : 'none';
@@ -3922,8 +3925,19 @@ function openClinicModal(clinicId) {
   const emailBtn      = document.getElementById('cm-email');
   const websiteBtn    = document.getElementById('cm-website');
 
-  if (clinic.maps_url) { directionsBtn.href = clinic.maps_url; directionsBtn.classList.remove('dim'); }
-  else { directionsBtn.href = '#'; directionsBtn.classList.add('dim'); }
+  if (clinic.maps_url) {
+    directionsBtn.href = clinic.maps_url;
+    directionsBtn.classList.remove('dim');
+  } else if (clinic.lat && clinic.lng) {
+    directionsBtn.href = `https://www.google.com/maps/dir/?api=1&destination=${clinic.lat},${clinic.lng}`;
+    directionsBtn.classList.remove('dim');
+  } else if (clinic.place_id) {
+    directionsBtn.href = `https://www.google.com/maps/dir/?api=1&destination_place_id=${clinic.place_id}`;
+    directionsBtn.classList.remove('dim');
+  } else {
+    directionsBtn.href = '#';
+    directionsBtn.classList.add('dim');
+  }
 
   if (clinic.phone) { callBtn.href = 'tel:' + clinic.phone.replace(/\s/g,''); callBtn.classList.remove('dim'); }
   else { callBtn.href = '#'; callBtn.classList.add('dim'); }
@@ -4184,7 +4198,7 @@ function onCompactSearch() {
 
 // ─── FETCH ────────────────────────────────────────────────────
 async function fetchMapClinics() {
-  let url = `${SB_URL}/rest/v1/clinics?select=id,name,neighbourhood,province,lat,lng,rating,reviews,claimed,price,logo_url,injector_credentials,languages&approved=eq.true&lat=not.is.null&order=rating.desc.nullslast&limit=10000`;
+  let url = `${SB_URL}/rest/v1/clinics?select=id,name,neighbourhood,province,lat,lng,rating,reviews,claimed,price,logo_url,injector_credentials,languages,maps_url,place_id&approved=eq.true&lat=not.is.null&order=rating.desc.nullslast&limit=10000`;
   if (PROVINCE_MAP[currentFilter]) {
     url += `&province=eq.${PROVINCE_MAP[currentFilter]}`;
   } else if (currentFilter && currentFilter !== 'all') {
