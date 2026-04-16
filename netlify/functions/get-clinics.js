@@ -25,7 +25,7 @@ exports.handler = async (event) => {
     if (params.mode === 'index') {
       const { data, error } = await supabase
         .from('clinics')
-        .select('id, name, neighbourhood, province')
+        .select('id, name, neighbourhood, province, website')
         .eq('approved', true)
         .order('id', { ascending: true })
         .range(0, 29999);
