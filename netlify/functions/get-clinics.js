@@ -52,28 +52,36 @@ exports.handler = async (event) => {
     const promo         = params.promo === 'true';
     const countOnly     = params.count === 'true';
     const from          = page * PAGE_SIZE;
+    const needed        = from + PAGE_SIZE;
 
-    // ── BUILD QUERY ──────────────────────────────────────────
-    // Single query — priority sort handled by ORDER BY CASE
-    const buildQuery = (forCount = false) => {
+    // ── BUILD BASE QUERY ─────────────────────────────────────
+    // All filters combine cleanly — no branching that drops a filter
+    const buildBase = () => {
       let q = supabase
         .from('clinics')
-        .select(forCount ? 'id' : CARD_FIELDS, { count: 'exact' })
+        .select(CARD_FIELDS, { count: 'exact' })
         .eq('approved', true);
 
-      // Filters — all combine cleanly, no if/else branching
       if (search)        q = q.ilike('name', `%${search}%`);
       if (province)      q = q.eq('province', province);
       if (neighbourhood) q = q.ilike('neighbourhood', neighbourhood.replace(/-/g, ' '));
-      if (injector)      q = q.contains('injector_credentials', [injector]);
+      if (injector)      q = q.ilike('injector_credentials', `%${injector}%`);
       if (promo)         q = q.eq('promo', true).not('promo_text', 'is', null);
 
       return q;
     };
 
+    // ── SORT ─────────────────────────────────────────────────
+    const applySort = (q) => {
+      if (sort === 'price-low')  return q.order('price',   { ascending: true,  nullsFirst: false }).order('id', { ascending: true });
+      if (sort === 'price-high') return q.order('price',   { ascending: false, nullsFirst: false }).order('id', { ascending: true });
+      if (sort === 'reviews')    return q.order('reviews', { ascending: false, nullsFirst: false }).order('id', { ascending: true });
+      return q.order('rating', { ascending: false, nullsFirst: false }).order('id', { ascending: true });
+    };
+
     // ── COUNT ONLY ───────────────────────────────────────────
     if (countOnly) {
-      const { count, error } = await buildQuery(true).range(0, 0);
+      const { count, error } = await buildBase().select('id', { count: 'exact', head: true }).range(0, 0);
       if (error) return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
       return {
         statusCode: 200,
@@ -82,41 +90,31 @@ exports.handler = async (event) => {
       };
     }
 
-    // ── FETCH WITH PRIORITY SORT ─────────────────────────────
-    // Priority: claimed (2) > has price (1) > unclaimed no price (0)
-    // We fetch a larger window then sort client-side by priority + metric
-    const fetchSize = from + PAGE_SIZE * 4; // fetch ahead to allow priority reordering
-
-    const applySort = (q) => {
-      if (sort === 'price-low')  return q.order('price', { ascending: true,  nullsFirst: false }).order('rating', { ascending: false, nullsFirst: false }).order('id', { ascending: true });
-      if (sort === 'price-high') return q.order('price', { ascending: false, nullsFirst: false }).order('rating', { ascending: false, nullsFirst: false }).order('id', { ascending: true });
-      if (sort === 'reviews')    return q.order('reviews', { ascending: false, nullsFirst: false }).order('id', { ascending: true });
-      return q.order('rating', { ascending: false, nullsFirst: false }).order('id', { ascending: true });
-    };
-
-    const [dataRes, countRes] = await Promise.all([
-      applySort(buildQuery()).range(0, fetchSize - 1),
-      buildQuery(true).range(0, 0),
+    // ── THREE-BUCKET FETCH (claimed → priced → unpriced) ─────
+    // Three parallel queries, each applying all filters.
+    // Claimed clinics always surface first regardless of rating.
+    const [claimedRes, pricedRes, unpricedRes, countRes] = await Promise.all([
+      applySort(buildBase().eq('claimed', true)).range(0, needed - 1),
+      applySort(buildBase().eq('claimed', false).not('price', 'is', null)).range(0, needed - 1),
+      applySort(buildBase().eq('claimed', false).is('price', null)).range(0, needed - 1),
+      buildBase().select('id', { count: 'exact', head: true }).range(0, 0),
     ]);
 
-    if (dataRes.error) {
-      console.error('Supabase error:', dataRes.error);
-      return { statusCode: 500, body: JSON.stringify({ error: dataRes.error.message }) };
+    if (claimedRes.error || pricedRes.error || unpricedRes.error) {
+      const err = claimedRes.error || pricedRes.error || unpricedRes.error;
+      console.error('Supabase error:', err);
+      return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
     }
 
+    // Merge buckets then slice the requested page
+    const pool = [
+      ...(claimedRes.data  || []),
+      ...(pricedRes.data   || []),
+      ...(unpricedRes.data || []),
+    ];
+
     const totalCount = countRes.count || 0;
-    const allClinics = dataRes.data || [];
-
-    // Priority sort: claimed first, then priced, then unpriced
-    const priority = c => c.claimed ? 2 : (c.price != null ? 1 : 0);
-    allClinics.sort((a, b) => {
-      const pd = priority(b) - priority(a);
-      if (pd !== 0) return pd;
-      // Within same priority, preserve DB sort order (already sorted by metric)
-      return 0;
-    });
-
-    const pageSlice = allClinics.slice(from, from + PAGE_SIZE);
+    const pageSlice  = pool.slice(from, from + PAGE_SIZE);
 
     // ── FETCH CLINIC_PRICES FOR THIS PAGE ────────────────────
     const clinicIds = pageSlice.map(c => String(c.id));
