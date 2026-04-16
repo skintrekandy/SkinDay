@@ -2942,8 +2942,9 @@ function applySearch() {
 }
 
 function filterCards(filter, btn) {
-  currentFilter    = filter;
-  currentNameQuery = '';
+  currentFilter         = filter;
+  currentNameQuery      = '';
+  currentInjectorFilter = (document.getElementById('searchInjector')?.value) || 'all';
   document.getElementById('searchClinicName').value = '';
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
@@ -2956,8 +2957,9 @@ function filterCards(filter, btn) {
 }
 
 function filterByPill(area) {
-  currentFilter    = area;
-  currentNameQuery = '';
+  currentFilter         = area;
+  currentNameQuery      = '';
+  currentInjectorFilter = (document.getElementById('searchInjector')?.value) || 'all';
   document.getElementById('searchClinicName').value = '';
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
   fetchPage(0, false);
