@@ -25,7 +25,7 @@ exports.handler = async (event) => {
     if (params.mode === 'index') {
       const { data, error } = await supabase
         .from('clinics')
-        .select('id, name, neighbourhood, province')
+        .select('id, name, neighbourhood, province, website')
         .eq('approved', true)
         .order('id', { ascending: true })
         .range(0, 29999);
@@ -125,20 +125,20 @@ exports.handler = async (event) => {
       }
     }
 
+    const hasPricedIds = pricedFromTableIds.size > 0;
+    const pricedIdList = hasPricedIds ? [...pricedFromTableIds].join(',') : null;
+
     const [claimedRes, pricedRes, unpricedRes, countRes] = await Promise.all([
       applySort(buildBase().eq('claimed', true)).range(0, needed - 1),
-      // Priced bucket: has clinics.price OR is in pricedFromTableIds
       applySort(
-        buildBase()
-          .eq('claimed', false)
-          .or(`price.not.is.null,id.in.(${[...pricedFromTableIds].join(',') || '0'})`)
+        hasPricedIds
+          ? buildBase().eq('claimed', false).or(`price.not.is.null,id.in.(${pricedIdList})`)
+          : buildBase().eq('claimed', false).not('price', 'is', null)
       ).range(0, needed - 1),
-      // Unpriced bucket: not claimed AND no clinics.price AND no clinic_prices rows
       applySort(
-        buildBase()
-          .eq('claimed', false)
-          .is('price', null)
-          .not('id', 'in', `(${[...pricedFromTableIds].join(',') || '0'})`)
+        hasPricedIds
+          ? buildBase().eq('claimed', false).is('price', null).not('id', 'in', `(${pricedIdList})`)
+          : buildBase().eq('claimed', false).is('price', null)
       ).range(0, needed - 1),
       buildBase().select('id', { count: 'exact', head: true }),
     ]);
