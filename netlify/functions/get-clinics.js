@@ -25,7 +25,7 @@ exports.handler = async (event) => {
     if (params.mode === 'index') {
       const { data, error } = await supabase
         .from('clinics')
-        .select('id, name, neighbourhood, province, website')
+        .select('id, name, neighbourhood, province')
         .eq('approved', true)
         .order('id', { ascending: true })
         .range(0, 29999);
@@ -66,6 +66,9 @@ exports.handler = async (event) => {
 
       if (search) {
         q = q.ilike('name', `%${search}%`);
+        if (province)      q = q.eq('province', province);
+        if (neighbourhood) q = q.ilike('neighbourhood', neighbourhood.replace(/-/g, ' '));
+        if (injector)      q = q.contains('injector_credentials', [injector]);
       } else {
         if (province)      q = q.eq('province', province);
         if (neighbourhood) q = q.ilike('neighbourhood', neighbourhood.replace(/-/g, ' '));
