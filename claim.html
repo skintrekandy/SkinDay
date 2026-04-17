@@ -919,7 +919,7 @@
           </div>
           <button class="selected-change" onclick="clearClinic()">Change</button>
         </div>
-        <div class="field-hint">We have 3,888+ clinics listed across Canada — start typing to find yours.</div>
+        <div class="field-hint">We have 5,800+ clinics listed across Canada — start typing to find yours.</div>
       </div>
     </div>
 
@@ -929,7 +929,7 @@
       <ul class="perks">
         <li>Attract patients who match your practice — price, credentials, and style all visible upfront</li>
         <li>Stand out when every competitor has the same 4.9-star rating</li>
-        <li>Priority placement above unmanaged listings across 3,888+ Canadian clinics</li>
+        <li>Priority placement above unmanaged listings across 5,800+ Canadian clinics</li>
         <li>Verified badge, photos, direct booking link, and full profile control</li>
         <li>Free forever. No subscription, no commission, no catch.</li>
       </ul>
@@ -1175,9 +1175,12 @@
       return;
     }
 
-    const matches = clinics.filter(c =>
-      c.name.toLowerCase().includes(q) || (c.neighbourhood||'').toLowerCase().includes(q)
-    ).slice(0, 6);
+    // Split query into words — all words must appear somewhere in name or neighbourhood
+    const words = q.split(/\s+/).filter(Boolean);
+    const matches = clinics.filter(c => {
+      const haystack = (c.name + ' ' + (c.neighbourhood||'')).toLowerCase();
+      return words.every(w => haystack.includes(w));
+    }).slice(0, 8);
 
     if (matches.length === 0) {
       resultsBox.innerHTML = `<div class="no-results">No clinic found — <a href="mailto:hello@skinday.ca" style="color:var(--rose);">contact us to add yours</a></div>`;
