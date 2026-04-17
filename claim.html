@@ -279,7 +279,8 @@
     margin-top: 6px;
     border: 1px solid var(--border);
     border-radius: 10px;
-    overflow: hidden;
+    overflow-y: auto;
+    max-height: 420px;
     background: white;
     z-index: 50;
     box-shadow: 0 8px 24px rgba(28,23,20,0.12);
@@ -1180,7 +1181,7 @@
     const matches = clinics.filter(c => {
       const haystack = (c.name + ' ' + (c.neighbourhood||'')).toLowerCase();
       return words.every(w => haystack.includes(w));
-    }).slice(0, 8);
+    }).slice(0, 50);
 
     if (matches.length === 0) {
       resultsBox.innerHTML = `<div class="no-results">No clinic found — <a href="mailto:hello@skinday.ca" style="color:var(--rose);">contact us to add yours</a></div>`;
@@ -1276,7 +1277,7 @@
     const matches = clinics.filter(c =>
       !alreadyIds.has(c.id) &&
       (c.name.toLowerCase().includes(q) || c.neighbourhood.toLowerCase().includes(q))
-    ).slice(0, 6);
+    ).slice(0, 50);
 
     if (matches.length === 0) {
       chainResultsBox.innerHTML = `<div class="no-results">No clinic found matching that name or neighbourhood.</div>`;
