@@ -4469,18 +4469,21 @@ function renderCardList() {
       : inView.map(c => buildCard(c, true)).join('');
   }
 
-  // Re-apply active highlight + scroll carousel after DOM rebuild
+  // Re-apply active highlight + scroll after DOM rebuild
   if (_activeCid) {
     document.querySelectorAll(`[data-cid="${_activeCid}"]`).forEach(el => el.classList.add('highlighted'));
-    // On mobile: scroll carousel so active card is first
     const isMobile = window.matchMedia('(hover: none)').matches;
     if (isMobile) {
+      // Mobile: scroll carousel so active card is first
       const track = document.getElementById('mapCarouselTrack');
       const card  = track && track.querySelector('[data-cid="' + _activeCid + '"]');
       if (card && track) {
         const cardLeft = card.offsetLeft - track.offsetLeft;
         track.scrollTo({ left: cardLeft, behavior: 'smooth' });
       }
+    } else {
+      // Desktop: scroll sidebar so active card is at top
+      scrollCardListTo(_activeCid);
     }
   }
 }
