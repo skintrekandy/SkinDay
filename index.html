@@ -4390,11 +4390,14 @@ function onPinClick(cid, marker) {
   if (marker) marker.setIcon(PIN_ACTIVE);
   highlightCard(cid, isMobile); // on mobile, scroll carousel to selected card
   if (!isMobile) scrollCardListTo(cid);
-  // On mobile: scroll carousel track to bring selected card into view
+  // On mobile: scroll carousel so selected card is first (leftmost)
   if (isMobile) {
     const track = document.getElementById('mapCarouselTrack');
     const card  = track && track.querySelector('[data-cid="' + cid + '"]');
-    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
+    if (card && track) {
+      const cardLeft = card.offsetLeft - track.offsetLeft;
+      track.scrollTo({ left: cardLeft, behavior: 'smooth' });
+    }
   }
   const clinic = _allClinics.find(c => String(c.id) === cid);
   if (clinic) _map.panTo({ lat: +clinic.lat, lng: +clinic.lng });
