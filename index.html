@@ -2695,14 +2695,6 @@ function buildApiUrl(page) {
 
   if (currentNameQuery) {
     params.set('search', currentNameQuery);
-    // Also apply neighbourhood and injector alongside name search
-    if (currentFilter && currentFilter !== 'all' && currentFilter !== 'promo') {
-      if (PROVINCE_MAP[currentFilter]) {
-        params.set('province', PROVINCE_MAP[currentFilter]);
-      } else {
-        params.set('neighbourhood', currentFilter);
-      }
-    }
   } else if (currentFilter === 'promo') {
     params.set('promo', 'true');
   } else if (PROVINCE_MAP[currentFilter]) {
@@ -2942,9 +2934,8 @@ function applySearch() {
 }
 
 function filterCards(filter, btn) {
-  currentFilter         = filter;
-  currentNameQuery      = '';
-  currentInjectorFilter = (document.getElementById('searchInjector')?.value) || 'all';
+  currentFilter    = filter;
+  currentNameQuery = '';
   document.getElementById('searchClinicName').value = '';
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
@@ -2957,9 +2948,8 @@ function filterCards(filter, btn) {
 }
 
 function filterByPill(area) {
-  currentFilter         = area;
-  currentNameQuery      = '';
-  currentInjectorFilter = (document.getElementById('searchInjector')?.value) || 'all';
+  currentFilter    = area;
+  currentNameQuery = '';
   document.getElementById('searchClinicName').value = '';
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
   fetchPage(0, false);
@@ -4398,8 +4388,14 @@ function onPinClick(cid, marker) {
   });
   _activeCid = cid;
   if (marker) marker.setIcon(PIN_ACTIVE);
-  highlightCard(cid, false);
-  scrollCardListTo(cid);
+  highlightCard(cid, isMobile); // on mobile, scroll carousel to selected card
+  if (!isMobile) scrollCardListTo(cid);
+  // On mobile: scroll carousel track to bring selected card into view
+  if (isMobile) {
+    const track = document.getElementById('mapCarouselTrack');
+    const card  = track && track.querySelector('[data-cid="' + cid + '"]');
+    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
+  }
   const clinic = _allClinics.find(c => String(c.id) === cid);
   if (clinic) _map.panTo({ lat: +clinic.lat, lng: +clinic.lng });
   if (!isMobile) openMapModal(cid);
