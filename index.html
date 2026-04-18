@@ -4567,11 +4567,12 @@ function scrollCardListTo(cid) {
   const el = document.querySelector(`#mapListCards [data-cid="${cid}"]`);
   const panel = el && el.closest('.map-card-list');
   if (el && panel) {
-    // Scroll card to top of sidebar, accounting for sticky header height
-    const header = panel.querySelector('.map-list-header');
-    const headerH = header ? header.offsetHeight : 0;
-    const cardTop = el.offsetTop - headerH - 8;
-    panel.scrollTo({ top: cardTop, behavior: 'smooth' });
+    // getBoundingClientRect gives accurate position relative to viewport
+    const panelRect = panel.getBoundingClientRect();
+    const cardRect  = el.getBoundingClientRect();
+    // Scroll so card appears in the middle of the sidebar
+    const offset = cardRect.top - panelRect.top - (panelRect.height / 2) + (cardRect.height / 2);
+    panel.scrollBy({ top: offset, behavior: 'smooth' });
   }
 }
 
