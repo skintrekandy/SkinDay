@@ -4562,7 +4562,14 @@ function highlightCard(cid, scroll) {
 
 function scrollCardListTo(cid) {
   const el = document.querySelector(`#mapListCards [data-cid="${cid}"]`);
-  if (el) el.scrollIntoView({ behavior:'smooth', block:'nearest' });
+  const panel = el && el.closest('.map-card-list');
+  if (el && panel) {
+    // Scroll card to top of sidebar, accounting for sticky header height
+    const header = panel.querySelector('.map-list-header');
+    const headerH = header ? header.offsetHeight : 0;
+    const cardTop = el.offsetTop - headerH - 8;
+    panel.scrollTo({ top: cardTop, behavior: 'smooth' });
+  }
 }
 
 function highlightPinById(cid) {
