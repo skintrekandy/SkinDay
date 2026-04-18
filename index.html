@@ -4,19 +4,19 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
   <title>SkinDay — Canada's Cosmetic Clinic Matching Platform</title>
-  <meta name="description" content="Canada's cosmetic clinic matching platform. Browse 5,800+ clinics across Canada — find the right fit by injector, price, credentials, and style." />
+  <meta name="description" content="58% of Canadian cosmetic clinics are rated 4.9–5.0. SkinDay shows injector credentials, verified profiles, and real data across 5,500+ clinics nationwide — no ads, no paid rankings." />
 
   <!-- OpenGraph -->
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://skinday.ca/" />
   <meta property="og:title" content="SkinDay — Canada's Cosmetic Clinic Matching Platform" />
-  <meta property="og:description" content="Find the right cosmetic clinic for you. Browse 5,800+ clinics across Canada with real context — injector credentials, pricing, and fit." />
+  <meta property="og:description" content="Botox prices vary wildly. Ratings don't. SkinDay shows real pricing, injector credentials, and verified clinic profiles — find the clinic that actually fits you." />
   <meta property="og:site_name" content="SkinDay" />
 
   <!-- Twitter/X -->
   <meta name="twitter:card" content="summary" />
   <meta name="twitter:title" content="SkinDay — Canada's Cosmetic Clinic Matching Platform" />
-  <meta name="twitter:description" content="Find the right cosmetic clinic for you. Browse 5,800+ clinics across Canada with real context — injector credentials, pricing, and fit." />
+  <meta name="twitter:description" content="Botox prices vary wildly. Ratings don't. SkinDay shows real pricing, injector credentials, and verified clinic profiles — find the clinic that actually fits you." />
   <meta name="google-site-verification" content="_Ug0tqzwO8eda09chcefdvbgqKWMIR8ZBaakXaz26FQ" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -1929,21 +1929,21 @@
 <!-- HERO -->
 <section class="hero">
   <div class="hero-inner">
-    <div class="hero-eyebrow">Canada</div>
-    <h1>Find the right cosmetic clinic for you.</h1>
-    <p class="hero-sub"><strong style="color:var(--cream);font-weight:500;">When every clinic looks perfect, but not every clinic is the same.</strong><br>See what actually separates them: injector expertise, experience, and overall fit. Browse <span id="heroClinicCount">5,800+</span> clinics across Canada with real context.</p>
+    <div class="hero-eyebrow">Canada's Cosmetic Clinic Platform</div>
+    <h1>58% of Canadian cosmetic clinics are rated 4.9–5.0. So what actually <em>separates them?</em></h1>
+    <p class="hero-sub"><strong style="color:var(--cream);font-weight:500;">Ratings are inflated. Prices cluster. Everyone claims to be the best.</strong><br>SkinDay gives you what the surface doesn't — injector credentials, verified profiles, and real data across <span id="heroClinicCount">5,500+</span> clinics nationwide.</p>
     <div class="hero-stats">
       <div>
-        <div class="stat-num" id="statClinicCount">5,800+</div>
-        <div class="stat-label">Clinics Listed</div>
+        <div class="stat-num" id="statClinicCount">5,500+</div>
+        <div class="stat-label">Clinics Listed Across Canada</div>
       </div>
       <div>
-        <div class="stat-num">Google</div>
-        <div class="stat-label">Ratings on Every Clinic</div>
+        <div class="stat-num">0</div>
+        <div class="stat-label">Paid Rankings or Sponsored Results</div>
       </div>
       <div>
-        <div class="stat-num">Free</div>
-        <div class="stat-label">Always Free for Consumers</div>
+        <div class="stat-num">Data</div>
+        <div class="stat-label">Not Opinions. Not Ads. Just Numbers.</div>
       </div>
     </div>
   </div>
@@ -2321,7 +2321,7 @@
       <ul class="claim-perks">
         <li>Attract patients who match your practice — price, credentials, and style visible upfront</li>
         <li>Stand out in a saturated market — context converts when ratings no longer do</li>
-        <li>Priority placement above unmanaged listings across 5,800+ Canadian clinics</li>
+        <li>Priority placement above unmanaged listings across 5,500+ Canadian clinics</li>
         <li>Free forever. No subscription, no commission, no catch.</li>
       </ul>
     </div>
@@ -2405,7 +2405,7 @@
     </script>
     <div class="stat-strip-grid">
       <div class="stat-strip-item">
-        <div class="stat-strip-num"><em>5,800+</em></div>
+        <div class="stat-strip-num"><em id="trustClinicCount">5,500+</em></div>
         <div class="stat-strip-desc">clinics listed across Canada</div>
       </div>
       <div class="stat-strip-item">
@@ -2413,7 +2413,7 @@
         <div class="stat-strip-desc">of clinics rated 4.8+ stars — across Canada</div>
       </div>
       <div class="stat-strip-item">
-        <div class="stat-strip-num"><em>61.6</em></div>
+        <div class="stat-strip-num"><em>64</em></div>
         <div class="stat-strip-desc">clinics per 100k in <strong>Kelowna, BC</strong> — highest density in Canada</div>
       </div>
       <div class="stat-strip-item">
@@ -2421,7 +2421,7 @@
         <div class="stat-strip-desc">of cosmetic clinics in Canada are in <strong>Ontario</strong></div>
       </div>
       <div class="stat-strip-item">
-        <div class="stat-strip-num"><em>388+</em></div>
+        <div class="stat-strip-num"><em>428+</em></div>
         <div class="stat-strip-desc">clinics in <strong>Toronto</strong> — largest single-city concentration in Canada</div>
       </div>
       <div class="stat-strip-item">
@@ -2480,7 +2480,7 @@
   <div class="footer-top">
     <div>
       <div class="footer-brand">Skin<span>Day</span></div>
-      <div class="footer-tagline">Find the right clinic. See real prices. Book with confidence.</div>
+      <div class="footer-tagline">Not the best clinic. Just the right one for you.</div>
     </div>
     <div class="footer-links">
       <h4>Discover</h4>
@@ -4388,13 +4388,11 @@ function onPinClick(cid, marker) {
   });
   _activeCid = cid;
   if (marker) marker.setIcon(PIN_ACTIVE);
-  highlightCard(cid, isMobile); // on mobile, scroll carousel to selected card
-  if (!isMobile) scrollCardListTo(cid);
-  // Carousel scroll is handled in renderCardList after DOM rebuild
+  highlightCard(cid, false);
+  scrollCardListTo(cid);
   const clinic = _allClinics.find(c => String(c.id) === cid);
   if (clinic) _map.panTo({ lat: +clinic.lat, lng: +clinic.lng });
-  // Desktop: just highlight the card, don't auto-open modal
-  // User can click View Profile to see details
+  if (!isMobile) openMapModal(cid);
 }
 
 // ─── OPEN MODAL ───────────────────────────────────────────────
@@ -4469,22 +4467,9 @@ function renderCardList() {
       : inView.map(c => buildCard(c, true)).join('');
   }
 
-  // Re-apply active highlight + scroll after DOM rebuild
+  // Re-apply active highlight after DOM rebuild
   if (_activeCid) {
     document.querySelectorAll(`[data-cid="${_activeCid}"]`).forEach(el => el.classList.add('highlighted'));
-    const isMobile = window.matchMedia('(hover: none)').matches;
-    if (isMobile) {
-      // Mobile: scroll carousel so active card is first
-      const track = document.getElementById('mapCarouselTrack');
-      const card  = track && track.querySelector('[data-cid="' + _activeCid + '"]');
-      if (card && track) {
-        const cardLeft = card.offsetLeft - track.offsetLeft;
-        track.scrollTo({ left: cardLeft, behavior: 'smooth' });
-      }
-    } else {
-      // Desktop: scroll sidebar so active card is at top
-      scrollCardListTo(_activeCid);
-    }
   }
 }
 
@@ -4552,7 +4537,8 @@ function onCardClick(cid) {
   _markers.forEach(m => { if (m._cid === cid) m.setIcon(PIN_ACTIVE); else m.setIcon({...PIN_IDLE, scale: m.icon?.scale||1}); });
   const clinic = _allClinics.find(c => String(c.id) === cid);
   if (clinic && _map) _map.panTo({ lat: +clinic.lat, lng: +clinic.lng });
-  // Desktop: highlight only, user clicks View Profile for details
+  // Desktop only: also open modal on card click
+  if (!isMobile) openMapModal(cid);
 }
 
 function highlightCard(cid, scroll) {
@@ -4565,15 +4551,7 @@ function highlightCard(cid, scroll) {
 
 function scrollCardListTo(cid) {
   const el = document.querySelector(`#mapListCards [data-cid="${cid}"]`);
-  const panel = el && el.closest('.map-card-list');
-  if (el && panel) {
-    // getBoundingClientRect gives accurate position relative to viewport
-    const panelRect = panel.getBoundingClientRect();
-    const cardRect  = el.getBoundingClientRect();
-    // Scroll so card appears in the middle of the sidebar
-    const offset = cardRect.top - panelRect.top - (panelRect.height / 2) + (cardRect.height / 2);
-    panel.scrollBy({ top: offset, behavior: 'smooth' });
-  }
+  if (el) el.scrollIntoView({ behavior:'smooth', block:'nearest' });
 }
 
 function highlightPinById(cid) {
@@ -4620,7 +4598,7 @@ function openMapClinicModal(id) { openMapModal(String(id)); }
     const SUPABASE_URL = 'https://vefldlqtyxdywbzdjuia.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlZmxkbHF0eXhkeXdiemRqdWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNDAwMjgsImV4cCI6MjA4NzkxNjAyOH0.o582sXiUkB3j4FiHEA5rE3ABy_pdTeeK1PnNpNirHZA';
 
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/clinics?select=id&approved=eq.true`, {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/clinics?select=id&or=(approved.eq.true,approved.is.null)`, {
       method: 'GET',
       headers: {
         'apikey': SUPABASE_KEY,
