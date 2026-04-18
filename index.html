@@ -2118,11 +2118,12 @@
   <a href="/" class="nav-logo">Skin<span>Day</span></a>
   <ul class="nav-links"></ul>
   <div class="nav-ctas">
-    <button class="nav-shortlist-btn" onclick="openShortlistDrawer()" id="navShortlistBtn">
-      ♡ Shortlist <span class="nav-shortlist-badge" id="navShortlistBadge">0</span>
+    <!-- Shortlist: only shown when logged in -->
+    <button class="nav-shortlist-btn" onclick="openShortlistDrawer()" id="navShortlistBtn" style="display:none;">
+      ♡ Shortlist <span class="nav-shortlist-badge" id="navShortlistBadge"></span>
     </button>
     <!-- Auth state: shown when logged out -->
-    <button class="nav-signin-btn" id="navSignInBtn" onclick="openAuthModal()" style="display:none;">Sign In</button>
+    <button class="nav-signin-btn" id="navSignInBtn" onclick="openAuthModal()">Sign In</button>
     <!-- Auth state: shown when logged in -->
     <div style="position:relative;display:none;" id="navUserMenu">
       <button class="nav-user-btn" id="navUserBtn" onclick="toggleUserDropdown()">
@@ -2136,8 +2137,7 @@
         <button class="signout" onclick="handleSignOut()">Sign Out</button>
       </div>
     </div>
-    <a href="/claim.html" class="nav-cta">Claim Your Clinic</a>
-    <a href="/editor.html" class="nav-cta">Clinic Portal</a>
+    <a href="/editor.html" class="nav-cta" id="navPortalBtn">Clinic Portal</a>
   </div>
   <button class="hamburger" id="hamburger" aria-label="Menu">
     <span></span><span></span><span></span>
@@ -2150,6 +2150,7 @@
   <div class="nav-overlay-links">
     <a href="/">Browse Clinics</a>
     <a href="/about.html">About</a>
+    <a href="/account.html" class="cta-link">My Account</a>
     <a href="/claim.html" class="cta-link">Claim Your Clinic</a>
     <a href="/editor.html" class="cta-link">Clinic Portal</a>
   </div>
@@ -2385,9 +2386,9 @@
 <!-- PRICE COMPARISON SECTION -->
 <section class="comparison-section" id="prices">
   <div class="section-header">
-    <div class="section-eyebrow">Find the Right Clinic — Not Just the Right Price</div>
-    <h2 class="section-title">Canada's first<br><em>cosmetic clinic matching platform.</em></h2>
-    <p class="section-desc">Compare pricing alongside reputation and profile — because the best clinic is about fit, not just cost. Clinics without pricing are still visible, so you see the full landscape.</p>
+    <div class="section-eyebrow">Browse Clinics Across Canada</div>
+    <h2 class="section-title">Real data.<br><em>Better decisions.</em></h2>
+    <p class="section-desc">Injector credentials, real pricing, and verified profiles — everything ratings don't tell you. Clinics without pricing are still listed so you see the full landscape.</p>
   </div>
 
   <div class="filter-wrap">
@@ -3593,12 +3594,12 @@ function setUser(user) {
   const initial = name.charAt(0).toUpperCase();
 
   document.getElementById('navSignInBtn').style.display = 'none';
+  document.getElementById('navShortlistBtn').style.display = 'flex';
   const menu = document.getElementById('navUserMenu');
   menu.style.display = 'block';
   document.getElementById('navUserName').textContent = name.split(' ')[0];
   document.getElementById('navUserInitial').textContent = initial;
 
-  // If they have a Google avatar
   if (user.user_metadata?.avatar_url) {
     const el = document.getElementById('navUserInitial');
     el.outerHTML = `<img class="nav-user-avatar" id="navUserInitial" src="${user.user_metadata.avatar_url}" alt="">`;
@@ -3611,6 +3612,7 @@ function setUser(user) {
 function setLoggedOut() {
   _currentUser = null;
   document.getElementById('navSignInBtn').style.display = 'inline-block';
+  document.getElementById('navShortlistBtn').style.display = 'none';
   document.getElementById('navUserMenu').style.display = 'none';
   syncSaveButtons();
   updateShortlistBadge();
