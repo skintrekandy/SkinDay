@@ -1088,6 +1088,156 @@
       color: var(--deep); font-weight: 600;
     }
 
+    /* ─── SHORTLIST ─── */
+    .btn-save-card {
+      background: transparent;
+      border: none;
+      padding: 0.3rem 0.4rem;
+      cursor: pointer;
+      color: var(--dim);
+      font-size: 1.1rem;
+      line-height: 1;
+      transition: color 0.2s, transform 0.15s;
+      flex-shrink: 0;
+    }
+    .btn-save-card:hover { color: var(--rose); transform: scale(1.15); }
+    .btn-save-card.saved { color: var(--rose); }
+    .btn-save-card.saved .heart-icon::before { content: '♥'; }
+    .btn-save-card:not(.saved) .heart-icon::before { content: '♡'; }
+
+    .nav-shortlist-btn {
+      background: transparent;
+      border: 1px solid rgba(201,169,110,0.35);
+      color: var(--dim);
+      padding: 0.35rem 0.85rem;
+      border-radius: 4px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.82rem; font-weight: 500;
+      cursor: pointer;
+      display: flex; align-items: center; gap: 0.4rem;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .nav-shortlist-btn:hover { border-color: var(--gold); color: var(--gold); }
+    .nav-shortlist-badge {
+      background: var(--rose);
+      color: #fff;
+      font-size: 0.65rem; font-weight: 700;
+      border-radius: 10px;
+      padding: 0.1rem 0.4rem;
+      min-width: 18px; text-align: center;
+      display: none;
+    }
+    .nav-shortlist-badge.visible { display: inline-block; }
+
+    /* Shortlist drawer */
+    .shortlist-drawer-overlay {
+      display: none;
+      position: fixed; inset: 0; z-index: 350;
+      background: rgba(28,23,20,0.6);
+      backdrop-filter: blur(4px);
+    }
+    .shortlist-drawer-overlay.open { display: block; }
+    .shortlist-drawer {
+      position: fixed; top: 0; right: 0; bottom: 0;
+      width: 380px; max-width: 95vw;
+      background: var(--cream);
+      z-index: 351;
+      display: flex; flex-direction: column;
+      transform: translateX(100%);
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: -8px 0 40px rgba(28,23,20,0.18);
+    }
+    .shortlist-drawer-overlay.open .shortlist-drawer { transform: translateX(0); }
+    .shortlist-drawer-header {
+      padding: 1.2rem 1.4rem;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .shortlist-drawer-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.3rem; font-weight: 400;
+      color: var(--deep);
+    }
+    .shortlist-drawer-title span {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.75rem; font-weight: 500;
+      color: var(--muted);
+      margin-left: 0.5rem;
+    }
+    .shortlist-drawer-close {
+      background: none; border: none;
+      font-size: 1.2rem; color: var(--muted);
+      cursor: pointer; padding: 0.2rem 0.4rem;
+      transition: color 0.2s;
+    }
+    .shortlist-drawer-close:hover { color: var(--deep); }
+    .shortlist-drawer-body {
+      flex: 1; overflow-y: auto;
+      padding: 1rem 1.2rem;
+    }
+    .shortlist-empty {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--muted);
+    }
+    .shortlist-empty-icon { font-size: 2rem; margin-bottom: 0.8rem; }
+    .shortlist-empty p { font-size: 0.88rem; line-height: 1.6; }
+    .shortlist-item {
+      display: flex; align-items: flex-start; gap: 0.75rem;
+      padding: 0.9rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .shortlist-item:last-child { border-bottom: none; }
+    .shortlist-item-logo {
+      width: 38px; height: 38px; border-radius: 6px;
+      background: var(--warm); border: 1px solid var(--border);
+      flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+      font-size: 0.8rem; font-weight: 700; color: var(--muted);
+      overflow: hidden;
+    }
+    .shortlist-item-logo img { width: 100%; height: 100%; object-fit: contain; }
+    .shortlist-item-info { flex: 1; min-width: 0; }
+    .shortlist-item-name {
+      font-size: 0.9rem; font-weight: 500; color: var(--deep);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      margin-bottom: 0.15rem;
+    }
+    .shortlist-item-meta { font-size: 0.75rem; color: var(--muted); }
+    .shortlist-item-price { font-size: 0.78rem; color: var(--deep); margin-top: 0.2rem; font-weight: 500; }
+    .shortlist-item-remove {
+      background: none; border: none;
+      color: var(--dim); font-size: 1rem;
+      cursor: pointer; padding: 0.2rem;
+      transition: color 0.2s; flex-shrink: 0;
+    }
+    .shortlist-item-remove:hover { color: var(--rose); }
+    .shortlist-drawer-footer {
+      padding: 1rem 1.2rem;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+      display: flex; flex-direction: column; gap: 0.6rem;
+    }
+    .shortlist-compare-btn {
+      width: 100%;
+      background: var(--deep); color: var(--cream);
+      border: none; border-radius: 6px;
+      padding: 0.75rem;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.88rem; font-weight: 500;
+      cursor: pointer; transition: opacity 0.2s;
+    }
+    .shortlist-compare-btn:hover { opacity: 0.85; }
+    .shortlist-compare-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .shortlist-clear-btn {
+      background: none; border: none;
+      color: var(--muted); font-size: 0.78rem;
+      cursor: pointer; text-align: center;
+      transition: color 0.2s;
+    }
+    .shortlist-clear-btn:hover { color: var(--rose); }
+
     /* ─── COMPARE MODAL ─── */
     .compare-modal-overlay {
       display: none;
@@ -1887,6 +2037,9 @@
   <a href="/" class="nav-logo">Skin<span>Day</span></a>
   <ul class="nav-links"></ul>
   <div class="nav-ctas">
+    <button class="nav-shortlist-btn" onclick="openShortlistDrawer()" id="navShortlistBtn">
+      ♡ Shortlist <span class="nav-shortlist-badge" id="navShortlistBadge">0</span>
+    </button>
     <a href="/claim.html" class="nav-cta">Claim Your Clinic</a>
     <a href="/editor.html" class="nav-cta">Clinic Portal</a>
   </div>
@@ -2777,6 +2930,7 @@ function renderPageCards(clinicsData, append) {
         <div class="card-footer">
           <a href="#" class="view-link" onclick="event.preventDefault(); openClinicModal(${c.id})">View Profile →</a>
           <div style="display:flex;gap:0.4rem;align-items:center;">
+            <button class="btn-save-card" id="save-${c.id}" onclick="toggleSave('${c.id}', event)" title="Save to shortlist"><span class="heart-icon"></span></button>
             ${(() => {
               if (!c.claimed) return '';
               const bookHref = c.booking_url || c.website || (c.phone ? 'tel:' + c.phone.replace(/\s/g,'') : null);
@@ -2800,6 +2954,7 @@ function renderPageCards(clinicsData, append) {
   }
 
   syncCompareButtons();
+  syncSaveButtons();
 }
 
 // ─── FETCH PAGE ────────────────────────────────────────────────
@@ -3301,6 +3456,131 @@ async function submitMissingClinic() {
   }
 }
 
+
+// ─── SHORTLIST ────────────────────────────────────────────────
+
+const SHORTLIST_KEY = 'skinday_shortlist';
+
+function getShortlist() {
+  try { return JSON.parse(localStorage.getItem(SHORTLIST_KEY) || '[]'); }
+  catch(e) { return []; }
+}
+
+function saveShortlist(list) {
+  try { localStorage.setItem(SHORTLIST_KEY, JSON.stringify(list)); }
+  catch(e) {}
+}
+
+function toggleSave(id, e) {
+  if (e) { e.preventDefault(); e.stopPropagation(); }
+  const sid = String(id);
+  let list = getShortlist();
+  const idx = list.indexOf(sid);
+  if (idx > -1) {
+    list.splice(idx, 1);
+    showToast('Removed from shortlist');
+  } else {
+    list.push(sid);
+    showToast('Saved to shortlist ♥');
+  }
+  saveShortlist(list);
+  syncSaveButtons();
+  updateShortlistBadge();
+}
+
+function syncSaveButtons() {
+  const list = getShortlist();
+  document.querySelectorAll('.btn-save-card').forEach(btn => {
+    const sid = btn.id.replace('save-', '');
+    btn.classList.toggle('saved', list.includes(sid));
+  });
+}
+
+function updateShortlistBadge() {
+  const list = getShortlist();
+  const badge = document.getElementById('navShortlistBadge');
+  const btn = document.getElementById('navShortlistBtn');
+  if (!badge || !btn) return;
+  if (list.length > 0) {
+    badge.textContent = list.length;
+    badge.classList.add('visible');
+    btn.innerHTML = `♥ Shortlist <span class="nav-shortlist-badge visible" id="navShortlistBadge">${list.length}</span>`;
+  } else {
+    btn.innerHTML = `♡ Shortlist <span class="nav-shortlist-badge" id="navShortlistBadge">0</span>`;
+  }
+}
+
+function openShortlistDrawer() {
+  renderShortlistDrawer();
+  document.getElementById('shortlistDrawerOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeShortlistDrawer(e) {
+  if (e && e.target !== document.getElementById('shortlistDrawerOverlay')) return;
+  document.getElementById('shortlistDrawerOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function renderShortlistDrawer() {
+  const list = getShortlist();
+  const body = document.getElementById('shortlistDrawerBody');
+  const footer = document.getElementById('shortlistDrawerFooter');
+  const countEl = document.getElementById('shortlistCount');
+  if (countEl) countEl.textContent = list.length === 0 ? '' : `${list.length} clinic${list.length > 1 ? 's' : ''}`;
+
+  if (list.length === 0) {
+    body.innerHTML = `<div class="shortlist-empty"><div class="shortlist-empty-icon">♡</div><p>No clinics saved yet.<br>Tap the heart on any clinic card to save it here.</p></div>`;
+    if (footer) footer.style.display = 'none';
+    return;
+  }
+
+  if (footer) footer.style.display = 'flex';
+  const compareBtn = document.getElementById('shortlistCompareBtn');
+  if (compareBtn) compareBtn.disabled = list.length < 2;
+
+  body.innerHTML = list.map(sid => {
+    const clinic = findClinic(isNaN(sid) ? sid : parseInt(sid));
+    if (!clinic) return '';
+    const logoHTML = clinic.logo_url
+      ? `<img src="${clinic.logo_url}" alt="" onerror="this.style.display='none'">`
+      : clinic.name.charAt(0).toUpperCase();
+    const price = clinic.price != null ? `$${clinic.price}/unit` : 'Price not listed';
+    const creds = (() => { try { return JSON.parse(clinic.injector_credentials||'[]'); } catch(e){return[];} })();
+    const credText = creds.length > 0 ? (CRED_MAP[creds[0]] || creds[0].toUpperCase()) : '';
+    return `<div class="shortlist-item">
+      <div class="shortlist-item-logo">${logoHTML}</div>
+      <div class="shortlist-item-info">
+        <div class="shortlist-item-name">${clinic.name}</div>
+        <div class="shortlist-item-meta">📍 ${clinic.neighbourhood || ''}${clinic.province ? ', '+clinic.province : ''}${credText ? ' · '+credText : ''}</div>
+        <div class="shortlist-item-price">${price}</div>
+      </div>
+      <button class="shortlist-item-remove" onclick="toggleSave('${sid}'); renderShortlistDrawer();" title="Remove">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function clearShortlist() {
+  saveShortlist([]);
+  syncSaveButtons();
+  updateShortlistBadge();
+  renderShortlistDrawer();
+}
+
+function compareFromShortlist() {
+  const list = getShortlist();
+  if (list.length < 2) return;
+  compareList = list.slice(0, 3).map(sid => isNaN(sid) ? sid : parseInt(sid));
+  updateCompareUI();
+  closeShortlistDrawer();
+  document.getElementById('compareNowBtn')?.click();
+}
+
+// Init shortlist on load
+document.addEventListener('DOMContentLoaded', () => {
+  updateShortlistBadge();
+  syncSaveButtons();
+});
 
 // ─── COMPARE LOGIC ──────────────────────────────────────────
 
@@ -4577,6 +4857,26 @@ function activatePinById(id) { onCardClick(String(id)); }
 function openMapClinicModal(id) { openMapModal(String(id)); }
 
 </script>
+<!-- SHORTLIST DRAWER -->
+<div class="shortlist-drawer-overlay" id="shortlistDrawerOverlay" onclick="closeShortlistDrawer(event)">
+  <div class="shortlist-drawer" id="shortlistDrawer">
+    <div class="shortlist-drawer-header">
+      <div class="shortlist-drawer-title">Your Shortlist <span id="shortlistCount">0 clinics</span></div>
+      <button class="shortlist-drawer-close" onclick="closeShortlistDrawer()">✕</button>
+    </div>
+    <div class="shortlist-drawer-body" id="shortlistDrawerBody">
+      <div class="shortlist-empty">
+        <div class="shortlist-empty-icon">♡</div>
+        <p>No clinics saved yet.<br>Tap the heart on any clinic card to save it here.</p>
+      </div>
+    </div>
+    <div class="shortlist-drawer-footer" id="shortlistDrawerFooter" style="display:none;">
+      <button class="shortlist-compare-btn" id="shortlistCompareBtn" onclick="compareFromShortlist()">Compare Saved Clinics</button>
+      <button class="shortlist-clear-btn" onclick="clearShortlist()">Clear shortlist</button>
+    </div>
+  </div>
+</div>
+
 <!-- MISSING CLINIC MODAL -->
 <div class="missing-modal-overlay" id="missingClinicModal">
   <div class="missing-modal">
