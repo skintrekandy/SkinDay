@@ -3746,8 +3746,8 @@ async function toggleSave(id, e) {
       showToast('Removed from shortlist');
     } else {
       list.push(sid);
-      showToast('Saved ♥ — Sign in to keep across devices');
-      setTimeout(() => { if (!_currentUser) openAuthModal('Sign in to save your shortlist across devices.'); }, 1500);
+      showToast('Sign in to save your shortlist across devices');
+      if (!_currentUser) openAuthModal('Sign in to save clinics to your shortlist.');
     }
     saveShortlist(list);
   }
