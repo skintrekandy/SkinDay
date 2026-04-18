@@ -4390,18 +4390,11 @@ function onPinClick(cid, marker) {
   if (marker) marker.setIcon(PIN_ACTIVE);
   highlightCard(cid, isMobile); // on mobile, scroll carousel to selected card
   if (!isMobile) scrollCardListTo(cid);
-  // On mobile: scroll carousel so selected card is first (leftmost)
-  if (isMobile) {
-    const track = document.getElementById('mapCarouselTrack');
-    const card  = track && track.querySelector('[data-cid="' + cid + '"]');
-    if (card && track) {
-      const cardLeft = card.offsetLeft - track.offsetLeft;
-      track.scrollTo({ left: cardLeft, behavior: 'smooth' });
-    }
-  }
+  // Carousel scroll is handled in renderCardList after DOM rebuild
   const clinic = _allClinics.find(c => String(c.id) === cid);
   if (clinic) _map.panTo({ lat: +clinic.lat, lng: +clinic.lng });
-  if (!isMobile) openMapModal(cid);
+  // Desktop: just highlight the card, don't auto-open modal
+  // User can click View Profile to see details
 }
 
 // ─── OPEN MODAL ───────────────────────────────────────────────
@@ -4476,9 +4469,19 @@ function renderCardList() {
       : inView.map(c => buildCard(c, true)).join('');
   }
 
-  // Re-apply active highlight after DOM rebuild
+  // Re-apply active highlight + scroll carousel after DOM rebuild
   if (_activeCid) {
     document.querySelectorAll(`[data-cid="${_activeCid}"]`).forEach(el => el.classList.add('highlighted'));
+    // On mobile: scroll carousel so active card is first
+    const isMobile = window.matchMedia('(hover: none)').matches;
+    if (isMobile) {
+      const track = document.getElementById('mapCarouselTrack');
+      const card  = track && track.querySelector('[data-cid="' + _activeCid + '"]');
+      if (card && track) {
+        const cardLeft = card.offsetLeft - track.offsetLeft;
+        track.scrollTo({ left: cardLeft, behavior: 'smooth' });
+      }
+    }
   }
 }
 
@@ -4546,8 +4549,7 @@ function onCardClick(cid) {
   _markers.forEach(m => { if (m._cid === cid) m.setIcon(PIN_ACTIVE); else m.setIcon({...PIN_IDLE, scale: m.icon?.scale||1}); });
   const clinic = _allClinics.find(c => String(c.id) === cid);
   if (clinic && _map) _map.panTo({ lat: +clinic.lat, lng: +clinic.lng });
-  // Desktop only: also open modal on card click
-  if (!isMobile) openMapModal(cid);
+  // Desktop: highlight only, user clicks View Profile for details
 }
 
 function highlightCard(cid, scroll) {
