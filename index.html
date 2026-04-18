@@ -85,13 +85,13 @@
     .nav-cta {
       background: var(--rose);
       color: #fff !important;
-      padding: 0.4rem 0.9rem;
+      padding: 0.3rem 0.75rem;
       border-radius: 4px;
-      font-size: 0.85rem;
+      font-size: 0.78rem;
       font-weight: 500 !important;
       text-decoration: none !important;
       transition: background 0.2s !important;
-      display: inline-block;
+      display: inline-block; white-space: nowrap;
     }
     .nav-cta:hover { background: var(--rose-m) !important; color: #fff !important; }
     .nav-botox-guide {
@@ -1109,16 +1109,20 @@
       background: transparent;
       border: 1px solid rgba(201,169,110,0.35);
       color: var(--dim);
-      padding: 0.35rem 0.85rem;
+      padding: 0.3rem 0.7rem;
       border-radius: 4px;
       font-family: 'DM Sans', sans-serif;
-      font-size: 0.82rem; font-weight: 500;
+      font-size: 0.78rem; font-weight: 500;
       cursor: pointer;
-      display: flex; align-items: center; gap: 0.4rem;
+      display: flex; align-items: center; gap: 0.35rem;
       transition: all 0.2s;
       white-space: nowrap;
     }
     .nav-shortlist-btn:hover { border-color: var(--gold); color: var(--gold); }
+    .nav-ctas {
+      display: flex; align-items: center; gap: 0.5rem;
+      flex-shrink: 0;
+    }
     .nav-shortlist-badge {
       background: var(--rose);
       color: #fff;
@@ -2081,14 +2085,16 @@
     .auth-error { font-size: 0.8rem; color: var(--rose); text-align: center; margin-top: 0.5rem; min-height: 1.2rem; }
     /* ─── NAV USER STATE ─── */
     .nav-user-btn {
-      display: flex; align-items: center; gap: 0.5rem; background: transparent;
-      border: 1px solid rgba(201,169,110,0.35); border-radius: 4px; padding: 0.3rem 0.7rem;
-      cursor: pointer; color: var(--dim); font-family: "DM Sans", sans-serif; font-size: 0.82rem;
-      transition: all 0.2s; position: relative;
+      display: flex; align-items: center; gap: 0.4rem;
+      background: transparent; border: 1px solid rgba(201,169,110,0.35);
+      border-radius: 4px; padding: 0.28rem 0.6rem;
+      cursor: pointer; color: var(--dim);
+      font-family: 'DM Sans', sans-serif; font-size: 0.78rem;
+      transition: all 0.2s; position: relative; white-space: nowrap;
     }
     .nav-user-btn:hover { border-color: var(--gold); color: var(--gold); }
-    .nav-user-avatar { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; border: 1px solid var(--gold); }
-    .nav-user-initial { width: 24px; height: 24px; border-radius: 50%; background: var(--gold); color: var(--deep); display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; }
+    .nav-user-avatar { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; border: 1px solid var(--gold); }
+    .nav-user-initial { width: 22px; height: 22px; border-radius: 50%; background: var(--gold); color: var(--deep); display: flex; align-items: center; justify-content: center; font-size: 0.68rem; font-weight: 700; flex-shrink: 0; }
     .nav-user-dropdown {
       position: absolute; top: calc(100% + 8px); right: 0; background: var(--deep2);
       border: 1px solid rgba(201,169,110,0.2); border-radius: 8px; min-width: 160px;
@@ -2104,9 +2110,10 @@
     .nav-user-dropdown .signout { color: #e07070; }
     .nav-user-dropdown .signout:hover { color: var(--rose); }
     .nav-signin-btn {
-      background: transparent; border: 1px solid rgba(201,169,110,0.35); color: var(--dim);
-      padding: 0.35rem 0.85rem; border-radius: 4px; font-family: "DM Sans", sans-serif;
-      font-size: 0.82rem; font-weight: 500; cursor: pointer; transition: all 0.2s; white-space: nowrap;
+      background: transparent; border: 1px solid rgba(201,169,110,0.35);
+      color: var(--dim); padding: 0.3rem 0.7rem; border-radius: 4px;
+      font-family: 'DM Sans', sans-serif; font-size: 0.78rem; font-weight: 500;
+      cursor: pointer; transition: all 0.2s; white-space: nowrap;
     }
     .nav-signin-btn:hover { border-color: var(--gold); color: var(--gold); }
   </style>
@@ -2118,10 +2125,6 @@
   <a href="/" class="nav-logo">Skin<span>Day</span></a>
   <ul class="nav-links"></ul>
   <div class="nav-ctas">
-    <!-- Shortlist: only shown when logged in -->
-    <button class="nav-shortlist-btn" onclick="openShortlistDrawer()" id="navShortlistBtn" style="display:none;">
-      ♡ Shortlist <span class="nav-shortlist-badge" id="navShortlistBadge"></span>
-    </button>
     <!-- Auth state: shown when logged out -->
     <button class="nav-signin-btn" id="navSignInBtn" onclick="openAuthModal()">Client Sign In</button>
     <!-- Auth state: shown when logged in -->
@@ -2133,7 +2136,6 @@
       </button>
       <div class="nav-user-dropdown" id="navUserDropdown">
         <a href="/account.html">My Account</a>
-        <button onclick="openShortlistDrawer(); toggleUserDropdown();">My Shortlist</button>
         <button class="signout" onclick="handleSignOut()">Sign Out</button>
       </div>
     </div>
@@ -2150,7 +2152,7 @@
   <div class="nav-overlay-links">
     <a href="/">Browse Clinics</a>
     <a href="/about.html">About</a>
-    <a href="/account.html" class="cta-link">Client Sign In</a>
+    <a href="/account.html" class="cta-link" id="mobileAuthLink">Client Sign In</a>
     <a href="/claim.html" class="cta-link">Claim Your Clinic</a>
     <a href="/editor.html" class="cta-link">Clinic Portal</a>
   </div>
@@ -3594,9 +3596,7 @@ function setUser(user) {
   const initial = name.charAt(0).toUpperCase();
 
   document.getElementById('navSignInBtn').style.display = 'none';
-  document.getElementById('navShortlistBtn').style.display = 'flex';
-  const menu = document.getElementById('navUserMenu');
-  menu.style.display = 'block';
+  document.getElementById('navUserMenu').style.display = 'block';
   document.getElementById('navUserName').textContent = name.split(' ')[0];
   document.getElementById('navUserInitial').textContent = initial;
 
@@ -3605,17 +3605,29 @@ function setUser(user) {
     el.outerHTML = `<img class="nav-user-avatar" id="navUserInitial" src="${user.user_metadata.avatar_url}" alt="">`;
   }
 
+  // Update mobile overlay link
+  const mobileLink = document.getElementById('mobileAuthLink');
+  if (mobileLink) {
+    mobileLink.textContent = name.split(' ')[0];
+    mobileLink.href = '/account.html';
+  }
+
   syncSaveButtons();
-  updateShortlistBadge();
 }
 
 function setLoggedOut() {
   _currentUser = null;
   document.getElementById('navSignInBtn').style.display = 'inline-block';
-  document.getElementById('navShortlistBtn').style.display = 'none';
   document.getElementById('navUserMenu').style.display = 'none';
+
+  // Reset mobile overlay link
+  const mobileLink = document.getElementById('mobileAuthLink');
+  if (mobileLink) {
+    mobileLink.textContent = 'Client Sign In';
+    mobileLink.href = '/account.html';
+  }
+
   syncSaveButtons();
-  updateShortlistBadge();
 }
 
 function toggleUserDropdown() {
