@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Account — SkinDay</title>
+  <meta name="robots" content="noindex" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --cream:   #FAF7F2;
+      --warm:    #F4EDE4;
+      --deep:    #1C1714;
+      --deep2:   #241E1A;
+      --rose:    #C8725A;
+      --rose-m:  #D4896E;
+      --rose-bg: #F5E8E3;
+      --gold:    #C9A96E;
+      --muted:   #8A7B72;
+      --dim:     #B5A89F;
+      --border:  #EAE2D8;
+      --green:   #3D7A55;
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--cream);
+      color: var(--deep);
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+    }
+
+    /* ─── NAV ─── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: rgba(28,23,20,0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(201,169,110,0.25);
+      padding: 0 5%;
+      display: flex; align-items: center; justify-content: space-between;
+      height: 64px;
+    }
+    .nav-logo {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.6rem; font-weight: 400;
+      color: var(--cream); letter-spacing: 0.04em;
+      text-decoration: none;
+    }
+    .nav-logo span { color: var(--gold); }
+    .nav-right { display: flex; align-items: center; gap: 1rem; }
+    .nav-back {
+      color: var(--dim); text-decoration: none;
+      font-size: 0.82rem; transition: color 0.2s;
+      display: flex; align-items: center; gap: 0.3rem;
+    }
+    .nav-back:hover { color: var(--cream); }
+    .nav-signout-btn {
+      background: transparent; border: 1px solid rgba(201,169,110,0.35);
+      color: var(--dim); padding: 0.35rem 0.85rem; border-radius: 4px;
+      font-family: 'DM Sans', sans-serif; font-size: 0.82rem;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .nav-signout-btn:hover { border-color: var(--rose); color: var(--rose); }
+
+    /* ─── PAGE LAYOUT ─── */
+    .page-wrap {
+      max-width: 900px; margin: 0 auto;
+      padding: 100px 5% 80px;
+    }
+
+    /* ─── PROFILE HEADER ─── */
+    .profile-header {
+      display: flex; align-items: center; gap: 1.5rem;
+      margin-bottom: 3rem;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .profile-avatar {
+      width: 72px; height: 72px; border-radius: 50%;
+      background: var(--gold); color: var(--deep);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 2rem; font-weight: 400;
+      flex-shrink: 0; overflow: hidden;
+      border: 2px solid rgba(201,169,110,0.4);
+    }
+    .profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .profile-info {}
+    .profile-name {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.9rem; font-weight: 400; color: var(--deep);
+      line-height: 1.1; margin-bottom: 0.3rem;
+    }
+    .profile-email { font-size: 0.85rem; color: var(--muted); }
+    .profile-meta {
+      font-size: 0.75rem; color: var(--dim);
+      margin-top: 0.4rem; letter-spacing: 0.04em;
+    }
+
+    /* ─── SECTION ─── */
+    .account-section { margin-bottom: 3rem; }
+    .section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 1.2rem;
+    }
+    .section-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.4rem; font-weight: 400; color: var(--deep);
+    }
+    .section-count {
+      font-size: 0.78rem; color: var(--muted);
+      background: var(--warm); border: 1px solid var(--border);
+      padding: 0.2rem 0.6rem; border-radius: 20px;
+    }
+    .section-action {
+      font-size: 0.82rem; color: var(--rose);
+      background: none; border: none; cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      text-decoration: underline; transition: color 0.2s;
+    }
+    .section-action:hover { color: var(--rose-m); }
+
+    /* ─── SAVED CLINIC CARDS ─── */
+    .saved-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 1rem;
+    }
+    .saved-card {
+      background: #fff; border: 1.5px solid var(--border);
+      border-radius: 12px; padding: 1.1rem 1.2rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      position: relative;
+    }
+    .saved-card:hover { border-color: var(--rose-m); box-shadow: 0 3px 16px rgba(28,23,20,0.07); }
+    .saved-card-top {
+      display: flex; align-items: flex-start;
+      gap: 0.75rem; margin-bottom: 0.75rem;
+    }
+    .saved-card-logo {
+      width: 40px; height: 40px; border-radius: 8px;
+      background: var(--warm); border: 1px solid var(--border);
+      flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+      font-size: 0.85rem; font-weight: 700; color: var(--muted);
+      overflow: hidden;
+    }
+    .saved-card-logo img { width: 100%; height: 100%; object-fit: contain; }
+    .saved-card-info { flex: 1; min-width: 0; }
+    .saved-card-name {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.05rem; font-weight: 500; color: var(--deep);
+      line-height: 1.2; margin-bottom: 0.2rem;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .saved-card-meta { font-size: 0.72rem; color: var(--muted); }
+    .saved-card-price {
+      font-size: 0.82rem; color: var(--deep);
+      font-weight: 500; margin-top: 0.2rem;
+    }
+    .saved-card-cred {
+      display: inline-block; font-size: 0.65rem; font-weight: 600;
+      letter-spacing: 0.06em; text-transform: uppercase;
+      background: var(--warm); border: 1px solid var(--border);
+      color: var(--muted); padding: 0.15rem 0.45rem; border-radius: 3px;
+      margin-top: 0.35rem;
+    }
+    .saved-card-footer {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-top: 0.85rem; padding-top: 0.75rem;
+      border-top: 1px solid var(--border);
+    }
+    .saved-card-view {
+      font-size: 0.75rem; font-weight: 500; color: var(--rose);
+      text-decoration: none; transition: color 0.2s;
+    }
+    .saved-card-view:hover { color: var(--rose-m); }
+    .saved-card-remove {
+      background: none; border: none; color: var(--dim);
+      font-size: 0.75rem; cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      transition: color 0.2s;
+    }
+    .saved-card-remove:hover { color: var(--rose); }
+
+    /* ─── EMPTY STATE ─── */
+    .empty-state {
+      text-align: center; padding: 3.5rem 1rem;
+      background: var(--warm); border-radius: 12px;
+      border: 1px dashed var(--border);
+    }
+    .empty-state-icon { font-size: 2.2rem; margin-bottom: 0.75rem; }
+    .empty-state h3 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.3rem; font-weight: 400; color: var(--deep);
+      margin-bottom: 0.4rem;
+    }
+    .empty-state p { font-size: 0.85rem; color: var(--muted); margin-bottom: 1.2rem; line-height: 1.6; }
+    .empty-state a {
+      display: inline-block; background: var(--rose); color: #fff;
+      padding: 0.6rem 1.4rem; border-radius: 6px;
+      font-size: 0.85rem; font-weight: 500; text-decoration: none;
+      transition: background 0.2s;
+    }
+    .empty-state a:hover { background: var(--rose-m); }
+
+    /* ─── COMING SOON STUBS ─── */
+    .stub-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 560px) { .stub-grid { grid-template-columns: 1fr; } }
+    .stub-card {
+      background: var(--warm); border: 1px solid var(--border);
+      border-radius: 12px; padding: 1.4rem 1.5rem;
+      opacity: 0.7;
+    }
+    .stub-card-icon { font-size: 1.4rem; margin-bottom: 0.6rem; }
+    .stub-card-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.1rem; font-weight: 500; color: var(--deep);
+      margin-bottom: 0.3rem;
+    }
+    .stub-card-desc { font-size: 0.78rem; color: var(--muted); line-height: 1.5; }
+    .stub-badge {
+      display: inline-block; font-size: 0.62rem; font-weight: 600;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      background: var(--border); color: var(--muted);
+      padding: 0.15rem 0.5rem; border-radius: 3px; margin-top: 0.6rem;
+    }
+
+    /* ─── ACCOUNT SETTINGS ─── */
+    .settings-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 0; border-bottom: 1px solid var(--border);
+    }
+    .settings-row:last-child { border-bottom: none; }
+    .settings-label { font-size: 0.88rem; color: var(--deep); font-weight: 500; }
+    .settings-value { font-size: 0.82rem; color: var(--muted); }
+    .settings-btn {
+      background: none; border: 1px solid var(--border);
+      color: var(--muted); padding: 0.3rem 0.75rem;
+      border-radius: 4px; font-family: 'DM Sans', sans-serif;
+      font-size: 0.78rem; cursor: pointer; transition: all 0.2s;
+    }
+    .settings-btn:hover { border-color: var(--rose); color: var(--rose); }
+    .settings-btn.danger { color: #c05050; border-color: rgba(192,80,80,0.3); }
+    .settings-btn.danger:hover { background: rgba(192,80,80,0.06); }
+
+    /* ─── LOADING / GATE ─── */
+    .page-loading {
+      position: fixed; inset: 0;
+      background: var(--cream);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 200;
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.2rem; color: var(--muted);
+      letter-spacing: 0.06em;
+    }
+    .page-loading.hidden { display: none; }
+
+    /* ─── TOAST ─── */
+    .toast {
+      position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(20px);
+      background: var(--deep); color: var(--cream);
+      padding: 0.6rem 1.4rem; border-radius: 6px;
+      font-size: 0.82rem; opacity: 0;
+      transition: opacity 0.3s, transform 0.3s;
+      pointer-events: none; z-index: 999; white-space: nowrap;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    @media (max-width: 640px) {
+      .profile-header { flex-direction: column; align-items: flex-start; gap: 1rem; }
+      .saved-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="page-loading" id="pageLoading">Loading…</div>
+
+<!-- NAV -->
+<nav>
+  <a href="/" class="nav-logo">Skin<span>Day</span></a>
+  <div class="nav-right">
+    <a href="/" class="nav-back">← Browse Clinics</a>
+    <button class="nav-signout-btn" onclick="handleSignOut()">Sign Out</button>
+  </div>
+</nav>
+
+<!-- PAGE -->
+<div class="page-wrap" id="pageWrap" style="display:none;">
+
+  <!-- PROFILE HEADER -->
+  <div class="profile-header">
+    <div class="profile-avatar" id="profileAvatar">?</div>
+    <div class="profile-info">
+      <div class="profile-name" id="profileName">—</div>
+      <div class="profile-email" id="profileEmail">—</div>
+      <div class="profile-meta" id="profileMeta"></div>
+    </div>
+  </div>
+
+  <!-- SAVED CLINICS -->
+  <div class="account-section">
+    <div class="section-header">
+      <div style="display:flex;align-items:center;gap:0.75rem;">
+        <div class="section-title">Saved Clinics</div>
+        <span class="section-count" id="savedCount">0</span>
+      </div>
+      <button class="section-action" id="clearSavedBtn" onclick="clearAllSaved()" style="display:none;">Clear all</button>
+    </div>
+    <div id="savedClinicsArea">
+      <div class="empty-state">
+        <div class="empty-state-icon">♡</div>
+        <h3>No saved clinics yet</h3>
+        <p>Browse clinics and tap the heart icon<br>to save them here.</p>
+        <a href="/">Browse Clinics</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMING SOON -->
+  <div class="account-section">
+    <div class="section-header">
+      <div class="section-title">Coming Soon</div>
+    </div>
+    <div class="stub-grid">
+      <div class="stub-card">
+        <div class="stub-card-icon">📅</div>
+        <div class="stub-card-title">Appointment History</div>
+        <div class="stub-card-desc">Track your past and upcoming appointments across all SkinDay clinics.</div>
+        <div class="stub-badge">Coming Soon</div>
+      </div>
+      <div class="stub-card">
+        <div class="stub-card-icon">⭐</div>
+        <div class="stub-card-title">Your Reviews</div>
+        <div class="stub-card-desc">Leave verified reviews for clinics you've visited. Help others choose.</div>
+        <div class="stub-badge">Coming Soon</div>
+      </div>
+      <div class="stub-card">
+        <div class="stub-card-icon">🔔</div>
+        <div class="stub-card-title">Price Alerts</div>
+        <div class="stub-card-desc">Get notified when a saved clinic updates their pricing or runs a promo.</div>
+        <div class="stub-badge">Coming Soon</div>
+      </div>
+      <div class="stub-card">
+        <div class="stub-card-icon">📊</div>
+        <div class="stub-card-title">My Comparisons</div>
+        <div class="stub-card-desc">Saved clinic comparisons you can revisit and share with friends.</div>
+        <div class="stub-badge">Coming Soon</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ACCOUNT SETTINGS -->
+  <div class="account-section">
+    <div class="section-header">
+      <div class="section-title">Account</div>
+    </div>
+    <div>
+      <div class="settings-row">
+        <div>
+          <div class="settings-label">Email</div>
+          <div class="settings-value" id="settingsEmail">—</div>
+        </div>
+      </div>
+      <div class="settings-row">
+        <div>
+          <div class="settings-label">Sign-in method</div>
+          <div class="settings-value" id="settingsProvider">—</div>
+        </div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-label">Sign out of SkinDay</div>
+        <button class="settings-btn" onclick="handleSignOut()">Sign Out</button>
+      </div>
+      <div class="settings-row">
+        <div>
+          <div class="settings-label">Delete account</div>
+          <div class="settings-value">Permanently remove your account and all saved data.</div>
+        </div>
+        <button class="settings-btn danger" onclick="confirmDeleteAccount()">Delete</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+const SB_URL = 'https://vefldlqtyxdywbzdjuia.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlZmxkbHF0eXhkeXdiemRqdWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNDAwMjgsImV4cCI6MjA4NzkxNjAyOH0.o582sXiUkB3j4FiHEA5rE3ABy_pdTeeK1PnNpNirHZA';
+const _sb = supabase.createClient(SB_URL, SB_KEY);
+
+const CRED_MAP = { md:'MD', rn:'RN', np:'NP', pa:'PA', nd:'ND', dentist:'DMD', aesthetician:'Aesthetician' };
+
+let _user = null;
+let _savedClinics = []; // full clinic objects fetched from API
+
+// ─── INIT ─────────────────────────────────────────────────────
+(async function init() {
+  const { data: { session } } = await _sb.auth.getSession();
+  if (!session?.user) {
+    // Not logged in — redirect to home
+    window.location.replace('/?signin=1');
+    return;
+  }
+  _user = session.user;
+  renderProfile(_user);
+  await loadSavedClinics();
+  document.getElementById('pageLoading').classList.add('hidden');
+  document.getElementById('pageWrap').style.display = 'block';
+})();
+
+// ─── PROFILE ──────────────────────────────────────────────────
+function renderProfile(user) {
+  const name = user.user_metadata?.full_name || user.email?.split('@')[0] || 'You';
+  const email = user.email || '';
+  const provider = user.app_metadata?.provider || 'email';
+  const joined = new Date(user.created_at).toLocaleDateString('en-CA', { year:'numeric', month:'long' });
+
+  document.getElementById('profileName').textContent = name;
+  document.getElementById('profileEmail').textContent = email;
+  document.getElementById('profileMeta').textContent = `Member since ${joined}`;
+  document.getElementById('settingsEmail').textContent = email;
+  document.getElementById('settingsProvider').textContent = provider === 'google' ? 'Google' : 'Email & Password';
+
+  const avatarEl = document.getElementById('profileAvatar');
+  if (user.user_metadata?.avatar_url) {
+    avatarEl.innerHTML = `<img src="${user.user_metadata.avatar_url}" alt="${name}">`;
+  } else {
+    avatarEl.textContent = name.charAt(0).toUpperCase();
+  }
+}
+
+// ─── SAVED CLINICS ─────────────────────────────────────────────
+async function loadSavedClinics() {
+  const { data: saved, error } = await _sb
+    .from('saved_clinics')
+    .select('clinic_id, saved_at')
+    .eq('user_id', _user.id)
+    .order('saved_at', { ascending: false });
+
+  if (error || !saved?.length) {
+    renderSavedEmpty();
+    return;
+  }
+
+  // Fetch clinic details from the API for each saved ID
+  const ids = saved.map(r => r.clinic_id);
+  try {
+    const res = await fetch(
+      `${SB_URL}/rest/v1/clinics?select=id,name,neighbourhood,province,rating,reviews,price,logo_url,injector_credentials,maps_url,website,booking_url,claimed&id=in.(${ids.join(',')})&or=(approved.eq.true,approved.is.null)`,
+      { headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` } }
+    );
+    const clinics = await res.json();
+    _savedClinics = clinics;
+    renderSavedGrid(clinics, saved);
+  } catch(e) {
+    renderSavedEmpty();
+  }
+}
+
+function renderSavedGrid(clinics, savedRows) {
+  const area = document.getElementById('savedClinicsArea');
+  const countEl = document.getElementById('savedCount');
+  const clearBtn = document.getElementById('clearSavedBtn');
+
+  if (!clinics.length) { renderSavedEmpty(); return; }
+
+  countEl.textContent = clinics.length;
+  clearBtn.style.display = 'inline-block';
+
+  area.innerHTML = `<div class="saved-grid">${clinics.map(c => buildSavedCard(c)).join('')}</div>`;
+}
+
+function buildSavedCard(c) {
+  const logoHTML = c.logo_url
+    ? `<img src="${c.logo_url}" alt="" onerror="this.style.display='none'">`
+    : (c.name || '?').charAt(0).toUpperCase();
+
+  const price = c.price != null ? `$${c.price}/unit · Botox` : 'Price not listed';
+  const rating = c.rating ? `${c.rating.toFixed(1)} ★` : '—';
+  const reviews = c.reviews ? `${c.reviews.toLocaleString()} reviews` : '';
+
+  const creds = (() => { try { return JSON.parse(c.injector_credentials||'[]'); } catch(e){return[];} })();
+  const credHTML = creds.slice(0,2).map(v =>
+    `<span class="saved-card-cred">${CRED_MAP[v]||v.toUpperCase()}</span>`
+  ).join(' ');
+
+  const viewHref = c.website || c.booking_url || c.maps_url || '#';
+
+  return `<div class="saved-card">
+    <div class="saved-card-top">
+      <div class="saved-card-logo">${logoHTML}</div>
+      <div class="saved-card-info">
+        <div class="saved-card-name">${c.name}</div>
+        <div class="saved-card-meta">📍 ${c.neighbourhood || ''}${c.province ? ', '+c.province : ''}</div>
+        <div class="saved-card-meta">${rating}${reviews ? ' · '+reviews : ''}</div>
+      </div>
+    </div>
+    <div class="saved-card-price">${price}</div>
+    ${credHTML}
+    <div class="saved-card-footer">
+      <a href="/?clinic=${c.id}" class="saved-card-view">View Profile →</a>
+      <button class="saved-card-remove" onclick="removeSaved('${c.id}')">Remove</button>
+    </div>
+  </div>`;
+}
+
+function renderSavedEmpty() {
+  document.getElementById('savedCount').textContent = '0';
+  document.getElementById('clearSavedBtn').style.display = 'none';
+  document.getElementById('savedClinicsArea').innerHTML = `
+    <div class="empty-state">
+      <div class="empty-state-icon">♡</div>
+      <h3>No saved clinics yet</h3>
+      <p>Browse clinics and tap the heart icon<br>to save them here.</p>
+      <a href="/">Browse Clinics</a>
+    </div>`;
+}
+
+async function removeSaved(clinicId) {
+  await _sb.from('saved_clinics')
+    .delete()
+    .eq('user_id', _user.id)
+    .eq('clinic_id', String(clinicId));
+  showToast('Removed from saved clinics');
+  await loadSavedClinics();
+}
+
+async function clearAllSaved() {
+  if (!confirm('Remove all saved clinics? This cannot be undone.')) return;
+  await _sb.from('saved_clinics').delete().eq('user_id', _user.id);
+  showToast('All saved clinics cleared');
+  renderSavedEmpty();
+}
+
+// ─── AUTH ──────────────────────────────────────────────────────
+async function handleSignOut() {
+  await _sb.auth.signOut();
+  window.location.replace('/');
+}
+
+async function confirmDeleteAccount() {
+  if (!confirm('This will permanently delete your account and all saved data. Are you sure?')) return;
+  // Soft delete — remove saved data and sign out
+  // Full deletion requires a Supabase Edge Function with service role key
+  await _sb.from('saved_clinics').delete().eq('user_id', _user.id);
+  await _sb.auth.signOut();
+  showToast('Account data removed. You have been signed out.');
+  setTimeout(() => window.location.replace('/'), 1500);
+}
+
+// ─── TOAST ────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ─── HANDLE SIGN-IN REDIRECT FROM HOME ────────────────────────
+// If home page redirects here after OAuth, session will be picked up by init()
+</script>
+</body>
+</html>

@@ -2029,6 +2029,87 @@
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <link rel="manifest" href="/site.webmanifest">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    /* ─── AUTH MODAL ─── */
+    .auth-modal-overlay {
+      display: none; position: fixed; inset: 0; z-index: 400;
+      background: rgba(28,23,20,0.7); backdrop-filter: blur(6px);
+      align-items: center; justify-content: center; padding: 1rem;
+    }
+    .auth-modal-overlay.open { display: flex; }
+    .auth-modal {
+      background: var(--cream); border-radius: 16px;
+      width: 100%; max-width: 420px; padding: 2.2rem 2rem 2rem;
+      position: relative; animation: fadeUp 0.25s ease;
+    }
+    .auth-modal-close {
+      position: absolute; top: 1rem; right: 1rem;
+      background: none; border: none; font-size: 1.2rem;
+      color: var(--muted); cursor: pointer; transition: color 0.2s;
+    }
+    .auth-modal-close:hover { color: var(--deep); }
+    .auth-modal-logo { font-family: "Cormorant Garamond", serif; font-size: 1.5rem; font-weight: 400; color: var(--deep); text-align: center; margin-bottom: 0.3rem; }
+    .auth-modal-logo span { color: var(--gold); }
+    .auth-modal-tagline { font-size: 0.82rem; color: var(--muted); text-align: center; margin-bottom: 1.6rem; }
+    .auth-modal-hint { font-size: 0.8rem; color: var(--rose); text-align: center; margin-bottom: 1.2rem; font-style: italic; }
+    .auth-google-btn {
+      width: 100%; display: flex; align-items: center; justify-content: center;
+      gap: 0.6rem; padding: 0.75rem; border: 1.5px solid var(--border); border-radius: 8px;
+      background: #fff; color: var(--deep); font-family: "DM Sans", sans-serif;
+      font-size: 0.9rem; font-weight: 500; cursor: pointer; transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .auth-google-btn:hover { border-color: var(--muted); box-shadow: 0 2px 8px rgba(28,23,20,0.08); }
+    .auth-google-btn svg { width: 18px; height: 18px; flex-shrink: 0; }
+    .auth-divider { display: flex; align-items: center; gap: 0.75rem; margin: 1.2rem 0; color: var(--dim); font-size: 0.78rem; }
+    .auth-divider::before, .auth-divider::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+    .auth-input {
+      width: 100%; padding: 0.7rem 0.9rem; border: 1.5px solid var(--border); border-radius: 8px;
+      font-family: "DM Sans", sans-serif; font-size: 0.9rem; color: var(--deep); background: #fff;
+      outline: none; transition: border-color 0.2s; margin-bottom: 0.75rem; box-sizing: border-box;
+    }
+    .auth-input:focus { border-color: var(--gold); }
+    .auth-submit-btn {
+      width: 100%; padding: 0.75rem; background: var(--deep); color: var(--cream);
+      border: none; border-radius: 8px; font-family: "DM Sans", sans-serif;
+      font-size: 0.9rem; font-weight: 500; cursor: pointer; transition: opacity 0.2s; margin-top: 0.25rem;
+    }
+    .auth-submit-btn:hover { opacity: 0.85; }
+    .auth-submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .auth-toggle { text-align: center; margin-top: 1.1rem; font-size: 0.82rem; color: var(--muted); }
+    .auth-toggle button { background: none; border: none; color: var(--rose); font-size: 0.82rem; cursor: pointer; font-family: "DM Sans", sans-serif; text-decoration: underline; }
+    .auth-error { font-size: 0.8rem; color: var(--rose); text-align: center; margin-top: 0.5rem; min-height: 1.2rem; }
+    /* ─── NAV USER STATE ─── */
+    .nav-user-btn {
+      display: flex; align-items: center; gap: 0.5rem; background: transparent;
+      border: 1px solid rgba(201,169,110,0.35); border-radius: 4px; padding: 0.3rem 0.7rem;
+      cursor: pointer; color: var(--dim); font-family: "DM Sans", sans-serif; font-size: 0.82rem;
+      transition: all 0.2s; position: relative;
+    }
+    .nav-user-btn:hover { border-color: var(--gold); color: var(--gold); }
+    .nav-user-avatar { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; border: 1px solid var(--gold); }
+    .nav-user-initial { width: 24px; height: 24px; border-radius: 50%; background: var(--gold); color: var(--deep); display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; }
+    .nav-user-dropdown {
+      position: absolute; top: calc(100% + 8px); right: 0; background: var(--deep2);
+      border: 1px solid rgba(201,169,110,0.2); border-radius: 8px; min-width: 160px;
+      box-shadow: 0 8px 32px rgba(28,23,20,0.3); display: none; flex-direction: column; overflow: hidden; z-index: 500;
+    }
+    .nav-user-dropdown.open { display: flex; }
+    .nav-user-dropdown a, .nav-user-dropdown button {
+      padding: 0.65rem 1rem; font-family: "DM Sans", sans-serif; font-size: 0.82rem; color: var(--dim);
+      text-decoration: none; background: none; border: none; text-align: left; cursor: pointer;
+      transition: background 0.15s, color 0.15s; width: 100%;
+    }
+    .nav-user-dropdown a:hover, .nav-user-dropdown button:hover { background: rgba(255,255,255,0.06); color: var(--cream); }
+    .nav-user-dropdown .signout { color: #e07070; }
+    .nav-user-dropdown .signout:hover { color: var(--rose); }
+    .nav-signin-btn {
+      background: transparent; border: 1px solid rgba(201,169,110,0.35); color: var(--dim);
+      padding: 0.35rem 0.85rem; border-radius: 4px; font-family: "DM Sans", sans-serif;
+      font-size: 0.82rem; font-weight: 500; cursor: pointer; transition: all 0.2s; white-space: nowrap;
+    }
+    .nav-signin-btn:hover { border-color: var(--gold); color: var(--gold); }
+  </style>
 </head>
 <body>
 
@@ -2040,6 +2121,21 @@
     <button class="nav-shortlist-btn" onclick="openShortlistDrawer()" id="navShortlistBtn">
       ♡ Shortlist <span class="nav-shortlist-badge" id="navShortlistBadge">0</span>
     </button>
+    <!-- Auth state: shown when logged out -->
+    <button class="nav-signin-btn" id="navSignInBtn" onclick="openAuthModal()" style="display:none;">Sign In</button>
+    <!-- Auth state: shown when logged in -->
+    <div style="position:relative;display:none;" id="navUserMenu">
+      <button class="nav-user-btn" id="navUserBtn" onclick="toggleUserDropdown()">
+        <span id="navUserInitial" class="nav-user-initial">?</span>
+        <span id="navUserName" style="max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+        <svg width="10" height="6" viewBox="0 0 10 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1 1l4 4 4-4"/></svg>
+      </button>
+      <div class="nav-user-dropdown" id="navUserDropdown">
+        <a href="/account.html">My Account</a>
+        <button onclick="openShortlistDrawer(); toggleUserDropdown();">My Shortlist</button>
+        <button class="signout" onclick="handleSignOut()">Sign Out</button>
+      </div>
+    </div>
     <a href="/claim.html" class="nav-cta">Claim Your Clinic</a>
     <a href="/editor.html" class="nav-cta">Clinic Portal</a>
   </div>
@@ -2677,6 +2773,13 @@
   if (hash.includes('type=recovery')) {
     window.location.replace('/editor.html' + hash);
   }
+  // If redirected from account page because not signed in
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('signin') === '1') {
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => openAuthModal('Sign in to view your account.'), 500);
+    });
+  }
 })();
 
 // ─── DATA ────────────────────────────────────────────────────
@@ -2954,7 +3057,7 @@ function renderPageCards(clinicsData, append) {
   }
 
   syncCompareButtons();
-  syncSaveButtons();
+  syncSaveButtons().catch(() => {});
 }
 
 // ─── FETCH PAGE ────────────────────────────────────────────────
@@ -3457,6 +3560,146 @@ async function submitMissingClinic() {
 }
 
 
+// ─── SUPABASE AUTH ────────────────────────────────────────────
+
+const _SB_URL = 'https://vefldlqtyxdywbzdjuia.supabase.co';
+const _SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlZmxkbHF0eXhkeXdiemRqdWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNDAwMjgsImV4cCI6MjA4NzkxNjAyOH0.o582sXiUkB3j4FiHEA5rE3ABy_pdTeeK1PnNpNirHZA';
+const _sb = supabase.createClient(_SB_URL, _SB_KEY);
+
+let _currentUser = null;
+let _authMode = 'signin'; // 'signin' | 'signup'
+
+// ── Init auth on load ──
+(async function initAuth() {
+  const { data: { session } } = await _sb.auth.getSession();
+  if (session?.user) setUser(session.user);
+  else setLoggedOut();
+
+  _sb.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_IN' && session?.user) {
+      setUser(session.user);
+      closeAuthModal();
+      // Merge any localStorage saves into Supabase
+      mergeLocalShortlistToSupabase();
+    } else if (event === 'SIGNED_OUT') {
+      setLoggedOut();
+    }
+  });
+})();
+
+function setUser(user) {
+  _currentUser = user;
+  const name = user.user_metadata?.full_name || user.email?.split('@')[0] || 'You';
+  const initial = name.charAt(0).toUpperCase();
+
+  document.getElementById('navSignInBtn').style.display = 'none';
+  const menu = document.getElementById('navUserMenu');
+  menu.style.display = 'block';
+  document.getElementById('navUserName').textContent = name.split(' ')[0];
+  document.getElementById('navUserInitial').textContent = initial;
+
+  // If they have a Google avatar
+  if (user.user_metadata?.avatar_url) {
+    const el = document.getElementById('navUserInitial');
+    el.outerHTML = `<img class="nav-user-avatar" id="navUserInitial" src="${user.user_metadata.avatar_url}" alt="">`;
+  }
+
+  syncSaveButtons();
+  updateShortlistBadge();
+}
+
+function setLoggedOut() {
+  _currentUser = null;
+  document.getElementById('navSignInBtn').style.display = 'inline-block';
+  document.getElementById('navUserMenu').style.display = 'none';
+  syncSaveButtons();
+  updateShortlistBadge();
+}
+
+function toggleUserDropdown() {
+  document.getElementById('navUserDropdown').classList.toggle('open');
+}
+
+// Close dropdown on outside click
+document.addEventListener('click', e => {
+  const menu = document.getElementById('navUserMenu');
+  if (menu && !menu.contains(e.target)) {
+    document.getElementById('navUserDropdown')?.classList.remove('open');
+  }
+});
+
+// ── Auth modal ──
+function openAuthModal(hint) {
+  const overlay = document.getElementById('authModalOverlay');
+  overlay.classList.add('open');
+  const hintEl = document.getElementById('authModalHint');
+  if (hint) { hintEl.textContent = hint; hintEl.style.display = 'block'; }
+  else { hintEl.style.display = 'none'; }
+  document.body.style.overflow = 'hidden';
+}
+
+function closeAuthModal() {
+  document.getElementById('authModalOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+  document.getElementById('authError').textContent = '';
+}
+
+document.getElementById('authModalOverlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('authModalOverlay')) closeAuthModal();
+});
+
+function toggleAuthMode() {
+  _authMode = _authMode === 'signin' ? 'signup' : 'signin';
+  document.getElementById('authSubmitBtn').textContent = _authMode === 'signin' ? 'Sign In' : 'Create Account';
+  document.getElementById('authToggleText').textContent = _authMode === 'signin' ? "Don't have an account?" : 'Already have an account?';
+  document.querySelector('.auth-toggle button').textContent = _authMode === 'signin' ? 'Sign Up' : 'Sign In';
+  document.getElementById('authPassword').placeholder = _authMode === 'signin' ? 'Password' : 'Create a password';
+  document.getElementById('authError').textContent = '';
+}
+
+async function handleGoogleSignIn() {
+  const { error } = await _sb.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.href }
+  });
+  if (error) document.getElementById('authError').textContent = error.message;
+}
+
+async function handleEmailAuth() {
+  const email = document.getElementById('authEmail').value.trim();
+  const password = document.getElementById('authPassword').value;
+  const btn = document.getElementById('authSubmitBtn');
+  const errEl = document.getElementById('authError');
+  errEl.textContent = '';
+
+  if (!email || !password) { errEl.textContent = 'Please enter your email and password.'; return; }
+  btn.disabled = true;
+  btn.textContent = _authMode === 'signin' ? 'Signing in…' : 'Creating account…';
+
+  let result;
+  if (_authMode === 'signin') {
+    result = await _sb.auth.signInWithPassword({ email, password });
+  } else {
+    result = await _sb.auth.signUp({ email, password });
+  }
+
+  btn.disabled = false;
+  btn.textContent = _authMode === 'signin' ? 'Sign In' : 'Create Account';
+
+  if (result.error) {
+    errEl.textContent = result.error.message;
+  } else if (_authMode === 'signup' && !result.data.session) {
+    errEl.style.color = 'var(--green)';
+    errEl.textContent = 'Account created! Check your email to confirm.';
+  }
+}
+
+async function handleSignOut() {
+  await _sb.auth.signOut();
+  toggleUserDropdown();
+  showToast('Signed out.');
+}
+
 // ─── SHORTLIST ────────────────────────────────────────────────
 
 const SHORTLIST_KEY = 'skinday_shortlist';
@@ -3471,43 +3714,75 @@ function saveShortlist(list) {
   catch(e) {}
 }
 
-function toggleSave(id, e) {
-  if (e) { e.preventDefault(); e.stopPropagation(); }
-  const sid = String(id);
-  let list = getShortlist();
-  const idx = list.indexOf(sid);
-  if (idx > -1) {
-    list.splice(idx, 1);
-    showToast('Removed from shortlist');
-  } else {
-    list.push(sid);
-    showToast('Saved to shortlist ♥');
+async function getShortlistIds() {
+  if (_currentUser) {
+    const { data } = await _sb.from('saved_clinics').select('clinic_id').eq('user_id', _currentUser.id);
+    return (data || []).map(r => r.clinic_id);
   }
-  saveShortlist(list);
-  syncSaveButtons();
-  updateShortlistBadge();
+  return getShortlist();
 }
 
-function syncSaveButtons() {
-  const list = getShortlist();
+async function toggleSave(id, e) {
+  if (e) { e.preventDefault(); e.stopPropagation(); }
+  const sid = String(id);
+
+  if (_currentUser) {
+    const { data: existing } = await _sb.from('saved_clinics')
+      .select('id').eq('user_id', _currentUser.id).eq('clinic_id', sid).maybeSingle();
+    if (existing) {
+      await _sb.from('saved_clinics').delete().eq('user_id', _currentUser.id).eq('clinic_id', sid);
+      showToast('Removed from shortlist');
+    } else {
+      await _sb.from('saved_clinics').insert({ user_id: _currentUser.id, clinic_id: sid });
+      showToast('Saved to shortlist ♥');
+    }
+  } else {
+    let list = getShortlist();
+    const idx = list.indexOf(sid);
+    if (idx > -1) {
+      list.splice(idx, 1);
+      showToast('Removed from shortlist');
+    } else {
+      list.push(sid);
+      showToast('Saved ♥ — Sign in to keep across devices');
+      setTimeout(() => { if (!_currentUser) openAuthModal('Sign in to save your shortlist across devices.'); }, 1500);
+    }
+    saveShortlist(list);
+  }
+
+  await syncSaveButtons();
+  await updateShortlistBadge();
+}
+
+async function syncSaveButtons() {
+  const list = await getShortlistIds();
   document.querySelectorAll('.btn-save-card').forEach(btn => {
     const sid = btn.id.replace('save-', '');
     btn.classList.toggle('saved', list.includes(sid));
   });
 }
 
-function updateShortlistBadge() {
-  const list = getShortlist();
-  const badge = document.getElementById('navShortlistBadge');
+async function updateShortlistBadge() {
+  const list = await getShortlistIds();
   const btn = document.getElementById('navShortlistBtn');
-  if (!badge || !btn) return;
-  if (list.length > 0) {
-    badge.textContent = list.length;
-    badge.classList.add('visible');
-    btn.innerHTML = `♥ Shortlist <span class="nav-shortlist-badge visible" id="navShortlistBadge">${list.length}</span>`;
+  if (!btn) return;
+  const count = list.length;
+  if (count > 0) {
+    btn.innerHTML = `♥ Shortlist <span class="nav-shortlist-badge visible" id="navShortlistBadge">${count}</span>`;
   } else {
-    btn.innerHTML = `♡ Shortlist <span class="nav-shortlist-badge" id="navShortlistBadge">0</span>`;
+    btn.innerHTML = `♡ Shortlist <span class="nav-shortlist-badge" id="navShortlistBadge"></span>`;
   }
+}
+
+async function mergeLocalShortlistToSupabase() {
+  const local = getShortlist();
+  if (!local.length || !_currentUser) return;
+  for (const cid of local) {
+    await _sb.from('saved_clinics').upsert({ user_id: _currentUser.id, clinic_id: cid }, { onConflict: 'user_id,clinic_id' });
+  }
+  saveShortlist([]);
+  await syncSaveButtons();
+  await updateShortlistBadge();
 }
 
 function openShortlistDrawer() {
@@ -3522,8 +3797,8 @@ function closeShortlistDrawer(e) {
   document.body.style.overflow = '';
 }
 
-function renderShortlistDrawer() {
-  const list = getShortlist();
+async function renderShortlistDrawer() {
+  const list = await getShortlistIds();
   const body = document.getElementById('shortlistDrawerBody');
   const footer = document.getElementById('shortlistDrawerFooter');
   const countEl = document.getElementById('shortlistCount');
@@ -3543,7 +3818,7 @@ function renderShortlistDrawer() {
     const clinic = findClinic(isNaN(sid) ? sid : parseInt(sid));
     if (!clinic) return '';
     const logoHTML = clinic.logo_url
-      ? `<img src="${clinic.logo_url}" alt="" onerror="this.style.display='none'">`
+      ? `<img src="${clinic.logo_url}" alt="" onerror="this.style.display='none'" style="width:100%;height:100%;object-fit:contain;">`
       : clinic.name.charAt(0).toUpperCase();
     const price = clinic.price != null ? `$${clinic.price}/unit` : 'Price not listed';
     const creds = (() => { try { return JSON.parse(clinic.injector_credentials||'[]'); } catch(e){return[];} })();
@@ -3555,20 +3830,24 @@ function renderShortlistDrawer() {
         <div class="shortlist-item-meta">📍 ${clinic.neighbourhood || ''}${clinic.province ? ', '+clinic.province : ''}${credText ? ' · '+credText : ''}</div>
         <div class="shortlist-item-price">${price}</div>
       </div>
-      <button class="shortlist-item-remove" onclick="toggleSave('${sid}'); renderShortlistDrawer();" title="Remove">✕</button>
+      <button class="shortlist-item-remove" onclick="toggleSave('${sid}'); setTimeout(renderShortlistDrawer,300);" title="Remove">✕</button>
     </div>`;
   }).join('');
 }
 
-function clearShortlist() {
-  saveShortlist([]);
-  syncSaveButtons();
-  updateShortlistBadge();
+async function clearShortlist() {
+  if (_currentUser) {
+    await _sb.from('saved_clinics').delete().eq('user_id', _currentUser.id);
+  } else {
+    saveShortlist([]);
+  }
+  await syncSaveButtons();
+  await updateShortlistBadge();
   renderShortlistDrawer();
 }
 
-function compareFromShortlist() {
-  const list = getShortlist();
+async function compareFromShortlist() {
+  const list = await getShortlistIds();
   if (list.length < 2) return;
   compareList = list.slice(0, 3).map(sid => isNaN(sid) ? sid : parseInt(sid));
   updateCompareUI();
@@ -3576,10 +3855,10 @@ function compareFromShortlist() {
   document.getElementById('compareNowBtn')?.click();
 }
 
-// Init shortlist on load
-document.addEventListener('DOMContentLoaded', () => {
-  updateShortlistBadge();
-  syncSaveButtons();
+// Init on load
+document.addEventListener('DOMContentLoaded', async () => {
+  await updateShortlistBadge();
+  await syncSaveButtons();
 });
 
 // ─── COMPARE LOGIC ──────────────────────────────────────────
@@ -4857,6 +5136,39 @@ function activatePinById(id) { onCardClick(String(id)); }
 function openMapClinicModal(id) { openMapModal(String(id)); }
 
 </script>
+<!-- AUTH MODAL -->
+<div class="auth-modal-overlay" id="authModalOverlay">
+  <div class="auth-modal">
+    <button class="auth-modal-close" onclick="closeAuthModal()">✕</button>
+    <div class="auth-modal-logo">Skin<span>Day</span></div>
+    <div class="auth-modal-tagline">Save clinics, track your shortlist, and more.</div>
+    <div class="auth-modal-hint" id="authModalHint" style="display:none;"></div>
+
+    <button class="auth-google-btn" onclick="handleGoogleSignIn()">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+      </svg>
+      Continue with Google
+    </button>
+
+    <div class="auth-divider">or</div>
+
+    <div id="authEmailForm">
+      <input class="auth-input" type="email" id="authEmail" placeholder="Email address" autocomplete="email" />
+      <input class="auth-input" type="password" id="authPassword" placeholder="Password" autocomplete="current-password" />
+      <button class="auth-submit-btn" id="authSubmitBtn" onclick="handleEmailAuth()">Sign In</button>
+      <div class="auth-error" id="authError"></div>
+      <div class="auth-toggle">
+        <span id="authToggleText">Don't have an account?</span>
+        <button onclick="toggleAuthMode()">Sign Up</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- SHORTLIST DRAWER -->
 <div class="shortlist-drawer-overlay" id="shortlistDrawerOverlay" onclick="closeShortlistDrawer(event)">
   <div class="shortlist-drawer" id="shortlistDrawer">
