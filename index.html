@@ -3578,15 +3578,26 @@ let _authMode = 'signin'; // 'signin' | 'signup'
 // ── Init auth on load ──
 (async function initAuth() {
   const { data: { session } } = await _sb.auth.getSession();
-  if (session?.user) setUser(session.user);
-  else setLoggedOut();
+  if (session?.user) {
+    setUser(session.user);
+    closeAuthModal();
+    // Clean up OAuth hash fragment from URL without reloading
+    if (window.location.hash.includes('access_token') || window.location.hash.includes('error')) {
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+  } else {
+    setLoggedOut();
+  }
 
   _sb.auth.onAuthStateChange((event, session) => {
     if (event === 'SIGNED_IN' && session?.user) {
       setUser(session.user);
       closeAuthModal();
-      // Merge any localStorage saves into Supabase
       mergeLocalShortlistToSupabase();
+      // Clean up URL hash after OAuth redirect
+      if (window.location.hash.includes('access_token')) {
+        history.replaceState(null, '', window.location.pathname + window.location.search);
+      }
     } else if (event === 'SIGNED_OUT') {
       setLoggedOut();
     }
