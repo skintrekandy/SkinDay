@@ -3581,24 +3581,20 @@ let _authMode = 'signin'; // 'signin' | 'signup'
 
 // ── Init auth on load ──
 async function initAuth() {
-  // First check for existing session
-  const { data: { session } } = await _sb.auth.getSession();
-  if (session?.user) {
-    setUser(session.user);
-    // Clean up OAuth hash fragment
-    if (window.location.hash.includes('access_token') || window.location.hash.includes('error_description')) {
-      history.replaceState(null, '', window.location.pathname);
-    }
-  } else {
-    setLoggedOut();
-  }
-
-  // Listen for auth changes (email sign-in, sign-out)
+  // onAuthStateChange is the primary handler — fires immediately with
+  // INITIAL_SESSION event on load, including after OAuth redirect
   _sb.auth.onAuthStateChange((event, session) => {
-    if (event === 'SIGNED_IN' && session?.user) {
-      setUser(session.user);
-      closeAuthModal();
-      mergeLocalShortlistToSupabase();
+    if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
+      if (session?.user) {
+        setUser(session.user);
+        mergeLocalShortlistToSupabase();
+        // Clean up OAuth hash
+        if (window.location.hash.includes('access_token')) {
+          history.replaceState(null, '', window.location.pathname);
+        }
+      } else {
+        setLoggedOut();
+      }
     } else if (event === 'SIGNED_OUT') {
       setLoggedOut();
     }
@@ -3699,7 +3695,8 @@ async function handleGoogleSignIn() {
   const { error } = await _sb.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: window.location.origin + '/'
+      redirectTo: window.location.origin + '/',
+      queryParams: { prompt: 'select_account' }
     }
   });
   if (error) document.getElementById('authError').textContent = error.message;
