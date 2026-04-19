@@ -3583,28 +3583,28 @@ let _authMode = 'signin'; // 'signin' | 'signup'
 
 // ── Init auth on load ──
 async function initAuth() {
+  // getSession can return null immediately after OAuth redirect on mobile
+  // while Supabase processes the token — retry once after short delay
+  let session = (await _sb.auth.getSession()).data.session;
+
+  if (!session) {
+    // Wait briefly and retry — handles mobile OAuth redirect timing
+    await new Promise(r => setTimeout(r, 800));
+    session = (await _sb.auth.getSession()).data.session;
+  }
+
+  if (session?.user) {
+    setUser(session.user);
+  } else {
+    setLoggedOut();
+  }
+
+  // Listen for subsequent auth changes (email sign-in, sign-out)
   _sb.auth.onAuthStateChange((event, session) => {
-    if (event === 'INITIAL_SESSION') {
-      if (session?.user) {
-        setUser(session.user);
-      } else {
-        setLoggedOut();
-      }
-    } else if (event === 'SIGNED_IN') {
-      if (session?.user) {
-        // Always reload after Google OAuth to get clean nav state
-        // Use sessionStorage flag to detect if this is a fresh OAuth (not email sign-in)
-        const isOAuthRedirect = sessionStorage.getItem('skinday_oauth_pending');
-        if (isOAuthRedirect) {
-          sessionStorage.removeItem('skinday_oauth_pending');
-          window.location.replace(window.location.pathname);
-        } else {
-          // Email sign-in — update in place
-          setUser(session.user);
-          closeAuthModal();
-          mergeLocalShortlistToSupabase();
-        }
-      }
+    if (event === 'SIGNED_IN' && session?.user) {
+      setUser(session.user);
+      closeAuthModal();
+      mergeLocalShortlistToSupabase();
     } else if (event === 'SIGNED_OUT') {
       setLoggedOut();
     }
@@ -3702,7 +3702,6 @@ function toggleAuthMode() {
 }
 
 async function handleGoogleSignIn() {
-  sessionStorage.setItem('skinday_oauth_pending', '1');
   const { error } = await _sb.auth.signInWithOAuth({
     provider: 'google',
     options: {
@@ -3710,10 +3709,7 @@ async function handleGoogleSignIn() {
       queryParams: { prompt: 'select_account' }
     }
   });
-  if (error) {
-    sessionStorage.removeItem('skinday_oauth_pending');
-    document.getElementById('authError').textContent = error.message;
-  }
+  if (error) document.getElementById('authError').textContent = error.message;
 }
 
 async function handleEmailAuth() {
