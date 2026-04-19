@@ -497,7 +497,7 @@ function renderSavedGrid(clinics, savedRows) {
   clearBtn.style.display = 'inline-block';
 
   const compareNote = clinics.length >= 2
-    ? `<p style="font-size:0.8rem;color:var(--muted);margin-bottom:1rem;">To compare clinics, <a href="/" style="color:var(--rose);">browse clinics</a> and use the + Compare button.</p>`
+    ? `<p style="font-size:0.8rem;color:var(--muted);margin-bottom:1rem;">To compare clinics side by side, use the <strong>+ Compare</strong> button on the <a href="/" style="color:var(--rose);">browse page</a>. Up to 3 clinics at a time.</p>`
     : '';
   area.innerHTML = `${compareNote}<div class="saved-grid">${clinics.map(c => buildSavedCard(c)).join('')}</div>`;
 }
