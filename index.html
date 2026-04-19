@@ -2391,7 +2391,7 @@
 <!-- PRICE COMPARISON SECTION -->
 <section class="comparison-section" id="prices">
   <div class="section-header">
-    <div class="section-eyebrow">Browse Clinics Across Canada</div>
+    <div class="section-eyebrow">Browse Cosmetic Clinics Across Canada</div>
     <h2 class="section-title">Real data.<br><em>Better decisions.</em></h2>
     <p class="section-desc">Injector credentials, real pricing, and verified profiles — everything ratings don't tell you. Clinics without pricing are still listed so you see the full landscape.</p>
   </div>
@@ -3577,25 +3577,24 @@ let _authMode = 'signin'; // 'signin' | 'signup'
 
 // ── Init auth on load ──
 async function initAuth() {
+  // First check for existing session
   const { data: { session } } = await _sb.auth.getSession();
   if (session?.user) {
     setUser(session.user);
-    closeAuthModal();
-    if (window.location.hash.includes('access_token') || window.location.hash.includes('error')) {
-      history.replaceState(null, '', window.location.pathname + window.location.search);
+    // Clean up OAuth hash fragment
+    if (window.location.hash.includes('access_token') || window.location.hash.includes('error_description')) {
+      history.replaceState(null, '', window.location.pathname);
     }
   } else {
     setLoggedOut();
   }
 
+  // Listen for auth changes (email sign-in, sign-out)
   _sb.auth.onAuthStateChange((event, session) => {
     if (event === 'SIGNED_IN' && session?.user) {
       setUser(session.user);
       closeAuthModal();
       mergeLocalShortlistToSupabase();
-      if (window.location.hash.includes('access_token')) {
-        history.replaceState(null, '', window.location.pathname + window.location.search);
-      }
     } else if (event === 'SIGNED_OUT') {
       setLoggedOut();
     }
@@ -3605,24 +3604,33 @@ async function initAuth() {
 function setUser(user) {
   _currentUser = user;
   const name = user.user_metadata?.full_name || user.email?.split('@')[0] || 'You';
-  const initial = name.charAt(0).toUpperCase();
+  const firstName = name.split(' ')[0];
+  const initial = firstName.charAt(0).toUpperCase();
 
-  document.getElementById('navSignInBtn').style.display = 'none';
-  document.getElementById('navUserMenu').style.display = 'block';
-  document.getElementById('navUserName').textContent = name.split(' ')[0];
-  document.getElementById('navUserInitial').textContent = initial;
+  // Desktop nav
+  const signInBtn = document.getElementById('navSignInBtn');
+  const userMenu = document.getElementById('navUserMenu');
+  if (signInBtn) signInBtn.style.display = 'none';
+  if (userMenu) userMenu.style.display = 'block';
 
-  if (user.user_metadata?.avatar_url) {
-    const el = document.getElementById('navUserInitial');
-    el.outerHTML = `<img class="nav-user-avatar" id="navUserInitial" src="${user.user_metadata.avatar_url}" alt="">`;
+  const nameEl = document.getElementById('navUserName');
+  const initialEl = document.getElementById('navUserInitial');
+  if (nameEl) nameEl.textContent = firstName;
+  if (initialEl) initialEl.textContent = initial;
+
+  if (user.user_metadata?.avatar_url && initialEl) {
+    initialEl.outerHTML = `<img class="nav-user-avatar" id="navUserInitial" src="${user.user_metadata.avatar_url}" alt="">`;
   }
 
-  // Update mobile overlay link
+  // Mobile overlay
   const mobileLink = document.getElementById('mobileAuthLink');
   if (mobileLink) {
-    mobileLink.textContent = name.split(' ')[0];
+    mobileLink.textContent = firstName;
     mobileLink.href = '/account.html';
   }
+
+  // Close auth modal if open
+  closeAuthModal();
 
   syncSaveButtons();
 }
@@ -3754,6 +3762,14 @@ async function toggleSave(id, e) {
   if (e) { e.preventDefault(); e.stopPropagation(); }
   const sid = String(id);
 
+  // Re-check session in case _currentUser not yet set
+  if (!_currentUser) {
+    const { data: { session } } = await _sb.auth.getSession();
+    if (session?.user) {
+      setUser(session.user);
+    }
+  }
+
   if (_currentUser) {
     const { data: existing } = await _sb.from('saved_clinics')
       .select('id').eq('user_id', _currentUser.id).eq('clinic_id', sid).maybeSingle();
@@ -3772,8 +3788,8 @@ async function toggleSave(id, e) {
       showToast('Removed from shortlist');
     } else {
       list.push(sid);
-      showToast('Sign in to save your shortlist across devices');
-      if (!_currentUser) openAuthModal('Sign in to save clinics to your shortlist.');
+      showToast('Sign in to save clinics to your shortlist');
+      openAuthModal('Sign in to save clinics to your shortlist.');
     }
     saveShortlist(list);
   }
