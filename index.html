@@ -3588,29 +3588,15 @@ let _authMode = 'signin'; // 'signin' | 'signup'
 
 // ── Init auth on load ──
 async function initAuth() {
-  // getSession can return null immediately after OAuth redirect on mobile
-  // while Supabase processes the token — retry once after short delay
-  let session = (await _sb.auth.getSession()).data.session;
-
-  if (!session) {
-    // Wait briefly and retry — handles mobile OAuth redirect timing
-    await new Promise(r => setTimeout(r, 800));
-    session = (await _sb.auth.getSession()).data.session;
-  }
-
-  if (session?.user) {
-    setUser(session.user);
-  } else {
-    setLoggedOut();
-  }
-
-  // Listen for subsequent auth changes (email sign-in, sign-out)
   _sb.auth.onAuthStateChange((event, session) => {
-    if (event === 'SIGNED_IN' && session?.user) {
+    console.log('Auth event:', event, session?.user?.email);
+    if (session?.user) {
       setUser(session.user);
-      closeAuthModal();
-      mergeLocalShortlistToSupabase();
-    } else if (event === 'SIGNED_OUT') {
+      if (event === 'SIGNED_IN') {
+        closeAuthModal();
+        mergeLocalShortlistToSupabase();
+      }
+    } else {
       setLoggedOut();
     }
   });
