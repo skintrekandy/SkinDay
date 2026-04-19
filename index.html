@@ -3581,19 +3581,24 @@ let _authMode = 'signin'; // 'signin' | 'signup'
 
 // ── Init auth on load ──
 async function initAuth() {
-  // onAuthStateChange is the primary handler — fires immediately with
-  // INITIAL_SESSION event on load, including after OAuth redirect
   _sb.auth.onAuthStateChange((event, session) => {
-    if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
+    if (event === 'INITIAL_SESSION') {
       if (session?.user) {
         setUser(session.user);
-        mergeLocalShortlistToSupabase();
-        // Clean up OAuth hash
-        if (window.location.hash.includes('access_token')) {
-          history.replaceState(null, '', window.location.pathname);
-        }
       } else {
         setLoggedOut();
+      }
+    } else if (event === 'SIGNED_IN') {
+      // Reload to get clean nav state after OAuth redirect
+      if (window.location.hash.includes('access_token')) {
+        window.location.replace(window.location.pathname);
+      } else {
+        // Email sign-in — update in place
+        if (session?.user) {
+          setUser(session.user);
+          closeAuthModal();
+          mergeLocalShortlistToSupabase();
+        }
       }
     } else if (event === 'SIGNED_OUT') {
       setLoggedOut();
@@ -3733,8 +3738,7 @@ async function handleEmailAuth() {
 
 async function handleSignOut() {
   await _sb.auth.signOut();
-  toggleUserDropdown();
-  showToast('Signed out.');
+  window.location.reload();
 }
 
 // ─── SHORTLIST ────────────────────────────────────────────────
