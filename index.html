@@ -2761,11 +2761,13 @@
       <ul>
         <li><a href="/about.html">About SkinDay</a></li>
         <li><a href="/contact.html">Contact</a></li>
+        <li><a href="/privacy.html">Privacy Policy</a></li>
+        <li><a href="/terms.html">Terms of Service</a></li>
       </ul>
     </div>
   </div>
   <div class="footer-bottom">
-    <div class="footer-copy">© 2026 SkinDay. All rights reserved. skinday.ca</div>
+    <div class="footer-copy">© 2026 SkinDay. All rights reserved. · <a href="/privacy.html" style="color:var(--muted);text-decoration:none;">Privacy Policy</a> · <a href="/terms.html" style="color:var(--muted);text-decoration:none;">Terms</a></div>
     <div class="footer-disclaimers">
       <div class="footer-disclaimer"><span class="disc-num">1.</span>Prices shown are user-reported or clinic-verified. Always confirm directly with the clinic before booking.</div>
       <div class="footer-disclaimer"><span class="disc-num">2.</span>"Botox" is used as a general term for neurotoxin treatments. Clinics may use Botox®, Dysport®, Nuceiva®, or other Health Canada–approved neuromodulators.</div>
@@ -3589,12 +3591,15 @@ async function initAuth() {
         setLoggedOut();
       }
     } else if (event === 'SIGNED_IN') {
-      // Reload to get clean nav state after OAuth redirect
-      if (window.location.hash.includes('access_token')) {
-        window.location.replace(window.location.pathname);
-      } else {
-        // Email sign-in — update in place
-        if (session?.user) {
+      if (session?.user) {
+        // Always reload after Google OAuth to get clean nav state
+        // Use sessionStorage flag to detect if this is a fresh OAuth (not email sign-in)
+        const isOAuthRedirect = sessionStorage.getItem('skinday_oauth_pending');
+        if (isOAuthRedirect) {
+          sessionStorage.removeItem('skinday_oauth_pending');
+          window.location.replace(window.location.pathname);
+        } else {
+          // Email sign-in — update in place
           setUser(session.user);
           closeAuthModal();
           mergeLocalShortlistToSupabase();
@@ -3697,6 +3702,7 @@ function toggleAuthMode() {
 }
 
 async function handleGoogleSignIn() {
+  sessionStorage.setItem('skinday_oauth_pending', '1');
   const { error } = await _sb.auth.signInWithOAuth({
     provider: 'google',
     options: {
@@ -3704,7 +3710,10 @@ async function handleGoogleSignIn() {
       queryParams: { prompt: 'select_account' }
     }
   });
-  if (error) document.getElementById('authError').textContent = error.message;
+  if (error) {
+    sessionStorage.removeItem('skinday_oauth_pending');
+    document.getElementById('authError').textContent = error.message;
+  }
 }
 
 async function handleEmailAuth() {
