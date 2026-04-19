@@ -452,14 +452,33 @@ async function loadSavedClinics() {
     return;
   }
 
-  // Fetch clinic details from the API for each saved ID
+  // Fetch clinic details and prices for each saved ID
   const ids = saved.map(r => r.clinic_id);
   try {
-    const res = await fetch(
-      `${SB_URL}/rest/v1/clinics?select=id,name,neighbourhood,province,rating,reviews,price,logo_url,injector_credentials,maps_url,website,booking_url,claimed&id=in.(${ids.join(',')})&or=(approved.eq.true,approved.is.null)`,
-      { headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` } }
-    );
-    const clinics = await res.json();
+    const [clinicRes, priceRes] = await Promise.all([
+      fetch(
+        `${SB_URL}/rest/v1/clinics?select=id,name,neighbourhood,province,rating,reviews,logo_url,injector_credentials,maps_url,website,booking_url,claimed&id=in.(${ids.join(',')})&or=(approved.eq.true,approved.is.null)`,
+        { headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` } }
+      ),
+      fetch(
+        `${SB_URL}/rest/v1/clinic_prices?select=clinic_id,toxin,price&clinic_id=in.(${ids.join(',')})&order=price.asc`,
+        { headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` } }
+      )
+    ]);
+    const clinics = await clinicRes.json();
+    const prices = await priceRes.json();
+
+    // Attach lowest price + toxin to each clinic
+    const priceMap = {};
+    (prices || []).forEach(p => {
+      if (!priceMap[p.clinic_id]) priceMap[p.clinic_id] = p;
+    });
+    clinics.forEach(c => {
+      const p = priceMap[String(c.id)];
+      c.price = p ? p.price : null;
+      c.toxin = p ? p.toxin : 'botox';
+    });
+
     _savedClinics = clinics;
     renderSavedGrid(clinics, saved);
   } catch(e) {
@@ -477,7 +496,10 @@ function renderSavedGrid(clinics, savedRows) {
   countEl.textContent = clinics.length;
   clearBtn.style.display = 'inline-block';
 
-  area.innerHTML = `<div class="saved-grid">${clinics.map(c => buildSavedCard(c)).join('')}</div>`;
+  const compareNote = clinics.length >= 2
+    ? `<p style="font-size:0.8rem;color:var(--muted);margin-bottom:1rem;">To compare clinics, <a href="/" style="color:var(--rose);">browse clinics</a> and use the + Compare button.</p>`
+    : '';
+  area.innerHTML = `${compareNote}<div class="saved-grid">${clinics.map(c => buildSavedCard(c)).join('')}</div>`;
 }
 
 function buildSavedCard(c) {
@@ -485,7 +507,9 @@ function buildSavedCard(c) {
     ? `<img src="${c.logo_url}" alt="" onerror="this.style.display='none'">`
     : (c.name || '?').charAt(0).toUpperCase();
 
-  const price = c.price != null ? `$${c.price}/unit · Botox` : 'Price not listed';
+  const TOXIN_MAP = { botox:'Botox', dysport:'Dysport', xeomin:'Xeomin', nuceiva:'Nuceiva', letybo:'Letybo' };
+  const toxinLabel = TOXIN_MAP[c.toxin] || 'Botox';
+  const price = c.price != null ? `$${c.price}/unit · ${toxinLabel}` : 'Price not listed';
   const rating = c.rating ? `${c.rating.toFixed(1)} ★` : '—';
   const reviews = c.reviews ? `${c.reviews.toLocaleString()} reviews` : '';
 
@@ -508,7 +532,7 @@ function buildSavedCard(c) {
     <div class="saved-card-price">${price}</div>
     ${credHTML}
     <div class="saved-card-footer">
-      <a href="/?clinic=${c.id}" class="saved-card-view">View Profile →</a>
+      <a href="/#clinic/${c.id}" class="saved-card-view">View Profile →</a>
       <button class="saved-card-remove" onclick="removeSaved('${c.id}')">Remove</button>
     </div>
   </div>`;
