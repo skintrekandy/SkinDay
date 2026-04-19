@@ -3679,7 +3679,7 @@ function closeAuthModal() {
   document.getElementById('authError').textContent = '';
 }
 
-document.getElementById('authModalOverlay').addEventListener('click', e => {
+document.getElementById('authModalOverlay')?.addEventListener('click', e => {
   if (e.target === document.getElementById('authModalOverlay')) closeAuthModal();
 });
 
@@ -4146,7 +4146,7 @@ function closeCompareModal() {
   document.getElementById('compareModal').classList.remove('open');
 }
 
-document.getElementById('compareModal').addEventListener('click', function(e) {
+document.getElementById('compareModal')?.addEventListener('click', function(e) {
   if (e.target === this) closeCompareModal();
 });
 </script>
@@ -4663,7 +4663,7 @@ function closeClinicModal() {
 }
 
 // Close on overlay click
-document.getElementById('clinicModalOverlay').addEventListener('click', function(e) {
+document.getElementById('clinicModalOverlay')?.addEventListener('click', function(e) {
   if (e.target === this) closeClinicModal();
 });
 
