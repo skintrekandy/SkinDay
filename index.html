@@ -195,9 +195,16 @@
     }
 
     @media (max-width: 768px) {
-      .hamburger { display: flex; }
-      .nav-ctas { display: none; }
+      .hamburger { display: none !important; }
+      .nav-ctas { display: flex !important; }
       .nav-text { display: none; }
+      .nav-user-btn #navUserName { display: none; }
+    }
+    @media (max-width: 480px) {
+      .nav-cta { padding: 0.28rem 0.55rem !important; font-size: 0.72rem !important; }
+      .nav-signin-btn { padding: 0.28rem 0.55rem; font-size: 0.72rem; }
+      .nav-user-btn { padding: 0.28rem 0.5rem; font-size: 0.72rem; }
+      nav { padding: 0 4%; }
     }
 
     /* ─── HERO ─── */
@@ -1122,9 +1129,6 @@
     .nav-ctas {
       display: flex; align-items: center; gap: 0.5rem;
       flex-shrink: 0;
-    }
-    @media (max-width: 768px) {
-      .nav-ctas { display: none !important; }
     }
     .nav-shortlist-badge {
       background: var(--rose);
