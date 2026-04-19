@@ -774,14 +774,17 @@
       border: 1px solid rgba(201,169,110,0.3);
     }
     .badge-promo {
-      position: absolute; top: 1rem; right: 1rem;
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 22px; height: 22px; border-radius: 50%;
       background: rgba(200,114,90,0.12);
       color: var(--rose);
-      border: 1px solid rgba(200,114,90,0.25);
-      font-size: 0.62rem; font-weight: 700; letter-spacing: 0.08em;
-      text-transform: uppercase;
-      padding: 0.2rem 0.55rem;
-      border-radius: 3px;
+      border: 1px solid rgba(200,114,90,0.35);
+      font-size: 0.65rem; font-weight: 700;
+      flex-shrink: 0;
+    }
+    .card-corner-actions {
+      position: absolute; top: 0.9rem; right: 0.9rem;
+      display: flex; align-items: center; gap: 0.35rem;
     }
     .badge-transparent {
       background: rgba(61,122,85,0.1);
@@ -3013,7 +3016,10 @@ function renderPageCards(clinicsData, append) {
     const pillsHTML = (credPills || langPills) ? `<div class="card-pills">${credPills}${langPills}</div>` : '';
     return `
       <div class="clinic-card${hasPrice ? '' : ' no-price'}" data-id="${c.id}">
-        ${(c.promo && c.promo_text) ? '<span class="badge badge-promo">Promo</span>' : ''}
+        <div class="card-corner-actions">
+          ${(c.promo && c.promo_text) ? '<span class="badge badge-promo" title="Promo available">P</span>' : ''}
+          <button class="btn-save-card" id="save-${c.id}" onclick="toggleSave('${c.id}', event)" title="Save to shortlist"><span class="heart-icon"></span></button>
+        </div>
         <div class="card-header">
           <div class="card-badges"></div>
           <div class="clinic-name">
@@ -3045,7 +3051,6 @@ function renderPageCards(clinicsData, append) {
         <div class="card-footer">
           <a href="#" class="view-link" onclick="event.preventDefault(); openClinicModal(${c.id})">View Profile →</a>
           <div style="display:flex;gap:0.4rem;align-items:center;">
-            <button class="btn-save-card" id="save-${c.id}" onclick="toggleSave('${c.id}', event)" title="Save to shortlist"><span class="heart-icon"></span></button>
             ${(() => {
               if (!c.claimed) return '';
               const bookHref = c.booking_url || c.website || (c.phone ? 'tel:' + c.phone.replace(/\s/g,'') : null);
