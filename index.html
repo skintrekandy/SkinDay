@@ -3265,10 +3265,28 @@ function filterByPill(area) {
   fetchPage(0, false);
 }
 
+function applyNearestSort(lat, lon) {
+  userLocation = { lat, lon };
+  currentSort = 'nearest';
+  // Find nearest neighbourhood and filter to it — same as Near Me
+  let nearest = null, nearestDist = Infinity;
+  for (const [hood, [hlat, hlon]] of Object.entries(HOOD_COORDS)) {
+    const d = haversineKm(lat, lon, hlat, hlon);
+    if (d < nearestDist) { nearestDist = d; nearest = hood; }
+  }
+  if (nearest && nearestDist < 60) {
+    currentFilter = nearest;
+    showToast('Showing nearest clinics near you.');
+  } else {
+    currentFilter = 'all';
+    showToast('Showing all clinics sorted by distance.');
+  }
+  fetchPage(0, false);
+}
+
 function sortCards(val) {
   if (val === 'nearest') {
     if (!userLocation) {
-      // Request location, then sort
       if (!navigator.geolocation) {
         showToast('Geolocation not supported by your browser.');
         document.getElementById('mainSortSelect').value = currentSort;
@@ -3276,16 +3294,16 @@ function sortCards(val) {
       }
       showToast('Getting your location…');
       navigator.geolocation.getCurrentPosition(
-        pos => {
-          userLocation = { lat: pos.coords.latitude, lon: pos.coords.longitude };
-          currentSort = 'nearest';
-          fetchPage(0, false);
-        },
+        pos => applyNearestSort(pos.coords.latitude, pos.coords.longitude),
         () => {
           showToast('Location access denied. Enable location and try again.');
           document.getElementById('mainSortSelect').value = currentSort;
         }
       );
+      return;
+    } else {
+      // Already have location
+      applyNearestSort(userLocation.lat, userLocation.lon);
       return;
     }
   }
