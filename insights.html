@@ -579,6 +579,119 @@
       <div class="province-bar-wrap"><div class="province-bar" data-width="28"></div></div>
     </div>
   </div>
+
+  <!-- CANADA MAP -->
+  <div class="reveal" style="margin-top:3rem;">
+    <div style="font-size:0.72rem;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem;">Clinic density by province</div>
+    <div id="insightsMapWrap" style="position:relative;">
+      <div id="insightsTooltip" style="position:absolute;background:#1C1714;color:#FAF7F2;font-size:12px;padding:6px 10px;border-radius:6px;pointer-events:none;display:none;white-space:nowrap;z-index:10;"></div>
+      <svg id="insightsMapSvg" viewBox="0 0 960 520" style="display:block;width:100%;" role="img" aria-label="Bubble map of Canada showing cosmetic clinic counts by province"></svg>
+    </div>
+    <div id="insightsMapLegend" style="display:flex;flex-wrap:wrap;gap:12px;margin-top:0.75rem;font-size:0.75rem;color:var(--muted);"></div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+  <script>
+  (function() {
+    var clinics = {
+      'British Columbia':          { count: 825,  code: 'BC', pos: [-124.5, 53.0] },
+      'Alberta':                   { count: 811,  code: 'AB', pos: [-114.5, 53.5] },
+      'Saskatchewan':              { count: 95,   code: 'SK', pos: [-105.5, 53.5] },
+      'Manitoba':                  { count: 167,  code: 'MB', pos: [-97.0,  53.5] },
+      'Ontario':                   { count: 2788, code: 'ON', pos: [-84.5,  49.5] },
+      'Quebec':                    { count: 823,  code: 'QC', pos: [-71.5,  51.5] },
+      'New Brunswick':             { count: 52,   code: 'NB', pos: [-66.5,  46.5] },
+      'Nova Scotia':               { count: 48,   code: 'NS', pos: [-63.0,  44.8] },
+      'Prince Edward Island':      { count: 12,   code: 'PE', pos: [-63.2,  46.5] },
+      'Newfoundland and Labrador': { count: 38,   code: 'NL', pos: [-57.0,  53.0] },
+      'Yukon':                     { count: 8,    code: 'YT', pos: [-135.5, 63.0] },
+      'Northwest Territories':     { count: 5,    code: 'NT', pos: [-116.0, 65.5] },
+      'Nunavut':                   { count: 2,    code: 'NU', pos: [-88.0,  68.0] }
+    };
+
+    function getColor(count) {
+      if (count >= 2000) return '#7A1E00';
+      if (count >= 700)  return '#C8725A';
+      if (count >= 150)  return '#4A8C6E';
+      if (count >= 40)   return '#5B9EC9';
+      return '#8892A4';
+    }
+
+    var width = 960, height = 520;
+    var svg = d3.select('#insightsMapSvg');
+    var tooltip = document.getElementById('insightsTooltip');
+    var wrap = document.getElementById('insightsMapWrap');
+    var maxCount = Math.max.apply(null, Object.values(clinics).map(function(d){ return d.count; }));
+    var r = d3.scaleSqrt().domain([0, maxCount]).range([5, 32]);
+
+    d3.json('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-10m.json').then(function(world) {
+      var countries = topojson.feature(world, world.objects.countries);
+      var canada = countries.features.find(function(f){ return f.id === '124'; });
+
+      var projection = d3.geoConicConformal()
+        .parallels([49, 77])
+        .rotate([96, -60])
+        .fitSize([width, height], canada);
+
+      var path = d3.geoPath().projection(projection);
+
+      svg.append('path').datum(canada)
+        .attr('d', path)
+        .attr('fill', '#EDE8E0')
+        .attr('stroke', '#ccc')
+        .attr('stroke-width', 0.5);
+
+      Object.entries(clinics).forEach(function(entry) {
+        var name = entry[0], d = entry[1];
+        var xy = projection(d.pos);
+        if (!xy) return;
+        var radius = r(d.count);
+        var color = getColor(d.count);
+        var g = svg.append('g').style('cursor', 'pointer');
+
+        g.append('circle')
+          .attr('cx', xy[0]).attr('cy', xy[1]).attr('r', radius)
+          .attr('fill', color).attr('stroke', '#fff').attr('stroke-width', 1.5).attr('opacity', 0.93);
+
+        g.append('text')
+          .attr('x', xy[0]).attr('y', xy[1])
+          .attr('text-anchor', 'middle').attr('dominant-baseline', 'middle')
+          .attr('font-size', Math.max(9, Math.min(11, radius * 0.75)))
+          .attr('font-weight', '500').attr('fill', '#fff').attr('pointer-events', 'none')
+          .text(d.code);
+
+        if (d.count >= 40) {
+          g.append('text')
+            .attr('x', xy[0]).attr('y', xy[1] + radius + 11)
+            .attr('text-anchor', 'middle').attr('font-size', 10)
+            .attr('fill', '#8C7B6B').attr('pointer-events', 'none')
+            .text(d.count.toLocaleString());
+        }
+
+        g.on('mousemove', function(event) {
+          tooltip.style.display = 'block';
+          tooltip.innerHTML = '<strong>' + name + '</strong><br>' + d.count.toLocaleString() + ' clinics';
+          var rect = wrap.getBoundingClientRect();
+          tooltip.style.left = (event.clientX - rect.left + 14) + 'px';
+          tooltip.style.top  = (event.clientY - rect.top  - 40) + 'px';
+        }).on('mouseleave', function() { tooltip.style.display = 'none'; });
+      });
+
+      var legendData = [
+        { color: '#7A1E00', label: 'Ontario — 2,788' },
+        { color: '#C8725A', label: 'BC / QC / AB — ~811–825' },
+        { color: '#4A8C6E', label: 'Manitoba — 167' },
+        { color: '#5B9EC9', label: 'SK / NB / NS — 48–95' },
+        { color: '#8892A4', label: 'Territories / NL / PE — 2–38' }
+      ];
+      var leg = document.getElementById('insightsMapLegend');
+      legendData.forEach(function(l) {
+        leg.innerHTML += '<span style="display:flex;align-items:center;gap:5px;"><span style="width:11px;height:11px;border-radius:2px;background:' + l.color + ';flex-shrink:0;display:inline-block;"></span>' + l.label + '</span>';
+      });
+    }).catch(function() {});
+  })();
+  </script>
 </section>
 
 <!-- PRICE DATA -->
