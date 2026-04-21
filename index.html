@@ -689,7 +689,7 @@
     /* ─── FILTER BAR ─── */
     .filter-wrap {
       padding: 0 5% 32px;
-      display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;
+      display: flex; gap: 0.75rem; align-items: center;
       max-width: 1280px; margin: 0 auto;
     }
     .filter-label {
@@ -713,16 +713,16 @@
       color: var(--cream);
     }
     .sort-select {
-      margin-left: auto;
       background: transparent;
       border: 1px solid var(--border);
-      color: var(--muted);
-      padding: 0.4rem 1rem;
+      color: var(--deep);
+      padding: 0.4rem 1.2rem 0.4rem 0.9rem;
       border-radius: 20px;
       font-family: 'DM Sans', sans-serif;
-      font-size: 0.8rem;
+      font-size: 0.85rem; font-weight: 500;
       cursor: pointer;
       outline: none;
+      appearance: auto;
     }
 
     /* ─── COMPARISON GRID ─── */
@@ -2409,20 +2409,14 @@
   </div>
 
   <div class="filter-wrap">
-    <span class="filter-label">Filter</span>
-    <button class="filter-btn active" onclick="filterCards('all', this)">All</button>
-    <button class="filter-btn" onclick="filterCards('ontario', this)">ON</button>
-    <button class="filter-btn" onclick="filterCards('british-columbia', this)">BC</button>
-    <button class="filter-btn" onclick="filterCards('alberta', this)">AB</button>
-    <button class="filter-btn" onclick="filterCards('quebec', this)">QC</button>
-    <select class="sort-select" onchange="sortCards(this.value)">
-      <option value="price-low">Sort: Price Low → High</option>
-      <option value="price-high">Sort: Price High → Low</option>
-      <option value="rating" selected>Sort: Highest Rated</option>
-      <option value="reviews">Sort: Most Reviews</option>
-      <option value="best-value">Sort: Best Value</option>
+    <span class="filter-label">Sort</span>
+    <select class="sort-select" onchange="sortCards(this.value)" id="mainSortSelect">
+      <option value="rating" selected>Highest Rated</option>
+      <option value="reviews">Most Reviews</option>
+      <option value="price-high">Price: High → Low</option>
+      <option value="price-low">Price: Low → High</option>
+      <option value="nearest">Nearest</option>
     </select>
-    <!-- M18: Grid/Map toggle moved below search bar -->
   </div>
 
   <div class="cards-grid" id="cardsGrid">
@@ -2990,11 +2984,26 @@ function buildApiUrl(page) {
 function renderPageCards(clinicsData, append) {
   const grid = document.getElementById('cardsGrid');
 
-  // Client-side pin-order: claimed > priced > unclaimed
-  clinicsData.sort((a, b) => {
-    const s = c => c.claimed ? 2 : (c.price != null ? 1 : 0);
-    return s(b) - s(a);
-  });
+  // Pin claimed/priced to top only when not sorting by price
+  if (currentSort !== 'price-low' && currentSort !== 'price-high' && currentSort !== 'nearest') {
+    clinicsData.sort((a, b) => {
+      const s = c => c.claimed ? 2 : (c.price != null ? 1 : 0);
+      return s(b) - s(a);
+    });
+  }
+  if (currentSort === 'nearest' && userLocation) {
+    clinicsData.sort((a, b) => {
+      const coords = cl => {
+        if (cl.lat && cl.lng) return [parseFloat(cl.lat), parseFloat(cl.lng)];
+        const m = cl.maps_url?.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+        return m ? [parseFloat(m[1]), parseFloat(m[2])] : null;
+      };
+      const ca = coords(a), cb = coords(b);
+      const da = ca ? haversineKm(userLocation.lat, userLocation.lon, ca[0], ca[1]) : 99999;
+      const db = cb ? haversineKm(userLocation.lat, userLocation.lon, cb[0], cb[1]) : 99999;
+      return da - db;
+    });
+  }
 
   const html = clinicsData.map(c => {
     const { cls, label } = getRankLabel(c.rank, c.price);
@@ -3236,6 +3245,29 @@ function filterByPill(area) {
 }
 
 function sortCards(val) {
+  if (val === 'nearest') {
+    if (!userLocation) {
+      // Request location, then sort
+      if (!navigator.geolocation) {
+        showToast('Geolocation not supported by your browser.');
+        document.getElementById('mainSortSelect').value = currentSort;
+        return;
+      }
+      showToast('Getting your location…');
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          userLocation = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+          currentSort = 'nearest';
+          fetchPage(0, false);
+        },
+        () => {
+          showToast('Location access denied. Enable location and try again.');
+          document.getElementById('mainSortSelect').value = currentSort;
+        }
+      );
+      return;
+    }
+  }
   currentSort = val;
   fetchPage(0, false);
 }
@@ -5035,8 +5067,15 @@ function sortClinics(clinics, sortKey) {
   const arr = [...clinics].filter(c => c.lat && c.lng);
   switch(sortKey) {
     case 'rating':    return arr.sort((a,b) => (b.rating||0) - (a.rating||0));
-    case 'price-low': return arr.sort((a,b) => (a.price??999) - (b.price??999));
-    case 'price-high':return arr.sort((a,b) => (b.price??-1) - (a.price??-1));
+    case 'price-low': return arr.sort((a,b) => (parseFloat(a.price)??999) - (parseFloat(b.price)??999));
+    case 'price-high':return arr.sort((a,b) => (parseFloat(b.price)??-1) - (parseFloat(a.price)??-1));
+    case 'nearest':
+      if (!userLocation) return arr;
+      return arr.sort((a,b) => {
+        const da = (a.lat && a.lng) ? haversineKm(userLocation.lat, userLocation.lon, parseFloat(a.lat), parseFloat(a.lng)) : 99999;
+        const db = (b.lat && b.lng) ? haversineKm(userLocation.lat, userLocation.lon, parseFloat(b.lat), parseFloat(b.lng)) : 99999;
+        return da - db;
+      });
     case 'reviews':   return arr.sort((a,b) => (b.reviews||0) - (a.reviews||0));
     default:          return arr.sort((a,b) => ((b.claimed?2:0)+(b.price!=null?1:0)) - ((a.claimed?2:0)+(a.price!=null?1:0)));
   }
