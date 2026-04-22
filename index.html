@@ -1864,60 +1864,62 @@
     border-bottom: 1px solid var(--border);
   }
   .cm-price-dark-card {
-    background: var(--deep);
+    background: var(--warm);
+    border: 1px solid var(--gold);
     border-radius: 14px;
     padding: 18px 20px;
   }
   .cm-price-dark-label {
     font-size: 11px; font-weight: 600;
     text-transform: uppercase; letter-spacing: 0.1em;
-    color: #B5A89F; margin: 0 0 12px;
+    color: var(--muted); margin: 0 0 12px;
   }
   .cm-price-tiles {
     display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;
   }
   .cm-price-tile {
-    background: rgba(255,255,255,0.06);
-    border: 1px solid rgba(255,255,255,0.1);
+    background: var(--cream);
+    border: 1px solid var(--border);
     border-radius: 10px; padding: 12px 14px;
   }
+  .cm-price-tile:first-child { border-color: var(--gold); }
   .cm-price-tile-label {
     font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
-    text-transform: uppercase; color: #B5A89F; margin: 0 0 5px;
+    text-transform: uppercase; color: var(--muted); margin: 0 0 5px;
   }
   .cm-price-tile-amount {
     font-family: 'Cormorant Garamond', serif;
     font-size: 1.9rem; font-weight: 400; line-height: 1; margin: 0;
   }
-  .cm-price-tile-amount.lowest { color: var(--gold); }
-  .cm-price-tile-amount.regular { color: var(--cream); }
+  .cm-price-tile-amount.lowest { color: var(--rose); }
+  .cm-price-tile-amount.regular { color: var(--deep); }
   .cm-price-tile-sub {
-    font-size: 11px; color: #8A7B72; margin: 3px 0 0;
+    font-size: 11px; color: var(--muted); margin: 3px 0 0;
   }
   .cm-price-rows { display: flex; flex-direction: column; margin-bottom: 14px; }
   .cm-price-row {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 9px 0; border-bottom: 1px solid rgba(255,255,255,0.06);
+    padding: 9px 0; border-bottom: 1px solid var(--border);
   }
   .cm-price-row:last-child { border-bottom: none; }
-  .cm-price-row-name { font-size: 13px; font-weight: 500; color: var(--cream); margin: 0; }
-  .cm-price-row-inj { font-size: 11px; color: #8A7B72; margin: 2px 0 0; }
+  .cm-price-row-name { font-size: 13px; font-weight: 500; color: var(--deep); margin: 0; }
+  .cm-price-row-inj { font-size: 11px; color: var(--muted); margin: 2px 0 0; }
   .cm-price-row-amount {
     font-family: 'Cormorant Garamond', serif;
     font-size: 1.4rem; font-weight: 400; margin: 0;
   }
-  .cm-price-row-amount.lowest { color: var(--gold); }
-  .cm-price-row-amount.regular { color: var(--cream); }
-  .cm-price-row-unit { font-size: 10px; color: #8A7B72; font-family: 'DM Sans', sans-serif; }
+  .cm-price-row-amount.lowest { color: var(--rose); }
+  .cm-price-row-amount.regular { color: var(--deep); }
+  .cm-price-row-unit { font-size: 10px; color: var(--muted); font-family: 'DM Sans', sans-serif; }
   .cm-price-source-line {
-    font-size: 11px; color: #5F5E5A; margin: 0;
+    font-size: 11px; color: var(--dim); margin: 0;
     display: flex; align-items: center; gap: 5px;
   }
   .cm-price-source-check {
     width: 14px; height: 14px; border-radius: 50%;
-    border: 1px solid #5F5E5A;
+    border: 1px solid var(--dim);
     display: inline-flex; align-items: center; justify-content: center;
-    font-size: 8px; color: #5F5E5A; flex-shrink: 0;
+    font-size: 8px; color: var(--dim); flex-shrink: 0;
   }
   .cm-price-not-listed {
     font-size: 15px; color: var(--dim);
@@ -1962,8 +1964,8 @@
   .cm-contact-btn-primary svg { width: 14px; height: 14px; stroke: currentColor; flex-shrink: 0; }
   .cm-contact-btn-primary.book { background: var(--rose); color: white; }
   .cm-contact-btn-primary.book:hover { background: var(--rose-m); }
-  .cm-contact-btn-primary.directions { background: var(--deep); color: var(--cream); }
-  .cm-contact-btn-primary.directions:hover { background: #2d2420; }
+  .cm-contact-btn-primary.directions { background: var(--cream); color: var(--deep); border: 1.5px solid var(--deep); }
+  .cm-contact-btn-primary.directions:hover { background: var(--warm); }
   .cm-contact-btn-primary.dim { opacity: 0.35; pointer-events: none; }
   .cm-contact-btn-secondary {
     flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px;
@@ -5187,7 +5189,6 @@ function wireMarkerEvents(m, c, isCluster) {
 
 // ─── PIN CLICK ────────────────────────────────────────────────
 function onPinClick(cid, marker) {
-  const isMobile = window.matchMedia('(hover: none)').matches;
   // Reset all pins
   _markers.forEach(m => {
     if (m._cid === _activeCid) m.setIcon({ ...PIN_IDLE, scale: m.icon?.scale || 1 });
@@ -5198,7 +5199,17 @@ function onPinClick(cid, marker) {
   scrollCardListTo(cid);
   const clinic = _allClinics.find(c => String(c.id) === cid);
   if (clinic) _map.panTo({ lat: +clinic.lat, lng: +clinic.lng });
-  if (!isMobile) openMapModal(cid);
+  // Mobile: snap carousel so the selected card is at the front
+  const isMobile = window.matchMedia('(hover: none)').matches;
+  if (isMobile) snapCarouselTo(cid);
+}
+
+function snapCarouselTo(cid) {
+  const track = document.getElementById('mapCarouselTrack');
+  const card = track && track.querySelector(`.map-carousel-card[data-cid="${cid}"]`);
+  if (!track || !card) return;
+  // Scroll so card snaps to the left edge (accounting for 16px padding)
+  track.scrollTo({ left: card.offsetLeft - 16, behavior: 'smooth' });
 }
 
 // ─── OPEN MODAL ───────────────────────────────────────────────
@@ -5345,13 +5356,15 @@ function onCardClick(cid) {
   _activeCid = String(cid);
   document.querySelectorAll('.map-clinic-card,.map-carousel-card').forEach(el => el.classList.remove('highlighted'));
   highlightCard(cid, false);
-  if (!isMobile) scrollCardListTo(cid);
-  // Pan map to pin and highlight it on both desktop and mobile
+  // Pan map to pin and highlight it
   _markers.forEach(m => { if (m._cid === cid) m.setIcon(PIN_ACTIVE); else m.setIcon({...PIN_IDLE, scale: m.icon?.scale||1}); });
   const clinic = _allClinics.find(c => String(c.id) === cid);
   if (clinic && _map) _map.panTo({ lat: +clinic.lat, lng: +clinic.lng });
-  // Desktop only: also open modal on card click
-  if (!isMobile) openMapModal(cid);
+  if (isMobile) {
+    snapCarouselTo(cid);
+  } else {
+    scrollCardListTo(cid);
+  }
 }
 
 function highlightCard(cid, scroll) {
