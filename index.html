@@ -5083,10 +5083,7 @@ function onMapIdle() {
   _idleTimer = setTimeout(() => {
     placeMarkers();
     // Re-apply active pin state after markers are recreated
-    if (_activeCid) {
-      const activeMarker = _markers.find(m => m._cid === _activeCid && !m._count);
-      if (activeMarker) activeMarker.setIcon(PIN_ACTIVE);
-    }
+    if (_activeCid) _resetMarkerIcons(_activeCid);
     // Skip card list rebuild if user just selected a clinic — avoids DOM rebuild
     // wiping the scroll position that selectClinic just set
     if (!_isSelectionLocked()) {
@@ -5208,7 +5205,7 @@ let _isSyncingUI = false;
 let _hoverTimer = null;
 let _selectionLockUntil = 0;
 let _programmaticCarouselScroll = false;
-const SELECTION_LOCK_MS = 500;
+const SELECTION_LOCK_MS = 1000;
 
 function _now() { return performance.now(); }
 function _lockSelection() { _selectionLockUntil = _now() + SELECTION_LOCK_MS; }
@@ -5223,7 +5220,7 @@ function _resetMarkerIcons(activeCid) {
   const id = activeCid ? _normCid(activeCid) : null;
   _markers.forEach(m => {
     if (m._count) return;
-    m.setIcon(m._cid === id ? PIN_ACTIVE : { ...PIN_IDLE, scale: m.icon?.scale || PIN_IDLE.scale || 1 });
+    m.setIcon(m._cid === id ? PIN_ACTIVE : PIN_IDLE);
   });
 }
 
