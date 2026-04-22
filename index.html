@@ -5381,9 +5381,12 @@ function renderSelection() {
 
 function scrollListTo(cid) {
   const container = document.getElementById('mapCardList');
-  const card = document.querySelector(`#mapListCards [data-cid="${_normCid(cid)}"]`);
-  if (!container || !card) return;
-  container.scrollTo({ top: Math.max(0, card.offsetTop - 16), behavior: 'smooth' });
+  const listCards = document.getElementById('mapListCards');
+  const card = listCards?.querySelector(`[data-cid="${_normCid(cid)}"]`);
+  if (!container || !listCards || !card) return;
+  // offsetTop is relative to offsetParent — add listCards offset to get position in container
+  const top = listCards.offsetTop + card.offsetTop - 16;
+  container.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
 }
 
 function scrollCarouselTo(cid) {
