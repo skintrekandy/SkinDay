@@ -3587,6 +3587,16 @@ function showToast(msg) {
 
   // Hash routing — supports both #clinic/386 (numeric id) and #clinic/skin-trek (slug)
   const hash = window.location.hash;
+
+  // #compare/id1,id2,id3 — from account page
+  if (hash.startsWith('#compare/')) {
+    const ids = hash.replace('#compare/', '').split(',').map(id => parseInt(id)).filter(Boolean);
+    if (ids.length >= 2) {
+      compareList = ids;
+      setTimeout(() => openCompareModal(), 800); // wait for clinics to load
+    }
+  }
+
   if (hash.startsWith('#clinic/')) {
     const slug = hash.replace('#clinic/', '');
     const isNumeric = /^[0-9]+$/.test(slug);

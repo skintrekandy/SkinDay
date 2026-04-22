@@ -521,10 +521,13 @@ async function loadSavedClinics() {
       { headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` } }
     );
     const clinics = await clinicRes.json();
-    const { data: prices } = await _sb.from('clinic_prices')
-      .select('clinic_id,toxin,price')
-      .in('clinic_id', ids)
-      .order('price', { ascending: true });
+    const { data: { session } } = await _sb.auth.getSession();
+    const authToken = session?.access_token || SB_KEY;
+    const priceRes = await fetch(
+      `${SB_URL}/rest/v1/clinic_prices?select=clinic_id,toxin,price&clinic_id=in.(${ids.join(',')})&order=price.asc`,
+      { headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${authToken}` } }
+    );
+    const prices = await priceRes.json();
 
     // Attach lowest price + toxin to each clinic
     const priceMap = {};
@@ -592,7 +595,7 @@ function buildSavedCard(c) {
     <div class="saved-card-price">${price}</div>
     ${credHTML}
     <div class="saved-card-footer">
-      <a href="#" class="saved-card-view" onclick="event.preventDefault();openSavedProfile('${c.id}')">View Profile →</a>
+      <a href="https://skinday.ca/#clinic/${c.id}" target="_blank" class="saved-card-view">View Profile →</a>
       <div style="display:flex;gap:0.5rem;align-items:center;">
         <label style="display:flex;align-items:center;gap:4px;font-size:0.75rem;color:var(--muted);cursor:pointer;">
           <input type="checkbox" class="compare-check" data-id="${c.id}" onchange="updateCompare()"> Compare
@@ -759,6 +762,10 @@ function updateCompare() {
 
 function runCompare() {
   if (_compareIds.size < 2) return;
+  // Open main page with compare IDs — uses the full compare modal
+  const ids = [..._compareIds].join(',');
+  window.open(`https://skinday.ca/#compare/${ids}`, '_blank');
+  return;
   const selected = [..._compareIds].map(id => _savedClinics.find(c => String(c.id) === String(id))).filter(Boolean);
   const TOXIN_MAP = { botox:'Botox', dysport:'Dysport', xeomin:'Xeomin', nuceiva:'Nuceiva', letybo:'Letybo' };
   const CRED_LABELS = { physician:'MD / Physician', np:'Nurse Practitioner', rn:'RN / RPN / LPN', img:'IMG' };
