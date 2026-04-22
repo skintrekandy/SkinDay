@@ -300,7 +300,7 @@
     .compare-modal-title { font-family: 'Cormorant Garamond', serif; font-size: 1.4rem; font-weight: 400; color: var(--cream); }
     .compare-modal-close { background: transparent; border: none; color: var(--muted); font-size: 1.2rem; cursor: pointer; }
     .compare-modal-close:hover { color: var(--cream); }
-    .compare-table { width: 100%; border-collapse: collapse; }
+    .compare-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
     .compare-table th, .compare-table td { padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); vertical-align: top; text-align: left; }
     .compare-table th { width: 140px; min-width: 120px; background: var(--warm); font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); border-right: 1px solid var(--border); white-space: nowrap; }
     .compare-table td { font-size: 0.88rem; color: var(--deep); line-height: 1.5; }
@@ -1179,7 +1179,7 @@ function showToast(msg) {
           </svg>
           <p>No photos yet.</p>
           <a id="cm-photos-link-unclaimed" href="#" style="display:none">Own this clinic? Add photos →</a>
-          <a id="cm-photos-link-claimed" href="https://app.skinday.ca" style="display:none">Add photos in your dashboard →</a>
+          <a id="cm-photos-link-claimed" href="/claim.html" style="display:none">Add photos in your dashboard →</a>
         </div>
       </div>
 
@@ -1814,6 +1814,30 @@ function _openClinicModalWithData(clinic) {
   // Photos
   const photosGrid = document.getElementById('cm-photos-grid');
   const photosPlaceholder = document.getElementById('cm-photos-placeholder');
+
+  // Fetch photos from Supabase Storage
+  const clinicIdStr = String(clinic.id);
+  fetch(`${SB_URL}/storage/v1/object/list/clinic-logos`, {
+    method: 'POST',
+    headers: {
+      'apikey': SB_KEY,
+      'Authorization': `Bearer ${SB_KEY}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ prefix: clinicIdStr + '/', limit: 20 })
+  }).then(r => r.ok ? r.json() : []).then(files => {
+    if (!files || !files.length) return;
+    const urls = files
+      .filter(f => f.name && !f.name.endsWith('/'))
+      .map(f => `${SB_URL}/storage/v1/object/public/clinic-logos/${clinicIdStr}/${f.name}`);
+    if (urls.length) {
+      photosGrid.innerHTML = urls.map(url =>
+        `<img src="${url}" class="cm-photo-thumb" alt="" loading="lazy" onerror="this.style.display='none'">`
+      ).join('');
+      photosGrid.style.display = 'grid';
+      photosPlaceholder.style.display = 'none';
+    }
+  }).catch(() => {});
   if (clinic.photos && clinic.photos.length > 0) {
     photosGrid.innerHTML = clinic.photos.map(url =>
       `<div style="aspect-ratio:4/3;border-radius:8px;overflow:hidden;background:var(--warm);">
@@ -1960,13 +1984,9 @@ function _openClinicModalWithData(clinic) {
   document.body.style.overflow = 'hidden';
 }
 
-}
-
-function closeClinicModal() {
-
-
 function closeClinicModal() {
   document.getElementById('clinicModalOverlay').classList.remove('open');
+  document.body.style.overflow = '';
 }
 
 document.getElementById('compareModal')?.addEventListener('click', e => {

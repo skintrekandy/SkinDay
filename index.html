@@ -1295,6 +1295,7 @@
     .compare-table {
       width: 100%;
       border-collapse: collapse;
+      table-layout: fixed;
     }
     .compare-table th, .compare-table td {
       padding: 1rem 1.5rem;
@@ -4359,7 +4360,7 @@ document.getElementById('compareModal')?.addEventListener('click', function(e) {
           </svg>
           <p>No photos yet.</p>
           <a id="cm-photos-link-unclaimed" href="#" style="display:none">Own this clinic? Add photos →</a>
-          <a id="cm-photos-link-claimed" href="https://app.skinday.ca" style="display:none">Add photos in your dashboard →</a>
+          <a id="cm-photos-link-claimed" href="/claim.html" style="display:none">Add photos in your dashboard →</a>
         </div>
       </div>
 
@@ -4621,6 +4622,30 @@ function openClinicModal(clinicId) {
   // Photos
   const photosGrid = document.getElementById('cm-photos-grid');
   const photosPlaceholder = document.getElementById('cm-photos-placeholder');
+
+  // Fetch photos from Supabase Storage
+  const clinicIdStr = String(clinic.id);
+  fetch(`${SB_URL}/storage/v1/object/list/clinic-logos`, {
+    method: 'POST',
+    headers: {
+      'apikey': SB_KEY,
+      'Authorization': `Bearer ${SB_KEY}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ prefix: clinicIdStr + '/', limit: 20 })
+  }).then(r => r.ok ? r.json() : []).then(files => {
+    if (!files || !files.length) return;
+    const urls = files
+      .filter(f => f.name && !f.name.endsWith('/'))
+      .map(f => `${SB_URL}/storage/v1/object/public/clinic-logos/${clinicIdStr}/${f.name}`);
+    if (urls.length) {
+      photosGrid.innerHTML = urls.map(url =>
+        `<img src="${url}" class="cm-photo-thumb" alt="" loading="lazy" onerror="this.style.display='none'">`
+      ).join('');
+      photosGrid.style.display = 'grid';
+      photosPlaceholder.style.display = 'none';
+    }
+  }).catch(() => {});
   if (clinic.photos && clinic.photos.length > 0) {
     photosGrid.innerHTML = clinic.photos.map(url =>
       `<div style="aspect-ratio:4/3;border-radius:8px;overflow:hidden;background:var(--warm);">
