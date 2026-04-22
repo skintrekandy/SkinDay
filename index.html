@@ -5074,365 +5074,111 @@ async function reloadMap() {
   }
 }
 
-// ─── MAP IDLE ─────────────────────────────────────────────────
-// Fires on every pan/zoom. Always rebuilds markers + card list.
-// Never touches _activeCid. After rebuild, re-applies selection visuals.
+// ─── LAYER 2: VIEW STATE ─────────────────────────────────────
+// Tracks what is in the viewport. NEVER writes to _activeCid.
 let _lastZoom = null;
 let _idleTimer = null;
+
 function onMapIdle() {
   const z = _map.getZoom();
   clearTimeout(_idleTimer);
   _idleTimer = setTimeout(() => {
-    placeMarkers();
-    renderCardList(); // always — no skipping, no locks
+    placeMarkers();  // recreate markers for new viewport
+    renderCardList(); // rebuild list + carousel for new viewport
     _lastZoom = z;
   }, 350);
 }
 
-// ─── PLACE MARKERS ────────────────────────────────────────────
-// Always optimized:false so DOM events fire reliably.
-// At low zoom: cluster nearby coords into single pins with a count label.
-// At high zoom: one pin per clinic in viewport (max 300).
-function clearMarkers() {
-  _markers.forEach(m => m.setMap(null));
-  _markers = [];
-}
-
-function placeMarkers() {
-  clearMarkers();
-  if (!_map || !_allClinics.length) return;
-
-  const zoom   = _map.getZoom();
-  const bounds = _map.getBounds();
-  if (!bounds) return;
-
-  const inView = _allClinics.filter(c => c.lat && c.lng && bounds.contains({ lat: +c.lat, lng: +c.lng }));
-
-  if (zoom >= 12) {
-    // High zoom — one pin per clinic, max 300
-    inView.slice(0, 300).forEach(c => {
-      const m = new google.maps.Marker({
-        position: { lat: +c.lat, lng: +c.lng },
-        map: _map, optimized: false,
-        icon: PIN_IDLE,
-        label: { ...LABEL_STYLE, text: ' ' }
-      });
-      m._cid = String(c.id);
-      wireMarkerEvents(m, c);
-      _markers.push(m);
-    });
-  } else {
-    // Low zoom — grid-cluster: bucket into cells, one pin per cell
-    const cellDeg = zoom >= 9 ? 0.15 : zoom >= 7 ? 0.5 : zoom >= 5 ? 1.5 : 4;
-    const cells = {};
-    inView.forEach(c => {
-      const key = `${Math.floor(+c.lat / cellDeg)},${Math.floor(+c.lng / cellDeg)}`;
-      if (!cells[key]) cells[key] = [];
-      cells[key].push(c);
-    });
-
-    Object.values(cells).forEach(group => {
-      const rep = group[0]; // use highest-rated (sorted by Supabase)
-      const count = group.length;
-      const label = count > 1
-        ? { ...LABEL_STYLE, text: count > 999 ? Math.round(count/1000)+'k' : String(count) }
-        : { ...LABEL_STYLE, text: ' ' };
-      const scale = count > 500 ? 1.5 : count > 50 ? 1.25 : count > 1 ? 1.1 : 1;
-      const icon = { ...PIN_IDLE, scale };
-
-      const m = new google.maps.Marker({
-        position: { lat: +rep.lat, lng: +rep.lng },
-        map: _map, optimized: false,
-        icon, label,
-        zIndex: count
-      });
-      m._cid   = String(rep.id);
-      m._count = count;
-      m._group = group;
-      wireMarkerEvents(m, rep, count > 1);
-      _markers.push(m);
-    });
-  }
-}
-
-function wireMarkerEvents(m, c, isCluster) {
-  const cid = String(c.id);
-  const canHover = window.matchMedia('(hover: hover)').matches;
-  const hoverIcon = { ...PIN_HOVER, scale: (m.icon?.scale || 1) * 1.2 };
-
-  if (canHover) {
-    m.addListener('mouseover', () => {
-      if (_activeCid !== cid) {
-        m.setIcon(hoverIcon);
-        if (!isCluster) highlightCard(cid, false);
-      }
-    });
-    m.addListener('mouseout', () => {
-      if (_activeCid !== cid) {
-        m.setIcon({ ...PIN_IDLE, scale: m.icon?.scale || 1 });
-        if (!isCluster) document.querySelectorAll(`[data-cid="${cid}"]`).forEach(el => el.classList.remove('highlighted'));
-      }
-    });
-  }
-  m.addListener('click', () => {
-    if (isCluster) {
-      // Zoom in on cluster click
-      const b = new google.maps.LatLngBounds();
-      m._group.forEach(g => b.extend({ lat: +g.lat, lng: +g.lng }));
-      _map.fitBounds(b, 80);
-    } else {
-      onPinClick(cid);
-    }
-  });
-}
-
-// ─── INTERACTION STATE ───────────────────────────────────────
-// _activeCid is set ONLY by onPinClick / onCardClick.
-// Nothing else — not scroll, not map idle — may write to it.
+// ─── LAYER 1: SELECTION STATE ────────────────────────────────
+// _activeCid = the clinic the user explicitly chose.
+// Written ONLY by onPinClick and onCardClick. Nothing else.
 let _hoverTimer = null;
 
 function _normCid(cid) { return String(cid); }
-function _getClinic(cid) { const id = _normCid(cid); return _allClinics.find(c => String(c.id) === id) || null; }
-function _getMarker(cid) { const id = _normCid(cid); return _markers.find(m => m._cid === id && !m._count) || null; }
+function _getClinic(cid) { return _allClinics.find(c => String(c.id) === _normCid(cid)) || null; }
+function _getMarker(cid) { return _markers.find(m => m._cid === _normCid(cid) && !m._count) || null; }
 function isMobileMapUI() { return window.matchMedia('(hover: none)').matches; }
 
-// Apply correct icon to every marker based on current _activeCid
-function _applyMarkerIcons() {
+// ─── LAYER 3: RENDER LAYER ───────────────────────────────────
+// Pure UI sync. Reads _activeCid, writes only to DOM.
+
+function updateMarkers() {
   _markers.forEach(m => {
     if (m._count) return;
     m.setIcon(m._cid === _activeCid ? PIN_ACTIVE : PIN_IDLE);
   });
 }
 
-// Highlight the matching card(s) in list and carousel
-function _applyCardHighlight() {
-  document.querySelectorAll('.map-clinic-card,.map-carousel-card').forEach(el => {
+function updateCards() {
+  document.querySelectorAll('[data-cid]').forEach(el => {
     el.classList.toggle('highlighted', el.dataset.cid === _activeCid);
   });
 }
 
-// Scroll desktop list container so active card is near top
-function scrollCardListTo(cid) {
-  const id = _normCid(cid);
+function syncScrollToSelected() {
+  if (!_activeCid) return;
+  if (isMobileMapUI()) {
+    scrollCarouselTo(_activeCid);
+  } else {
+    scrollListTo(_activeCid);
+  }
+}
+
+function renderSelection() {
+  updateMarkers();
+  updateCards();
+  syncScrollToSelected();
+}
+
+function scrollListTo(cid) {
   const container = document.getElementById('mapCardList');
-  const card = document.querySelector(`#mapListCards [data-cid="${id}"]`);
+  const card = document.querySelector(`#mapListCards [data-cid="${_normCid(cid)}"]`);
   if (!container || !card) return;
   container.scrollTo({ top: Math.max(0, card.offsetTop - 16), behavior: 'smooth' });
 }
 
-// Snap mobile carousel to active card using scrollIntoView
-// (works with CSS scroll-snap; manual left math fights it)
-function snapCarouselTo(cid) {
-  const id = _normCid(cid);
+function scrollCarouselTo(cid) {
   const track = document.getElementById('mapCarouselTrack');
-  const card = track?.querySelector(`.map-carousel-card[data-cid="${id}"]`);
+  const card = track?.querySelector(`.map-carousel-card[data-cid="${_normCid(cid)}"]`);
   if (!track || !card) return;
   track.scrollTo({ left: track.scrollLeft, behavior: 'auto' }); // cancel in-flight
   card.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
 }
 
-// Scroll/snap the correct UI element to show active clinic
-function _syncActiveIntoView() {
-  if (!_activeCid) return;
-  if (isMobileMapUI()) {
-    snapCarouselTo(_activeCid);
-  } else {
-    scrollCardListTo(_activeCid);
-  }
-}
-
 // ─── SELECTION ────────────────────────────────────────────────
-// Called ONLY from onPinClick and onCardClick.
-// Sets _activeCid, updates visuals, pans map, then syncs panel
-// after the map settles (so the card list has been rebuilt first).
 function selectClinic(cid) {
   const id = _normCid(cid);
   if (!id) return;
-
   _activeCid = id;
-
-  // Immediately update marker and card visuals
-  _applyMarkerIcons();
-  _applyCardHighlight();
-
-  // Pan map to clinic
-  const clinic = _getClinic(id);
-  if (!clinic || !_map) {
-    _syncActiveIntoView();
-    return;
-  }
-
-  _map.panTo({ lat: Number(clinic.lat), lng: Number(clinic.lng) });
-
-  // After map settles: renderCardList runs (triggered by onMapIdle),
-  // which rebuilds the DOM and calls _syncActiveIntoView at the end.
-  // For mobile carousel (which doesn't depend on viewport bounds),
-  // also snap immediately so the user sees feedback without waiting.
-  if (isMobileMapUI()) {
-    google.maps.event.addListenerOnce(_map, 'idle', () => {
-      snapCarouselTo(_activeCid);
-    });
-  }
+  renderSelection();
 }
 
-// ─── PIN CLICK ────────────────────────────────────────────────
+function panToClinic(cid) {
+  const clinic = _getClinic(cid);
+  if (clinic && _map) _map.panTo({ lat: Number(clinic.lat), lng: Number(clinic.lng) });
+}
+
+// ─── PIN / CARD CLICK ────────────────────────────────────────
 function onPinClick(cid) {
-  selectClinic(_normCid(cid));
+  selectClinic(cid);
+  panToClinic(cid);
 }
 
-// ─── OPEN MODAL ───────────────────────────────────────────────
-async function openMapModal(cid) {
-  const sid = String(cid);
-  const existing = currentPageClinics.find(c => String(c.id) === sid);
-  if (existing?.neighbourhood !== undefined) { openClinicModal(existing.id); return; }
-  try {
-    const r = await fetch(`${SB_URL}/rest/v1/clinics?select=*&id=eq.${sid}&limit=1`,
-      { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } });
-    if (r.ok) {
-      const rows = await r.json();
-      if (rows[0]) {
-        const full = normaliseClinic(rows[0]);
-        full.id = rows[0].id;
-        currentPageClinics.push(full);
-        openClinicModal(full.id);
-      }
-    }
-  } catch(e) { console.error('openMapModal:', e); }
-}
-
-// ─── RENDER CARD LIST ─────────────────────────────────────────
-function sortClinics(clinics, sortKey) {
-  const arr = [...clinics].filter(c => c.lat && c.lng);
-  switch(sortKey) {
-    case 'rating':    return arr.sort((a,b) => (b.rating||0) - (a.rating||0));
-    case 'price-low': return arr.sort((a,b) => (parseFloat(a.price)??999) - (parseFloat(b.price)??999));
-    case 'price-high':return arr.sort((a,b) => (parseFloat(b.price)??-1) - (parseFloat(a.price)??-1));
-    case 'nearest':
-      if (!userLocation) return arr;
-      return arr.sort((a,b) => {
-        const da = (a.lat && a.lng) ? haversineKm(userLocation.lat, userLocation.lon, parseFloat(a.lat), parseFloat(a.lng)) : 99999;
-        const db = (b.lat && b.lng) ? haversineKm(userLocation.lat, userLocation.lon, parseFloat(b.lat), parseFloat(b.lng)) : 99999;
-        return da - db;
-      });
-    case 'reviews':   return arr.sort((a,b) => (b.reviews||0) - (a.reviews||0));
-    default:          return arr.sort((a,b) => ((b.claimed?2:0)+(b.price!=null?1:0)) - ((a.claimed?2:0)+(a.price!=null?1:0)));
-  }
-}
-
-function onMapSort(val) {
-  _mapSort = val;
-  renderCardList();
-}
-
-function renderCardList() {
-  if (!_map) return;
-  const bounds = _map.getBounds();
-  if (!bounds) return;
-
-  // Always filter by current viewport — updates dynamically on pan/zoom
-  const inView = sortClinics(
-    _allClinics.filter(c => c.lat && c.lng && bounds.contains({ lat:+c.lat, lng:+c.lng })),
-    _mapSort
-  );
-
-  // Map count badge
-  const countEl = document.getElementById('mapResultCount');
-  if (countEl) { countEl.textContent = inView.length.toLocaleString() + ' clinics'; countEl.style.display = 'block'; }
-
-  // Desktop list header count
-  const headerCount = document.getElementById('mapListCount');
-  if (headerCount) headerCount.textContent = inView.length.toLocaleString() + ' clinics';
-
-  // Desktop list cards — viewport only
-  const cardsEl = document.getElementById('mapListCards');
-  if (cardsEl) cardsEl.innerHTML = inView.length === 0
-    ? '<div class="map-list-status">No clinics in this area.<br>Zoom out to see more.</div>'
-    : inView.map(c => buildCard(c, false)).join('');
-
-  // Mobile carousel — same viewport clinics
-  const track = document.getElementById('mapCarouselTrack');
-  const countC = document.getElementById('mapCarouselCount');
-  if (track) {
-    if (countC) countC.textContent = inView.length.toLocaleString() + ' clinics in view';
-    track.innerHTML = inView.length === 0
-      ? '<div style="padding:1rem;font-size:0.82rem;color:var(--muted);">No clinics in view</div>'
-      : inView.map(c => buildCard(c, true)).join('');
-  }
-
-  // After DOM rebuild, re-apply selection visuals and scroll active card into view
-  if (_activeCid) {
-    requestAnimationFrame(() => {
-      _applyMarkerIcons();
-      _applyCardHighlight();
-      _syncActiveIntoView();
-    });
-  }
-}
-
-// ─── BUILD CARD ───────────────────────────────────────────────
-function buildCard(c, carousel) {
-  const cls = carousel ? 'map-carousel-card' : 'map-clinic-card';
-  const creds = Array.isArray(c.injector_credentials) ? c.injector_credentials
-    : (() => { try { return JSON.parse(c.injector_credentials||'[]'); } catch(e){return[];} })();
-  const langs = Array.isArray(c.languages) ? c.languages
-    : (() => { try { return JSON.parse(c.languages||'[]'); } catch(e){return[];} })();
-
-  const credPills = creds.slice(0,2).map(v=>`<span class="pill pill-cred">${CRED_MAP[v]||v.toUpperCase()}</span>`).join('');
-  const langPills = langs.slice(0,2).map(v=>`<span class="pill pill-lang">${LANG_MAP[v]||v}</span>`).join('');
-  const pillsHTML = (credPills||langPills) ? `<div class="map-card-pills">${credPills}${langPills}</div>` : '';
-
-  const logoHTML = c.logo_url
-    ? `<img class="map-card-logo" src="${c.logo_url}" alt="" onerror="this.style.display='none'">`
-    : `<div class="map-card-logo-placeholder">${c.name.charAt(0)}</div>`;
-
-  const tick = c.claimed
-    ? `<span class="verified-tick" style="width:12px;height:12px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;background:#3D7A55;border-radius:50%;"><svg viewBox="0 0 12 12" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 6 5 9 10 3"/></svg></span>`
-    : '';
-
-  const rating = c.rating ? c.rating.toFixed(1) : '—';
-  const reviews = (c.reviews||0).toLocaleString();
-  const priceHTML = c.price != null
-    ? `<div style="margin-bottom:0.3rem;"><span class="map-card-price">$${c.price}</span> <span class="map-card-price-unit">/ unit · Botox</span></div>`
-    : `<div class="map-card-no-price" style="margin-bottom:0.3rem;">Price not listed</div>`;
-
-  const hoverAttrs = window.matchMedia('(hover: hover)').matches
-    ? `onmouseenter="highlightPinById('${c.id}')" onmouseleave="unhighlightPinById('${c.id}')"`
-    : '';
-
-  return `<div class="${cls}" data-cid="${c.id}"
-    onclick="onCardClick('${c.id}')"
-    ${hoverAttrs}>
-    <div class="map-card-top">
-      ${logoHTML}
-      <div class="map-card-name-block">
-        <div class="map-card-name">${c.name}${tick}</div>
-        <div class="map-card-meta">📍 ${c.neighbourhood||''}${c.province?', '+c.province:''}</div>
-      </div>
-      <div class="map-card-rating-badge">
-        <div class="map-card-rating-score">${rating}</div>
-        <div class="map-card-rating-star">★★★★★</div>
-        <div class="map-card-rating-reviews">${reviews} reviews</div>
-      </div>
-    </div>
-    ${pillsHTML}
-    ${priceHTML}
-    <div class="map-card-footer">
-      <a href="#" class="map-card-view" onclick="event.preventDefault();event.stopPropagation();openMapModal('${c.id}')">View Profile →</a>
-    </div>
-  </div>`;
-}
-
-// ─── CARD CLICK ───────────────────────────────────────────────
 function onCardClick(cid) {
-  selectClinic(_normCid(cid));
+  selectClinic(cid);
+  panToClinic(cid);
 }
 
-// Legacy helper — used by wireMarkerEvents hover
+// Legacy shim — used in wireMarkerEvents hover
 function highlightCard(cid, scroll) {
-  _applyCardHighlight();
-  if (scroll) _syncActiveIntoView();
+  updateCards();
+  if (scroll) syncScrollToSelected();
 }
 
+// Backwards compat — called from _applyMarkerIcons / _applyCardHighlight refs in renderCardList
+function _applyMarkerIcons() { updateMarkers(); }
+function _applyCardHighlight() { updateCards(); }
+function _syncActiveIntoView() { syncScrollToSelected(); }
 // ─── HOVER (desktop only, debounced) ─────────────────────────
 function highlightPinById(cid) {
   if (!window.matchMedia('(hover: hover)').matches) return;
