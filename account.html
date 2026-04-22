@@ -1628,16 +1628,50 @@ function closeCompareModal() {
   document.getElementById('compareModal').classList.remove('open');
 }
 
-function openClinicModal(clinicId) {
-  let clinic = _savedClinics.find(c => String(c.id) === String(clinicId));
-  if (!clinic) {
-    // Fetch from Supabase
-    fetch(`${SB_URL}/rest/v1/clinics?select=*&id=eq.${clinicId}&limit=1`,
-      { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } })
-      .then(r => r.json())
-      .then(rows => { if (rows[0]) { _savedClinics.push(rows[0]); openClinicModal(clinicId); } });
-    return;
+function cmToSlug(name) {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+function cmRenderStars(rating, container) {
+  container.innerHTML = '';
+  for (let i = 1; i <= 5; i++) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('width', '14'); svg.setAttribute('height', '14');
+    svg.setAttribute('fill', i <= Math.round(rating) ? 'var(--gold)' : 'none');
+    svg.setAttribute('stroke', i <= Math.round(rating) ? 'var(--gold)' : 'var(--border)');
+    svg.setAttribute('stroke-width', '1.5');
+    const star = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    star.setAttribute('points', '12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26');
+    svg.appendChild(star); container.appendChild(svg);
   }
+}
+
+function openClinicModal(clinicId) {
+  // Always fetch full clinic data from API (includes prices, practitioners, languages)
+  fetch(`/api/get-clinics?mode=index&id=${clinicId}`)
+    .then(r => r.ok ? r.json() : null)
+    .then(data => {
+      const clinic = Array.isArray(data) ? data.find(c => String(c.id) === String(clinicId)) : null;
+      if (clinic) {
+        // Cache it
+        const idx = _savedClinics.findIndex(c => String(c.id) === String(clinicId));
+        if (idx > -1) _savedClinics[idx] = {..._savedClinics[idx], ...clinic};
+        else _savedClinics.push(clinic);
+        _openClinicModalWithData(clinic);
+      } else {
+        // Fallback to cached basic data
+        const cached = _savedClinics.find(c => String(c.id) === String(clinicId));
+        if (cached) _openClinicModalWithData(cached);
+      }
+    })
+    .catch(() => {
+      const cached = _savedClinics.find(c => String(c.id) === String(clinicId));
+      if (cached) _openClinicModalWithData(cached);
+    });
+}
+
+function _openClinicModalWithData(clinic) {
 
   // Claimed proxy: has price or promo — swap for clinic.claimed once backend arrives
   const isClaimed = clinic.claimed === true;
@@ -1883,6 +1917,8 @@ function openClinicModal(clinicId) {
   history.pushState({ clinicId }, '', '#clinic/' + cmToSlug(clinic.name));
   document.getElementById('clinicModalOverlay').classList.add('open');
   document.body.style.overflow = 'hidden';
+}
+
 }
 
 function closeClinicModal() {
