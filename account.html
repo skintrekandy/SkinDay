@@ -337,6 +337,456 @@
     .profile-overlay.open .profile-modal { transform: translateY(0); }
     .profile-modal-close { position: absolute; top: 1rem; right: 1rem; background: transparent; border: none; font-size: 1.2rem; cursor: pointer; color: var(--muted); width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
     .profile-modal-close:hover { background: var(--border); }
+
+    /* ─── COMPARE MODAL ─── */
+    .compare-modal-overlay {
+      display: none;
+      position: fixed; inset: 0; z-index: 300;
+      background: rgba(28,23,20,0.85);
+      backdrop-filter: blur(6px);
+      align-items: flex-start; justify-content: center;
+      padding: 5vh 5% 5vh;
+      overflow-y: auto;
+    }
+    .compare-modal-overlay.open { display: flex; }
+    .compare-modal {
+      background: var(--cream);
+      border-radius: 14px;
+      width: 100%; max-width: 960px;
+      overflow: hidden;
+      animation: fadeUp 0.25s ease;
+      flex-shrink: 0;
+    }
+    .compare-modal-header {
+      background: var(--deep);
+      padding: 1.4rem 2rem;
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid rgba(201,169,110,0.2);
+    }
+    .compare-modal-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.4rem; font-weight: 400; color: var(--cream);
+    }
+    .compare-modal-close {
+      background: transparent; border: none;
+      color: var(--muted); font-size: 1.2rem;
+      cursor: pointer; transition: color 0.2s;
+    }
+    .compare-modal-close:hover { color: var(--cream); }
+    .compare-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .compare-table th, .compare-table td {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+      text-align: left;
+      word-wrap: break-word;
+    }
+    .compare-table th {
+      width: 140px; min-width: 120px;
+      background: var(--warm);
+      font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--muted);
+      border-right: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    .compare-table td {
+      font-size: 0.88rem; color: var(--deep); line-height: 1.5;
+      width: calc((100% - 140px) / var(--compare-cols, 2));
+    }
+    .compare-col-header {
+      background: var(--deep) !important;
+      border-right: 1px solid rgba(255,255,255,0.06) !important;
+      border-bottom: 1px solid rgba(201,169,110,0.15) !important;
+    }
+    .compare-col-header .col-name {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.05rem; font-weight: 500; color: var(--cream);
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      margin-bottom: 0.2rem;
+      line-height: 1.3;
+      min-height: 2.6em;
+    }
+    .compare-col-header .col-meta { font-size: 0.75rem; color: var(--muted); }
+    .compare-price-big {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.8rem; font-weight: 400; color: var(--deep); line-height: 1;
+    }
+    .compare-price-unit { font-size: 0.78rem; color: var(--muted); margin-left: 0.2rem; }
+    .compare-no-price { font-size: 0.85rem; color: var(--dim); font-style: italic; }
+    .compare-stars { color: var(--gold); font-size: 1rem; letter-spacing: 0.04em; }
+    .compare-rating-num { font-weight: 600; font-size: 0.95rem; }
+    .compare-reviews { font-size: 0.78rem; color: var(--muted); margin-top: 0.15rem; }
+    .compare-winner { background: rgba(201,169,110,0.07); }
+    .compare-winner-tag {
+      display: inline-block;
+      font-size: 0.62rem; font-weight: 700; letter-spacing: 0.08em;
+      text-transform: uppercase;
+      background: rgba(201,169,110,0.2); color: #9A7840;
+      border: 1px solid rgba(201,169,110,0.35);
+      padding: 0.15rem 0.45rem; border-radius: 3px;
+      margin-left: 0.5rem; vertical-align: middle;
+    }
+    .compare-modal-footer {
+      padding: 1.2rem 2rem;
+      background: var(--warm);
+      border-top: 1px solid var(--border);
+      display: flex; justify-content: flex-end; gap: 0.75rem;
+    }
+
+    /* Compare modal mobile */
+    @media (max-width: 640px) {
+      .compare-modal-overlay { padding: 2vh 3% 2vh; align-items: flex-start; }
+      .compare-modal { border-radius: 12px; }
+      .compare-modal-header { padding: 1rem 1.25rem; }
+      .compare-table th, .compare-table td { padding: 0.65rem 0.6rem; font-size: 0.8rem; }
+      .compare-table th { width: 90px; min-width: 90px; font-size: 0.6rem; letter-spacing: 0.05em; }
+      .compare-price-big { font-size: 1.2rem; }
+      .compare-col-header .col-name { font-size: 0.85rem; min-height: unset; }
+      .compare-col-header .col-meta { font-size: 0.68rem; }
+      .compare-table { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+    /* ─── CLINIC MODAL ─── */
+  .clinic-modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(28, 23, 20, 0.72);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  .clinic-modal-overlay.open {
+    opacity: 1;
+    pointer-events: all;
+  }
+  @media (min-width: 640px) {
+    .clinic-modal-overlay { align-items: center; padding: 24px; }
+  }
+
+  /* MODAL SHELL */
+  .clinic-modal {
+    background: var(--cream);
+    width: 100%;
+    max-width: 620px;
+    max-height: 92vh;
+    border-radius: 20px 20px 0 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transform: translateY(40px);
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+  }
+  .clinic-modal-overlay.open .clinic-modal {
+    transform: translateY(0);
+  }
+  @media (min-width: 640px) {
+    .clinic-modal {
+      border-radius: 20px;
+      transform: translateY(20px) scale(0.97);
+      max-height: 88vh;
+    }
+    .clinic-modal-overlay.open .clinic-modal {
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  /* DRAG HANDLE */
+  .cm-drag-handle {
+    width: 36px; height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 12px auto 0;
+    flex-shrink: 0;
+  }
+  @media (min-width: 640px) { .cm-drag-handle { display: none; } }
+
+  /* SCROLL BODY */
+  .cm-body {
+    overflow-y: auto;
+    flex: 1;
+    padding-bottom: 32px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .cm-body::-webkit-scrollbar { width: 4px; }
+  .cm-body::-webkit-scrollbar-track { background: transparent; }
+  .cm-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* CLOSE BUTTON */
+  .cm-close {
+    position: absolute;
+    top: 16px; right: 16px;
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: var(--warm);
+    border: none;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 10;
+    transition: background 0.15s;
+  }
+  .cm-close:hover { background: var(--border); }
+  .cm-close svg { width: 14px; height: 14px; stroke: var(--muted); }
+
+  /* HEADER */
+  .cm-header {
+    padding: 20px 52px 0 24px;
+    flex-shrink: 0;
+  }
+  .cm-header-meta {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 6px; flex-wrap: wrap;
+  }
+  .cm-neighbourhood-pill {
+    font-size: 11px; font-weight: 500;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--muted); background: var(--warm);
+    padding: 3px 10px; border-radius: 20px;
+  }
+  .cm-status-pill {
+    font-size: 11px; font-weight: 500;
+    letter-spacing: 0.04em;
+    padding: 3px 10px; border-radius: 20px;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .cm-status-pill.claimed { color: var(--green); background: rgba(61,122,85,0.1); }
+  .cm-status-pill.unclaimed { color: var(--muted); background: var(--warm); }
+  .cm-status-dot {
+    width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+  }
+  .cm-status-pill.claimed .cm-status-dot { background: var(--green); }
+  .cm-status-pill.unclaimed .cm-status-dot { background: var(--dim); }
+  .cm-clinic-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(26px, 5vw, 34px);
+    font-weight: 400; line-height: 1.1;
+    color: var(--deep); margin-bottom: 16px;
+  }
+
+  /* RATING ROW */
+  .cm-rating-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 0 24px 16px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .cm-stars { display: flex; gap: 2px; }
+  .cm-rating-num {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 20px; font-weight: 500; color: var(--deep);
+  }
+  .cm-rating-link {
+    font-size: 12px; color: var(--muted);
+    text-decoration: none;
+    border-bottom: 1px solid var(--border);
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .cm-rating-link:hover { color: var(--rose); border-color: var(--rose-m); }
+  .cm-promo-badge {
+    margin-left: auto;
+    font-size: 11px; font-weight: 500;
+    color: var(--rose); background: var(--rose-bg);
+    padding: 4px 12px; border-radius: 20px; letter-spacing: 0.04em;
+  }
+
+  /* PRICE BLOCK */
+  .cm-price-block {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .cm-price-label {
+    font-size: 11px; font-weight: 500;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--muted); margin-bottom: 4px;
+  }
+  .cm-price-display {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 40px; font-weight: 300; line-height: 1; color: var(--rose);
+  }
+  .cm-price-unit {
+    font-size: 14px; color: var(--muted);
+    font-family: 'DM Sans', sans-serif; margin-top: 2px;
+  }
+  .cm-price-not-listed {
+    font-size: 15px; color: var(--dim);
+    font-style: italic; font-family: 'Cormorant Garamond', serif;
+  }
+  .cm-price-lock { display: flex; align-items: center; gap: 10px; }
+  .cm-price-lock svg { width: 18px; height: 18px; stroke: var(--dim); flex-shrink: 0; }
+  .cm-price-lock-text { font-size: 13px; color: var(--muted); }
+  .cm-price-lock-text a { color: var(--rose); text-decoration: none; border-bottom: 1px solid var(--rose-bg); transition: border-color 0.15s; }
+  .cm-price-lock-text a:hover { border-color: var(--rose); }
+
+  /* PHOTOS */
+  .cm-photos-section { padding: 20px 24px; border-bottom: 1px solid var(--border); }
+  .cm-section-label {
+    font-size: 11px; font-weight: 500;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--muted); margin-bottom: 12px;
+  }
+  .cm-photos-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; }
+  .cm-photo-thumb { aspect-ratio: 1; border-radius: 8px; object-fit: cover; width: 100%; background: var(--warm); }
+  .cm-photos-placeholder {
+    background: var(--warm); border: 1px dashed var(--border);
+    border-radius: 10px; padding: 28px 20px; text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+  }
+  .cm-photos-placeholder svg { width: 28px; height: 28px; stroke: var(--dim); }
+  .cm-photos-placeholder p { font-size: 13px; color: var(--muted); }
+  .cm-photos-placeholder a { color: var(--rose); text-decoration: none; border-bottom: 1px solid var(--rose-bg); font-size: 13px; transition: border-color 0.15s; }
+  .cm-photos-placeholder a:hover { border-color: var(--rose); }
+
+  /* CONTACT */
+  .cm-contact-section { padding: 20px 24px; border-bottom: 1px solid var(--border); }
+  .cm-contact-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .cm-contact-btn {
+    display: flex; align-items: center; gap: 7px;
+    padding: 10px 16px; border-radius: 8px;
+    font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500;
+    text-decoration: none; cursor: pointer;
+    border: 1px solid var(--border); background: var(--warm); color: var(--deep);
+    transition: background 0.15s, border-color 0.15s; white-space: nowrap;
+  }
+  .cm-contact-btn svg { width: 15px; height: 15px; stroke: currentColor; }
+  .cm-contact-btn:hover { background: var(--border); }
+  .cm-contact-btn.primary { background: var(--rose); border-color: var(--rose); color: white; }
+  .cm-contact-btn.primary:hover { background: var(--rose-m); border-color: var(--rose-m); }
+  .cm-contact-btn.dim { opacity: 0.4; pointer-events: none; }
+
+  /* DETAILS */
+  .cm-details-section { padding: 20px 24px; border-bottom: 1px solid var(--border); }
+  .cm-detail-row { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px; }
+  .cm-detail-row:last-child { margin-bottom: 0; }
+  .cm-detail-icon { width: 16px; height: 16px; stroke: var(--muted); flex-shrink: 0; margin-top: 1px; }
+  .cm-detail-text { font-size: 14px; color: var(--deep); }
+  .cm-detail-text a { color: var(--deep); text-decoration: none; border-bottom: 1px solid var(--border); transition: color 0.15s, border-color 0.15s; }
+  .cm-detail-text a:hover { color: var(--rose); border-color: var(--rose-m); }
+
+  /* SERVICES */
+  .cm-services-section { padding: 20px 24px; border-bottom: 1px solid var(--border); }
+  .cm-services-coming { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--dim); }
+  .cm-services-coming svg { width: 14px; height: 14px; stroke: var(--dim); }
+
+  /* CLAIM BAND */
+  .cm-claim-band {
+    margin: 20px 16px 0;
+    background: var(--deep); border-radius: 12px; padding: 24px;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; flex-wrap: wrap;
+  }
+  .cm-claim-band-eyebrow {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--muted); margin-bottom: 4px;
+  }
+  .cm-claim-band-heading {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 22px; font-weight: 400; color: var(--cream); line-height: 1.2;
+  }
+  .cm-claim-band-sub { font-size: 13px; color: var(--dim); margin-top: 4px; }
+  .cm-claim-band-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--rose); color: white;
+    font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500;
+    padding: 11px 20px; border-radius: 8px; text-decoration: none;
+    white-space: nowrap; transition: background 0.15s; flex-shrink: 0;
+  }
+  .cm-claim-band-btn:hover { background: var(--rose-m); }
+
+  /* UNVERIFIED BANNER */
+  .cm-unverified-banner {
+    margin: 16px 24px 0;
+    background: var(--warm); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 14px;
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px; color: var(--muted);
+  }
+  .cm-unverified-banner svg { width: 15px; height: 15px; stroke: var(--dim); flex-shrink: 0; }
+
+  /* REPORT */
+  .cm-report-link-wrap { text-align: center; padding: 20px 24px 0; }
+  .cm-report-link {
+    font-size: 12px; color: var(--dim); text-decoration: none;
+    border-bottom: 1px solid transparent; border-left: none; border-right: none; border-top: none;
+    transition: color 0.15s, border-color 0.15s; cursor: pointer;
+    background: none; font-family: 'DM Sans', sans-serif;
+  }
+  .cm-report-link:hover { color: var(--muted); border-bottom-color: var(--border); }
+
+  /* REPORT DRAWER */
+  .cm-report-drawer {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--cream); border-top: 1px solid var(--border);
+    border-radius: 20px 20px 0 0; padding: 0 24px 40px;
+    z-index: 1010;
+    transform: translateY(100%);
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    max-width: 620px; margin: 0 auto;
+  }
+  .cm-report-drawer.open { transform: translateY(0); }
+  @media (min-width: 640px) {
+    .cm-report-drawer {
+      bottom: 40px; border-radius: 20px;
+      left: 50%; transform: translateX(-50%) translateY(calc(100% + 40px));
+      width: 100%;
+    }
+    .cm-report-drawer.open { transform: translateX(-50%) translateY(0); }
+  }
+  .cm-report-handle {
+    width: 36px; height: 4px; background: var(--border);
+    border-radius: 2px; margin: 12px auto 20px;
+  }
+  .cm-report-drawer h3 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 22px; font-weight: 400; color: var(--deep); margin-bottom: 4px;
+  }
+  .cm-report-drawer .cm-drawer-sub { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+  .cm-form-group { margin-bottom: 16px; }
+  .cm-form-label {
+    display: block; font-size: 12px; font-weight: 500;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--muted); margin-bottom: 6px;
+  }
+  .cm-form-select, .cm-form-textarea, .cm-form-input {
+    width: 100%; background: var(--warm); border: 1px solid var(--border);
+    border-radius: 8px; padding: 11px 14px;
+    font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--deep);
+    outline: none; transition: border-color 0.15s;
+  }
+  .cm-form-select:focus, .cm-form-textarea:focus, .cm-form-input:focus { border-color: var(--rose-m); }
+  .cm-form-textarea { resize: vertical; min-height: 80px; }
+  .cm-form-select { cursor: pointer; }
+  .cm-report-submit {
+    width: 100%; background: var(--deep); color: var(--cream);
+    border: none; border-radius: 8px; padding: 13px;
+    font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500;
+    cursor: pointer; transition: background 0.15s; margin-top: 4px;
+  }
+  .cm-report-submit:hover { background: #2d2420; }
+  .cm-report-success { text-align: center; padding: 12px 0; display: none; }
+  .cm-report-success.show { display: block; }
+  .cm-report-success p { font-size: 14px; color: var(--muted); }
+  .cm-report-success strong {
+    display: block; font-family: 'Cormorant Garamond', serif;
+    font-size: 22px; font-weight: 400; color: var(--deep); margin-bottom: 4px;
+  }
+
+</style>
+  <!-- Google Maps JS (M18) -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAiUKLofb5BbJQab0CX4GtuHnLeE_jOwCc"></script>
+  <script src="https://unpkg.com/@googlemaps/markerclusterer/dist/index.min.js"></script>
+
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+
   </style>
 </head>
 <body>
@@ -595,7 +1045,7 @@ function buildSavedCard(c) {
     <div class="saved-card-price">${price}</div>
     ${credHTML}
     <div class="saved-card-footer">
-      <a href="https://skinday.ca/#clinic/${c.id}" target="_blank" class="saved-card-view">View Profile →</a>
+      <a href="#" class="saved-card-view" onclick="event.preventDefault();openClinicModal('${c.id}')">View Profile →</a>
       <div style="display:flex;gap:0.5rem;align-items:center;">
         <label style="display:flex;align-items:center;gap:4px;font-size:0.75rem;color:var(--muted);cursor:pointer;">
           <input type="checkbox" class="compare-check" data-id="${c.id}" onchange="updateCompare()"> Compare
@@ -661,32 +1111,221 @@ function showToast(msg) {
 // If home page redirects here after OAuth, session will be picked up by init()
 </script>
 
-<!-- CLINIC PROFILE MODAL -->
-<div class="profile-overlay" id="profileOverlay" onclick="if(event.target===this)closeSavedProfile()">
-  <div class="profile-modal" id="profileModal">
-    <button class="profile-modal-close" onclick="closeSavedProfile()">✕</button>
-    <div id="profileModalContent"><div style="text-align:center;padding:2rem;color:var(--muted);">Loading…</div></div>
+<!-- CLINIC PROFILE MODAL (exact copy from main page) -->
+<div class="clinic-modal-overlay" id="clinicModalOverlay">
+  <div class="clinic-modal" id="clinicModalEl">
+    <div class="cm-drag-handle"></div>
+    <button class="cm-close" onclick="closeClinicModal()" aria-label="Close">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M18 6L6 18M6 6l12 12"/>
+      </svg>
+    </button>
+    <div class="cm-body">
+      <!-- Header -->
+      <div class="cm-header">
+        <div class="cm-header-meta">
+          <span class="cm-neighbourhood-pill" id="cm-neighbourhood"></span>
+          <span class="cm-status-pill claimed" id="cm-status-claimed"><span class="cm-status-dot"></span>Verified listing</span>
+          <span class="cm-status-pill unclaimed" id="cm-status-unclaimed" style="display:none"><span class="cm-status-dot"></span>Unverified listing</span>
+        </div>
+        <h2 class="cm-clinic-name" id="cm-name"></h2>
+      </div>
+
+      <!-- Unverified banner -->
+      <div class="cm-unverified-banner" id="cm-unverified-banner" style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/>
+        </svg>
+        This listing hasn't been claimed. Information is sourced from Google and may be outdated.
+      </div>
+
+      <!-- Rating row -->
+      <div class="cm-rating-row">
+        <div class="cm-stars" id="cm-stars"></div>
+        <span class="cm-rating-num" id="cm-rating-num"></span>
+        <a class="cm-rating-link" id="cm-rating-link" href="#" target="_blank" rel="noopener">
+          <span id="cm-review-count"></span> reviews on Google
+        </a>
+        <span class="cm-promo-badge" id="cm-promo" style="display:none">Promo Available</span>
+      </div>
+
+      <!-- Price block -->
+      <div class="cm-price-block">
+        <div id="cm-price-filled" style="display:none">
+          <p class="cm-price-label" id="cm-toxin-label">Botox</p>
+          <p class="cm-price-display"><span style="font-size:0.72rem;color:var(--muted);font-style:italic;vertical-align:middle;">from </span><span id="cm-price-val"></span></p>
+          <p class="cm-price-unit" id="cm-price-unit-label">per unit · Botox</p>
+        </div>
+        <div id="cm-price-empty" style="display:none">
+          <p class="cm-price-label" id="cm-toxin-label-empty">Botox</p>
+          <p class="cm-price-not-listed">Price not listed</p>
+        </div>
+        <div class="cm-price-lock" id="cm-price-lock" style="display:none">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/>
+          </svg>
+          <p class="cm-price-lock-text">Price hidden — <a id="cm-claim-link" href="#">claim this listing</a> to publish yours</p>
+        </div>
+      </div>
+
+      <!-- Photos -->
+      <div class="cm-photos-section">
+        <p class="cm-section-label">Photos</p>
+        <div id="cm-photos-grid" class="cm-photos-grid" style="display:none"></div>
+        <div class="cm-photos-placeholder" id="cm-photos-placeholder">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9l4-4 4 4 4-5 4 5"/><circle cx="7.5" cy="14.5" r="1.5"/>
+          </svg>
+          <p>No photos yet.</p>
+          <a id="cm-photos-link-unclaimed" href="#" style="display:none">Own this clinic? Add photos →</a>
+          <a id="cm-photos-link-claimed" href="https://app.skinday.ca" style="display:none">Add photos in your dashboard →</a>
+        </div>
+      </div>
+
+      <!-- Practitioners -->
+      <div class="cm-details-section" id="cm-practitioners-section" style="display:none">
+        <p class="cm-section-label">Lead Practitioners</p>
+        <div id="cm-practitioners-list"></div>
+      </div>
+
+      <!-- Contact -->
+      <div class="cm-contact-section">
+        <p class="cm-section-label">Contact</p>
+        <div class="cm-contact-row">
+          <a class="cm-contact-btn primary" id="cm-directions" href="#" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3,11 22,2 13,21 11,13 3,11"/></svg>
+            Directions
+          </a>
+          <a class="cm-contact-btn primary" id="cm-book-now" href="#" target="_blank" rel="noopener" style="display:none">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Book Now
+          </a>
+          <a class="cm-contact-btn dim" id="cm-call" href="#">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 8.63 19.79 19.79 0 01.01 8 2 2 0 012 5.82h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L6.09 13a16 16 0 006.91 6.91l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 20.92z"/></svg>
+            Call
+          </a>
+          <a class="cm-contact-btn dim" id="cm-email" href="#">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,12 2,6"/></svg>
+            Email
+          </a>
+          <a class="cm-contact-btn dim" id="cm-website" href="#" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/></svg>
+            Website
+          </a>
+        </div>
+      </div>
+
+      <!-- Details -->
+      <div class="cm-details-section">
+        <p class="cm-section-label">Details</p>
+        <div class="cm-detail-row">
+          <svg class="cm-detail-icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          <span class="cm-detail-text" id="cm-address"></span>
+        </div>
+        <div class="cm-detail-row" id="cm-phone-row" style="display:none">
+          <svg class="cm-detail-icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 8.63 19.79 19.79 0 01.01 8 2 2 0 012 5.82h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L6.09 13a16 16 0 006.91 6.91l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 20.92z"/></svg>
+          <span class="cm-detail-text"><a id="cm-phone-link" href="#"></a></span>
+        </div>
+        <div class="cm-detail-row" id="cm-website-row" style="display:none">
+          <svg class="cm-detail-icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/></svg>
+          <span class="cm-detail-text"><a id="cm-website-link" href="#" target="_blank" rel="noopener"></a></span>
+        </div>
+        <div class="cm-detail-row" id="cm-creds-row" style="display:none">
+          <svg class="cm-detail-icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          <span class="cm-detail-text" id="cm-creds-text"></span>
+        </div>
+        <div class="cm-detail-row" id="cm-langs-row" style="display:none">
+          <svg class="cm-detail-icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/></svg>
+          <span class="cm-detail-text" id="cm-langs-text"></span>
+        </div>
+      </div>
+
+      <!-- Services (M4 placeholder) -->
+      <div class="cm-services-section">
+        <p class="cm-section-label">Services</p>
+        <div class="cm-services-coming">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+          Full treatment menu coming in a future update.
+        </div>
+      </div>
+
+      <!-- Claim band (unclaimed only) -->
+      <div class="cm-claim-band" id="cm-claim-band" style="display:none">
+        <div>
+          <p class="cm-claim-band-eyebrow">Own this clinic?</p>
+          <p class="cm-claim-band-heading">Take control of your listing.</p>
+          <p class="cm-claim-band-sub">Add pricing, photos, and contact details — free.</p>
+        </div>
+        <a class="cm-claim-band-btn" id="cm-claim-band-link" href="#">Claim listing →</a>
+      </div>
+
+      <!-- Report link -->
+      <div class="cm-report-link-wrap">
+        <button class="cm-report-link" onclick="openClinicReport()">Report incorrect information</button>
+      </div>
+    </div>
   </div>
 </div>
 
-<!-- COMPARE MODAL (same structure as main page) -->
-<div class="compare-modal-overlay" id="accountCompareModal">
+<!-- REPORT DRAWER -->
+<div class="cm-report-drawer" id="cmReportDrawer">
+  <div class="cm-report-handle"></div>
+  <h3>Report an issue</h3>
+  <p class="cm-drawer-sub" id="cm-report-clinic-label"></p>
+  <div id="cm-report-form-wrap">
+    <form name="report-incorrect" data-netlify="true" netlify-honeypot="bot-field" onsubmit="handleClinicReport(event)">
+      <input type="hidden" name="form-name" value="report-incorrect">
+      <input type="hidden" name="bot-field" style="display:none">
+      <input type="hidden" name="clinic-id" id="cm-report-clinic-id">
+      <input type="hidden" name="clinic-name" id="cm-report-clinic-name">
+      <div class="cm-form-group">
+        <label class="cm-form-label">What's wrong?</label>
+        <select class="cm-form-select" name="issue-type" required>
+          <option value="" disabled selected>Select an issue</option>
+          <option value="wrong-phone">Wrong phone number</option>
+          <option value="wrong-address">Wrong address or location</option>
+          <option value="wrong-website">Wrong website</option>
+          <option value="closed">Clinic is permanently closed</option>
+          <option value="wrong-name">Wrong clinic name</option>
+          <option value="duplicate">Duplicate listing</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="cm-form-group">
+        <label class="cm-form-label">Details <span style="text-transform:none;letter-spacing:0;font-weight:400;color:var(--dim)">(optional)</span></label>
+        <textarea class="cm-form-textarea" name="details" placeholder="Add any additional context…"></textarea>
+      </div>
+      <div class="cm-form-group">
+        <label class="cm-form-label">Your email <span style="text-transform:none;letter-spacing:0;font-weight:400;color:var(--dim)">(optional)</span></label>
+        <input type="email" class="cm-form-input" name="reporter-email" placeholder="hello@example.com">
+      </div>
+      <button type="submit" class="cm-report-submit">Submit report</button>
+    </form>
+  </div>
+  <div class="cm-report-success" id="cm-report-success">
+    <strong>Got it.</strong>
+    <p>Thanks — we'll review this and update the listing.</p>
+  </div>
+</div>
+
+<!-- COMPARE MODAL (exact copy from main page) -->
+<div class="compare-modal-overlay" id="compareModal">
   <div class="compare-modal">
     <div class="compare-modal-header">
       <div class="compare-modal-title">Side-by-side comparison</div>
-      <button class="compare-modal-close" onclick="closeAccountCompare()">✕</button>
+      <button class="compare-modal-close" onclick="closeCompareModal()">✕</button>
     </div>
     <div style="overflow-x:auto;overflow-y:auto;width:100%;-webkit-overflow-scrolling:touch;">
-      <table class="compare-table" id="accountCompareTable"></table>
+      <table class="compare-table" id="compareTable"></table>
     </div>
     <div class="compare-modal-footer">
-      <button onclick="closeAccountCompare()" style="background:transparent;border:1px solid var(--border);padding:0.5rem 1.25rem;border-radius:20px;font-family:'DM Sans',sans-serif;font-size:0.85rem;cursor:pointer;">Close</button>
+      <button class="btn-outline" onclick="closeCompareModal()">Back to results</button>
+      <button class="btn-compare-clear" style="color:var(--muted)" onclick="closeCompareModal(); clearCompare();">Start over</button>
     </div>
   </div>
 </div>
 
 <script>
-// ─── HELPERS ───
 function renderStars(rating) {
   if (rating === null || rating === undefined) return '☆☆☆☆☆';
   const full = Math.floor(rating);
@@ -695,63 +1334,85 @@ function renderStars(rating) {
   return '★'.repeat(full) + (half ? '½' : '') + '☆'.repeat(empty);
 }
 
-// ─── CLINIC PROFILE MODAL ───
-async function openSavedProfile(id) {
-  document.getElementById('profileOverlay').classList.add('open');
-  const el = document.getElementById('profileModalContent');
-  const clinic = _savedClinics.find(c => String(c.id) === String(id));
-  if (clinic) { renderProfileModal(clinic); return; }
-  el.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--muted);">Loading…</div>';
-  try {
-    const r = await fetch(`${SB_URL}/rest/v1/clinics?select=*&id=eq.${id}&limit=1`,
-      { headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` }});
-    const rows = await r.json();
-    if (rows[0]) renderProfileModal(rows[0]);
-  } catch(e) { el.innerHTML = '<p style="color:var(--muted);padding:1rem;">Could not load profile.</p>'; }
+function getBadgeHTML(badges, hasPromo) {
+  let html = '';
+  if (badges.includes('verified')) html += '<span class="badge badge-verified">Price Verified</span>';
+  if (badges.includes('transparent')) html += '<span class="badge badge-transparent">Price Transparent</span>';
+  if (hasPromo) html += '<span class="badge badge-promo">Promo Available</span>';
+  return html;
 }
 
-function renderProfileModal(clinic) {
-  const TOXIN_MAP = { botox:'Botox', dysport:'Dysport', xeomin:'Xeomin', nuceiva:'Nuceiva', letybo:'Letybo' };
-  const CRED_LABELS = { physician:'MD / Physician', np:'NP', rn:'RN/RPN/LPN', img:'IMG', nd:'ND' };
-  const creds = Array.isArray(clinic.injector_credentials) ? clinic.injector_credentials : (() => { try { return JSON.parse(clinic.injector_credentials||'[]'); } catch(e){return[];} })();
-  const credText = creds.map(v => CRED_LABELS[v]||v).join(' · ');
-  const toxin = TOXIN_MAP[clinic.toxin] || 'Botox';
-  const priceHTML = clinic.price != null
-    ? `<div style="font-family:'Cormorant Garamond',serif;font-size:2.2rem;color:var(--rose);line-height:1;margin:1rem 0 0.25rem;">$${clinic.price}<span style="font-size:0.9rem;color:var(--muted);font-family:'DM Sans',sans-serif;"> / unit · ${toxin}</span></div>`
-    : `<div style="color:var(--muted);font-size:0.9rem;margin:1rem 0;">Price not listed</div>`;
-  const bookHref = clinic.booking_url || clinic.website || (clinic.phone ? 'tel:'+clinic.phone : null);
-
-  document.getElementById('profileModalContent').innerHTML = `
-    <div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.4rem;text-transform:uppercase;letter-spacing:0.06em;">${clinic.neighbourhood||''}${clinic.province?', '+clinic.province:''}</div>
-    <div style="font-family:'Cormorant Garamond',serif;font-size:1.8rem;font-weight:400;line-height:1.2;">${clinic.name}</div>
-    <div style="font-size:0.82rem;color:var(--muted);margin-top:0.4rem;">${credText}${clinic.rating ? ' · <span style="color:var(--gold)">★</span> '+clinic.rating : ''}${clinic.reviews ? ' · '+(clinic.reviews||0).toLocaleString()+' reviews' : ''}</div>
-    ${priceHTML}
-    <div style="display:flex;gap:0.75rem;margin-top:1.5rem;flex-wrap:wrap;">
-      ${bookHref ? `<a href="${bookHref}" target="_blank" style="background:var(--rose);color:#fff;padding:0.5rem 1.25rem;border-radius:20px;font-size:0.85rem;text-decoration:none;">Book Now</a>` : ''}
-      ${clinic.website ? `<a href="${clinic.website}" target="_blank" style="border:1px solid var(--border);color:var(--deep);padding:0.5rem 1.25rem;border-radius:20px;font-size:0.85rem;text-decoration:none;">Website →</a>` : ''}
-    </div>`;
+function getRankLabel(rank, price) {
+  if (price !== null && price !== undefined) {
+    if (price < 9)  return { cls: 'rank-low',  label: '$' };
+    if (price < 12) return { cls: 'rank-low',  label: '$$' };
+    if (price < 15) return { cls: 'rank-mid',  label: '$$$' };
+    return                  { cls: 'rank-high', label: '$$$$' };
+  }
+  if (rank === 'low')  return { cls: 'rank-low',  label: '$$' };
+  if (rank === 'mid')  return { cls: 'rank-mid',  label: '$$$' };
+  if (rank === 'high') return { cls: 'rank-high', label: '$$$$' };
+  return { cls: 'rank-mid', label: '$$$' };
 }
 
-function closeSavedProfile() {
-  document.getElementById('profileOverlay').classList.remove('open');
+function getToxinLabel(toxin) {
+  const map = { botox:'Botox', dysport:'Dysport', xeomin:'Xeomin', nuceiva:'Nuceiva', letybo:'Letybo' };
+  return map[toxin] || 'Botox';
 }
 
-// ─── COMPARE ───
-let _compareIds = new Set();
+function formatPriceDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('en-CA', { month: 'long', year: 'numeric' });
+}
 
-function updateCompare() {
-  _compareIds = new Set([...document.querySelectorAll('.compare-check:checked')].map(el => el.dataset.id));
+function normaliseClinic(o) {
+  ['injector_credentials', 'languages'].forEach(field => {
+    if (typeof o[field] === 'string') {
+      try { o[field] = JSON.parse(o[field]); } catch(e) { o[field] = []; }
+    }
+    if (!Array.isArray(o[field])) o[field] = [];
+  });
+  o.id = Number(o.id) || o.id;
+  return o;
+}
+
+function getScore(c) {
+  const price = c.price !== null ? c.price : 999;
+  const priceScore = Math.max(0, 1 - price / 30);
+  const ratingScore = (c.rating || 0) / 5;
+  return (priceScore + ratingScore) / 2;
+}
+
+
+// ─── COMPARE LOGIC ───
+let compareList = [];
+
+function toggleCompare(id) {
+  const numId = parseInt(id);
+  const idx = compareList.indexOf(numId);
+  if (idx > -1) {
+    compareList.splice(idx, 1);
+  } else {
+    if (compareList.length >= 3) {
+      showToast('You can compare up to 3 clinics at a time.');
+      return;
+    }
+    compareList.push(numId);
+  }
+  updateCompareUI();
+}
+
+function updateCompareUI() {
   const bar = document.getElementById('compareBar');
   const text = document.getElementById('compareBarText');
-  const n = _compareIds.size;
-  if (n > 3) {
-    const checks = [...document.querySelectorAll('.compare-check:checked')];
-    checks[0].checked = false;
-    updateCompare(); return;
-  }
+  const n = compareList.length;
+  document.querySelectorAll('.compare-check').forEach(cb => {
+    cb.checked = compareList.includes(parseInt(cb.dataset.id));
+  });
   if (n >= 2) {
     bar.style.display = 'flex';
-    text.textContent = `${n} clinic${n>1?'s':''} selected — ready to compare`;
+    text.textContent = n + ' clinic' + (n > 1 ? 's' : '') + ' selected — ready to compare';
   } else if (n === 1) {
     bar.style.display = 'flex';
     text.textContent = 'Select 1 more clinic to compare';
@@ -760,87 +1421,482 @@ function updateCompare() {
   }
 }
 
-function runCompare() {
-  if (_compareIds.size < 2) return;
-  // Open main page with compare IDs — uses the full compare modal
-  const ids = [..._compareIds].join(',');
-  window.open(`https://skinday.ca/#compare/${ids}`, '_blank');
-  return;
-  const selected = [..._compareIds].map(id => _savedClinics.find(c => String(c.id) === String(id))).filter(Boolean);
-  const TOXIN_MAP = { botox:'Botox', dysport:'Dysport', xeomin:'Xeomin', nuceiva:'Nuceiva', letybo:'Letybo' };
-  const CRED_LABELS = { physician:'MD / Physician', np:'Nurse Practitioner', rn:'RN / RPN / LPN', img:'IMG' };
+function updateCompare() {
+  const checked = [...document.querySelectorAll('.compare-check:checked')].map(el => parseInt(el.dataset.id));
+  if (checked.length > 3) {
+    document.querySelectorAll('.compare-check:checked')[0].checked = false;
+    updateCompare(); return;
+  }
+  compareList = checked;
+  updateCompareUI();
+}
 
-  const withPrices = selected.filter(c => c.price != null);
-  const lowestPrice = withPrices.length ? Math.min(...withPrices.map(c => parseFloat(c.price))) : null;
-  const highestRating = Math.max(...selected.map(c => c.rating || 0));
-  const mostReviewed = Math.max(...selected.map(c => c.reviews || 0));
+function runCompare() {
+  if (compareList.length < 2) return;
+  openCompareModal();
+}
+
+function findClinic(id) {
+  return _savedClinics.find(c => String(c.id) === String(id));
+}
+
+function clearCompare() {
+  compareList = [];
+  updateCompareUI();
+}
+
+function showToast(msg) {
+  let t = document.getElementById('accountToast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'accountToast';
+    t.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:var(--deep);color:var(--cream);padding:0.6rem 1.25rem;border-radius:20px;font-size:0.85rem;z-index:999;opacity:0;transition:opacity 0.2s;pointer-events:none;';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  setTimeout(() => t.style.opacity = '0', 2500);
+}
+
+async function openCompareModal() {
+  const selected = compareList.map(id => _savedClinics.find(c => String(c.id) === String(id))).filter(Boolean);
+
+  // Fetch practitioners for any clinic that doesn't have them loaded yet
+  const SUPABASE_URL_CMP = 'https://vefldlqtyxdywbzdjuia.supabase.co';
+  const SUPABASE_KEY_CMP = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlZmxkbHF0eXhkeXdiemRqdWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNDAwMjgsImV4cCI6MjA4NzkxNjAyOH0.o582sXiUkB3j4FiHEA5rE3ABy_pdTeeK1PnNpNirHZA';
+  await Promise.all(selected.map(async c => {
+    if (!Array.isArray(c.practitioners)) {
+      try {
+        const r = await fetch(`${SUPABASE_URL_CMP}/rest/v1/practitioners?clinic_id=eq.${encodeURIComponent(String(c.id))}&order=display_order.asc`, {
+          headers: { 'apikey': SUPABASE_KEY_CMP }
+        });
+        c.practitioners = r.ok ? await r.json() : [];
+      } catch(e) { c.practitioners = []; }
+    }
+  }));
+
+  const table = document.getElementById('compareTable');
+
+  const withPrices = selected.filter(c => c.price !== null);
+  const lowestPrice = withPrices.length ? Math.min(...withPrices.map(c => c.price)) : null;
+  const highestRating = Math.max(...selected.map(c => c.rating));
+  const mostReviewed = Math.max(...selected.map(c => c.reviews));
+
   const unique = (arr, val) => arr.filter(x => x === val).length === 1;
 
-  const headerCells = selected.map(c =>
-    `<td class="compare-col-header">
-      <span class="col-name">${c.name.split('|')[0].trim()}</span>
-      <span class="col-meta">${c.neighbourhood||''}${c.province?' · '+c.province:''}</span>
-    </td>`).join('');
-
-  const priceCells = selected.map(c => {
-    const isWinner = c.price != null && parseFloat(c.price) === lowestPrice && withPrices.length > 1 && unique(withPrices.map(x => parseFloat(x.price)), lowestPrice);
-    return `<td class="${isWinner?'compare-winner':''}">
-      ${c.price != null
-        ? `<span style="font-size:0.72rem;color:var(--muted);font-style:italic;">from</span> <span class="compare-price-big">$${c.price}</span><span class="compare-price-unit">/ unit · ${TOXIN_MAP[c.toxin]||'Botox'}</span>${isWinner?'<span class="compare-winner-tag">Lowest</span>':''}`
-        : '<span class="compare-no-price">Price not listed</span>'}
+  const headerCells = selected.map(c => {
+    const displayName = c.name.split('|')[0].trim();
+    return `
+    <td class="compare-col-header">
+      <span class="col-name">${displayName}</span>
+      <span class="col-meta">${c.neighbourhood}${c.province ? " · " + c.province : " · Canada"}</span>
     </td>`;
   }).join('');
 
+  const priceCells = selected.map((c, i) => {
+    const isWinner = c.price !== null && c.price === lowestPrice && withPrices.length > 1 && unique(withPrices.map(x => x.price), lowestPrice);
+    const srcLabel = c.price_source === 'inquiry'
+      ? `Verified via inquiry · ${formatPriceDate(c.price_date)}`
+      : c.price_source === 'clinic'
+      ? `Managed by clinic · ${formatPriceDate(c.price_date)}`
+      : null;
+    return `<td class="${isWinner ? 'compare-winner' : ''}">
+      ${c.price !== null
+        ? `<span style="font-size:0.72rem;color:var(--muted);font-style:italic;">from</span> <span class="compare-price-big">$${c.price}</span><span class="compare-price-unit">/ unit</span>${isWinner ? '<span class="compare-winner-tag">Lowest</span>' : ''}${srcLabel ? `<div style="font-size:0.72rem;color:var(--muted);margin-top:0.25rem;">${srcLabel}</div>` : ''}`
+        : `<span class="compare-no-price">Price not listed</span>`}
+    </td>`;
+  }).join('');
+
+  const rangeCells = selected.map(c =>
+    `<td>${c.priceRange || '<span style="color:var(--dim);font-style:italic">—</span>'}</td>`
+  ).join('');
+
   const ratingCells = selected.map(c => {
-    const isTop = (c.rating||0) === highestRating && unique(selected.map(x => x.rating||0), highestRating);
-    return `<td class="${isTop?'compare-winner':''}">
-      <div><span class="compare-stars">${renderStars(c.rating)}</span>${isTop?'<span class="compare-winner-tag">Highest</span>':''}</div>
-      <div class="compare-rating-num">${c.rating||'—'} / 5.0</div>
+    const isTop = c.rating === highestRating && unique(selected.map(x => x.rating), highestRating);
+    return `<td class="${isTop ? 'compare-winner' : ''}">
+      <div><span class="compare-stars">${renderStars(c.rating)}</span>${isTop ? '<span class="compare-winner-tag">Highest</span>' : ''}</div>
+      <div class="compare-rating-num">${c.rating} / 5.0</div>
     </td>`;
   }).join('');
 
   const reviewCells = selected.map(c => {
-    const isTop = (c.reviews||0) === mostReviewed && unique(selected.map(x => x.reviews||0), mostReviewed);
-    return `<td class="${isTop?'compare-winner':''}">${(c.reviews||0).toLocaleString()} Google reviews${isTop?'<span class="compare-winner-tag">Most</span>':''}</td>`;
+    const isTop = c.reviews === mostReviewed && unique(selected.map(x => x.reviews), mostReviewed);
+    return `<td class="${isTop ? 'compare-winner' : ''}">
+      ${(c.reviews || 0).toLocaleString()} Google reviews${isTop ? '<span class="compare-winner-tag">Most</span>' : ''}
+    </td>`;
   }).join('');
 
+  const areaCells = selected.map(c => `<td>${c.neighbourhood}</td>`).join('');
+  const promoCells = selected.map(c => {
+    if (c.promo && c.promo_text) {
+      return `<td><span style="color:var(--rose);font-style:italic;font-size:0.85rem;">${c.promo_text}</span></td>`;
+    } else if (c.promo) {
+      return `<td><span style="color:var(--rose);font-weight:500">Active promo</span> <span style="color:var(--muted);font-size:0.78rem;">— contact clinic for details</span></td>`;
+    }
+    return `<td><span style="color:var(--muted)">No current promo</span></td>`;
+  }).join('');
+
+  const credLabels = { physician: 'MD / Physician', np: 'Nurse Practitioner', rn: 'RN / RPN / LPN', img: 'IMG' };
   const credCells = selected.map(c => {
     const creds = Array.isArray(c.injector_credentials) ? c.injector_credentials : [];
-    if (!creds.length) return '<td><span style="color:var(--dim);font-style:italic">Not listed</span></td>';
-    return `<td>${creds.map(v => `<span style="display:inline-block;background:rgba(200,114,90,0.08);color:var(--rose);border:1px solid rgba(200,114,90,0.2);border-radius:4px;padding:2px 8px;font-size:0.78rem;margin:2px 2px 2px 0;">${CRED_LABELS[v]||v}</span>`).join('')}</td>`;
+    if (!creds.length) return `<td><span style="color:var(--dim);font-style:italic">Not listed</span></td>`;
+    return `<td>${creds.map(v => `<span style="display:inline-block;background:rgba(200,114,90,0.08);color:var(--rose);border:1px solid rgba(200,114,90,0.2);border-radius:4px;padding:2px 8px;font-size:0.78rem;margin:2px 2px 2px 0;">${credLabels[v] || v}</span>`).join('')}</td>`;
   }).join('');
 
-  const areaCells = selected.map(c => `<td>${c.neighbourhood||'—'}</td>`).join('');
+  const langNames = { english:'English', mandarin:'Mandarin', cantonese:'Cantonese', farsi:'Farsi', french:'French', korean:'Korean', hindi:'Hindi', arabic:'Arabic', punjabi:'Punjabi', portuguese:'Portuguese' };
+  const langCells = selected.map(c => {
+    const langs = Array.isArray(c.languages) ? c.languages : [];
+    if (!langs.length) return `<td><span style="color:var(--dim);font-style:italic">Not listed</span></td>`;
+    return `<td>${langs.map(v => `<span style="display:inline-block;background:rgba(201,169,110,0.08);color:var(--deep);border:1px solid rgba(201,169,110,0.25);border-radius:4px;padding:2px 8px;font-size:0.78rem;margin:2px 2px 2px 0;">${langNames[v] || v}</span>`).join('')}</td>`;
+  }).join('');
+
+
+  const phoneCells = selected.map(c => {
+    if (c.phone) {
+      return `<td><a href="tel:${c.phone.replace(/\s/g,'')}" style="color:var(--deep);text-decoration:none;border-bottom:1px solid var(--border);">${c.phone}</a></td>`;
+    }
+    return `<td><span style="color:var(--dim);font-style:italic">—</span></td>`;
+  }).join('');
+
+  const mapsCells = selected.map(c => {
+    if (c.maps_url) {
+      return `<td><a href="${c.maps_url}" target="_blank" rel="noopener" style="color:var(--rose);text-decoration:none;border-bottom:1px solid var(--rose-bg);font-size:0.85rem;">Open in Maps →</a></td>`;
+    } else if (c.lat && c.lng) {
+      return `<td><a href="https://www.google.com/maps/search/?api=1&query=${c.lat},${c.lng}" target="_blank" rel="noopener" style="color:var(--rose);text-decoration:none;border-bottom:1px solid var(--rose-bg);font-size:0.85rem;">Open in Maps →</a></td>`;
+    } else {
+      return `<td style="color:var(--dim);font-size:0.85rem;">—</td>`;
+    }
+    return `<td><span style="color:var(--dim);font-style:italic">—</span></td>`;
+  }).join('');
 
   const bookCells = selected.map(c => {
-    const bookHref = c.booking_url || c.website || (c.phone ? 'tel:'+c.phone.replace(/\s/g,'') : null);
-    if (!bookHref) return '<td><span style="color:var(--dim);font-style:italic">—</span></td>';
-    return `<td><a href="${bookHref}" target="_blank" style="display:inline-block;background:var(--rose);color:white;padding:7px 16px;border-radius:6px;font-size:0.82rem;text-decoration:none;">Book Now →</a></td>`;
+    const isClaimed = c.claimed === true || c.claimed === 'true' || c.claimed === 1;
+    if (!isClaimed) return `<td><span style="color:var(--dim);font-style:italic">—</span></td>`;
+    const bookHref = c.booking_url || c.website || (c.phone ? 'tel:' + c.phone.replace(/\s/g,'') : null);
+    const bookType = c.booking_url ? 'booking' : c.website ? 'website' : 'phone';
+    if (!bookHref) return `<td><span style="color:var(--dim);font-style:italic">—</span></td>`;
+    return `<td><a href="${bookHref}" target="_blank" rel="noopener" class="book-now-btn" style="display:inline-block;background:var(--rose);color:white;padding:7px 16px;border-radius:6px;font-size:0.82rem;text-decoration:none;letter-spacing:0.02em;" data-clinic-id="${c.id}" data-click-type="${bookType}" data-neighbourhood="${(c.neighbourhood||'').replace(/"/g,'')}">Book Now →</a></td>`;
   }).join('');
 
-  document.getElementById('accountCompareTable').innerHTML = `
-    <thead><tr>
-      <th style="background:var(--deep);border-color:rgba(255,255,255,0.06);color:transparent">—</th>
-      ${headerCells}
-    </tr></thead>
+  const practitionerCells = selected.map(c => {
+    const ps = Array.isArray(c.practitioners) ? c.practitioners : [];
+    if (!ps.length) return `<td><span style="color:var(--dim);font-style:italic">Not listed</span></td>`;
+    return `<td>${ps.map((p, i) => `<div style="margin-bottom:${i < ps.length-1 ? '6px' : '0'};"><span style="font-size:0.85rem;color:var(--deep);font-weight:${i===0?'500':'400'};">${p.name}</span>${p.designation ? `<span style="display:inline-block;margin-left:6px;font-size:0.72rem;color:var(--muted);">${p.designation}</span>` : ''}</div>`).join('')}</td>`;
+  }).join('');
+
+    table.innerHTML = `
+    <thead>
+      <tr>
+        <th style="background:var(--deep);border-color:rgba(255,255,255,0.06);color:transparent">—</th>
+        ${headerCells}
+      </tr>
+    </thead>
     <tbody>
       <tr><th>Google rating</th>${ratingCells}</tr>
       <tr><th>No. of reviews</th>${reviewCells}</tr>
-      <tr><th>Price / unit</th>${priceCells}</tr>
+      <tr><th>Botox / unit</th>${priceCells}</tr>
       <tr><th>Injector</th>${credCells}</tr>
+      <tr><th>Practitioners</th>${practitionerCells}</tr>
+      <tr><th>Languages</th>${langCells}</tr>
       <tr><th>Neighbourhood</th>${areaCells}</tr>
+      <tr><th>Current promo</th>${promoCells}</tr>
+      <tr><th>Phone</th>${phoneCells}</tr>
+      <tr><th>Directions</th>${mapsCells}</tr>
       <tr><th>Book</th>${bookCells}</tr>
     </tbody>`;
 
-  document.getElementById('accountCompareModal').classList.add('open');
+  document.getElementById('compareModal').style.setProperty('--compare-cols', selected.length);
+  document.getElementById('compareModal').classList.add('open');
 }
 
-function closeAccountCompare() {
-  document.getElementById('accountCompareModal').classList.remove('open');
+function closeCompareModal() {
+  document.getElementById('compareModal').classList.remove('open');
 }
 
-document.getElementById('accountCompareModal').addEventListener('click', e => {
-  if (e.target === document.getElementById('accountCompareModal')) closeAccountCompare();
+document.getElementById('compareModal')?.addEventListener('click', function(e) {
+  if (e.target === this) closeCompareModal();
+});
+</script>
+<!-- COMPARE BAR -->
+<div class="compare-bar" id="compareBar">
+  <span class="compare-bar-label">Compare</span>
+  <div class="compare-slots" id="compareSlots">
+    <div class="compare-slot" id="slot0">Add a clinic…</div>
+
+
+function closeCompareModal() {
+  document.getElementById('compareModal').classList.remove('open');
+}
+
+function openClinicModal(clinicId) {
+  let clinic = _savedClinics.find(c => String(c.id) === String(clinicId));
+  if (!clinic) {
+    // Fetch from Supabase
+    fetch(`${SB_URL}/rest/v1/clinics?select=*&id=eq.${clinicId}&limit=1`,
+      { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } })
+      .then(r => r.json())
+      .then(rows => { if (rows[0]) { _savedClinics.push(rows[0]); openClinicModal(clinicId); } });
+    return;
+  }
+
+  // Claimed proxy: has price or promo — swap for clinic.claimed once backend arrives
+  const isClaimed = clinic.claimed === true;
+  if (!clinic.reviews) clinic.reviews = 0;
+
+  // Name + neighbourhood
+  const nameEl = document.getElementById('cm-name');
+  nameEl.textContent = clinic.name;
+  nameEl.onclick = () => window.location.href = '/clinic/' + cmToSlug(clinic.name);
+  nameEl.style.cursor = 'pointer';
+  nameEl.title = 'View full profile';
+  document.getElementById('cm-neighbourhood').textContent = clinic.neighbourhood;
+
+  // Status
+  document.getElementById('cm-status-claimed').style.display = isClaimed ? 'flex' : 'none';
+  document.getElementById('cm-status-unclaimed').style.display = isClaimed ? 'none' : 'flex';
+  document.getElementById('cm-unverified-banner').style.display = isClaimed ? 'none' : 'flex';
+
+  // Rating
+  cmRenderStars(clinic.rating, document.getElementById('cm-stars'));
+  document.getElementById('cm-rating-num').textContent = clinic.rating.toFixed(1);
+  document.getElementById('cm-review-count').textContent = (clinic.reviews || 0).toLocaleString();
+  document.getElementById('cm-rating-link').href = clinic.maps_url || (clinic.lat && clinic.lng ? `https://www.google.com/maps/search/?api=1&query=${clinic.lat},${clinic.lng}` : '#');
+
+  // Promo
+  document.getElementById('cm-promo').style.display = clinic.promo ? 'inline-flex' : 'none';
+
+  // Price
+  document.getElementById('cm-price-filled').style.display = 'none';
+  document.getElementById('cm-price-empty').style.display  = 'none';
+  document.getElementById('cm-price-lock').style.display   = 'none';
+  const toxinLabel = getToxinLabel(clinic.toxin_type);
+  const hasPrices = (clinic.prices && clinic.prices.length > 0) || (clinic.price !== null && clinic.price !== undefined);
+
+  if (!hasPrices && !isClaimed) {
+    document.getElementById('cm-price-lock').style.display = 'flex';
+  } else if (clinic.prices && clinic.prices.length > 0) {
+    // Multi-price breakdown table
+    document.getElementById('cm-price-filled').style.display = 'block';
+    const credMap = { physician:'MD / Physician', np:'NP', rn:'RN/RPN/LPN', img:'IMG', nd:'ND' };
+    const sorted = [...clinic.prices].sort((a,b) => a.price - b.price);
+    const lowest = sorted[0];
+    document.getElementById('cm-price-val').textContent = '$' + lowest.price;
+    document.getElementById('cm-toxin-label').style.display = 'none';
+    document.getElementById('cm-price-unit-label').textContent = '/ unit · ' + lowest.toxin.charAt(0).toUpperCase() + lowest.toxin.slice(1);
+    // Build breakdown table
+    let cmTableEl = document.getElementById('cm-price-table');
+    if (!cmTableEl) {
+      cmTableEl = document.createElement('table');
+      cmTableEl.id = 'cm-price-table';
+      cmTableEl.style.cssText = 'width:100%;border-collapse:collapse;margin-top:0.6rem;font-size:0.82rem;';
+      document.getElementById('cm-price-filled').appendChild(cmTableEl);
+    }
+    cmTableEl.innerHTML = sorted.map(p => `
+      <tr>
+        <td style="padding:0.3rem 0.5rem 0.3rem 0;color:var(--deep);">${p.toxin.charAt(0).toUpperCase()+p.toxin.slice(1)}</td>
+        <td style="padding:0.3rem 0.5rem;color:var(--muted);">${p.injector_type ? (credMap[p.injector_type]||p.injector_type) : 'Any injector'}</td>
+        <td style="padding:0.3rem 0 0.3rem 0.5rem;color:var(--deep);font-family:'Cormorant Garamond',serif;font-size:1rem;text-align:right;">$${parseFloat(p.price).toFixed(2)}<span style="font-size:0.72rem;color:var(--muted)">/unit</span></td>
+      </tr>`).join('');
+    const srcLabel = lowest.price_source === 'inquiry'
+      ? `Verified via inquiry · ${formatPriceDate(lowest.price_date)}`
+      : lowest.price_source === 'clinic'
+      ? `Managed by clinic · ${formatPriceDate(lowest.price_date)}`
+      : null;
+    let cmSrcEl = document.getElementById('cm-price-source');
+    if (!cmSrcEl) {
+      cmSrcEl = document.createElement('p');
+      cmSrcEl.id = 'cm-price-source';
+      cmSrcEl.style.cssText = 'font-size:0.72rem;color:var(--muted);margin-top:0.35rem;';
+      document.getElementById('cm-price-filled').appendChild(cmSrcEl);
+    }
+    cmSrcEl.textContent = srcLabel || '';
+  } else if (clinic.price !== null && clinic.price !== undefined) {
+    document.getElementById('cm-price-filled').style.display = 'block';
+    document.getElementById('cm-price-val').textContent = '$' + parseFloat(clinic.price).toFixed(2);
+    document.getElementById('cm-toxin-label').textContent = toxinLabel;
+    const isNonBotox = clinic.toxin_type && clinic.toxin_type !== 'botox';
+    document.getElementById('cm-price-unit-label').textContent = isNonBotox
+      ? `per unit · ${toxinLabel} (Botox-equivalent)`
+      : 'per unit · Botox';
+    const srcLabel = clinic.price_source === 'inquiry'
+      ? `Verified via inquiry · ${formatPriceDate(clinic.price_date)}`
+      : clinic.price_source === 'clinic'
+      ? `Managed by clinic · ${formatPriceDate(clinic.price_date)}`
+      : null;
+    let cmSrcEl = document.getElementById('cm-price-source');
+    if (!cmSrcEl) {
+      cmSrcEl = document.createElement('p');
+      cmSrcEl.id = 'cm-price-source';
+      cmSrcEl.style.cssText = 'font-size:0.72rem;color:var(--muted);margin-top:0.2rem;';
+      document.getElementById('cm-price-filled').appendChild(cmSrcEl);
+    }
+    cmSrcEl.textContent = srcLabel || '';
+  } else {
+    document.getElementById('cm-price-empty').style.display = 'block';
+    document.getElementById('cm-toxin-label-empty').textContent = toxinLabel;
+  }
+
+  // Photos
+  const photosGrid = document.getElementById('cm-photos-grid');
+  const photosPlaceholder = document.getElementById('cm-photos-placeholder');
+  if (clinic.photos && clinic.photos.length > 0) {
+    photosGrid.innerHTML = clinic.photos.map(url =>
+      `<div style="aspect-ratio:4/3;border-radius:8px;overflow:hidden;background:var(--warm);">
+        <img src="${url}" alt="${clinic.name}" style="width:100%;height:100%;object-fit:cover;" />
+      </div>`
+    ).join('');
+    photosGrid.style.display = 'grid';
+    photosPlaceholder.style.display = 'none';
+  } else {
+    photosGrid.style.display = 'none';
+    photosPlaceholder.style.display = 'flex';
+  }
+  document.getElementById('cm-photos-link-unclaimed').style.display = isClaimed ? 'none' : 'inline';
+  document.getElementById('cm-photos-link-claimed').style.display   = isClaimed ? 'inline' : 'none';
+
+  // Contact buttons
+  const directionsBtn = document.getElementById('cm-directions');
+  const callBtn       = document.getElementById('cm-call');
+  const emailBtn      = document.getElementById('cm-email');
+  const websiteBtn    = document.getElementById('cm-website');
+
+  if (clinic.maps_url) {
+    directionsBtn.href = clinic.maps_url;
+    directionsBtn.classList.remove('dim');
+  } else if (clinic.lat && clinic.lng) {
+    directionsBtn.href = `https://www.google.com/maps/dir/?api=1&destination=${clinic.lat},${clinic.lng}`;
+    directionsBtn.classList.remove('dim');
+  } else if (clinic.place_id) {
+    directionsBtn.href = `https://www.google.com/maps/dir/?api=1&destination_place_id=${clinic.place_id}`;
+    directionsBtn.classList.remove('dim');
+  } else {
+    directionsBtn.href = '#';
+    directionsBtn.classList.add('dim');
+  }
+
+  if (clinic.phone) { callBtn.href = 'tel:' + clinic.phone.replace(/\s/g,''); callBtn.classList.remove('dim'); }
+  else { callBtn.href = '#'; callBtn.classList.add('dim'); }
+
+  if (clinic.email) { emailBtn.href = 'mailto:' + clinic.email; emailBtn.classList.remove('dim'); }
+  else { emailBtn.href = '#'; emailBtn.classList.add('dim'); }
+
+  if (clinic.website) { websiteBtn.href = clinic.website; websiteBtn.classList.remove('dim'); }
+  else { websiteBtn.href = '#'; websiteBtn.classList.add('dim'); }
+
+  // Book Now button
+  const bookBtn = document.getElementById('cm-book-now');
+  if (clinic.booking_url) {
+    bookBtn.href = clinic.booking_url;
+    bookBtn.style.display = 'inline-flex';
+  } else {
+    bookBtn.style.display = 'none';
+  }
+
+  // Details
+  document.getElementById('cm-address').textContent = clinic.neighbourhood + (clinic.province ? ', ' + clinic.province : ', ON');
+  if (clinic.phone) {
+    document.getElementById('cm-phone-row').style.display = 'flex';
+    document.getElementById('cm-phone-link').href = 'tel:' + clinic.phone.replace(/\s/g,'');
+    document.getElementById('cm-phone-link').textContent = clinic.phone;
+  } else {
+    document.getElementById('cm-phone-row').style.display = 'none';
+  }
+  if (clinic.website) {
+    document.getElementById('cm-website-row').style.display = 'flex';
+    document.getElementById('cm-website-link').href = clinic.website;
+    document.getElementById('cm-website-link').textContent = clinic.website.replace(/^https?:\/\//, '').replace(/\/$/, '');
+  } else {
+    document.getElementById('cm-website-row').style.display = 'none';
+  }
+
+  // Injector credentials
+  const credLabels = { physician: 'MD / Physician', np: 'Nurse Practitioner', rn: 'RN / RPN / LPN', img: 'IMG' };
+  const creds = Array.isArray(clinic.injector_credentials) ? clinic.injector_credentials : [];
+  if (creds.length) {
+    document.getElementById('cm-creds-row').style.display = 'flex';
+    document.getElementById('cm-creds-text').textContent = creds.map(v => credLabels[v] || v).join(' · ');
+  } else {
+    document.getElementById('cm-creds-row').style.display = 'none';
+  }
+
+  // Languages
+  const langNames = { english:'English', mandarin:'Mandarin', cantonese:'Cantonese', farsi:'Farsi', french:'French', korean:'Korean', hindi:'Hindi', arabic:'Arabic', punjabi:'Punjabi', portuguese:'Portuguese' };
+  const langs = Array.isArray(clinic.languages) ? clinic.languages : [];
+  if (langs.length) {
+    document.getElementById('cm-langs-row').style.display = 'flex';
+    document.getElementById('cm-langs-text').textContent = langs.map(v => langNames[v] || v).join(' · ');
+  } else {
+    document.getElementById('cm-langs-row').style.display = 'none';
+  }
+
+  // Claim links
+  const claimHref = '/claim.html?clinic=' + clinic.id;
+  document.getElementById('cm-claim-link').href = claimHref;
+  document.getElementById('cm-photos-link-unclaimed').href = claimHref;
+
+  const claimBand = document.getElementById('cm-claim-band');
+  if (isClaimed) { claimBand.style.display = 'none'; }
+  else {
+    claimBand.style.display = 'flex';
+    document.getElementById('cm-claim-band-link').href = claimHref;
+  }
+
+  // Report drawer prep
+  document.getElementById('cm-report-clinic-id').value = clinic.id;
+  document.getElementById('cm-report-clinic-name').value = clinic.name;
+  document.getElementById('cm-report-clinic-label').textContent = clinic.name;
+
+  // Practitioners — render from cached data then refresh from Supabase
+  const cmPractitionersSection = document.getElementById('cm-practitioners-section');
+  const cmPractitionersList = document.getElementById('cm-practitioners-list');
+  function renderCMPractitioners(ps) {
+    if (!ps || ps.length === 0) {
+      cmPractitionersSection.style.display = 'none';
+      return;
+    }
+    cmPractitionersSection.style.display = 'block';
+    const initials = n => (n || '?').split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+    cmPractitionersList.innerHTML = ps.map((p, i) => `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:${i < ps.length-1 ? '10px' : '0'};">
+        <div style="width:32px;height:32px;border-radius:50%;background:var(--warm);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:0.72rem;font-weight:600;color:var(--muted);flex-shrink:0;">${initials(p.name)}</div>
+        <div>
+          <div style="font-size:0.88rem;font-weight:${i===0?'500':'400'};color:var(--deep);">${p.name}${i===0?'<span style="font-size:0.62rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--rose);background:rgba(200,114,90,0.1);border-radius:3px;padding:1px 5px;margin-left:6px;">Lead</span>':''}</div>
+          ${p.designation ? `<div style="font-size:0.75rem;color:var(--muted);">${p.designation}</div>` : ''}
+        </div>
+      </div>`).join('');
+  }
+  // Render from cached clinic data if available
+  renderCMPractitioners(clinic.practitioners || []);
+  // Async refresh from Supabase
+  const SUPABASE_URL_CM = 'https://vefldlqtyxdywbzdjuia.supabase.co';
+  const SUPABASE_KEY_CM = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlZmxkbHF0eXhkeXdiemRqdWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNDAwMjgsImV4cCI6MjA4NzkxNjAyOH0.o582sXiUkB3j4FiHEA5rE3ABy_pdTeeK1PnNpNirHZA';
+  fetch(`${SUPABASE_URL_CM}/rest/v1/practitioners?clinic_id=eq.${encodeURIComponent(String(clinic.id))}&order=display_order.asc`, {
+    headers: { 'apikey': SUPABASE_KEY_CM }
+  }).then(r => r.ok ? r.json() : []).then(ps => {
+    if (Array.isArray(ps)) {
+      clinic.practitioners = ps;
+      renderCMPractitioners(ps);
+    }
+  }).catch(() => {});
+
+  // Open
+  history.pushState({ clinicId }, '', '#clinic/' + cmToSlug(clinic.name));
+  document.getElementById('clinicModalOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeClinicModal() {
+
+
+function closeClinicModal() {
+  document.getElementById('clinicModalOverlay').classList.remove('open');
+}
+
+document.getElementById('compareModal')?.addEventListener('click', e => {
+  if (e.target === document.getElementById('compareModal')) closeCompareModal();
+});
+document.getElementById('clinicModalOverlay')?.addEventListener('click', e => {
+  if (e.target === document.getElementById('clinicModalOverlay')) closeClinicModal();
 });
 </script>
 </body>
