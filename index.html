@@ -4629,19 +4629,19 @@ function openClinicModal(clinicId) {
 
   // Fetch photos from Supabase Storage
   const clinicIdStr = String(clinic.id);
-  fetch(`${SB_URL}/storage/v1/object/list/clinic-logos`, {
+  fetch(`${SB_URL}/storage/v1/object/list/clinic-photos`, {
     method: 'POST',
     headers: {
       'apikey': SB_KEY,
       'Authorization': `Bearer ${SB_KEY}`,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({ prefix: clinicIdStr + '/', limit: 20 })
+    body: JSON.stringify({ prefix: 'clinic-' + clinicIdStr + '/', limit: 20 })
   }).then(r => r.ok ? r.json() : []).then(files => {
     if (!files || !files.length) return;
     const urls = files
       .filter(f => f.name && !f.name.endsWith('/'))
-      .map(f => `${SB_URL}/storage/v1/object/public/clinic-logos/${clinicIdStr}/${f.name}`);
+      .map(f => `${SB_URL}/storage/v1/object/public/clinic-photos/clinic-${clinicIdStr}/${f.name}`);
     if (urls.length) {
       photosGrid.innerHTML = urls.map(url =>
         `<img src="${url}" class="cm-photo-thumb" alt="" loading="lazy" onerror="this.style.display='none'">`
