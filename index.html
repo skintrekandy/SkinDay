@@ -1313,8 +1313,9 @@
     }
     .compare-table td {
       font-size: 0.88rem; color: var(--deep); line-height: 1.5;
-      width: calc((100% - 140px) / var(--compare-cols, 3));
     }
+    .compare-table.cols-2 td { width: calc((100% - 140px) / 2); }
+    .compare-table.cols-3 td { width: calc((100% - 140px) / 3); }
     .compare-col-header {
       background: var(--deep) !important;
       border-right: 1px solid rgba(255,255,255,0.06) !important;
@@ -4245,7 +4246,8 @@ async function openCompareModal() {
       <tr><th>Book</th>${bookCells}</tr>
     </tbody>`;
 
-  document.getElementById('compareModal').style.setProperty('--compare-cols', selected.length);
+  const tbl = document.getElementById('compareTable');
+  tbl.className = 'compare-table cols-' + selected.length;
   document.getElementById('compareModal').classList.add('open');
 }
 
@@ -4540,7 +4542,10 @@ function openClinicModal(clinicId) {
   document.getElementById('cm-rating-link').href = clinic.maps_url || (clinic.lat && clinic.lng ? `https://www.google.com/maps/search/?api=1&query=${clinic.lat},${clinic.lng}` : '#');
 
   // Promo
-  document.getElementById('cm-promo').style.display = clinic.promo ? 'inline-flex' : 'none';
+  const promoEl = document.getElementById('cm-promo');
+  promoEl.style.display = clinic.promo ? 'inline-flex' : 'none';
+  if (clinic.promo && clinic.promo_text) promoEl.textContent = clinic.promo_text;
+  else promoEl.textContent = 'Promo Available';
 
   // Price
   document.getElementById('cm-price-filled').style.display = 'none';

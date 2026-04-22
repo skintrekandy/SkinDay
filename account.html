@@ -394,8 +394,9 @@
     }
     .compare-table td {
       font-size: 0.88rem; color: var(--deep); line-height: 1.5;
-      width: calc((100% - 140px) / var(--compare-cols, 2));
     }
+    .compare-table.cols-2 td { width: calc((100% - 140px) / 2); }
+    .compare-table.cols-3 td { width: calc((100% - 140px) / 3); }
     .compare-col-header {
       background: var(--deep) !important;
       border-right: 1px solid rgba(255,255,255,0.06) !important;
@@ -1431,8 +1432,28 @@ function updateCompare() {
   updateCompareUI();
 }
 
-function runCompare() {
+async function runCompare() {
   if (compareList.length < 2) return;
+  // Enrich any clinics that only have basic data
+  await Promise.all(compareList.map(async id => {
+    const existing = _savedClinics.find(c => String(c.id) === String(id));
+    if (!existing || existing.prices === undefined) {
+      try {
+        const [cr, pr] = await Promise.all([
+          fetch(`${SB_URL}/rest/v1/clinics?select=*&id=eq.${id}&limit=1`, { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } }),
+          fetch(`${SB_URL}/rest/v1/clinic_prices?select=*&clinic_id=eq.${id}&order=price.asc`, { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } })
+        ]);
+        const [clinics, prices] = await Promise.all([cr.json(), pr.json()]);
+        if (clinics[0]) {
+          const enriched = {...(existing||{}), ...clinics[0], prices: prices||[]};
+          if (prices && prices.length) { enriched.price = prices[0].price; enriched.toxin_type = prices[0].toxin; }
+          try { enriched.injector_credentials = typeof enriched.injector_credentials === 'string' ? JSON.parse(enriched.injector_credentials) : (enriched.injector_credentials||[]); } catch(e) { enriched.injector_credentials = []; }
+          const idx = _savedClinics.findIndex(c => String(c.id) === String(id));
+          if (idx > -1) _savedClinics[idx] = enriched; else _savedClinics.push(enriched);
+        }
+      } catch(e) {}
+    }
+  }));
   openCompareModal();
 }
 
@@ -1605,7 +1626,8 @@ async function openCompareModal() {
       <tr><th>Book</th>${bookCells}</tr>
     </tbody>`;
 
-  document.getElementById('compareModal').style.setProperty('--compare-cols', selected.length);
+  const tbl = document.getElementById('compareTable');
+  tbl.className = 'compare-table cols-' + selected.length;
   document.getElementById('compareModal').classList.add('open');
 }
 
@@ -1647,28 +1669,44 @@ function cmRenderStars(rating, container) {
   }
 }
 
-function openClinicModal(clinicId) {
-  // Always fetch full clinic data from API (includes prices, practitioners, languages)
-  fetch(`/api/get-clinics?mode=index&id=${clinicId}`)
-    .then(r => r.ok ? r.json() : null)
-    .then(data => {
-      const clinic = Array.isArray(data) ? data.find(c => String(c.id) === String(clinicId)) : null;
-      if (clinic) {
-        // Cache it
-        const idx = _savedClinics.findIndex(c => String(c.id) === String(clinicId));
-        if (idx > -1) _savedClinics[idx] = {..._savedClinics[idx], ...clinic};
-        else _savedClinics.push(clinic);
-        _openClinicModalWithData(clinic);
-      } else {
-        // Fallback to cached basic data
-        const cached = _savedClinics.find(c => String(c.id) === String(clinicId));
-        if (cached) _openClinicModalWithData(cached);
-      }
-    })
-    .catch(() => {
-      const cached = _savedClinics.find(c => String(c.id) === String(clinicId));
-      if (cached) _openClinicModalWithData(cached);
-    });
+async function openClinicModal(clinicId) {
+  // Show modal immediately with cached data while fetching full data
+  const cached = _savedClinics.find(c => String(c.id) === String(clinicId));
+  if (cached) _openClinicModalWithData(cached);
+
+  try {
+    // Fetch full clinic + prices + practitioners
+    const [clinicRes, priceRes, practRes] = await Promise.all([
+      fetch(`${SB_URL}/rest/v1/clinics?select=*&id=eq.${clinicId}&limit=1`,
+        { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } }),
+      fetch(`${SB_URL}/rest/v1/clinic_prices?select=*&clinic_id=eq.${clinicId}&order=price.asc`,
+        { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } }),
+      fetch(`${SB_URL}/rest/v1/practitioners?select=*&clinic_id=eq.${clinicId}&order=display_order.asc`,
+        { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } })
+    ]);
+    const [clinics, prices, practitioners] = await Promise.all([
+      clinicRes.json(), priceRes.json(), practRes.json()
+    ]);
+    if (!clinics[0]) return;
+    const clinic = clinics[0];
+    clinic.prices = prices || [];
+    clinic.practitioners = practitioners || [];
+    // Attach lowest price
+    if (prices && prices.length) {
+      clinic.price = prices[0].price;
+      clinic.toxin_type = prices[0].toxin;
+    }
+    // Parse JSON fields
+    try { clinic.injector_credentials = typeof clinic.injector_credentials === 'string' ? JSON.parse(clinic.injector_credentials) : (clinic.injector_credentials || []); } catch(e) { clinic.injector_credentials = []; }
+    try { clinic.languages = typeof clinic.languages === 'string' ? JSON.parse(clinic.languages) : (clinic.languages || []); } catch(e) { clinic.languages = []; }
+    // Cache and render
+    const idx = _savedClinics.findIndex(c => String(c.id) === String(clinicId));
+    if (idx > -1) _savedClinics[idx] = {..._savedClinics[idx], ...clinic};
+    else _savedClinics.push(clinic);
+    _openClinicModalWithData(clinic);
+  } catch(e) {
+    if (!cached) console.error('Could not load clinic', e);
+  }
 }
 
 function _openClinicModalWithData(clinic) {
@@ -1692,12 +1730,15 @@ function _openClinicModalWithData(clinic) {
 
   // Rating
   cmRenderStars(clinic.rating, document.getElementById('cm-stars'));
-  document.getElementById('cm-rating-num').textContent = clinic.rating.toFixed(1);
+  document.getElementById('cm-rating-num').textContent = clinic.rating != null ? parseFloat(clinic.rating).toFixed(1) : '—';
   document.getElementById('cm-review-count').textContent = (clinic.reviews || 0).toLocaleString();
   document.getElementById('cm-rating-link').href = clinic.maps_url || (clinic.lat && clinic.lng ? `https://www.google.com/maps/search/?api=1&query=${clinic.lat},${clinic.lng}` : '#');
 
   // Promo
-  document.getElementById('cm-promo').style.display = clinic.promo ? 'inline-flex' : 'none';
+  const promoEl = document.getElementById('cm-promo');
+  promoEl.style.display = clinic.promo ? 'inline-flex' : 'none';
+  if (clinic.promo && clinic.promo_text) promoEl.textContent = clinic.promo_text;
+  else promoEl.textContent = 'Promo Available';
 
   // Price
   document.getElementById('cm-price-filled').style.display = 'none';
