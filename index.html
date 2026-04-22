@@ -1860,22 +1860,64 @@
 
   /* PRICE BLOCK */
   .cm-price-block {
-    padding: 20px 24px;
+    padding: 16px 24px 20px;
     border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; justify-content: space-between;
   }
-  .cm-price-label {
-    font-size: 11px; font-weight: 500;
-    text-transform: uppercase; letter-spacing: 0.08em;
-    color: var(--muted); margin-bottom: 4px;
+  .cm-price-dark-card {
+    background: var(--deep);
+    border-radius: 14px;
+    padding: 18px 20px;
   }
-  .cm-price-display {
+  .cm-price-dark-label {
+    font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    color: #B5A89F; margin: 0 0 12px;
+  }
+  .cm-price-tiles {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;
+  }
+  .cm-price-tile {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px; padding: 12px 14px;
+  }
+  .cm-price-tile-label {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; color: #B5A89F; margin: 0 0 5px;
+  }
+  .cm-price-tile-amount {
     font-family: 'Cormorant Garamond', serif;
-    font-size: 40px; font-weight: 300; line-height: 1; color: var(--rose);
+    font-size: 1.9rem; font-weight: 400; line-height: 1; margin: 0;
   }
-  .cm-price-unit {
-    font-size: 14px; color: var(--muted);
-    font-family: 'DM Sans', sans-serif; margin-top: 2px;
+  .cm-price-tile-amount.lowest { color: var(--gold); }
+  .cm-price-tile-amount.regular { color: var(--cream); }
+  .cm-price-tile-sub {
+    font-size: 11px; color: #8A7B72; margin: 3px 0 0;
+  }
+  .cm-price-rows { display: flex; flex-direction: column; margin-bottom: 14px; }
+  .cm-price-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 9px 0; border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .cm-price-row:last-child { border-bottom: none; }
+  .cm-price-row-name { font-size: 13px; font-weight: 500; color: var(--cream); margin: 0; }
+  .cm-price-row-inj { font-size: 11px; color: #8A7B72; margin: 2px 0 0; }
+  .cm-price-row-amount {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.4rem; font-weight: 400; margin: 0;
+  }
+  .cm-price-row-amount.lowest { color: var(--gold); }
+  .cm-price-row-amount.regular { color: var(--cream); }
+  .cm-price-row-unit { font-size: 10px; color: #8A7B72; font-family: 'DM Sans', sans-serif; }
+  .cm-price-source-line {
+    font-size: 11px; color: #5F5E5A; margin: 0;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .cm-price-source-check {
+    width: 14px; height: 14px; border-radius: 50%;
+    border: 1px solid #5F5E5A;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 8px; color: #5F5E5A; flex-shrink: 0;
   }
   .cm-price-not-listed {
     font-size: 15px; color: var(--dim);
@@ -1908,29 +1950,47 @@
 
   /* CONTACT */
   .cm-contact-section { padding: 20px 24px; border-bottom: 1px solid var(--border); }
-  .cm-contact-row { display: flex; gap: 8px; flex-wrap: wrap; }
-  .cm-contact-btn {
-    display: flex; align-items: center; gap: 7px;
-    padding: 10px 16px; border-radius: 8px;
+  .cm-contact-primary-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+  .cm-contact-secondary-row { display: flex; gap: 6px; }
+  .cm-contact-btn-primary {
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+    padding: 12px 16px; border-radius: 10px;
     font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500;
-    text-decoration: none; cursor: pointer;
-    border: 1px solid var(--border); background: var(--warm); color: var(--deep);
-    transition: background 0.15s, border-color 0.15s; white-space: nowrap;
+    text-decoration: none; cursor: pointer; border: none;
+    transition: background 0.15s; white-space: nowrap;
   }
-  .cm-contact-btn svg { width: 15px; height: 15px; stroke: currentColor; }
-  .cm-contact-btn:hover { background: var(--border); }
-  .cm-contact-btn.primary { background: var(--rose); border-color: var(--rose); color: white; }
-  .cm-contact-btn.primary:hover { background: var(--rose-m); border-color: var(--rose-m); }
-  .cm-contact-btn.dim { opacity: 0.4; pointer-events: none; }
+  .cm-contact-btn-primary svg { width: 14px; height: 14px; stroke: currentColor; flex-shrink: 0; }
+  .cm-contact-btn-primary.book { background: var(--rose); color: white; }
+  .cm-contact-btn-primary.book:hover { background: var(--rose-m); }
+  .cm-contact-btn-primary.directions { background: var(--deep); color: var(--cream); }
+  .cm-contact-btn-primary.directions:hover { background: #2d2420; }
+  .cm-contact-btn-primary.dim { opacity: 0.35; pointer-events: none; }
+  .cm-contact-btn-secondary {
+    flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px;
+    padding: 9px 10px; border-radius: 8px;
+    font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 400;
+    text-decoration: none; cursor: pointer;
+    border: 1px solid var(--border); background: white; color: var(--muted);
+    transition: border-color 0.15s, color 0.15s; white-space: nowrap;
+  }
+  .cm-contact-btn-secondary svg { width: 13px; height: 13px; stroke: currentColor; flex-shrink: 0; }
+  .cm-contact-btn-secondary:hover { border-color: var(--rose-m); color: var(--deep); }
+  .cm-contact-btn-secondary.dim { opacity: 0.35; pointer-events: none; }
 
   /* DETAILS */
-  .cm-details-section { padding: 20px 24px; border-bottom: 1px solid var(--border); }
-  .cm-detail-row { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px; }
-  .cm-detail-row:last-child { margin-bottom: 0; }
-  .cm-detail-icon { width: 16px; height: 16px; stroke: var(--muted); flex-shrink: 0; margin-top: 1px; }
-  .cm-detail-text { font-size: 14px; color: var(--deep); }
-  .cm-detail-text a { color: var(--deep); text-decoration: none; border-bottom: 1px solid var(--border); transition: color 0.15s, border-color 0.15s; }
-  .cm-detail-text a:hover { color: var(--rose); border-color: var(--rose-m); }
+  .cm-details-section { padding: 18px 24px; border-bottom: 1px solid var(--border); }
+  .cm-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .cm-info-cell-label {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; color: #B5A89F; margin: 0 0 4px;
+  }
+  .cm-info-cell-value { font-size: 13px; color: var(--deep); margin: 0; }
+  .cm-lang-pills { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 2px; }
+  .cm-lang-pill {
+    font-size: 12px; color: var(--deep);
+    background: var(--warm); border: 1px solid var(--border);
+    border-radius: 4px; padding: 2px 8px;
+  }
 
   /* SERVICES */
   .cm-services-section { padding: 20px 24px; border-bottom: 1px solid var(--border); }
@@ -4333,20 +4393,22 @@ document.getElementById('compareModal')?.addEventListener('click', function(e) {
 
       <!-- Price block -->
       <div class="cm-price-block">
-        <div id="cm-price-filled" style="display:none">
-          <p class="cm-price-label" id="cm-toxin-label">Botox</p>
-          <p class="cm-price-display"><span style="font-size:0.72rem;color:var(--muted);font-style:italic;vertical-align:middle;">from </span><span id="cm-price-val"></span></p>
-          <p class="cm-price-unit" id="cm-price-unit-label">per unit · Botox</p>
-        </div>
-        <div id="cm-price-empty" style="display:none">
-          <p class="cm-price-label" id="cm-toxin-label-empty">Botox</p>
-          <p class="cm-price-not-listed">Price not listed</p>
+        <div class="cm-price-dark-card" id="cm-price-dark-card" style="display:none">
+          <p class="cm-price-dark-label">Pricing</p>
+          <div id="cm-price-inner"></div>
+          <p class="cm-price-source-line" id="cm-price-source-line" style="display:none">
+            <span class="cm-price-source-check">✓</span>
+            <span id="cm-price-source-text"></span>
+          </p>
         </div>
         <div class="cm-price-lock" id="cm-price-lock" style="display:none">
           <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/>
           </svg>
           <p class="cm-price-lock-text">Price hidden — <a id="cm-claim-link" href="#">claim this listing</a> to publish yours</p>
+        </div>
+        <div id="cm-price-empty-state" style="display:none; padding: 4px 0;">
+          <p style="font-size:15px;color:var(--dim);font-style:italic;font-family:'Cormorant Garamond',serif;">Price not listed</p>
         </div>
       </div>
 
@@ -4372,53 +4434,43 @@ document.getElementById('compareModal')?.addEventListener('click', function(e) {
 
       <!-- Contact -->
       <div class="cm-contact-section">
-        <p class="cm-section-label">Contact</p>
-        <div class="cm-contact-row">
-          <a class="cm-contact-btn primary" id="cm-directions" href="#" target="_blank" rel="noopener">
-            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3,11 22,2 13,21 11,13 3,11"/></svg>
-            Directions
-          </a>
-          <a class="cm-contact-btn primary" id="cm-book-now" href="#" target="_blank" rel="noopener" style="display:none">
+        <div class="cm-contact-primary-row">
+          <a class="cm-contact-btn-primary book dim" id="cm-book-now" href="#" target="_blank" rel="noopener">
             <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
             Book Now
           </a>
-          <a class="cm-contact-btn dim" id="cm-call" href="#">
+          <a class="cm-contact-btn-primary directions" id="cm-directions" href="#" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3,11 22,2 13,21 11,13 3,11"/></svg>
+            Directions
+          </a>
+        </div>
+        <div class="cm-contact-secondary-row">
+          <a class="cm-contact-btn-secondary dim" id="cm-call" href="#">
             <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 8.63 19.79 19.79 0 01.01 8 2 2 0 012 5.82h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L6.09 13a16 16 0 006.91 6.91l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 20.92z"/></svg>
             Call
           </a>
-          <a class="cm-contact-btn dim" id="cm-email" href="#">
-            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,12 2,6"/></svg>
-            Email
-          </a>
-          <a class="cm-contact-btn dim" id="cm-website" href="#" target="_blank" rel="noopener">
+          <a class="cm-contact-btn-secondary dim" id="cm-website" href="#" target="_blank" rel="noopener">
             <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/></svg>
             Website
+          </a>
+          <a class="cm-contact-btn-secondary dim" id="cm-email" href="#">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,12 2,6"/></svg>
+            Email
           </a>
         </div>
       </div>
 
       <!-- Details -->
-      <div class="cm-details-section">
-        <p class="cm-section-label">Details</p>
-        <div class="cm-detail-row">
-          <svg class="cm-detail-icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
-          <span class="cm-detail-text" id="cm-address"></span>
-        </div>
-        <div class="cm-detail-row" id="cm-phone-row" style="display:none">
-          <svg class="cm-detail-icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 8.63 19.79 19.79 0 01.01 8 2 2 0 012 5.82h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L6.09 13a16 16 0 006.91 6.91l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 20.92z"/></svg>
-          <span class="cm-detail-text"><a id="cm-phone-link" href="#"></a></span>
-        </div>
-        <div class="cm-detail-row" id="cm-website-row" style="display:none">
-          <svg class="cm-detail-icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/></svg>
-          <span class="cm-detail-text"><a id="cm-website-link" href="#" target="_blank" rel="noopener"></a></span>
-        </div>
-        <div class="cm-detail-row" id="cm-creds-row" style="display:none">
-          <svg class="cm-detail-icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-          <span class="cm-detail-text" id="cm-creds-text"></span>
-        </div>
-        <div class="cm-detail-row" id="cm-langs-row" style="display:none">
-          <svg class="cm-detail-icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/></svg>
-          <span class="cm-detail-text" id="cm-langs-text"></span>
+      <div class="cm-details-section" id="cm-details-section">
+        <div class="cm-info-grid">
+          <div id="cm-creds-cell" style="display:none">
+            <p class="cm-info-cell-label">Injectors</p>
+            <p class="cm-info-cell-value" id="cm-creds-text"></p>
+          </div>
+          <div id="cm-langs-cell" style="display:none">
+            <p class="cm-info-cell-label">Languages</p>
+            <div class="cm-lang-pills" id="cm-langs-pills"></div>
+          </div>
         </div>
       </div>
 
@@ -4548,75 +4600,61 @@ function openClinicModal(clinicId) {
   if (clinic.promo && clinic.promo_text) promoEl.textContent = clinic.promo_text;
   else promoEl.textContent = 'Promo Available';
 
-  // Price
-  document.getElementById('cm-price-filled').style.display = 'none';
-  document.getElementById('cm-price-empty').style.display  = 'none';
-  document.getElementById('cm-price-lock').style.display   = 'none';
-  const toxinLabel = getToxinLabel(clinic.toxin_type);
-  const hasPrices = (clinic.prices && clinic.prices.length > 0) || (clinic.price !== null && clinic.price !== undefined);
+  // Price — Option C: tiles for ≤2, rows for 3+
+  const priceCard = document.getElementById('cm-price-dark-card');
+  const priceLock = document.getElementById('cm-price-lock');
+  const priceEmpty = document.getElementById('cm-price-empty-state');
+  priceCard.style.display = 'none';
+  priceLock.style.display = 'none';
+  priceEmpty.style.display = 'none';
 
-  if (!hasPrices && !isClaimed) {
-    document.getElementById('cm-price-lock').style.display = 'flex';
-  } else if (clinic.prices && clinic.prices.length > 0) {
-    // Multi-price breakdown table
-    document.getElementById('cm-price-filled').style.display = 'block';
-    const credMap = { physician:'MD / Physician', np:'NP', rn:'RN/RPN/LPN', img:'IMG', nd:'ND' };
-    const sorted = [...clinic.prices].sort((a,b) => a.price - b.price);
+  const hasPrices = clinic.prices && clinic.prices.length > 0;
+  const hasSinglePrice = !hasPrices && clinic.price !== null && clinic.price !== undefined;
+
+  if (!hasPrices && !hasSinglePrice && !isClaimed) {
+    priceLock.style.display = 'flex';
+  } else if (!hasPrices && !hasSinglePrice) {
+    priceEmpty.style.display = 'block';
+  } else {
+    priceCard.style.display = 'block';
+    const credMap = { physician:'MD', np:'NP', rn:'RN/RPN', img:'IMG', nd:'ND' };
+    const sorted = hasPrices
+      ? [...clinic.prices].sort((a,b) => a.price - b.price)
+      : [{ toxin: clinic.toxin_type || 'botox', price: clinic.price, injector_type: null, price_source: clinic.price_source, price_date: clinic.price_date }];
     const lowest = sorted[0];
-    document.getElementById('cm-price-val').textContent = '$' + lowest.price;
-    document.getElementById('cm-toxin-label').style.display = 'none';
-    document.getElementById('cm-price-unit-label').textContent = '/ unit · ' + lowest.toxin.charAt(0).toUpperCase() + lowest.toxin.slice(1);
-    // Build breakdown table
-    let cmTableEl = document.getElementById('cm-price-table');
-    if (!cmTableEl) {
-      cmTableEl = document.createElement('table');
-      cmTableEl.id = 'cm-price-table';
-      cmTableEl.style.cssText = 'width:100%;border-collapse:collapse;margin-top:0.6rem;font-size:0.82rem;';
-      document.getElementById('cm-price-filled').appendChild(cmTableEl);
+    const useTiles = sorted.length <= 2;
+    const inner = document.getElementById('cm-price-inner');
+
+    if (useTiles) {
+      inner.innerHTML = `<div class="cm-price-tiles">${sorted.map((p, i) => `
+        <div class="cm-price-tile">
+          <p class="cm-price-tile-label">${p.toxin.charAt(0).toUpperCase()+p.toxin.slice(1)}</p>
+          <p class="cm-price-tile-amount ${i === 0 ? 'lowest' : 'regular'}">$${parseFloat(p.price).toFixed(0)}</p>
+          <p class="cm-price-tile-sub">/ unit · ${p.injector_type ? (credMap[p.injector_type]||p.injector_type) : 'any injector'}</p>
+        </div>`).join('')}</div>`;
+    } else {
+      inner.innerHTML = `<div class="cm-price-rows">${sorted.map((p, i) => `
+        <div class="cm-price-row">
+          <div>
+            <p class="cm-price-row-name">${p.toxin.charAt(0).toUpperCase()+p.toxin.slice(1)}</p>
+            <p class="cm-price-row-inj">${p.injector_type ? (credMap[p.injector_type]||p.injector_type) : 'Any injector'}</p>
+          </div>
+          <p class="cm-price-row-amount ${i === 0 ? 'lowest' : 'regular'}">$${parseFloat(p.price).toFixed(0)}<span class="cm-price-row-unit">/unit</span></p>
+        </div>`).join('')}</div>`;
     }
-    cmTableEl.innerHTML = sorted.map(p => `
-      <tr>
-        <td style="padding:0.3rem 0.5rem 0.3rem 0;color:var(--deep);">${p.toxin.charAt(0).toUpperCase()+p.toxin.slice(1)}</td>
-        <td style="padding:0.3rem 0.5rem;color:var(--muted);">${p.injector_type ? (credMap[p.injector_type]||p.injector_type) : 'Any injector'}</td>
-        <td style="padding:0.3rem 0 0.3rem 0.5rem;color:var(--deep);font-family:'Cormorant Garamond',serif;font-size:1rem;text-align:right;">$${parseFloat(p.price).toFixed(2)}<span style="font-size:0.72rem;color:var(--muted)">/unit</span></td>
-      </tr>`).join('');
+
     const srcLabel = lowest.price_source === 'inquiry'
       ? `Verified via inquiry · ${formatPriceDate(lowest.price_date)}`
       : lowest.price_source === 'clinic'
       ? `Managed by clinic · ${formatPriceDate(lowest.price_date)}`
       : null;
-    let cmSrcEl = document.getElementById('cm-price-source');
-    if (!cmSrcEl) {
-      cmSrcEl = document.createElement('p');
-      cmSrcEl.id = 'cm-price-source';
-      cmSrcEl.style.cssText = 'font-size:0.72rem;color:var(--muted);margin-top:0.35rem;';
-      document.getElementById('cm-price-filled').appendChild(cmSrcEl);
+    const srcLine = document.getElementById('cm-price-source-line');
+    if (srcLabel) {
+      document.getElementById('cm-price-source-text').textContent = srcLabel;
+      srcLine.style.display = 'flex';
+    } else {
+      srcLine.style.display = 'none';
     }
-    cmSrcEl.textContent = srcLabel || '';
-  } else if (clinic.price !== null && clinic.price !== undefined) {
-    document.getElementById('cm-price-filled').style.display = 'block';
-    document.getElementById('cm-price-val').textContent = '$' + parseFloat(clinic.price).toFixed(2);
-    document.getElementById('cm-toxin-label').textContent = toxinLabel;
-    const isNonBotox = clinic.toxin_type && clinic.toxin_type !== 'botox';
-    document.getElementById('cm-price-unit-label').textContent = isNonBotox
-      ? `per unit · ${toxinLabel} (Botox-equivalent)`
-      : 'per unit · Botox';
-    const srcLabel = clinic.price_source === 'inquiry'
-      ? `Verified via inquiry · ${formatPriceDate(clinic.price_date)}`
-      : clinic.price_source === 'clinic'
-      ? `Managed by clinic · ${formatPriceDate(clinic.price_date)}`
-      : null;
-    let cmSrcEl = document.getElementById('cm-price-source');
-    if (!cmSrcEl) {
-      cmSrcEl = document.createElement('p');
-      cmSrcEl.id = 'cm-price-source';
-      cmSrcEl.style.cssText = 'font-size:0.72rem;color:var(--muted);margin-top:0.2rem;';
-      document.getElementById('cm-price-filled').appendChild(cmSrcEl);
-    }
-    cmSrcEl.textContent = srcLabel || '';
-  } else {
-    document.getElementById('cm-price-empty').style.display = 'block';
-    document.getElementById('cm-toxin-label-empty').textContent = toxinLabel;
   }
 
   // Photos
@@ -4658,20 +4696,12 @@ function openClinicModal(clinicId) {
   const callBtn       = document.getElementById('cm-call');
   const emailBtn      = document.getElementById('cm-email');
   const websiteBtn    = document.getElementById('cm-website');
+  const bookBtn       = document.getElementById('cm-book-now');
 
-  if (clinic.maps_url) {
-    directionsBtn.href = clinic.maps_url;
-    directionsBtn.classList.remove('dim');
-  } else if (clinic.lat && clinic.lng) {
-    directionsBtn.href = `https://www.google.com/maps/dir/?api=1&destination=${clinic.lat},${clinic.lng}`;
-    directionsBtn.classList.remove('dim');
-  } else if (clinic.place_id) {
-    directionsBtn.href = `https://www.google.com/maps/dir/?api=1&destination_place_id=${clinic.place_id}`;
-    directionsBtn.classList.remove('dim');
-  } else {
-    directionsBtn.href = '#';
-    directionsBtn.classList.add('dim');
-  }
+  if (clinic.maps_url) { directionsBtn.href = clinic.maps_url; directionsBtn.classList.remove('dim'); }
+  else if (clinic.lat && clinic.lng) { directionsBtn.href = `https://www.google.com/maps/dir/?api=1&destination=${clinic.lat},${clinic.lng}`; directionsBtn.classList.remove('dim'); }
+  else if (clinic.place_id) { directionsBtn.href = `https://www.google.com/maps/dir/?api=1&destination_place_id=${clinic.place_id}`; directionsBtn.classList.remove('dim'); }
+  else { directionsBtn.href = '#'; directionsBtn.classList.add('dim'); }
 
   if (clinic.phone) { callBtn.href = 'tel:' + clinic.phone.replace(/\s/g,''); callBtn.classList.remove('dim'); }
   else { callBtn.href = '#'; callBtn.classList.add('dim'); }
@@ -4682,51 +4712,40 @@ function openClinicModal(clinicId) {
   if (clinic.website) { websiteBtn.href = clinic.website; websiteBtn.classList.remove('dim'); }
   else { websiteBtn.href = '#'; websiteBtn.classList.add('dim'); }
 
-  // Book Now button
-  const bookBtn = document.getElementById('cm-book-now');
-  if (clinic.booking_url) {
-    bookBtn.href = clinic.booking_url;
-    bookBtn.style.display = 'inline-flex';
-  } else {
-    bookBtn.style.display = 'none';
-  }
-
-  // Details
-  document.getElementById('cm-address').textContent = clinic.neighbourhood + (clinic.province ? ', ' + clinic.province : ', ON');
-  if (clinic.phone) {
-    document.getElementById('cm-phone-row').style.display = 'flex';
-    document.getElementById('cm-phone-link').href = 'tel:' + clinic.phone.replace(/\s/g,'');
-    document.getElementById('cm-phone-link').textContent = clinic.phone;
-  } else {
-    document.getElementById('cm-phone-row').style.display = 'none';
-  }
-  if (clinic.website) {
-    document.getElementById('cm-website-row').style.display = 'flex';
-    document.getElementById('cm-website-link').href = clinic.website;
-    document.getElementById('cm-website-link').textContent = clinic.website.replace(/^https?:\/\//, '').replace(/\/$/, '');
-  } else {
-    document.getElementById('cm-website-row').style.display = 'none';
-  }
+  const bookHref = clinic.booking_url || clinic.website || (clinic.phone ? 'tel:' + clinic.phone.replace(/\s/g,'') : null);
+  if (bookHref && isClaimed) { bookBtn.href = bookHref; bookBtn.classList.remove('dim'); }
+  else { bookBtn.href = '#'; bookBtn.classList.add('dim'); }
 
   // Injector credentials
   const credLabels = { physician: 'MD / Physician', np: 'Nurse Practitioner', rn: 'RN / RPN / LPN', img: 'IMG' };
   const creds = Array.isArray(clinic.injector_credentials) ? clinic.injector_credentials : [];
+  const credsCell = document.getElementById('cm-creds-cell');
   if (creds.length) {
-    document.getElementById('cm-creds-row').style.display = 'flex';
+    credsCell.style.display = 'block';
     document.getElementById('cm-creds-text').textContent = creds.map(v => credLabels[v] || v).join(' · ');
   } else {
-    document.getElementById('cm-creds-row').style.display = 'none';
+    credsCell.style.display = 'none';
   }
 
-  // Languages
-  const langNames = { english:'English', mandarin:'Mandarin', cantonese:'Cantonese', farsi:'Farsi', french:'French', korean:'Korean', hindi:'Hindi', arabic:'Arabic', punjabi:'Punjabi', portuguese:'Portuguese' };
+  // Languages — with Chinese character display
+  const langDisplay = {
+    english: 'English', mandarin: '中文', cantonese: '粵語',
+    french: 'Français', korean: '한국어', hindi: 'हिन्दी',
+    arabic: 'العربية', farsi: 'فارسی', punjabi: 'ਪੰਜਾਬੀ', portuguese: 'Português'
+  };
   const langs = Array.isArray(clinic.languages) ? clinic.languages : [];
+  const langsCell = document.getElementById('cm-langs-cell');
   if (langs.length) {
-    document.getElementById('cm-langs-row').style.display = 'flex';
-    document.getElementById('cm-langs-text').textContent = langs.map(v => langNames[v] || v).join(' · ');
+    langsCell.style.display = 'block';
+    document.getElementById('cm-langs-pills').innerHTML = langs
+      .map(v => `<span class="cm-lang-pill">${langDisplay[v] || v}</span>`).join('');
   } else {
-    document.getElementById('cm-langs-row').style.display = 'none';
+    langsCell.style.display = 'none';
   }
+
+  // Hide details section if nothing to show
+  const detailsSection = document.getElementById('cm-details-section');
+  detailsSection.style.display = (creds.length || langs.length) ? 'block' : 'none';
 
   // Claim links
   const claimHref = '/claim.html?clinic=' + clinic.id;
