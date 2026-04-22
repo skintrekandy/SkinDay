@@ -5075,6 +5075,8 @@ async function reloadMap() {
 }
 
 // ─── MAP IDLE ─────────────────────────────────────────────────
+// Fires on every pan/zoom. Always rebuilds markers + card list.
+// Never touches _activeCid. After rebuild, re-applies selection visuals.
 let _lastZoom = null;
 let _idleTimer = null;
 function onMapIdle() {
@@ -5082,30 +5084,7 @@ function onMapIdle() {
   clearTimeout(_idleTimer);
   _idleTimer = setTimeout(() => {
     placeMarkers();
-    // Re-apply active pin state after markers are recreated
-    if (_activeCid) _resetMarkerIcons(_activeCid);
-    // Skip card list rebuild if user just selected a clinic — avoids DOM rebuild
-    // wiping the scroll position that selectClinic just set
-    if (!_isSelectionLocked()) {
-      renderCardList();
-      if (_activeCid) {
-        requestAnimationFrame(() => {
-          _setCardHighlight(_activeCid);
-          _syncIntoView(_activeCid);
-        });
-      }
-    } else {
-      // Remember a rebuild is needed — will run after lock expires
-      _pendingCardListRender = true;
-      const bounds = _map.getBounds();
-      if (bounds) {
-        const inView = _allClinics.filter(c => c.lat && c.lng && bounds.contains({ lat:+c.lat, lng:+c.lng }));
-        const countEl = document.getElementById('mapResultCount');
-        if (countEl) countEl.textContent = inView.length.toLocaleString() + ' clinics';
-        const headerCount = document.getElementById('mapListCount');
-        if (headerCount) headerCount.textContent = inView.length.toLocaleString() + ' clinics';
-      }
-    }
+    renderCardList(); // always — no skipping, no locks
     _lastZoom = z;
   }, 350);
 }
@@ -5208,62 +5187,31 @@ function wireMarkerEvents(m, c, isCluster) {
 }
 
 // ─── INTERACTION STATE ───────────────────────────────────────
-let _isSyncingUI = false;
+// _activeCid is set ONLY by onPinClick / onCardClick.
+// Nothing else — not scroll, not map idle — may write to it.
 let _hoverTimer = null;
-let _selectionLockUntil = 0;
-let _programmaticCarouselScroll = false;
-const SELECTION_LOCK_MS = 1000;
-
-let _pendingCardListRender = false;
-let _selectionUnlockTimer = null;
-
-function _now() { return performance.now(); }
-function _isSelectionLocked() { return _now() < _selectionLockUntil; }
-
-function _lockSelection() {
-  _selectionLockUntil = _now() + SELECTION_LOCK_MS;
-  clearTimeout(_selectionUnlockTimer);
-  _selectionUnlockTimer = setTimeout(() => {
-    if (_pendingCardListRender) {
-      _pendingCardListRender = false;
-      renderCardList();
-    }
-  }, SELECTION_LOCK_MS + 20);
-}
-function isMobileMapUI() { return window.matchMedia('(hover: none)').matches; }
 
 function _normCid(cid) { return String(cid); }
 function _getClinic(cid) { const id = _normCid(cid); return _allClinics.find(c => String(c.id) === id) || null; }
 function _getMarker(cid) { const id = _normCid(cid); return _markers.find(m => m._cid === id && !m._count) || null; }
+function isMobileMapUI() { return window.matchMedia('(hover: none)').matches; }
 
-function _resetMarkerIcons(activeCid) {
-  const id = activeCid ? _normCid(activeCid) : null;
+// Apply correct icon to every marker based on current _activeCid
+function _applyMarkerIcons() {
   _markers.forEach(m => {
     if (m._count) return;
-    m.setIcon(m._cid === id ? PIN_ACTIVE : PIN_IDLE);
+    m.setIcon(m._cid === _activeCid ? PIN_ACTIVE : PIN_IDLE);
   });
 }
 
-function _setCardHighlight(cid) {
-  const id = _normCid(cid);
+// Highlight the matching card(s) in list and carousel
+function _applyCardHighlight() {
   document.querySelectorAll('.map-clinic-card,.map-carousel-card').forEach(el => {
-    el.classList.toggle('highlighted', el.dataset.cid === id);
+    el.classList.toggle('highlighted', el.dataset.cid === _activeCid);
   });
 }
 
-function _panToClinic(cid) {
-  const clinic = _getClinic(cid);
-  if (!clinic || !_map) return;
-  _map.panTo({ lat: Number(clinic.lat), lng: Number(clinic.lng) });
-}
-
-// Use map idle event — far more reliable than requestAnimationFrame after panTo
-function _afterMapSettles(cb) {
-  if (!_map) { cb(); return; }
-  google.maps.event.addListenerOnce(_map, 'idle', cb);
-}
-
-// Desktop: offsetTop is container-relative — no viewport math needed
+// Scroll desktop list container so active card is near top
 function scrollCardListTo(cid) {
   const id = _normCid(cid);
   const container = document.getElementById('mapCardList');
@@ -5272,60 +5220,64 @@ function scrollCardListTo(cid) {
   container.scrollTo({ top: Math.max(0, card.offsetTop - 16), behavior: 'smooth' });
 }
 
-// Mobile: cancel any in-flight scroll first, then use scrollIntoView
-// scrollIntoView with inline:start works with CSS snap — manual math fights it
+// Snap mobile carousel to active card using scrollIntoView
+// (works with CSS scroll-snap; manual left math fights it)
 function snapCarouselTo(cid) {
   const id = _normCid(cid);
   const track = document.getElementById('mapCarouselTrack');
   const card = track?.querySelector(`.map-carousel-card[data-cid="${id}"]`);
   if (!track || !card) return;
-  _programmaticCarouselScroll = true;
-  // Cancel any in-flight smooth scroll before starting a new one
-  track.scrollTo({ left: track.scrollLeft, behavior: 'auto' });
+  track.scrollTo({ left: track.scrollLeft, behavior: 'auto' }); // cancel in-flight
   card.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
-  setTimeout(() => { _programmaticCarouselScroll = false; }, 500);
 }
 
-function _syncIntoView(cid, behavior = 'smooth') {
-  if (window.matchMedia('(hover: none)').matches) {
-    snapCarouselTo(cid);
+// Scroll/snap the correct UI element to show active clinic
+function _syncActiveIntoView() {
+  if (!_activeCid) return;
+  if (isMobileMapUI()) {
+    snapCarouselTo(_activeCid);
   } else {
-    scrollCardListTo(cid);
+    scrollCardListTo(_activeCid);
   }
 }
 
-// ─── SINGLE SOURCE OF TRUTH ───────────────────────────────────
-function selectClinic(cid, { pan = true, syncPanel = true } = {}) {
+// ─── SELECTION ────────────────────────────────────────────────
+// Called ONLY from onPinClick and onCardClick.
+// Sets _activeCid, updates visuals, pans map, then syncs panel
+// after the map settles (so the card list has been rebuilt first).
+function selectClinic(cid) {
   const id = _normCid(cid);
-  if (!id || _isSyncingUI) return;
+  if (!id) return;
 
-  const alreadyActive = _activeCid === id;
   _activeCid = id;
-  _isSyncingUI = true;
-  _lockSelection();
 
-  _resetMarkerIcons(id);
-  _setCardHighlight(id);
+  // Immediately update marker and card visuals
+  _applyMarkerIcons();
+  _applyCardHighlight();
 
-  if (!pan || alreadyActive) {
-    if (syncPanel) _syncIntoView(id);
-    _isSyncingUI = false;
+  // Pan map to clinic
+  const clinic = _getClinic(id);
+  if (!clinic || !_map) {
+    _syncActiveIntoView();
     return;
   }
 
-  _panToClinic(id);
-  _afterMapSettles(() => {
-    // Mobile: snap carousel immediately — it renders independently of renderCardList
-    // Desktop: do NOT scroll here — renderCardList will rebuild the list and scroll
-    // after the lock expires. Scrolling now would target the stale pre-pan DOM.
-    if (syncPanel && isMobileMapUI()) _syncIntoView(id);
-    _isSyncingUI = false;
-  });
+  _map.panTo({ lat: Number(clinic.lat), lng: Number(clinic.lng) });
+
+  // After map settles: renderCardList runs (triggered by onMapIdle),
+  // which rebuilds the DOM and calls _syncActiveIntoView at the end.
+  // For mobile carousel (which doesn't depend on viewport bounds),
+  // also snap immediately so the user sees feedback without waiting.
+  if (isMobileMapUI()) {
+    google.maps.event.addListenerOnce(_map, 'idle', () => {
+      snapCarouselTo(_activeCid);
+    });
+  }
 }
 
 // ─── PIN CLICK ────────────────────────────────────────────────
 function onPinClick(cid) {
-  selectClinic(_normCid(cid), { pan: true, syncPanel: true });
+  selectClinic(_normCid(cid));
 }
 
 // ─── OPEN MODAL ───────────────────────────────────────────────
@@ -5407,12 +5359,12 @@ function renderCardList() {
       : inView.map(c => buildCard(c, true)).join('');
   }
 
-  // renderCardList is the final authority after DOM rebuild:
-  // re-highlight and scroll the active card into its correct position
+  // After DOM rebuild, re-apply selection visuals and scroll active card into view
   if (_activeCid) {
     requestAnimationFrame(() => {
-      _setCardHighlight(_activeCid);
-      scrollCardListTo(_activeCid);
+      _applyMarkerIcons();
+      _applyCardHighlight();
+      _syncActiveIntoView();
     });
   }
 }
@@ -5472,13 +5424,13 @@ function buildCard(c, carousel) {
 
 // ─── CARD CLICK ───────────────────────────────────────────────
 function onCardClick(cid) {
-  selectClinic(_normCid(cid), { pan: true, syncPanel: true });
+  selectClinic(_normCid(cid));
 }
 
-// Legacy helper — keeps highlighted class in sync, used by wireMarkerEvents
+// Legacy helper — used by wireMarkerEvents hover
 function highlightCard(cid, scroll) {
-  _setCardHighlight(cid);
-  if (scroll) _syncIntoView(_normCid(cid));
+  _applyCardHighlight();
+  if (scroll) _syncActiveIntoView();
 }
 
 // ─── HOVER (desktop only, debounced) ─────────────────────────
@@ -5500,7 +5452,7 @@ function unhighlightPinById(cid) {
   const id = _normCid(cid);
   if (_activeCid === id) return;
   const m = _getMarker(id);
-  if (m) m.setIcon({ ...PIN_IDLE, scale: m.icon?.scale || PIN_IDLE.scale || 1 });
+  if (m) m.setIcon(PIN_IDLE);
   document.querySelectorAll(`[data-cid="${id}"]`).forEach(el => el.classList.remove('is-hovered'));
 }
 
