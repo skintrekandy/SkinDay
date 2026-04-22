@@ -471,7 +471,8 @@ async function loadSavedClinics() {
     // Attach lowest price + toxin to each clinic
     const priceMap = {};
     (prices || []).forEach(p => {
-      if (!priceMap[p.clinic_id]) priceMap[p.clinic_id] = p;
+      const key = String(p.clinic_id);
+      if (!priceMap[key]) priceMap[key] = p;
     });
     clinics.forEach(c => {
       const p = priceMap[String(c.id)];
@@ -518,7 +519,6 @@ function buildSavedCard(c) {
     `<span class="saved-card-cred">${CRED_MAP[v]||v.toUpperCase()}</span>`
   ).join(' ');
 
-  const viewHref = c.website || c.booking_url || c.maps_url || '#';
 
   return `<div class="saved-card">
     <div class="saved-card-top">
@@ -532,7 +532,7 @@ function buildSavedCard(c) {
     <div class="saved-card-price">${price}</div>
     ${credHTML}
     <div class="saved-card-footer">
-      <a href="/#clinic/${c.id}" class="saved-card-view">View Profile →</a>
+      <a href="https://skinday.ca/#clinic/${c.id}" class="saved-card-view">View Profile →</a>
       <button class="saved-card-remove" onclick="removeSaved('${c.id}')">Remove</button>
     </div>
   </div>`;
