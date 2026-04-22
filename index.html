@@ -2224,7 +2224,7 @@
   <div class="search-bar">
     <div class="search-field">
       <div class="search-field-label">Clinic Name</div>
-      <input type="text" id="searchClinicName" placeholder="Search clinics…" oninput="applySearch()" autocomplete="off">
+      <input type="text" id="searchClinicName" placeholder="Search clinics…" oninput="applySearch()" autocomplete="off" name="clinic-search" readonly onfocus="this.removeAttribute('readonly')">
     </div>
     <div class="search-field">
       <div class="neighbourhood-wrap">
@@ -3813,7 +3813,7 @@ async function handleGoogleSignIn() {
   const { error } = await _sb.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: window.location.origin + '/',
+      redirectTo: window.location.origin + '/account.html',
       queryParams: { prompt: 'select_account' }
     }
   });
@@ -4623,6 +4623,10 @@ function openClinicModal(clinicId) {
   const photosGrid = document.getElementById('cm-photos-grid');
   const photosPlaceholder = document.getElementById('cm-photos-placeholder');
 
+  // Default: show placeholder, async fetch will override if photos exist
+  photosGrid.style.display = 'none';
+  photosPlaceholder.style.display = 'flex';
+
   // Fetch photos from Supabase Storage
   const clinicIdStr = String(clinic.id);
   fetch(`${SB_URL}/storage/v1/object/list/clinic-logos`, {
@@ -4646,18 +4650,6 @@ function openClinicModal(clinicId) {
       photosPlaceholder.style.display = 'none';
     }
   }).catch(() => {});
-  if (clinic.photos && clinic.photos.length > 0) {
-    photosGrid.innerHTML = clinic.photos.map(url =>
-      `<div style="aspect-ratio:4/3;border-radius:8px;overflow:hidden;background:var(--warm);">
-        <img src="${url}" alt="${clinic.name}" style="width:100%;height:100%;object-fit:cover;" />
-      </div>`
-    ).join('');
-    photosGrid.style.display = 'grid';
-    photosPlaceholder.style.display = 'none';
-  } else {
-    photosGrid.style.display = 'none';
-    photosPlaceholder.style.display = 'flex';
-  }
   document.getElementById('cm-photos-link-unclaimed').style.display = isClaimed ? 'none' : 'inline';
   document.getElementById('cm-photos-link-claimed').style.display   = isClaimed ? 'inline' : 'none';
 

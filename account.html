@@ -451,6 +451,7 @@
       .compare-col-header .col-name { font-size: 0.85rem; min-height: unset; }
       .compare-col-header .col-meta { font-size: 0.68rem; }
       .compare-table { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    } /* end @media (max-width: 640px) */
 
     /* ─── CLINIC MODAL ─── */
   .clinic-modal-overlay {
@@ -1640,12 +1641,14 @@ document.getElementById('compareModal')?.addEventListener('click', function(e) {
 });
 </script>
 <!-- COMPARE BAR -->
-<div class="compare-bar" id="compareBar">
+<div class="compare-bar" id="compareBar" style="display:none;">
   <span class="compare-bar-label">Compare</span>
   <div class="compare-slots" id="compareSlots">
     <div class="compare-slot" id="slot0">Add a clinic…</div>
+  </div>
+</div>
 
-
+<script>
 function closeCompareModal() {
   document.getElementById('compareModal').classList.remove('open');
 }
@@ -1815,6 +1818,10 @@ function _openClinicModalWithData(clinic) {
   const photosGrid = document.getElementById('cm-photos-grid');
   const photosPlaceholder = document.getElementById('cm-photos-placeholder');
 
+  // Default: show placeholder; async fetch below will override if photos exist
+  photosGrid.style.display = 'none';
+  photosPlaceholder.style.display = 'flex';
+
   // Fetch photos from Supabase Storage
   const clinicIdStr = String(clinic.id);
   fetch(`${SB_URL}/storage/v1/object/list/clinic-logos`, {
@@ -1838,18 +1845,6 @@ function _openClinicModalWithData(clinic) {
       photosPlaceholder.style.display = 'none';
     }
   }).catch(() => {});
-  if (clinic.photos && clinic.photos.length > 0) {
-    photosGrid.innerHTML = clinic.photos.map(url =>
-      `<div style="aspect-ratio:4/3;border-radius:8px;overflow:hidden;background:var(--warm);">
-        <img src="${url}" alt="${clinic.name}" style="width:100%;height:100%;object-fit:cover;" />
-      </div>`
-    ).join('');
-    photosGrid.style.display = 'grid';
-    photosPlaceholder.style.display = 'none';
-  } else {
-    photosGrid.style.display = 'none';
-    photosPlaceholder.style.display = 'flex';
-  }
   document.getElementById('cm-photos-link-unclaimed').style.display = isClaimed ? 'none' : 'inline';
   document.getElementById('cm-photos-link-claimed').style.display   = isClaimed ? 'inline' : 'none';
 
