@@ -542,7 +542,7 @@
     }
     .map-carousel-track {
       display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory;
-      -webkit-overflow-scrolling: touch; scrollbar-width: none;
+      scroll-behavior: smooth; -webkit-overflow-scrolling: touch; scrollbar-width: none;
       padding: 0 16px 16px;
     }
     .map-carousel-track::-webkit-scrollbar { display: none; }
@@ -550,7 +550,7 @@
       flex: 0 0 80vw; max-width: 320px; scroll-snap-align: start;
       background: #fff; border-radius: 12px; padding: 0.9rem 1rem;
       box-shadow: 0 4px 20px rgba(0,0,0,0.2); cursor: pointer;
-      border: 1.5px solid transparent; transition: border-color 0.15s; flex-shrink: 0;
+      border: 1.5px solid transparent; transition: border-color 0.15s; flex-shrink: 0; scroll-snap-stop: always;
     }
     .map-carousel-card.highlighted { border-color: var(--rose); }
   }
@@ -5182,34 +5182,103 @@ function wireMarkerEvents(m, c, isCluster) {
       m._group.forEach(g => b.extend({ lat: +g.lat, lng: +g.lng }));
       _map.fitBounds(b, 80);
     } else {
-      onPinClick(cid, m);
+      onPinClick(cid);
     }
   });
 }
 
-// ─── PIN CLICK ────────────────────────────────────────────────
-function onPinClick(cid, marker) {
-  // Reset all pins
+// ─── INTERACTION STATE ───────────────────────────────────────
+let _isSyncingUI = false;
+let _hoverTimer = null;
+
+function _normCid(cid) { return String(cid); }
+function _getClinic(cid) { const id = _normCid(cid); return _allClinics.find(c => String(c.id) === id) || null; }
+function _getMarker(cid) { const id = _normCid(cid); return _markers.find(m => m._cid === id && !m._count) || null; }
+
+function _resetMarkerIcons(activeCid) {
+  const id = activeCid ? _normCid(activeCid) : null;
   _markers.forEach(m => {
-    if (m._cid === _activeCid) m.setIcon({ ...PIN_IDLE, scale: m.icon?.scale || 1 });
+    if (m._count) return;
+    m.setIcon(m._cid === id ? PIN_ACTIVE : { ...PIN_IDLE, scale: m.icon?.scale || PIN_IDLE.scale || 1 });
   });
-  _activeCid = cid;
-  if (marker) marker.setIcon(PIN_ACTIVE);
-  highlightCard(cid, false);
-  scrollCardListTo(cid);
-  const clinic = _allClinics.find(c => String(c.id) === cid);
-  if (clinic) _map.panTo({ lat: +clinic.lat, lng: +clinic.lng });
-  // Mobile: snap carousel so the selected card is at the front
-  const isMobile = window.matchMedia('(hover: none)').matches;
-  if (isMobile) snapCarouselTo(cid);
 }
 
+function _setCardHighlight(cid) {
+  const id = _normCid(cid);
+  document.querySelectorAll('.map-clinic-card,.map-carousel-card').forEach(el => {
+    el.classList.toggle('highlighted', el.dataset.cid === id);
+  });
+}
+
+function _panToClinic(cid) {
+  const clinic = _getClinic(cid);
+  if (!clinic || !_map) return;
+  _map.panTo({ lat: Number(clinic.lat), lng: Number(clinic.lng) });
+}
+
+// Use map idle event — far more reliable than requestAnimationFrame after panTo
+function _afterMapSettles(cb) {
+  if (!_map) { cb(); return; }
+  google.maps.event.addListenerOnce(_map, 'idle', cb);
+}
+
+// Desktop: offsetTop is container-relative — no viewport math needed
+function scrollCardListTo(cid) {
+  const id = _normCid(cid);
+  const container = document.getElementById('mapCardList');
+  const card = document.querySelector(`#mapListCards [data-cid="${id}"]`);
+  if (!container || !card) return;
+  container.scrollTo({ top: Math.max(0, card.offsetTop - 16), behavior: 'smooth' });
+}
+
+// Mobile: cancel any in-flight scroll first, then use scrollIntoView
+// scrollIntoView with inline:start works with CSS snap — manual math fights it
 function snapCarouselTo(cid) {
+  const id = _normCid(cid);
   const track = document.getElementById('mapCarouselTrack');
-  const card = track && track.querySelector(`.map-carousel-card[data-cid="${cid}"]`);
+  const card = track?.querySelector(`.map-carousel-card[data-cid="${id}"]`);
   if (!track || !card) return;
-  // Scroll so card snaps to the left edge (accounting for 16px padding)
-  track.scrollTo({ left: card.offsetLeft - 16, behavior: 'smooth' });
+  // Cancel any in-flight smooth scroll before starting a new one
+  track.scrollTo({ left: track.scrollLeft, behavior: 'auto' });
+  card.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
+}
+
+function _syncIntoView(cid, behavior = 'smooth') {
+  if (window.matchMedia('(hover: none)').matches) {
+    snapCarouselTo(cid);
+  } else {
+    scrollCardListTo(cid);
+  }
+}
+
+// ─── SINGLE SOURCE OF TRUTH ───────────────────────────────────
+function selectClinic(cid, { pan = true, syncPanel = true } = {}) {
+  const id = _normCid(cid);
+  if (!id || _isSyncingUI) return;
+
+  const alreadyActive = _activeCid === id;
+  _activeCid = id;
+  _isSyncingUI = true;
+
+  _resetMarkerIcons(id);
+  _setCardHighlight(id);
+
+  if (!pan || alreadyActive) {
+    if (syncPanel) _syncIntoView(id);
+    _isSyncingUI = false;
+    return;
+  }
+
+  _panToClinic(id);
+  _afterMapSettles(() => {
+    if (syncPanel) _syncIntoView(id);
+    _isSyncingUI = false;
+  });
+}
+
+// ─── PIN CLICK ────────────────────────────────────────────────
+function onPinClick(cid) {
+  selectClinic(_normCid(cid), { pan: true, syncPanel: true });
 }
 
 // ─── OPEN MODAL ───────────────────────────────────────────────
@@ -5350,51 +5419,38 @@ function buildCard(c, carousel) {
   </div>`;
 }
 
-// ─── CARD ↔ PIN SYNC ──────────────────────────────────────────
+// ─── CARD CLICK ───────────────────────────────────────────────
 function onCardClick(cid) {
-  const isMobile = window.matchMedia('(hover: none)').matches;
-  _activeCid = String(cid);
-  document.querySelectorAll('.map-clinic-card,.map-carousel-card').forEach(el => el.classList.remove('highlighted'));
-  highlightCard(cid, false);
-  // Pan map to pin and highlight it
-  _markers.forEach(m => { if (m._cid === cid) m.setIcon(PIN_ACTIVE); else m.setIcon({...PIN_IDLE, scale: m.icon?.scale||1}); });
-  const clinic = _allClinics.find(c => String(c.id) === cid);
-  if (clinic && _map) _map.panTo({ lat: +clinic.lat, lng: +clinic.lng });
-  if (isMobile) {
-    snapCarouselTo(cid);
-  } else {
-    scrollCardListTo(cid);
-  }
+  selectClinic(_normCid(cid), { pan: true, syncPanel: true });
 }
 
+// Legacy helper — keeps highlighted class in sync, used by wireMarkerEvents
 function highlightCard(cid, scroll) {
-  document.querySelectorAll('.map-clinic-card,.map-carousel-card').forEach(el => {
-    const active = el.dataset.cid === cid;
-    el.classList.toggle('highlighted', active);
-    if (active && scroll) el.scrollIntoView({ behavior:'smooth', block:'nearest', inline:'center' });
-  });
+  _setCardHighlight(cid);
+  if (scroll) _syncIntoView(_normCid(cid));
 }
 
-function scrollCardListTo(cid) {
-  const el = document.querySelector(`#mapListCards [data-cid="${cid}"]`);
-  if (el) el.scrollIntoView({ behavior:'smooth', block:'nearest' });
-}
-
+// ─── HOVER (desktop only, debounced) ─────────────────────────
 function highlightPinById(cid) {
   if (!window.matchMedia('(hover: hover)').matches) return;
-  const m = _markers.find(m => m._cid === cid && !m._count);
-  if (m && _activeCid !== cid) {
-    m.setIcon(PIN_HOVER);
-    highlightCard(cid, false);
-  }
+  clearTimeout(_hoverTimer);
+  _hoverTimer = setTimeout(() => {
+    const id = _normCid(cid);
+    if (_activeCid === id) return;
+    const m = _getMarker(id);
+    if (m) m.setIcon(PIN_HOVER);
+    document.querySelectorAll(`[data-cid="${id}"]`).forEach(el => el.classList.add('is-hovered'));
+  }, 40);
 }
 
 function unhighlightPinById(cid) {
   if (!window.matchMedia('(hover: hover)').matches) return;
-  if (_activeCid === cid) return;
-  const m = _markers.find(m => m._cid === cid && !m._count);
-  if (m) m.setIcon({...PIN_IDLE, scale: m.icon?.scale||1});
-  document.querySelectorAll(`[data-cid="${cid}"]`).forEach(el => el.classList.remove('highlighted'));
+  clearTimeout(_hoverTimer);
+  const id = _normCid(cid);
+  if (_activeCid === id) return;
+  const m = _getMarker(id);
+  if (m) m.setIcon({ ...PIN_IDLE, scale: m.icon?.scale || PIN_IDLE.scale || 1 });
+  document.querySelectorAll(`[data-cid="${id}"]`).forEach(el => el.classList.remove('is-hovered'));
 }
 
 // ─── STUBS ────────────────────────────────────────────────────

@@ -1110,9 +1110,14 @@
             <input class="field-input" type="tel" id="field-phone" placeholder="(416) 555-0100" oninput="markDirty()" />
           </div>
           <div class="field-group">
-            <label class="field-label">Website URL</label>
-            <input class="field-input" type="url" id="field-website" placeholder="https://yourclinic.com" oninput="markDirty()" />
+            <label class="field-label">Contact email <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:12px;color:var(--bark-light);">(optional)</span></label>
+            <input class="field-input" type="email" id="field-email" placeholder="hello@yourclinic.com" oninput="markDirty()" />
+            <div class="field-hint">Shown as an Email button on your clinic profile — use a general inquiry address, not a personal one.</div>
           </div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Website URL</label>
+          <input class="field-input" type="url" id="field-website" placeholder="https://yourclinic.com" oninput="markDirty()" />
         </div>
         <div class="field-group">
           <label class="field-label">Booking link <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:12px;color:var(--bark-light);">(optional)</span></label>
@@ -1550,6 +1555,7 @@
     portalLoadPrices(c);
 
     setVal('field-phone', c.phone || '');
+    setVal('field-email', c.email || '');
     setVal('field-website', c.website || '');
     setVal('field-booking', c.booking_url || '');
     setVal('field-promo-text', c.promo_text || '');
@@ -1585,6 +1591,7 @@
     originalData = {
       prices: portalGetPriceRows(),
       phone: c.phone || '',
+      email: c.email || '',
       website: c.website || '',
       booking_url: c.booking_url || '',
       promo: !!c.promo,
@@ -1778,6 +1785,7 @@
     const c = originalData;
     portalLoadPrices(c);
     setVal('field-phone', c.phone);
+    setVal('field-email', c.email || '');
     setVal('field-website', c.website);
     setVal('field-booking', c.booking_url);
     setVal('field-promo-text', c.promo_text);
@@ -1829,6 +1837,7 @@
         price_source: 'clinic',
         price_date: new Date().toISOString().split('T')[0],
         phone: document.getElementById('field-phone').value.trim(),
+        email: document.getElementById('field-email').value.trim(),
         website: document.getElementById('field-website').value.trim(),
         booking_url: document.getElementById('field-booking').value.trim(),
         promo: document.getElementById('field-promo').checked,

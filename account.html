@@ -993,7 +993,7 @@ async function loadSavedClinics() {
   const ids = saved.map(r => String(r.clinic_id));
   try {
     const clinicRes = await fetch(
-      `${SB_URL}/rest/v1/clinics?select=id,name,neighbourhood,province,rating,reviews,logo_url,injector_credentials,maps_url,website,booking_url,claimed,phone&id=in.(${ids.join(',')})&or=(approved.eq.true,approved.is.null)`,
+      `${SB_URL}/rest/v1/clinics?select=id,name,neighbourhood,province,rating,reviews,logo_url,injector_credentials,maps_url,website,booking_url,claimed,phone,email&id=in.(${ids.join(',')})&or=(approved.eq.true,approved.is.null)`,
       { headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` } }
     );
     const clinics = await clinicRes.json();
