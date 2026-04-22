@@ -276,6 +276,50 @@
       .profile-header { flex-direction: column; align-items: flex-start; gap: 1rem; }
       .saved-grid { grid-template-columns: 1fr; }
     }
+
+    /* ─── CLINIC PROFILE MODAL ─── */
+    .profile-overlay {
+      position: fixed; inset: 0; background: rgba(28,23,20,0.6);
+      z-index: 200; display: flex; align-items: center; justify-content: center;
+      padding: 1.5rem; opacity: 0; pointer-events: none; transition: opacity 0.2s;
+    }
+    .profile-overlay.open { opacity: 1; pointer-events: all; }
+    .profile-modal {
+      background: var(--cream); border-radius: 16px; width: 100%; max-width: 540px;
+      max-height: 85vh; overflow-y: auto; padding: 2rem;
+      transform: translateY(20px); transition: transform 0.25s;
+    }
+    .profile-overlay.open .profile-modal { transform: translateY(0); }
+    .profile-modal-close {
+      position: absolute; top: 1rem; right: 1rem; background: transparent;
+      border: none; font-size: 1.2rem; cursor: pointer; color: var(--muted);
+      width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+      border-radius: 50%;
+    }
+    .profile-modal-close:hover { background: var(--border); }
+    .profile-modal h2 { font-family: 'Cormorant Garamond', serif; font-size: 1.6rem; margin-bottom: 0.25rem; }
+    .profile-modal-meta { font-size: 0.82rem; color: var(--muted); margin-bottom: 1rem; }
+    .profile-modal-price { font-family: 'Cormorant Garamond', serif; font-size: 2rem; color: var(--rose); margin: 1rem 0 0.25rem; }
+    .profile-modal-price span { font-size: 0.85rem; color: var(--muted); font-family: 'DM Sans', sans-serif; }
+    .profile-modal-actions { display: flex; gap: 0.75rem; margin-top: 1.5rem; flex-wrap: wrap; }
+    .profile-modal-actions a { padding: 0.5rem 1.25rem; border-radius: 20px; font-size: 0.85rem; text-decoration: none; font-family: 'DM Sans', sans-serif; }
+    .btn-book-modal { background: var(--rose); color: #fff; }
+    .btn-website-modal { border: 1px solid var(--border); color: var(--deep); }
+    .profile-price-table { width: 100%; border-collapse: collapse; margin-top: 0.75rem; font-size: 0.85rem; }
+    .profile-price-table td { padding: 0.4rem 0; border-bottom: 1px solid var(--border); }
+    .profile-price-table td:last-child { text-align: right; color: var(--rose); font-family: 'Cormorant Garamond', serif; font-size: 1rem; }
+
+    /* ─── COMPARE PANEL ─── */
+    .compare-panel {
+      background: var(--warm); border: 1px solid var(--border); border-radius: 12px;
+      padding: 1.5rem; margin-top: 2rem; display: none;
+    }
+    .compare-panel h3 { font-family: 'Cormorant Garamond', serif; font-size: 1.3rem; margin-bottom: 1rem; }
+    .compare-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; }
+    .compare-col { background: var(--cream); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; }
+    .compare-col-name { font-size: 0.9rem; font-weight: 500; margin-bottom: 0.5rem; }
+    .compare-col-price { font-family: 'Cormorant Garamond', serif; font-size: 1.4rem; color: var(--rose); }
+    .compare-col-meta { font-size: 0.75rem; color: var(--muted); margin-top: 0.25rem; }
   </style>
 </head>
 <body>
@@ -455,19 +499,15 @@ async function loadSavedClinics() {
   // Fetch clinic details and prices for each saved ID
   const ids = saved.map(r => String(r.clinic_id));
   try {
-    const [clinicRes, priceRes] = await Promise.all([
-      fetch(
-        `${SB_URL}/rest/v1/clinics?select=id,name,neighbourhood,province,rating,reviews,logo_url,injector_credentials,maps_url,website,booking_url,claimed&id=in.(${ids.join(',')})&or=(approved.eq.true,approved.is.null)`,
-        { headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` } }
-      ),
-      _sb.from('clinic_prices')
-        .select('clinic_id,toxin,price')
-        .in('clinic_id', ids)
-        .order('price', { ascending: true })
-    ]);
+    const clinicRes = await fetch(
+      `${SB_URL}/rest/v1/clinics?select=id,name,neighbourhood,province,rating,reviews,logo_url,injector_credentials,maps_url,website,booking_url,claimed,phone&id=in.(${ids.join(',')})&or=(approved.eq.true,approved.is.null)`,
+      { headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` } }
+    );
     const clinics = await clinicRes.json();
-    const priceResult = await priceRes;
-    const prices = priceResult.data || [];
+    const { data: prices } = await _sb.from('clinic_prices')
+      .select('clinic_id,toxin,price')
+      .in('clinic_id', ids)
+      .order('price', { ascending: true });
 
     // Attach lowest price + toxin to each clinic
     const priceMap = {};
@@ -498,10 +538,12 @@ function renderSavedGrid(clinics, savedRows) {
   countEl.textContent = clinics.length;
   clearBtn.style.display = 'inline-block';
 
-  const compareNote = clinics.length >= 2
-    ? `<p style="font-size:0.8rem;color:var(--muted);margin-bottom:1rem;">To compare clinics side by side, use the <strong>+ Compare</strong> button on the <a href="/" style="color:var(--rose);">browse page</a>. Up to 3 clinics at a time.</p>`
-    : '';
-  area.innerHTML = `${compareNote}<div class="saved-grid">${clinics.map(c => buildSavedCard(c)).join('')}</div>`;
+  area.innerHTML = `
+    <div id="compareBar" style="display:none;background:var(--deep);color:var(--cream);padding:0.75rem 1.25rem;border-radius:10px;margin-bottom:1rem;display:none;align-items:center;justify-content:space-between;gap:1rem;">
+      <span id="compareBarText" style="font-size:0.85rem;">Select 2–3 clinics to compare</span>
+      <button onclick="runCompare()" style="background:var(--rose);color:#fff;border:none;padding:0.4rem 1rem;border-radius:20px;font-family:'DM Sans',sans-serif;font-size:0.8rem;cursor:pointer;">Compare →</button>
+    </div>
+    <div class="saved-grid">${clinics.map(c => buildSavedCard(c)).join('')}</div>`;
 }
 
 function buildSavedCard(c) {
@@ -533,8 +575,13 @@ function buildSavedCard(c) {
     <div class="saved-card-price">${price}</div>
     ${credHTML}
     <div class="saved-card-footer">
-      <a href="https://skinday.ca/#clinic/${c.id}" class="saved-card-view">View Profile →</a>
-      <button class="saved-card-remove" onclick="removeSaved('${c.id}')">Remove</button>
+      <a href="#" class="saved-card-view" onclick="event.preventDefault();openSavedProfile('${c.id}')">View Profile →</a>
+      <div style="display:flex;gap:0.5rem;align-items:center;">
+        <label style="display:flex;align-items:center;gap:4px;font-size:0.75rem;color:var(--muted);cursor:pointer;">
+          <input type="checkbox" class="compare-check" data-id="${c.id}" onchange="updateCompare()"> Compare
+        </label>
+        <button class="saved-card-remove" onclick="removeSaved('${c.id}')">Remove</button>
+      </div>
     </div>
   </div>`;
 }
@@ -592,6 +639,121 @@ function showToast(msg) {
 
 // ─── HANDLE SIGN-IN REDIRECT FROM HOME ────────────────────────
 // If home page redirects here after OAuth, session will be picked up by init()
+</script>
+
+<!-- CLINIC PROFILE MODAL -->
+<div class="profile-overlay" id="profileOverlay" onclick="if(event.target===this)closeSavedProfile()">
+  <div class="profile-modal" id="profileModal">
+    <button class="profile-modal-close" onclick="closeSavedProfile()">✕</button>
+    <div id="profileModalContent"><div style="text-align:center;padding:2rem;color:var(--muted);">Loading…</div></div>
+  </div>
+</div>
+
+<!-- COMPARE PANEL -->
+<div class="compare-panel" id="comparePanel">
+  <h3>Comparing Clinics</h3>
+  <div class="compare-grid" id="compareGrid"></div>
+</div>
+
+<script>
+// ─── CLINIC PROFILE MODAL ───
+let _profileData = {};
+
+async function openSavedProfile(id) {
+  document.getElementById('profileOverlay').classList.add('open');
+  const el = document.getElementById('profileModalContent');
+
+  // Use cached data first
+  const clinic = _savedClinics.find(c => String(c.id) === String(id));
+  if (clinic) {
+    renderProfileModal(clinic);
+    return;
+  }
+
+  // Fallback fetch
+  el.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--muted);">Loading…</div>';
+  try {
+    const r = await fetch(`${SB_URL}/rest/v1/clinics?select=*&id=eq.${id}&limit=1`,
+      { headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` }});
+    const rows = await r.json();
+    if (rows[0]) renderProfileModal(rows[0]);
+  } catch(e) { el.innerHTML = '<p style="color:var(--muted);padding:1rem;">Could not load profile.</p>'; }
+}
+
+function renderProfileModal(clinic) {
+  const TOXIN_MAP = { botox:'Botox', dysport:'Dysport', xeomin:'Xeomin', nuceiva:'Nuceiva', letybo:'Letybo' };
+  const CRED_LABELS = { physician:'MD / Physician', np:'NP', rn:'RN/RPN/LPN', img:'IMG', nd:'ND' };
+  const creds = (() => { try { return JSON.parse(clinic.injector_credentials||'[]'); } catch(e){return[];} })();
+  const credText = creds.map(v => CRED_LABELS[v]||v).join(' · ');
+  const priceText = clinic.price != null
+    ? `$${clinic.price}<span> / unit · ${TOXIN_MAP[clinic.toxin]||'Botox'}</span>`
+    : '<span style="font-size:1rem;color:var(--muted)">Price not listed</span>';
+  const bookHref = clinic.booking_url || clinic.website || (clinic.phone ? 'tel:'+clinic.phone : null);
+
+  document.getElementById('profileModalContent').innerHTML = `
+    <div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.5rem;">${clinic.neighbourhood || ''}${clinic.province ? ', '+clinic.province : ''}</div>
+    <h2>${clinic.name}</h2>
+    <div class="profile-modal-meta">${credText}${clinic.rating ? ' · ★ '+clinic.rating : ''}${clinic.reviews ? ' · '+clinic.reviews.toLocaleString()+' reviews' : ''}</div>
+    <div class="profile-modal-price">${priceText}</div>
+    <div class="profile-modal-actions">
+      ${bookHref ? `<a href="${bookHref}" target="_blank" class="btn-book-modal">Book Now</a>` : ''}
+      ${clinic.website ? `<a href="${clinic.website}" target="_blank" class="btn-website-modal">Website →</a>` : ''}
+    </div>`;
+}
+
+function closeSavedProfile() {
+  document.getElementById('profileOverlay').classList.remove('open');
+}
+
+// ─── COMPARE ───
+let _compareIds = new Set();
+
+function updateCompare() {
+  _compareIds = new Set(
+    [...document.querySelectorAll('.compare-check:checked')].map(el => el.dataset.id)
+  );
+  const bar = document.getElementById('compareBar');
+  const text = document.getElementById('compareBarText');
+  const n = _compareIds.size;
+
+  if (n >= 2) {
+    bar.style.display = 'flex';
+    text.textContent = `${n} clinic${n>1?'s':''} selected — ready to compare`;
+  } else if (n === 1) {
+    bar.style.display = 'flex';
+    text.textContent = 'Select 1 or 2 more clinics to compare';
+  } else {
+    bar.style.display = 'none';
+    document.getElementById('comparePanel').style.display = 'none';
+  }
+
+  // Uncheck extras if more than 3
+  if (n > 3) {
+    const checks = [...document.querySelectorAll('.compare-check:checked')];
+    checks[0].checked = false;
+    updateCompare();
+  }
+}
+
+function runCompare() {
+  if (_compareIds.size < 2) return;
+  const selected = [..._compareIds].map(id => _savedClinics.find(c => String(c.id) === id)).filter(Boolean);
+  const TOXIN_MAP = { botox:'Botox', dysport:'Dysport', xeomin:'Xeomin', nuceiva:'Nuceiva', letybo:'Letybo' };
+
+  const grid = document.getElementById('compareGrid');
+  grid.innerHTML = selected.map(clinic => `
+    <div class="compare-col">
+      <div class="compare-col-name">${clinic.name}</div>
+      <div class="compare-col-price">${clinic.price != null ? '$'+clinic.price : '—'}</div>
+      <div class="compare-col-meta">${clinic.price != null ? (TOXIN_MAP[clinic.toxin]||'Botox')+'/unit' : 'Price not listed'}</div>
+      <div class="compare-col-meta" style="margin-top:0.4rem;">★ ${clinic.rating||'—'} · ${(clinic.reviews||0).toLocaleString()} reviews</div>
+      <div class="compare-col-meta">${clinic.neighbourhood||''}${clinic.province?', '+clinic.province:''}</div>
+    </div>`).join('');
+
+  const panel = document.getElementById('comparePanel');
+  panel.style.display = 'block';
+  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
 </script>
 </body>
 </html>
