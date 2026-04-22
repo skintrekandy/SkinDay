@@ -453,20 +453,21 @@ async function loadSavedClinics() {
   }
 
   // Fetch clinic details and prices for each saved ID
-  const ids = saved.map(r => r.clinic_id);
+  const ids = saved.map(r => String(r.clinic_id));
   try {
     const [clinicRes, priceRes] = await Promise.all([
       fetch(
         `${SB_URL}/rest/v1/clinics?select=id,name,neighbourhood,province,rating,reviews,logo_url,injector_credentials,maps_url,website,booking_url,claimed&id=in.(${ids.join(',')})&or=(approved.eq.true,approved.is.null)`,
         { headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` } }
       ),
-      fetch(
-        `${SB_URL}/rest/v1/clinic_prices?select=clinic_id,toxin,price&clinic_id=in.(${ids.join(',')})&order=price.asc`,
-        { headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` } }
-      )
+      _sb.from('clinic_prices')
+        .select('clinic_id,toxin,price')
+        .in('clinic_id', ids)
+        .order('price', { ascending: true })
     ]);
     const clinics = await clinicRes.json();
-    const prices = await priceRes.json();
+    const priceResult = await priceRes;
+    const prices = priceResult.data || [];
 
     // Attach lowest price + toxin to each clinic
     const priceMap = {};

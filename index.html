@@ -3585,12 +3585,26 @@ function showToast(msg) {
     grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60px 0;color:var(--muted);font-size:0.9rem;">Unable to load clinics. Please refresh the page.</div>';
   }
 
-  // Hash routing
+  // Hash routing — supports both #clinic/386 (numeric id) and #clinic/skin-trek (slug)
   const hash = window.location.hash;
   if (hash.startsWith('#clinic/')) {
     const slug = hash.replace('#clinic/', '');
-    const target = currentPageClinics.find(c => cmToSlug(c.name) === slug)
-                || clinicsIndex.find(c => cmToSlug(c.name) === slug);
+    const isNumeric = /^[0-9]+$/.test(slug);
+    let target;
+    if (isNumeric) {
+      target = currentPageClinics.find(c => String(c.id) === slug)
+            || clinicsIndex.find(c => String(c.id) === slug);
+      if (!target) {
+        fetch(`${SB_URL}/rest/v1/clinics?select=*&id=eq.${slug}&limit=1`, {
+          headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` }
+        }).then(r => r.json()).then(rows => {
+          if (rows[0]) openClinicModal(rows[0].id);
+        });
+      }
+    } else {
+      target = currentPageClinics.find(c => cmToSlug(c.name) === slug)
+            || clinicsIndex.find(c => cmToSlug(c.name) === slug);
+    }
     if (target) openClinicModal(target.id);
   }
 })();
