@@ -1974,7 +1974,7 @@ function _openClinicModalWithData(clinic) {
   }).catch(() => {});
 
   // Open
-  history.pushState({ clinicId }, '', '#clinic/' + cmToSlug(clinic.name));
+  history.pushState({ clinicId: clinic.id }, '', '#clinic/' + cmToSlug(clinic.name));
   document.getElementById('clinicModalOverlay').classList.add('open');
   document.body.style.overflow = 'hidden';
 }
