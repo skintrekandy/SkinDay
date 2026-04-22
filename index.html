@@ -555,7 +555,7 @@
       box-shadow: 0 4px 20px rgba(0,0,0,0.2); cursor: pointer;
       border: 1.5px solid transparent; transition: border-color 0.15s; flex-shrink: 0; scroll-snap-stop: always;
     }
-    .map-carousel-card.highlighted { border-color: var(--rose); box-shadow: 0 0 0 2px rgba(200,114,90,0.18); background: rgba(200,114,90,0.04); }
+    .map-carousel-card.highlighted { border-color: var(--rose); border-width: 2px; }
   }
   @media (min-width: 769px) {
     .map-carousel { display: none !important; }
@@ -5088,13 +5088,20 @@ function onMapIdle() {
     // wiping the scroll position that selectClinic just set
     if (!_isSelectionLocked()) {
       renderCardList();
+      if (_activeCid) {
+        requestAnimationFrame(() => {
+          _setCardHighlight(_activeCid);
+          _syncIntoView(_activeCid);
+        });
+      }
     } else {
-      // Still update counts but skip innerHTML rebuild
+      // Remember a rebuild is needed — will run after lock expires
+      _pendingCardListRender = true;
       const bounds = _map.getBounds();
       if (bounds) {
         const inView = _allClinics.filter(c => c.lat && c.lng && bounds.contains({ lat:+c.lat, lng:+c.lng }));
         const countEl = document.getElementById('mapResultCount');
-        if (countEl) { countEl.textContent = inView.length.toLocaleString() + ' clinics'; }
+        if (countEl) countEl.textContent = inView.length.toLocaleString() + ' clinics';
         const headerCount = document.getElementById('mapListCount');
         if (headerCount) headerCount.textContent = inView.length.toLocaleString() + ' clinics';
       }
@@ -5207,9 +5214,22 @@ let _selectionLockUntil = 0;
 let _programmaticCarouselScroll = false;
 const SELECTION_LOCK_MS = 1000;
 
+let _pendingCardListRender = false;
+let _selectionUnlockTimer = null;
+
 function _now() { return performance.now(); }
-function _lockSelection() { _selectionLockUntil = _now() + SELECTION_LOCK_MS; }
 function _isSelectionLocked() { return _now() < _selectionLockUntil; }
+
+function _lockSelection() {
+  _selectionLockUntil = _now() + SELECTION_LOCK_MS;
+  clearTimeout(_selectionUnlockTimer);
+  _selectionUnlockTimer = setTimeout(() => {
+    if (_pendingCardListRender) {
+      _pendingCardListRender = false;
+      renderCardList();
+    }
+  }, SELECTION_LOCK_MS + 20);
+}
 function isMobileMapUI() { return window.matchMedia('(hover: none)').matches; }
 
 function _normCid(cid) { return String(cid); }
@@ -5295,7 +5315,10 @@ function selectClinic(cid, { pan = true, syncPanel = true } = {}) {
 
   _panToClinic(id);
   _afterMapSettles(() => {
-    if (syncPanel) _syncIntoView(id);
+    // Mobile: snap carousel immediately — it renders independently of renderCardList
+    // Desktop: do NOT scroll here — renderCardList will rebuild the list and scroll
+    // after the lock expires. Scrolling now would target the stale pre-pan DOM.
+    if (syncPanel && isMobileMapUI()) _syncIntoView(id);
     _isSyncingUI = false;
   });
 }
@@ -5384,13 +5407,13 @@ function renderCardList() {
       : inView.map(c => buildCard(c, true)).join('');
   }
 
-  // Re-apply active highlight + scroll after DOM rebuild
+  // renderCardList is the final authority after DOM rebuild:
+  // re-highlight and scroll the active card into its correct position
   if (_activeCid) {
-    document.querySelectorAll(`[data-cid="${_activeCid}"]`).forEach(el => el.classList.add('highlighted'));
-    // If selection is locked, scroll the active card back into view since DOM was rebuilt
-    if (_isSelectionLocked() || true) {
-      requestAnimationFrame(() => _syncIntoView(_activeCid));
-    }
+    requestAnimationFrame(() => {
+      _setCardHighlight(_activeCid);
+      scrollCardListTo(_activeCid);
+    });
   }
 }
 
