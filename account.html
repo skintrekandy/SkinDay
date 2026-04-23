@@ -1008,7 +1008,7 @@ async function loadSavedClinics() {
       `${SB_URL}/rest/v1/clinics?select=id,name,neighbourhood,province,rating,reviews,logo_url,injector_credentials,maps_url,website,booking_url,claimed,phone,email&id=in.(${ids.join(',')})&or=(approved.eq.true,approved.is.null)`,
       { headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` } }
     );
-    const clinics = await clinicRes.json();
+    const clinics = (await clinicRes.json()).map(normaliseClinic);
     const { data: { session } } = await _sb.auth.getSession();
     const authToken = session?.access_token || SB_KEY;
     const priceRes = await fetch(
@@ -1866,7 +1866,14 @@ function _openClinicModalWithData(clinic) {
     const urls = files
       .filter(f => f.name && !f.name.endsWith('/'))
       .map(f => `${SB_URL}/storage/v1/object/public/clinic-photos/clinic-${clinicIdStr}/${f.name}`);
-    const filteredUrls = urls.filter(url => url !== clinic.logo_url);
+    const logoFilename = clinic.logo_url
+      ? clinic.logo_url.split('/').pop().split('?')[0].toLowerCase()
+      : null;
+    const filteredUrls = urls.filter(url => {
+      if (!logoFilename) return true;
+      const fname = url.split('/').pop().split('?')[0].toLowerCase();
+      return fname !== logoFilename;
+    });
     if (filteredUrls.length) {
       photosGrid.innerHTML = filteredUrls.map(url =>
         `<img src="${url}" class="cm-photo-thumb" alt="" loading="lazy" onerror="this.style.display='none'">`

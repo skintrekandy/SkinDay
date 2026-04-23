@@ -4766,8 +4766,16 @@ function openClinicModal(clinicId) {
     const urls = files
       .filter(f => f.name && !f.name.endsWith('/'))
       .map(f => `${SB_URL}/storage/v1/object/public/clinic-photos/clinic-${clinicIdStr}/${f.name}`);
-    // Filter out logo image if it was uploaded to the photos bucket
-    const filteredUrls = urls.filter(url => url !== clinic.logo_url);
+    // Filter out logo: logo is always named "logo.ext" and lives in clinic-logos bucket.
+    // Photos in clinic-photos may have the same filename — exclude by name match.
+    const logoFilename = clinic.logo_url
+      ? clinic.logo_url.split('/').pop().split('?')[0].toLowerCase()
+      : null;
+    const filteredUrls = urls.filter(url => {
+      if (!logoFilename) return true;
+      const fname = url.split('/').pop().split('?')[0].toLowerCase();
+      return fname !== logoFilename;
+    });
     if (filteredUrls.length) {
       photosGrid.innerHTML = filteredUrls.map(url =>
         `<img src="${url}" class="cm-photo-thumb" alt="" loading="lazy" onerror="this.style.display='none'">`
@@ -5048,7 +5056,8 @@ async function fetchMapClinics() {
   }
   const r = await fetch(url, { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } });
   if (!r.ok) throw new Error('fetch failed');
-  return r.json();
+  const rows = await r.json();
+  return rows.map(normaliseClinic);
 }
 
 // ─── INIT MAP ─────────────────────────────────────────────────
@@ -5242,7 +5251,10 @@ function onPinClick(cid, marker) {
 async function openMapModal(cid) {
   const sid = String(cid);
   const existing = currentPageClinics.find(c => String(c.id) === sid);
-  if (existing?.neighbourhood !== undefined) { openClinicModal(existing.id); return; }
+  // Only use cache if it has full data (email field present means it came from select=*)
+  if (existing?.neighbourhood !== undefined && existing?.email !== undefined) {
+    openClinicModal(existing.id); return;
+  }
   try {
     const r = await fetch(`${SB_URL}/rest/v1/clinics?select=*&id=eq.${sid}&limit=1`,
       { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } });
@@ -5251,7 +5263,10 @@ async function openMapModal(cid) {
       if (rows[0]) {
         const full = normaliseClinic(rows[0]);
         full.id = rows[0].id;
-        currentPageClinics.push(full);
+        // Replace any stale cached version
+        const idx = currentPageClinics.findIndex(c => String(c.id) === sid);
+        if (idx > -1) currentPageClinics[idx] = full;
+        else currentPageClinics.push(full);
         openClinicModal(full.id);
       }
     }
@@ -5298,7 +5313,11 @@ function renderDesktopList() {
     : sorted.map(c => buildCard(c, false)).join('');
 
   // After DOM rebuild, re-apply selection highlight + scroll
-  if (_activeCid) requestAnimationFrame(() => renderSelection());
+  if (_activeCid) {
+    const exists = !!cardsEl?.querySelector(`[data-cid="${_activeCid}"]`);
+    console.log('renderDesktopList: activeCid', _activeCid, 'card in DOM:', exists);
+    requestAnimationFrame(() => renderSelection());
+  }
 
   // Update viewport count badge for current bounds
   updateViewportCount();
@@ -5443,21 +5462,20 @@ function renderSelection() {
 }
 
 function scrollListTo(cid) {
+  const id = _normCid(cid);
   const container = document.getElementById('mapCardList');
-  const card = document.querySelector(`#mapListCards [data-cid="${_normCid(cid)}"]`);
-  if (!container || !card) return;
-
-  // Walk offsetParent chain to get card position relative to scroll container
-  let cardTop = 0;
-  let el = card;
-  while (el && el !== container) {
-    cardTop += el.offsetTop;
-    el = el.offsetParent;
+  const card = container?.querySelector(`[data-cid="${id}"]`);
+  if (!container || !card) {
+    console.warn('scrollListTo: missing', { id, hasContainer: !!container, hasCard: !!card });
+    return;
   }
 
-  // Position card at ~35% from top of the visible list area — deliberate focus, not barely-in-view
+  const containerRect = container.getBoundingClientRect();
+  const cardRect = card.getBoundingClientRect();
   const targetOffset = Math.floor(container.clientHeight * 0.35);
-  const scrollTarget = Math.max(0, cardTop - targetOffset);
+  const delta = cardRect.top - containerRect.top;
+  const scrollTarget = Math.max(0, container.scrollTop + delta - targetOffset);
+
   container.scrollTo({ top: scrollTarget, behavior: 'smooth' });
 }
 
@@ -5474,7 +5492,10 @@ function selectClinic(cid) {
   const id = _normCid(cid);
   if (!id) return;
   _activeCid = id;
-  renderSelection();
+  updateMarkers();
+  updateCards();
+  // Mobile: scroll immediately. Desktop: scroll happens via onMapIdle → renderSelection()
+  if (isMobileMapUI()) syncScrollToSelected();
 }
 
 function panToClinic(cid) {
