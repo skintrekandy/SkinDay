@@ -5082,9 +5082,10 @@ async function initMap() {
     const bounds = new google.maps.LatLngBounds();
     _allClinics.forEach(c => { if (c.lat && c.lng) bounds.extend({ lat: +c.lat, lng: +c.lng }); });
     _map.fitBounds(bounds, { top: 50, right: 20, bottom: 80, left: 20 });
+    if (!isMobileMapUI()) renderDesktopList(); // populate stable list on load
   } else {
     placeMarkers();
-    renderDesktopList();
+    if (!isMobileMapUI()) renderDesktopList();
   }
 }
 
@@ -5098,9 +5099,10 @@ async function reloadMap() {
     const bounds = new google.maps.LatLngBounds();
     _allClinics.forEach(c => { if (c.lat && c.lng) bounds.extend({ lat: +c.lat, lng: +c.lng }); });
     _map.fitBounds(bounds, { top: 50, right: 20, bottom: 80, left: 20 });
+    if (!isMobileMapUI()) renderDesktopList();
   } else {
     clearMarkers();
-    renderDesktopList();
+    if (!isMobileMapUI()) renderDesktopList();
   }
 }
 
@@ -5609,7 +5611,7 @@ function openMapClinicModal(id) { openMapModal(String(id)); }
     const SUPABASE_URL = 'https://vefldlqtyxdywbzdjuia.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlZmxkbHF0eXhkeXdiemRqdWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNDAwMjgsImV4cCI6MjA4NzkxNjAyOH0.o582sXiUkB3j4FiHEA5rE3ABy_pdTeeK1PnNpNirHZA';
 
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/clinics?select=id&or=(approved.eq.true,approved.is.null)`, {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/clinics?select=id&approved=eq.true&lat=not.is.null`, {
       method: 'GET',
       headers: {
         'apikey': SUPABASE_KEY,
