@@ -3,7 +3,7 @@ const { createClient } = require('@supabase/supabase-js');
 const CARD_FIELDS = `
   id, name, neighbourhood, area, province, region,
   rating, reviews, place_id, maps_url, rank,
-  phone, website, booking_url, logo_url,
+  phone, website, booking_url, logo_url, email,
   claimed, approved, promo, promo_text, consult_free,
   toxin_type, injector_credentials, languages,
   price, price_source, price_date,
@@ -139,7 +139,7 @@ exports.handler = async (event) => {
     const keep = [
       'id','name','neighbourhood','area','province','region',
       'rating','reviews','place_id','maps_url','rank',
-      'phone','website','booking_url','logo_url',
+      'phone','website','booking_url','logo_url','email',
       'claimed','approved','promo','promo_text',
       'toxin_type','injector_credentials','languages','consult_free',
       'price','price_source','price_date',
