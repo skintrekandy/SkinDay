@@ -1807,15 +1807,17 @@
   }
   .cm-name-row {
     display: flex; align-items: center; gap: 12px;
+    margin-bottom: 16px;
   }
   .cm-header-logo {
     width: 44px; height: 44px; border-radius: 8px;
     overflow: hidden; flex-shrink: 0;
     border: 1px solid var(--border);
     background: var(--warm);
+    align-self: center;
   }
   .cm-header-logo img {
-    width: 100%; height: 100%; object-fit: cover;
+    width: 100%; height: 100%; object-fit: cover; display: block;
   }
   .cm-header-meta {
     display: flex; align-items: center; gap: 8px;
@@ -1844,7 +1846,7 @@
     font-family: 'Cormorant Garamond', serif;
     font-size: clamp(26px, 5vw, 34px);
     font-weight: 400; line-height: 1.1;
-    color: var(--deep); margin-bottom: 16px;
+    color: var(--deep); margin: 0;
   }
 
   /* RATING ROW */
@@ -2278,10 +2280,10 @@
   <div class="hero-inner">
     <div class="hero-eyebrow">Canada's Cosmetic Clinic Platform</div>
     <h1>The hard part isn't finding a clinic.<br><em>It's knowing which one is right for you.</em></h1>
-    <p class="hero-sub">Real pricing, injector credentials, and the context that actually helps you decide — across <span id="heroClinicCount">5,374+</span> clinics nationwide.</p>
+    <p class="hero-sub">Real pricing, injector credentials, and the context that actually helps you decide — across <span id="heroClinicCount"></span> clinics nationwide.</p>
     <div class="hero-stats">
       <div>
-        <div class="stat-num" id="statClinicCount">5,374+</div>
+        <div class="stat-num" id="statClinicCount"></div>
         <div class="stat-label">Clinics Listed Across Canada</div>
       </div>
       <div>
@@ -2679,9 +2681,8 @@
     <!-- Left: scrollable card list (desktop only) -->
     <div class="map-card-list" id="mapCardList">
       <div class="map-list-header" id="mapListHeader">
-        <span class="map-list-header-count" id="mapListCount">Loading…</span>
+        <span class="map-list-header-count" id="mapListCount"></span>
         <select class="map-list-header-sort" onchange="onMapSort(this.value)">
-          <option value="rating">Highest rated</option>
           <option value="rating">Highest rated</option>
           <option value="price-low">Price: low → high</option>
           <option value="price-high">Price: high → low</option>
@@ -2799,7 +2800,7 @@
     </script>
     <div class="stat-strip-grid">
       <div class="stat-strip-item">
-        <div class="stat-strip-num"><em id="trustClinicCount">5,374+</em></div>
+        <div class="stat-strip-num"><em id="trustClinicCount"></em></div>
         <div class="stat-strip-desc">clinics listed across Canada</div>
       </div>
       <div class="stat-strip-item">
@@ -4765,8 +4766,10 @@ function openClinicModal(clinicId) {
     const urls = files
       .filter(f => f.name && !f.name.endsWith('/'))
       .map(f => `${SB_URL}/storage/v1/object/public/clinic-photos/clinic-${clinicIdStr}/${f.name}`);
-    if (urls.length) {
-      photosGrid.innerHTML = urls.map(url =>
+    // Filter out logo image if it was uploaded to the photos bucket
+    const filteredUrls = urls.filter(url => url !== clinic.logo_url);
+    if (filteredUrls.length) {
+      photosGrid.innerHTML = filteredUrls.map(url =>
         `<img src="${url}" class="cm-photo-thumb" alt="" loading="lazy" onerror="this.style.display='none'">`
       ).join('');
       photosGrid.style.display = 'grid';
@@ -5036,7 +5039,7 @@ function onCompactSearch() {
 
 // ─── FETCH ────────────────────────────────────────────────────
 async function fetchMapClinics() {
-  let url = `${SB_URL}/rest/v1/clinics?select=id,name,neighbourhood,province,lat,lng,rating,reviews,claimed,price,logo_url,injector_credentials,languages,maps_url,place_id&approved=eq.true&lat=not.is.null&order=rating.desc.nullslast&limit=10000`;
+  let url = `${SB_URL}/rest/v1/clinics?select=id,name,neighbourhood,province,lat,lng,rating,reviews,claimed,price,logo_url,injector_credentials,languages,maps_url,place_id,email,phone,website,booking_url,promo,promo_text&approved=eq.true&lat=not.is.null&order=rating.desc.nullslast&limit=10000`;
   if (PROVINCE_MAP[currentFilter]) {
     url += `&province=eq.${PROVINCE_MAP[currentFilter]}`;
   } else if (currentFilter && currentFilter !== 'all') {
@@ -5112,10 +5115,13 @@ function onMapIdle() {
   _idleTimer = setTimeout(() => {
     placeMarkers();
     if (isMobileMapUI()) {
+      // Mobile: carousel reflects current viewport
       renderCarousel();
     } else {
-      renderDesktopList(); // viewport-dependent, rebuilds on pan/zoom
+      // Desktop: list is stable — only update viewport count badge
+      updateViewportCount();
     }
+    // Re-apply selection visuals after markers were recreated
     if (_activeCid) renderSelection();
     _lastZoom = z;
   }, 350);
@@ -5274,38 +5280,26 @@ function onMapSort(val) {
   renderDesktopList();
 }
 
-// Called on filter/sort change — rebuilds desktop list with ALL filter-matching clinics
-// NOT called on pan/zoom. Desktop list is stable between filter changes.
+// Rebuilds desktop list from full filter dataset.
+// Called ONLY on filter/sort/city change — NOT on pan or zoom.
+// List is the stable comparison surface; map is the exploration layer.
 function renderDesktopList() {
-  if (!_map) return;
-  const bounds = _map.getBounds();
-  if (!bounds) return;
+  const sorted = sortClinics([..._allClinics], _mapSort);
 
-  // Filter to viewport clinics
-  let inView = _allClinics.filter(c => c.lat && c.lng && bounds.contains({ lat:+c.lat, lng:+c.lng }));
-
-  // Always include the active clinic even if it's at the edge of bounds —
-  // user just clicked it so it must appear in the list
-  if (_activeCid && !inView.find(c => String(c.id) === _activeCid)) {
-    const active = _allClinics.find(c => String(c.id) === _activeCid);
-    if (active) inView = [active, ...inView];
-  }
-
-  inView = sortClinics(inView, _mapSort);
-
+  // Header count shows full dataset size
   const headerCount = document.getElementById('mapListCount');
-  if (headerCount) headerCount.textContent = inView.length.toLocaleString() + ' clinics';
-  const countEl = document.getElementById('mapResultCount');
-  if (countEl) { countEl.textContent = inView.length.toLocaleString() + ' clinics'; countEl.style.display = 'block'; }
+  if (headerCount) headerCount.textContent = sorted.length.toLocaleString() + ' clinics';
 
   const cardsEl = document.getElementById('mapListCards');
-  if (cardsEl) cardsEl.innerHTML = inView.length === 0
-    ? '<div class="map-list-status">No clinics in this area.<br>Zoom out to see more.</div>'
-    : inView.map(c => buildCard(c, false)).join('');
+  if (cardsEl) cardsEl.innerHTML = sorted.length === 0
+    ? '<div class="map-list-status">No clinics found.</div>'
+    : sorted.map(c => buildCard(c, false)).join('');
 
-  // setTimeout(0) yields to browser layout — getBoundingClientRect is accurate after this
-  // rAF ensures innerHTML is committed to layout before offsetTop is read
+  // After DOM rebuild, re-apply selection highlight + scroll
   if (_activeCid) requestAnimationFrame(() => renderSelection());
+
+  // Update viewport count badge for current bounds
+  updateViewportCount();
 }
 
 // Called on pan/zoom (mobile only) — rebuilds carousel with viewport clinics
@@ -5328,15 +5322,20 @@ function renderCarousel() {
   if (_activeCid) requestAnimationFrame(() => renderSelection());
 }
 
-// Update only the count badge on desktop pan — no DOM rebuild
-function updateListCount() {
+// Updates the viewport count badge on pan/zoom — no list rebuild
+function updateViewportCount() {
   if (!_map) return;
   const bounds = _map.getBounds();
-  const inView = bounds
-    ? _allClinics.filter(c => c.lat && c.lng && bounds.contains({ lat:+c.lat, lng:+c.lng }))
-    : _allClinics;
+  if (!bounds) return;
+  const inView = _allClinics.filter(c => c.lat && c.lng && bounds.contains({ lat:+c.lat, lng:+c.lng }));
+  const total = _allClinics.length;
   const countEl = document.getElementById('mapResultCount');
-  if (countEl) { countEl.textContent = inView.length.toLocaleString() + ' clinics'; countEl.style.display = 'block'; }
+  if (countEl) {
+    countEl.textContent = inView.length < total
+      ? inView.length.toLocaleString() + ' in view'
+      : inView.length.toLocaleString() + ' clinics';
+    countEl.style.display = 'block';
+  }
 }
 
 // Legacy alias — called by onMapSort and a few init paths
@@ -5445,15 +5444,19 @@ function scrollListTo(cid) {
   const container = document.getElementById('mapCardList');
   const card = document.querySelector(`#mapListCards [data-cid="${_normCid(cid)}"]`);
   if (!container || !card) return;
-  // Walk offsetParent chain from card up to container, summing offsetTop at each level.
-  // This is deterministic — no viewport math, no timing dependency.
-  let top = 0;
+
+  // Walk offsetParent chain to get card position relative to scroll container
+  let cardTop = 0;
   let el = card;
   while (el && el !== container) {
-    top += el.offsetTop;
+    cardTop += el.offsetTop;
     el = el.offsetParent;
   }
-  container.scrollTo({ top: Math.max(0, top - 16), behavior: 'smooth' });
+
+  // Position card at ~35% from top of the visible list area — deliberate focus, not barely-in-view
+  const targetOffset = Math.floor(container.clientHeight * 0.35);
+  const scrollTarget = Math.max(0, cardTop - targetOffset);
+  container.scrollTo({ top: scrollTarget, behavior: 'smooth' });
 }
 
 function scrollCarouselTo(cid) {
