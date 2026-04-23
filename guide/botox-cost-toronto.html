@@ -1170,32 +1170,33 @@
       <p style="font-size:0.88rem;color:var(--gold);line-height:1.7;font-weight:500;">The real shift isn't cheap vs expensive. It's fit vs mismatch. That's the gap SkinDay is built to solve.</p>
     </div>
 
-    <div style="background:var(--warm);border:1px solid var(--border);border-radius:12px;padding:1.75rem;margin:2rem 0;text-align:center;">
-      <div style="font-family:'Cormorant Garamond',serif;font-size:1.4rem;font-weight:500;color:var(--deep);margin-bottom:0.4rem;">What do you think?</div>
-      <p style="font-size:0.88rem;color:var(--muted);margin-bottom:1.4rem;">Is Botox becoming a commodity service in Canada?</p>
-      <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;" id="vote-buttons">
-        <button onclick="castVote('yes')" id="vote-yes" style="background:var(--rose);color:#fff;border:none;padding:0.7rem 2rem;border-radius:6px;font-family:'DM Sans',sans-serif;font-size:0.9rem;font-weight:500;cursor:pointer;transition:all 0.2s;min-width:120px;">
+    <div style="background:#1C1714;border-radius:14px;padding:2.25rem 2rem;margin:2.5rem 0;text-align:center;">
+      <div style="font-size:0.7rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#C9A96E;margin-bottom:0.75rem;">Community Poll</div>
+      <div style="font-family:'Cormorant Garamond',serif;font-size:2rem;font-weight:400;color:#FAF7F2;margin-bottom:0.5rem;line-height:1.2;">What do you think?</div>
+      <p style="font-size:0.88rem;color:#B5A89F;margin-bottom:1.75rem;">Is Botox becoming a commodity service in Canada?</p>
+      <div style="display:flex;gap:0.875rem;justify-content:center;flex-wrap:wrap;" id="vote-buttons">
+        <button onclick="castVote('yes')" id="vote-yes" style="background:var(--rose);color:#fff;border:2px solid var(--rose);padding:0.75rem 2.25rem;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:0.92rem;font-weight:600;cursor:pointer;transition:all 0.2s;min-width:130px;letter-spacing:0.01em;">
           Yes, it is
         </button>
-        <button onclick="castVote('no')" id="vote-no" style="background:transparent;color:var(--deep);border:2px solid var(--border);padding:0.7rem 2rem;border-radius:6px;font-family:'DM Sans',sans-serif;font-size:0.9rem;font-weight:500;cursor:pointer;transition:all 0.2s;min-width:120px;">
+        <button onclick="castVote('no')" id="vote-no" style="background:transparent;color:#FAF7F2;border:2px solid rgba(255,255,255,0.25);padding:0.75rem 2.25rem;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:0.92rem;font-weight:600;cursor:pointer;transition:all 0.2s;min-width:130px;letter-spacing:0.01em;">
           No, it isn't
         </button>
       </div>
-      <div id="vote-result" style="display:none;margin-top:1.25rem;">
-        <div style="font-size:0.82rem;color:var(--muted);margin-bottom:0.75rem;">Community vote — <span id="vote-total">0</span> responses</div>
-        <div style="display:flex;gap:0.5rem;align-items:center;max-width:320px;margin:0 auto;">
-          <span style="font-size:0.78rem;color:var(--rose);font-weight:600;width:28px;">Yes</span>
-          <div style="flex:1;background:var(--border);border-radius:4px;height:8px;overflow:hidden;">
-            <div id="vote-yes-bar" style="height:100%;background:var(--rose);border-radius:4px;transition:width 0.6s ease;width:0%"></div>
+      <div id="vote-result" style="display:none;margin-top:1.5rem;">
+        <div style="font-size:0.8rem;color:#8A7B72;margin-bottom:1rem;letter-spacing:0.02em;">Community vote — <span id="vote-total">0</span> responses</div>
+        <div style="display:flex;gap:0.6rem;align-items:center;max-width:340px;margin:0 auto;">
+          <span style="font-size:0.78rem;color:#C8725A;font-weight:700;width:28px;">Yes</span>
+          <div style="flex:1;background:rgba(255,255,255,0.1);border-radius:4px;height:9px;overflow:hidden;">
+            <div id="vote-yes-bar" style="height:100%;background:#C8725A;border-radius:4px;transition:width 0.6s ease;width:0%"></div>
           </div>
-          <span id="vote-yes-pct" style="font-size:0.78rem;color:var(--muted);width:32px;text-align:right;">0%</span>
+          <span id="vote-yes-pct" style="font-size:0.78rem;color:#FAF7F2;font-weight:600;width:34px;text-align:right;">0%</span>
         </div>
-        <div style="display:flex;gap:0.5rem;align-items:center;max-width:320px;margin:0.4rem auto 0;">
-          <span style="font-size:0.78rem;color:var(--green);font-weight:600;width:28px;">No</span>
-          <div style="flex:1;background:var(--border);border-radius:4px;height:8px;overflow:hidden;">
-            <div id="vote-no-bar" style="height:100%;background:var(--green);border-radius:4px;transition:width 0.6s ease;width:0%"></div>
+        <div style="display:flex;gap:0.6rem;align-items:center;max-width:340px;margin:0.5rem auto 0;">
+          <span style="font-size:0.78rem;color:#C9A96E;font-weight:700;width:28px;">No</span>
+          <div style="flex:1;background:rgba(255,255,255,0.1);border-radius:4px;height:9px;overflow:hidden;">
+            <div id="vote-no-bar" style="height:100%;background:#C9A96E;border-radius:4px;transition:width 0.6s ease;width:0%"></div>
           </div>
-          <span id="vote-no-pct" style="font-size:0.78rem;color:var(--muted);width:32px;text-align:right;">0%</span>
+          <span id="vote-no-pct" style="font-size:0.78rem;color:#FAF7F2;font-weight:600;width:34px;text-align:right;">0%</span>
         </div>
       </div>
     </div>
