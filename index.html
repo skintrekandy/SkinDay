@@ -5054,7 +5054,7 @@ async function initMap() {
     _map.fitBounds(bounds, { top: 50, right: 20, bottom: 80, left: 20 });
   } else {
     placeMarkers();
-    renderCardList();
+    renderDesktopList();
   }
 }
 
@@ -5070,7 +5070,7 @@ async function reloadMap() {
     _map.fitBounds(bounds, { top: 50, right: 20, bottom: 80, left: 20 });
   } else {
     clearMarkers();
-    renderCardList();
+    renderDesktopList();
   }
 }
 
@@ -5083,8 +5083,16 @@ function onMapIdle() {
   const z = _map.getZoom();
   clearTimeout(_idleTimer);
   _idleTimer = setTimeout(() => {
-    placeMarkers();  // recreate markers for new viewport
-    renderCardList(); // rebuild list + carousel for new viewport
+    placeMarkers();
+    if (isMobileMapUI()) {
+      // Mobile: carousel always reflects viewport
+      renderCarousel();
+    } else {
+      // Desktop: only update count badge — list is stable and not viewport-dependent
+      updateListCount();
+    }
+    // Re-apply selection visuals after markers were recreated
+    if (_activeCid) renderSelection();
     _lastZoom = z;
   }, 350);
 }
@@ -5239,35 +5247,31 @@ function sortClinics(clinics, sortKey) {
 
 function onMapSort(val) {
   _mapSort = val;
-  renderCardList();
+  renderDesktopList();
 }
 
-function renderCardList() {
+// Called on filter/sort change — rebuilds desktop list with ALL filter-matching clinics
+// NOT called on pan/zoom. Desktop list is stable between filter changes.
+function renderDesktopList() {
+  const sorted = sortClinics([..._allClinics], _mapSort);
+  const headerCount = document.getElementById('mapListCount');
+  if (headerCount) headerCount.textContent = sorted.length.toLocaleString() + ' clinics';
+  const cardsEl = document.getElementById('mapListCards');
+  if (cardsEl) cardsEl.innerHTML = sorted.length === 0
+    ? '<div class="map-list-status">No clinics found.</div>'
+    : sorted.map(c => buildCard(c, false)).join('');
+  if (_activeCid) requestAnimationFrame(() => renderSelection());
+}
+
+// Called on pan/zoom (mobile only) — rebuilds carousel with viewport clinics
+function renderCarousel() {
   if (!_map) return;
   const bounds = _map.getBounds();
   if (!bounds) return;
-
-  // Always filter by current viewport — updates dynamically on pan/zoom
   const inView = sortClinics(
     _allClinics.filter(c => c.lat && c.lng && bounds.contains({ lat:+c.lat, lng:+c.lng })),
     _mapSort
   );
-
-  // Map count badge
-  const countEl = document.getElementById('mapResultCount');
-  if (countEl) { countEl.textContent = inView.length.toLocaleString() + ' clinics'; countEl.style.display = 'block'; }
-
-  // Desktop list header count
-  const headerCount = document.getElementById('mapListCount');
-  if (headerCount) headerCount.textContent = inView.length.toLocaleString() + ' clinics';
-
-  // Desktop list cards — viewport only
-  const cardsEl = document.getElementById('mapListCards');
-  if (cardsEl) cardsEl.innerHTML = inView.length === 0
-    ? '<div class="map-list-status">No clinics in this area.<br>Zoom out to see more.</div>'
-    : inView.map(c => buildCard(c, false)).join('');
-
-  // Mobile carousel — same viewport clinics
   const track = document.getElementById('mapCarouselTrack');
   const countC = document.getElementById('mapCarouselCount');
   if (track) {
@@ -5276,11 +5280,24 @@ function renderCardList() {
       ? '<div style="padding:1rem;font-size:0.82rem;color:var(--muted);">No clinics in view</div>'
       : inView.map(c => buildCard(c, true)).join('');
   }
+  if (_activeCid) requestAnimationFrame(() => renderSelection());
+}
 
-  // Re-apply selection visuals after DOM rebuild
-  if (_activeCid) {
-    requestAnimationFrame(() => renderSelection());
-  }
+// Update only the count badge on desktop pan — no DOM rebuild
+function updateListCount() {
+  if (!_map) return;
+  const bounds = _map.getBounds();
+  const inView = bounds
+    ? _allClinics.filter(c => c.lat && c.lng && bounds.contains({ lat:+c.lat, lng:+c.lng }))
+    : _allClinics;
+  const countEl = document.getElementById('mapResultCount');
+  if (countEl) { countEl.textContent = inView.length.toLocaleString() + ' clinics'; countEl.style.display = 'block'; }
+}
+
+// Legacy alias — called by onMapSort and a few init paths
+function renderCardList() {
+  renderDesktopList();
+  renderCarousel();
 }
 
 // ─── BUILD CARD ───────────────────────────────────────────────
