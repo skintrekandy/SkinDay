@@ -1805,6 +1805,18 @@
     padding: 20px 52px 0 24px;
     flex-shrink: 0;
   }
+  .cm-name-row {
+    display: flex; align-items: center; gap: 12px;
+  }
+  .cm-header-logo {
+    width: 44px; height: 44px; border-radius: 8px;
+    overflow: hidden; flex-shrink: 0;
+    border: 1px solid var(--border);
+    background: var(--warm);
+  }
+  .cm-header-logo img {
+    width: 100%; height: 100%; object-fit: cover;
+  }
   .cm-header-meta {
     display: flex; align-items: center; gap: 8px;
     margin-bottom: 6px; flex-wrap: wrap;
@@ -2669,7 +2681,7 @@
       <div class="map-list-header" id="mapListHeader">
         <span class="map-list-header-count" id="mapListCount">Loading…</span>
         <select class="map-list-header-sort" onchange="onMapSort(this.value)">
-          <option value="claimed">Best match</option>
+          <option value="rating">Highest rated</option>
           <option value="rating">Highest rated</option>
           <option value="price-low">Price: low → high</option>
           <option value="price-high">Price: high → low</option>
@@ -4428,7 +4440,12 @@ document.getElementById('compareModal')?.addEventListener('click', function(e) {
           <span class="cm-status-pill claimed" id="cm-status-claimed"><span class="cm-status-dot"></span>Verified listing</span>
           <span class="cm-status-pill unclaimed" id="cm-status-unclaimed" style="display:none"><span class="cm-status-dot"></span>Unverified listing</span>
         </div>
-        <h2 class="cm-clinic-name" id="cm-name"></h2>
+        <div class="cm-name-row">
+          <div class="cm-header-logo" id="cm-header-logo" style="display:none">
+            <img id="cm-header-logo-img" src="" alt="" onerror="this.parentElement.style.display='none'">
+          </div>
+          <h2 class="cm-clinic-name" id="cm-name"></h2>
+        </div>
       </div>
 
       <!-- Unverified banner -->
@@ -4640,6 +4657,16 @@ function openClinicModal(clinicId) {
   nameEl.style.cursor = 'pointer';
   nameEl.title = 'View full profile';
   document.getElementById('cm-neighbourhood').textContent = clinic.neighbourhood;
+
+  // Logo in header
+  const headerLogo = document.getElementById('cm-header-logo');
+  const headerLogoImg = document.getElementById('cm-header-logo-img');
+  if (clinic.logo_url) {
+    headerLogoImg.src = clinic.logo_url;
+    headerLogo.style.display = 'block';
+  } else {
+    headerLogo.style.display = 'none';
+  }
 
   // Status
   document.getElementById('cm-status-claimed').style.display = isClaimed ? 'flex' : 'none';
@@ -5085,13 +5112,10 @@ function onMapIdle() {
   _idleTimer = setTimeout(() => {
     placeMarkers();
     if (isMobileMapUI()) {
-      // Mobile: carousel always reflects viewport
       renderCarousel();
     } else {
-      // Desktop: only update count badge — list is stable and not viewport-dependent
-      updateListCount();
+      renderDesktopList(); // viewport-dependent, rebuilds on pan/zoom
     }
-    // Re-apply selection visuals after markers were recreated
     if (_activeCid) renderSelection();
     _lastZoom = z;
   }, 350);
@@ -5253,13 +5277,34 @@ function onMapSort(val) {
 // Called on filter/sort change — rebuilds desktop list with ALL filter-matching clinics
 // NOT called on pan/zoom. Desktop list is stable between filter changes.
 function renderDesktopList() {
-  const sorted = sortClinics([..._allClinics], _mapSort);
+  if (!_map) return;
+  const bounds = _map.getBounds();
+  if (!bounds) return;
+
+  // Filter to viewport clinics
+  let inView = _allClinics.filter(c => c.lat && c.lng && bounds.contains({ lat:+c.lat, lng:+c.lng }));
+
+  // Always include the active clinic even if it's at the edge of bounds —
+  // user just clicked it so it must appear in the list
+  if (_activeCid && !inView.find(c => String(c.id) === _activeCid)) {
+    const active = _allClinics.find(c => String(c.id) === _activeCid);
+    if (active) inView = [active, ...inView];
+  }
+
+  inView = sortClinics(inView, _mapSort);
+
   const headerCount = document.getElementById('mapListCount');
-  if (headerCount) headerCount.textContent = sorted.length.toLocaleString() + ' clinics';
+  if (headerCount) headerCount.textContent = inView.length.toLocaleString() + ' clinics';
+  const countEl = document.getElementById('mapResultCount');
+  if (countEl) { countEl.textContent = inView.length.toLocaleString() + ' clinics'; countEl.style.display = 'block'; }
+
   const cardsEl = document.getElementById('mapListCards');
-  if (cardsEl) cardsEl.innerHTML = sorted.length === 0
-    ? '<div class="map-list-status">No clinics found.</div>'
-    : sorted.map(c => buildCard(c, false)).join('');
+  if (cardsEl) cardsEl.innerHTML = inView.length === 0
+    ? '<div class="map-list-status">No clinics in this area.<br>Zoom out to see more.</div>'
+    : inView.map(c => buildCard(c, false)).join('');
+
+  // setTimeout(0) yields to browser layout — getBoundingClientRect is accurate after this
+  // rAF ensures innerHTML is committed to layout before offsetTop is read
   if (_activeCid) requestAnimationFrame(() => renderSelection());
 }
 
@@ -5398,12 +5443,17 @@ function renderSelection() {
 
 function scrollListTo(cid) {
   const container = document.getElementById('mapCardList');
-  const listCards = document.getElementById('mapListCards');
-  const card = listCards?.querySelector(`[data-cid="${_normCid(cid)}"]`);
-  if (!container || !listCards || !card) return;
-  // offsetTop is relative to offsetParent — add listCards offset to get position in container
-  const top = listCards.offsetTop + card.offsetTop - 16;
-  container.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+  const card = document.querySelector(`#mapListCards [data-cid="${_normCid(cid)}"]`);
+  if (!container || !card) return;
+  // Walk offsetParent chain from card up to container, summing offsetTop at each level.
+  // This is deterministic — no viewport math, no timing dependency.
+  let top = 0;
+  let el = card;
+  while (el && el !== container) {
+    top += el.offsetTop;
+    el = el.offsetParent;
+  }
+  container.scrollTo({ top: Math.max(0, top - 16), behavior: 'smooth' });
 }
 
 function scrollCarouselTo(cid) {

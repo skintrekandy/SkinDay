@@ -544,6 +544,16 @@
     padding: 20px 52px 0 24px;
     flex-shrink: 0;
   }
+  .cm-name-row {
+    display: flex; align-items: center; gap: 12px;
+  }
+  .cm-header-logo {
+    width: 44px; height: 44px; border-radius: 8px;
+    overflow: hidden; flex-shrink: 0;
+    border: 1px solid var(--border);
+    background: var(--warm);
+  }
+  .cm-header-logo img { width: 100%; height: 100%; object-fit: cover; }
   .cm-header-meta {
     display: flex; align-items: center; gap: 8px;
     margin-bottom: 6px; flex-wrap: wrap;
@@ -1154,7 +1164,12 @@ function showToast(msg) {
           <span class="cm-status-pill claimed" id="cm-status-claimed"><span class="cm-status-dot"></span>Verified listing</span>
           <span class="cm-status-pill unclaimed" id="cm-status-unclaimed" style="display:none"><span class="cm-status-dot"></span>Unverified listing</span>
         </div>
-        <h2 class="cm-clinic-name" id="cm-name"></h2>
+        <div class="cm-name-row">
+          <div class="cm-header-logo" id="cm-header-logo" style="display:none">
+            <img id="cm-header-logo-img" src="" alt="" onerror="this.parentElement.style.display='none'">
+          </div>
+          <h2 class="cm-clinic-name" id="cm-name"></h2>
+        </div>
       </div>
 
       <!-- Unverified banner -->
@@ -1741,6 +1756,16 @@ function _openClinicModalWithData(clinic) {
   nameEl.style.cursor = 'pointer';
   nameEl.title = 'View full profile';
   document.getElementById('cm-neighbourhood').textContent = clinic.neighbourhood;
+
+  // Logo in header
+  const headerLogo = document.getElementById('cm-header-logo');
+  const headerLogoImg = document.getElementById('cm-header-logo-img');
+  if (clinic.logo_url) {
+    headerLogoImg.src = clinic.logo_url;
+    headerLogo.style.display = 'block';
+  } else {
+    headerLogo.style.display = 'none';
+  }
 
   // Status
   document.getElementById('cm-status-claimed').style.display = isClaimed ? 'flex' : 'none';
