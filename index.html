@@ -4643,9 +4643,29 @@ function cmRenderStars(rating, container) {
   }
 }
 
-function openClinicModal(clinicId) {
-  const clinic = findClinic(clinicId);
+async function openClinicModal(clinicId) {
+  let clinic = findClinic(clinicId);
   if (!clinic) return;
+
+  // If email field is absent (stale cache from grid fetch), do a fresh full fetch
+  if (clinic.email === undefined) {
+    try {
+      const r = await fetch(`${SB_URL}/rest/v1/clinics?select=*&id=eq.${String(clinicId)}&limit=1`,
+        { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } });
+      if (r.ok) {
+        const rows = await r.json();
+        if (rows[0]) {
+          const full = normaliseClinic(rows[0]);
+          full.id = rows[0].id;
+          // Update cache
+          const idx = currentPageClinics.findIndex(c => String(c.id) === String(clinicId));
+          if (idx > -1) currentPageClinics[idx] = full;
+          else currentPageClinics.push(full);
+          clinic = full;
+        }
+      }
+    } catch(e) { /* use existing clinic data */ }
+  }
 
   // Claimed proxy: has price or promo — swap for clinic.claimed once backend arrives
   const isClaimed = clinic.claimed === true;
