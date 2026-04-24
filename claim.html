@@ -910,8 +910,15 @@
     font-weight: 500;
     color: var(--deep);
     line-height: 1.15;
-    margin-bottom: 40px;
+    margin-bottom: 8px;
     max-width: 540px;
+  }
+  .cac-subhead {
+    font-size: 0.88rem;
+    color: var(--muted);
+    margin-bottom: 40px;
+    line-height: 1.6;
+    max-width: 480px;
   }
   .cac-grid {
     display: grid;
@@ -919,54 +926,87 @@
     gap: 40px;
     align-items: start;
   }
-  .cac-table {
-    width: 100%;
-    border-collapse: collapse;
+  /* Flow chart */
+  .cac-flow {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
     background: white;
     border: 1px solid var(--border);
-    border-radius: 12px;
+    border-radius: 14px;
     overflow: hidden;
   }
-  .cac-table-caption {
-    font-size: 0.75rem;
-    font-weight: 600;
-    letter-spacing: 0.06em;
+  .cac-flow-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--muted);
     padding: 14px 18px 10px;
-    text-align: left;
-    background: white;
-    display: block;
+    border-bottom: 1px solid var(--border);
+    background: var(--warm);
   }
-  .cac-table tr {
+  .cac-flow-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 13px 18px;
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+  }
+  .cac-flow-row:last-child { border-bottom: none; }
+  .cac-flow-desc {
+    font-size: 0.85rem;
+    color: var(--deep);
+    line-height: 1.35;
+  }
+  .cac-flow-hint {
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .cac-flow-val {
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--deep);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .cac-flow-val.positive { color: var(--green); }
+  .cac-flow-val.cost { color: var(--muted); }
+  .cac-flow-divider {
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--dim);
+    padding: 6px 0;
+    letter-spacing: 0.05em;
+    background: var(--warm);
     border-bottom: 1px solid var(--border);
   }
-  .cac-table tr:last-child {
-    border-bottom: none;
-  }
-  .cac-table td {
-    padding: 13px 18px;
-    font-size: 0.88rem;
-    color: var(--deep);
-  }
-  .cac-table td:last-child {
-    text-align: right;
-    font-weight: 500;
-    color: var(--muted);
-  }
-  .cac-table tr.cac-total {
+  .cac-flow-total {
     background: var(--deep);
+    padding: 16px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
   }
-  .cac-table tr.cac-total td {
-    color: white;
+  .cac-flow-total-label {
+    font-size: 0.88rem;
     font-weight: 600;
-    font-size: 0.92rem;
+    color: var(--cream);
   }
-  .cac-table tr.cac-total td:last-child {
-    color: var(--rose-m);
+  .cac-flow-total-hint {
+    font-size: 0.72rem;
+    color: rgba(250,247,242,0.5);
+    margin-top: 2px;
+  }
+  .cac-flow-total-val {
     font-family: 'Cormorant Garamond', serif;
-    font-size: 1.1rem;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--rose-m);
   }
+  /* Right side */
   .cac-right {
     display: flex;
     flex-direction: column;
@@ -985,15 +1025,14 @@
     line-height: 1.7;
   }
   .cac-callout {
-    background: var(--deep);
+    background: var(--rose);
     border-radius: 10px;
     padding: 18px 22px;
     font-family: 'Cormorant Garamond', serif;
     font-size: 1rem;
     font-style: italic;
-    color: var(--cream);
+    color: white;
     line-height: 1.55;
-    border-left: 3px solid var(--rose);
   }
   @media (max-width: 640px) {
     .proof-strip { padding: 16px 20px; gap: 8px; }
@@ -1223,24 +1262,52 @@
 <div style="background: var(--cream); border-top: 1px solid var(--border);">
   <div class="cac-section">
     <span class="cac-eyebrow">The economics</span>
-    <div class="cac-headline">Acquiring a new patient already costs $200–$400.</div>
+    <div class="cac-headline">Most clinics lose money on the first visit.</div>
+    <div class="cac-subhead">Patient acquisition costs $200–$400 on average. The only way to recover that is if the patient returns. Here's why the first booking rarely breaks even.</div>
     <div class="cac-grid">
       <div>
-        <table class="cac-table">
-          <tbody>
-            <tr><td colspan="2"><span class="cac-table-caption">Example Botox client</span></td></tr>
-            <tr><td>Average Botox visit</td><td>$350</td></tr>
-            <tr><td>Product cost + overhead</td><td>~$150</td></tr>
-            <tr><td>Gross margin</td><td>~$200</td></tr>
-            <tr><td>Cost to acquire patient</td><td>$300</td></tr>
-            <tr class="cac-total"><td>First visit profit</td><td>–$100</td></tr>
-          </tbody>
-        </table>
+        <div class="cac-flow">
+          <div class="cac-flow-label">Example: Botox client, first visit</div>
+
+          <div class="cac-flow-row">
+            <div>
+              <div class="cac-flow-desc">Revenue from visit</div>
+              <div class="cac-flow-hint">Average Botox appointment</div>
+            </div>
+            <div class="cac-flow-val positive">+$350</div>
+          </div>
+
+          <div class="cac-flow-row">
+            <div>
+              <div class="cac-flow-desc">Product and overhead</div>
+              <div class="cac-flow-hint">Neurotoxin cost, space, staff time</div>
+            </div>
+            <div class="cac-flow-val cost">-$150</div>
+          </div>
+
+          <div class="cac-flow-divider">= $200 gross margin</div>
+
+          <div class="cac-flow-row">
+            <div>
+              <div class="cac-flow-desc">Cost to acquire this patient</div>
+              <div class="cac-flow-hint">Ads, referrals, time spent on inquiries</div>
+            </div>
+            <div class="cac-flow-val cost">-$300</div>
+          </div>
+
+          <div class="cac-flow-total">
+            <div>
+              <div class="cac-flow-total-label">First visit profit</div>
+              <div class="cac-flow-total-hint">Before they come back</div>
+            </div>
+            <div class="cac-flow-total-val">-$100</div>
+          </div>
+        </div>
       </div>
       <div class="cac-right">
-        <div class="cac-statement">The clinic loses money on the first visit.</div>
-        <div class="cac-body">They only make money if the patient returns.<br><br>A patient who finds the right clinic from day one is far more likely to come back.</div>
-        <div class="cac-callout">SkinDay sends clinics patients who already chose them intentionally, not randomly. That's the patient who comes back.</div>
+        <div class="cac-statement">The second visit is where the money is.</div>
+        <div class="cac-body">A patient who found the wrong clinic leaves after one visit. A patient who found the right clinic comes back every 3–4 months, for years.<br><br>The difference isn't your treatment. It's whether they felt they found the right fit from the start.</div>
+        <div class="cac-callout">SkinDay matches the right patients to the right clinics. Those patients come back.</div>
       </div>
     </div>
   </div>
