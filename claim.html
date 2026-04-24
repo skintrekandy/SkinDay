@@ -843,7 +843,167 @@
   }
   .chain-count-hint strong { color: var(--deep); }
 
-  /* ── RESPONSIVE ── */
+  /* ── PROOF STRIP ── */
+  .proof-strip {
+    background: rgba(255,255,255,0.04);
+    border-top: 1px solid rgba(255,255,255,0.07);
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    padding: 20px 40px;
+    display: flex;
+    justify-content: center;
+    gap: 0;
+    flex-wrap: wrap;
+  }
+  .proof-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 28px;
+    font-size: 0.8rem;
+    color: var(--dim);
+    letter-spacing: 0.03em;
+  }
+  .proof-item + .proof-item {
+    border-left: 1px solid rgba(255,255,255,0.08);
+  }
+  .proof-item strong {
+    color: var(--cream);
+    font-weight: 600;
+  }
+  .proof-dot {
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: var(--rose);
+    flex-shrink: 0;
+  }
+
+  /* ── TRUST LINE ── */
+  .trust-line {
+    background: var(--deep);
+    text-align: center;
+    padding: 14px 40px 28px;
+    font-size: 0.82rem;
+    color: var(--gold);
+    font-weight: 500;
+    letter-spacing: 0.04em;
+  }
+
+  /* ── CAC SECTION ── */
+  .cac-section {
+    background: var(--cream);
+    padding: 64px 24px;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+  .cac-eyebrow {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--rose);
+    margin-bottom: 16px;
+    display: block;
+  }
+  .cac-headline {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(1.8rem, 4vw, 2.6rem);
+    font-weight: 500;
+    color: var(--deep);
+    line-height: 1.15;
+    margin-bottom: 40px;
+    max-width: 540px;
+  }
+  .cac-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    align-items: start;
+  }
+  .cac-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .cac-table-caption {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 14px 18px 10px;
+    text-align: left;
+    background: white;
+    display: block;
+  }
+  .cac-table tr {
+    border-bottom: 1px solid var(--border);
+  }
+  .cac-table tr:last-child {
+    border-bottom: none;
+  }
+  .cac-table td {
+    padding: 13px 18px;
+    font-size: 0.88rem;
+    color: var(--deep);
+  }
+  .cac-table td:last-child {
+    text-align: right;
+    font-weight: 500;
+    color: var(--muted);
+  }
+  .cac-table tr.cac-total {
+    background: var(--deep);
+  }
+  .cac-table tr.cac-total td {
+    color: white;
+    font-weight: 600;
+    font-size: 0.92rem;
+  }
+  .cac-table tr.cac-total td:last-child {
+    color: var(--rose-m);
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.1rem;
+  }
+  .cac-right {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .cac-statement {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.6rem;
+    font-weight: 500;
+    color: var(--deep);
+    line-height: 1.2;
+  }
+  .cac-body {
+    font-size: 0.88rem;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+  .cac-callout {
+    background: var(--deep);
+    border-radius: 10px;
+    padding: 18px 22px;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1rem;
+    font-style: italic;
+    color: var(--cream);
+    line-height: 1.55;
+    border-left: 3px solid var(--rose);
+  }
+  @media (max-width: 640px) {
+    .proof-strip { padding: 16px 20px; gap: 8px; }
+    .proof-item { padding: 6px 12px; font-size: 0.75rem; }
+    .proof-item + .proof-item { border-left: none; border-top: 1px solid rgba(255,255,255,0.08); }
+    .cac-grid { grid-template-columns: 1fr; gap: 24px; }
+    .cac-section { padding: 48px 20px; }
+  }
+
+
   @media (max-width: 600px) {
     nav { padding: 0 20px; }
     .hero { padding: 104px 24px 64px; }
@@ -875,10 +1035,9 @@
 <section class="hero">
   <span class="hero-eyebrow">For clinic owners · Free to claim</span>
   <h1>The right patients are already<br>looking for you.<br><em>Help them find you.</em></h1>
-  <p class="hero-sub">The market is more saturated than ever. When every clinic has a 4.9-star rating, context is what converts. Own your profile on Canada's only cosmetic clinic directory with verified pricing data.</p>
+  <p class="hero-sub">Most clinics look identical online. As the medical aesthetic market matures, patients are doing more research before making decisions. When they find your clinic, what they see matters.</p>
 </section>
 
-<!-- STEPS BAR -->
 <div class="steps-bar">
   <div class="steps">
     <div class="step-item">
@@ -903,6 +1062,12 @@
 
   <!-- ── PANEL 1: FIND CLINIC ── -->
   <div class="panel active" id="panel-1">
+
+    <!-- Trust line -->
+    <div style="text-align:center; padding: 4px 0 20px; font-size:0.82rem; color:var(--muted); font-weight:500; letter-spacing:0.03em;">
+      Free to claim &nbsp;·&nbsp; No subscription &nbsp;·&nbsp; No commission on your bookings
+    </div>
+
     <div class="card">
       <div class="card-title">Find your clinic</div>
       <div class="card-sub">Search by clinic name or neighbourhood to get started.</div>
@@ -920,20 +1085,21 @@
           </div>
           <button class="selected-change" onclick="clearClinic()">Change</button>
         </div>
-        <div class="field-hint">We have 5,800+ clinics listed across Canada — start typing to find yours.</div>
+        <div class="field-hint">We have over 5,000 clinics listed across Canada. Start typing to find yours.</div>
       </div>
     </div>
 
     <div class="card" id="card-what-you-get">
       <div class="card-title">What you get</div>
-      <div class="card-sub">Free to claim and manage your listing. No commission on your existing bookings.</div>
+      <div class="card-sub">Claim your profile and control the narrative they see. Show your credentials, your team, and your approach on your terms.</div>
       <ul class="perks">
-        <li>Attract patients who match your practice — price, credentials, and style all visible upfront</li>
-        <li>Stand out when every competitor has the same 4.9-star rating</li>
-        <li>Priority placement above unmanaged listings across 5,800+ Canadian clinics</li>
-        <li>Verified badge, photos, direct booking link, and full profile control</li>
-        <li>Free to claim and manage your listing. No commission on your existing bookings.</li>
+        <li>Stand out when ratings alone no longer differentiate clinics.</li>
+        <li>Attract patients who understand your pricing and positioning upfront.</li>
+        <li>Claimed profiles are complete and verified. Unclaimed profiles stay basic.</li>
       </ul>
+      <div style="margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--border); font-size: 0.82rem; font-weight: 500; color: var(--muted); text-align: center; letter-spacing: 0.03em;">
+        Free to claim &nbsp;·&nbsp; No subscription &nbsp;·&nbsp; No commission on your bookings
+      </div>
     </div>
 
     <!-- Location type question — revealed after clinic selected -->
@@ -1053,6 +1219,32 @@
 
 </main>
 
+<!-- CAC ECONOMICS -->
+<div style="background: var(--cream); border-top: 1px solid var(--border);">
+  <div class="cac-section">
+    <span class="cac-eyebrow">The economics</span>
+    <div class="cac-headline">Acquiring a new patient already costs $200–$400.</div>
+    <div class="cac-grid">
+      <div>
+        <table class="cac-table">
+          <tbody>
+            <tr><td colspan="2"><span class="cac-table-caption">Example Botox client</span></td></tr>
+            <tr><td>Average Botox visit</td><td>$350</td></tr>
+            <tr><td>Product cost + overhead</td><td>~$150</td></tr>
+            <tr><td>Gross margin</td><td>~$200</td></tr>
+            <tr><td>Cost to acquire patient</td><td>$300</td></tr>
+            <tr class="cac-total"><td>First visit profit</td><td>–$100</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="cac-right">
+        <div class="cac-statement">The clinic loses money on the first visit.</div>
+        <div class="cac-body">They only make money if the patient returns.<br><br>A patient who finds the right clinic from day one is far more likely to come back.</div>
+        <div class="cac-callout">SkinDay sends clinics patients who already chose them intentionally, not randomly. That's the patient who comes back.</div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script>
   // ── CLINIC DATA — fetched from Supabase ──

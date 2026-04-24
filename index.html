@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
   <title>SkinDay — Canada's Cosmetic Clinic Matching Platform</title>
-  <meta name="description" content="The hard part isn't finding a clinic — it's knowing which one is right for you. Real pricing, injector credentials, and verified profiles across 5,500+ Canadian clinics. No ads, no paid rankings." />
+  <meta name="description" content="The hard part isn't finding a clinic — it's knowing which one is right for you. Real pricing, injector credentials, and verified profiles across over 5,000 Canadian clinics. No ads, no paid rankings." />
 
   <!-- OpenGraph -->
   <meta property="og:type" content="website" />
@@ -2712,19 +2712,19 @@
     <div class="claim-copy">
       <div style="font-size:0.72rem;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;color:var(--gold);margin-bottom:1.2rem;display:flex;align-items:center;gap:0.75rem;">── For Clinic Owners ──</div>
       <h2>The right patients are already<br>looking for you.<br><em>Help them find you.</em></h2>
-      <p>The cosmetic market is more crowded than ever — and every clinic looks identical online. Patients are getting more sophisticated. They want to know who is injecting, at what price, with what credentials. Clinics that give them that context are the ones that get chosen.</p>
+      <p>Most clinics look identical online. As the medical aesthetic market matures, patients are doing more research before making decisions. When they find your clinic, what they see matters.</p>
+      <p style="margin-top: 14px;">Claim your profile and control the narrative they see. Show your credentials, your team, and your approach on your terms.</p>
       <ul class="claim-perks">
-        <li>Attract patients who match your practice — price, credentials, and style visible upfront</li>
-        <li>Stand out in a saturated market — context converts when ratings no longer do</li>
-        <li>Priority placement above unmanaged listings across 5,500+ Canadian clinics</li>
-        <li>Free to claim and manage your listing. No commission on your existing bookings.</li>
+        <li>Stand out when ratings alone no longer differentiate clinics.</li>
+        <li>Attract patients who understand your pricing and positioning upfront.</li>
+        <li>Claimed profiles are complete and verified. Unclaimed profiles stay basic.</li>
       </ul>
+      <div style="margin-top: 20px; font-size: 0.82rem; font-weight: 500; color: var(--muted);">Free to claim. No subscription. No commission on your bookings.</div>
     </div>
     <div class="claim-card">
-      <div class="claim-card-title">Own Your Profile</div>
+      <div class="claim-card-title">Claim Your Clinic</div>
       <div class="claim-card-sub">2 minutes. No credit card. No subscription. Your profile goes live after a quick verification.</div>
-      <a href="/claim.html" class="claim-submit" style="display:block;text-align:center;text-decoration:none;">Own Your Free Profile →</a>
-      <div class="claim-disclaimer">Free to claim and manage your listing. No commission on your existing bookings.</div>
+      <a href="/claim.html" class="claim-submit" style="display:block;text-align:center;text-decoration:none;">Claim your clinic →</a>
     </div>
   </div>
 </section>
@@ -3654,7 +3654,7 @@ function useNearMe() {
           showToast('Showing all clinics near you.');
         } else {
           fetchPage(0, false);
-          showToast('Showing all clinics — location outside coverage area.');
+          showToast('Showing all clinics. Location is outside our current coverage area.');
           document.getElementById('prices').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
       }
@@ -4614,7 +4614,7 @@ document.getElementById('compareModal')?.addEventListener('click', function(e) {
   </div>
   <div class="cm-report-success" id="cm-report-success">
     <strong>Got it.</strong>
-    <p>Thanks — we'll review this and update the listing.</p>
+    <p>Thanks, we'll review this and update the listing.</p>
   </div>
 </div>
 
@@ -5641,7 +5641,7 @@ function openMapClinicModal(id) { openMapModal(String(id)); }
     </div>
     <div class="missing-modal-success" id="missing-modal-success">
       <div class="success-icon">✓</div>
-      <p>Thanks — we've got your details.<br>We'll be in touch within 2 business days.</p>
+      <p>Thanks, we've got your details.<br>We'll be in touch within 2 business days.</p>
     </div>
   </div>
 </div>
