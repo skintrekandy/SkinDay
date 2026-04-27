@@ -3105,7 +3105,9 @@ window.SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsIn
   }
 
   // OAuth return — DO NOT clear hash here. Supabase JS needs it to extract the token.
-  // onAuthStateChange will fire SIGNED_IN once Supabase processes the hash.
+  // Set a flag so onAuthStateChange knows this is an OAuth return.
+  sessionStorage.setItem('sd_oauth_return', '1');
+  // onAuthStateChange will fire INITIAL_SESSION once Supabase processes the hash.
   // We handle the pending vote there.
 })();
 
@@ -4021,7 +4023,7 @@ async function initAuth() {
   // Listen for subsequent auth changes (email sign-in, sign-out)
   _sb.auth.onAuthStateChange((event, session) => {
     console.log('AUTH EVENT', event, session?.user?.email);
-    if (event === 'SIGNED_IN' && session?.user) {
+    if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
       // Clean OAuth hash from URL now that Supabase has processed it
       if (window.location.hash.includes('access_token')) {
         window.history.replaceState({}, document.title, '/');
@@ -4031,11 +4033,14 @@ async function initAuth() {
       mergeLocalShortlistToSupabase();
 
       // Submit any pending vote from before OAuth redirect
+      // Only process on INITIAL_SESSION if we came from OAuth (hash had access_token)
+      const fromOAuth = event === 'SIGNED_IN' || sessionStorage.getItem('sd_oauth_return') === '1';
       let pending = null;
       try { pending = JSON.parse(localStorage.getItem('sd_pending_vote')); } catch {}
-      console.log('PENDING VOTE', pending);
-      if (pending?.clinic_id && pending?.vote) {
+      console.log('PENDING VOTE', pending, 'fromOAuth', fromOAuth);
+      if (pending?.clinic_id && pending?.vote && fromOAuth) {
         localStorage.removeItem('sd_pending_vote');
+        sessionStorage.removeItem('sd_oauth_return');
         fetch('/api/submit-visit', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
