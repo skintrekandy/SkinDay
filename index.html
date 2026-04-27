@@ -4168,7 +4168,7 @@ async function handleGoogleSignIn() {
 window.handleGoogleSignInPopup = async function() {
   const { error } = await _sb.auth.signInWithOAuth({
     provider: 'google',
-    options: { redirectTo: window.location.origin + '/', queryParams: { prompt: 'select_account' } }
+    options: { redirectTo: window.location.origin, queryParams: { prompt: 'select_account' } }
   });
   if (error) {
     const el = document.getElementById('visitError') || document.getElementById('authError');
@@ -5051,7 +5051,7 @@ window.castModalVote = async function castModalVote(val) {
       }));
       await _sb.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo: window.location.origin + '/', queryParams: { prompt: 'select_account' } }
+        options: { redirectTo: window.location.origin, queryParams: { prompt: 'select_account' } }
       });
       return;
     }
