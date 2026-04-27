@@ -1324,7 +1324,7 @@ async function submitVisit() {
     });
 
     if (res.status === 409) {
-      document.getElementById('visitError').textContent = 'You've already shared your experience for this clinic.';
+      document.getElementById('visitError').textContent = 'You already shared your experience for this clinic.';
       btn.disabled = false; btn.textContent = 'Submit';
       return;
     }

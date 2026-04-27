@@ -912,11 +912,14 @@
     }
     .card-visit-row:hover { background: rgba(200,114,90,0.09); }
     .card-visit-prompt {
-      font-size: 0.73rem; color: var(--rose);
-      font-weight: 500;
-      display: flex; align-items: center; gap: 0.4rem;
+      display: flex; flex-direction: column; gap: 0.1rem;
     }
-    .card-visit-prompt svg { flex-shrink: 0; color: var(--rose); opacity: 0.7; }
+    .card-visit-line1 {
+      font-size: 0.68rem; color: var(--muted); font-weight: 400;
+    }
+    .card-visit-line2 {
+      font-size: 0.75rem; color: var(--rose); font-weight: 500;
+    }
     .card-visit-signal {
       font-size: 0.72rem; color: var(--dim);
       white-space: nowrap; flex-shrink: 0;
@@ -948,7 +951,9 @@
     }
     .visit-modal-logo span { color: var(--gold); }
     .visit-modal-clinic {
-      font-size: 0.8rem; color: var(--muted); margin-bottom: 1.4rem;
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.5rem; font-weight: 400;
+      color: var(--deep); margin-bottom: 1rem; line-height: 1.2;
     }
     .visit-modal-label {
       font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em;
@@ -964,19 +969,24 @@
     }
     .visit-modal-select:focus, .visit-modal-month:focus { border-color: var(--gold); }
     .visit-return-options {
-      display: flex; gap: 0.6rem; margin-bottom: 1.4rem;
+      display: flex; gap: 0.6rem; margin-bottom: 0.5rem;
     }
     .visit-return-btn {
-      flex: 1; padding: 0.65rem 0.5rem;
+      flex: 1; padding: 0.75rem 0.5rem;
       border: 1.5px solid var(--border); border-radius: 8px;
       background: #fff; font-family: 'DM Sans', sans-serif;
       font-size: 0.85rem; font-weight: 500; color: var(--muted);
       cursor: pointer; transition: all 0.15s; text-align: center;
     }
     .visit-return-btn:hover { border-color: var(--deep); color: var(--deep); }
-    .visit-return-btn.selected-yes { border-color: var(--green); background: rgba(61,122,85,0.08); color: var(--green); }
-    .visit-return-btn.selected-no  { border-color: var(--rose);  background: rgba(200,114,90,0.08);  color: var(--rose); }
-    .visit-return-btn.selected-unsure { border-color: var(--gold); background: rgba(201,169,110,0.08); color: #9a7a3a; }
+    .visit-return-btn.selected-yes {
+      border-color: var(--green); border-width: 2px;
+      background: rgba(61,122,85,0.12); color: var(--green); font-weight: 600;
+    }
+    .visit-return-btn.selected-no {
+      border-color: var(--rose); border-width: 2px;
+      background: rgba(200,114,90,0.12); color: var(--rose); font-weight: 600;
+    }
     .visit-submit-btn {
       width: 100%; padding: 0.75rem; background: var(--deep); color: var(--cream);
       border: none; border-radius: 8px; font-family: 'DM Sans', sans-serif;
@@ -3336,7 +3346,10 @@ function renderPageCards(clinicsData, append) {
           ${priceHTML}
         </div>
         <div class="card-visit-row" data-cid="${c.id}" data-cname="${(c.name||'').replace(/"/g,'&quot;')}" onclick="window.openVisitModal(this.dataset.cid, this.dataset.cname)">
-          <span class="card-visit-prompt">Been here? Would you go back? →</span>
+          <span class="card-visit-prompt">
+            <span class="card-visit-line1">Been here?</span>
+            <span class="card-visit-line2">Would you go back →</span>
+          </span>
           <span class="card-visit-signal" id="visit-signal-${c.id}"></span>
         </div>
         <div class="card-footer">
@@ -3961,6 +3974,14 @@ async function initAuth() {
       setUser(session.user);
       closeAuthModal();
       mergeLocalShortlistToSupabase();
+      // If user signed in via the visit row, reopen the visit modal
+      if (_pendingVisitId) {
+        const id   = _pendingVisitId;
+        const name = _pendingVisitName;
+        _pendingVisitId   = null;
+        _pendingVisitName = null;
+        setTimeout(() => window.openVisitModal(id, name), 300);
+      }
     } else if (event === 'SIGNED_OUT') {
       setLoggedOut();
     }
@@ -4515,35 +4536,44 @@ document.getElementById('compareModal')?.addEventListener('click', function(e) {
 
 let _visitClinicId  = null;
 let _visitReturnVal = null;
+let _pendingVisitId   = null; // set when auth modal opened from visit row
+let _pendingVisitName = null;
 
-(function setMaxMonth() {
-  const now = new Date();
-  const el  = document.getElementById('visitMonth');
-  if (el) el.max = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+// Populate year dropdown: current year back 3 years
+(function populateYears() {
+  const sel = document.getElementById('visitYearSel');
+  if (!sel) return;
+  const now = new Date().getFullYear();
+  for (let y = now; y >= now - 3; y--) {
+    const opt = document.createElement('option');
+    opt.value = String(y);
+    opt.textContent = String(y);
+    sel.appendChild(opt);
+  }
 })();
 
 window.openVisitModal = async function(clinicId, clinicName) {
   if (!_currentUser) {
-    const { data: { session } } = await _sb.auth.getSession();
-    if (session?.user) {
-      setUser(session.user);
-    } else {
-      openAuthModal('Sign in to add your experience.');
-      return;
-    }
+    // Store pending visit so auth callback can reopen
+    _pendingVisitId   = String(clinicId);
+    _pendingVisitName = clinicName || '';
+    openAuthModal('Sign in to share your experience.');
+    return;
   }
   _visitClinicId  = String(clinicId);
   _visitReturnVal = null;
 
   document.getElementById('visitModalClinicName').textContent = clinicName || '';
-  document.getElementById('visitMonth').value        = '';
+  document.getElementById('visitMonthSel').value     = '';
+  document.getElementById('visitYearSel').value      = '';
   document.getElementById('visitTreatment').value    = '';
   document.getElementById('visitError').textContent  = '';
+  document.getElementById('visitDetails').style.display     = 'none';
   document.getElementById('visitSubmitBtn').disabled = true;
   document.getElementById('visitModalForm').style.display    = '';
   document.getElementById('visitModalSuccess').style.display = 'none';
 
-  ['vrYes','vrNo','vrUnsure'].forEach(id => {
+  ['vrYes','vrNo'].forEach(id => {
     document.getElementById(id).className = 'visit-return-btn';
   });
 
@@ -4562,10 +4592,11 @@ document.getElementById('visitModalOverlay')?.addEventListener('click', e => {
 
 function selectReturn(val) {
   _visitReturnVal = val;
-  document.getElementById('vrYes').className    = 'visit-return-btn' + (val === 'yes'    ? ' selected-yes'    : '');
-  document.getElementById('vrNo').className     = 'visit-return-btn' + (val === 'no'     ? ' selected-no'     : '');
-  document.getElementById('vrUnsure').className = 'visit-return-btn' + (val === 'unsure' ? ' selected-unsure' : '');
+  document.getElementById('vrYes').className = 'visit-return-btn' + (val === 'yes' ? ' selected-yes' : '');
+  document.getElementById('vrNo').className  = 'visit-return-btn' + (val === 'no'  ? ' selected-no'  : '');
   document.getElementById('visitSubmitBtn').disabled = false;
+  // Progressive reveal — show date/treatment after decision made
+  document.getElementById('visitDetails').style.display = '';
 }
 
 async function submitVisit() {
@@ -4583,7 +4614,9 @@ async function submitVisit() {
     return;
   }
 
-  const monthVal     = document.getElementById('visitMonth').value || null;
+  const month = document.getElementById('visitMonthSel').value;
+  const year  = document.getElementById('visitYearSel').value;
+  const monthVal     = (month && year) ? `${year}-${month}` : null;
   const treatmentVal = document.getElementById('visitTreatment').value || null;
 
   try {
@@ -4709,6 +4742,7 @@ function maybeShowVisitPrompt() {
           </div>
           <h2 class="cm-clinic-name" id="cm-name"></h2>
         </div>
+        <a id="cm-full-profile-link" href="#" style="display:inline-block;font-size:0.75rem;color:var(--rose);text-decoration:none;margin-top:0.3rem;letter-spacing:0.02em;" target="_blank">Open full profile →</a>
       </div>
 
       <!-- Unverified banner -->
@@ -4940,6 +4974,9 @@ window.openClinicModal = async function openClinicModal(clinicId) {
   nameEl.style.cursor = 'pointer';
   nameEl.title = 'View full profile';
   document.getElementById('cm-neighbourhood').textContent = clinic.neighbourhood;
+
+  const fullLink = document.getElementById('cm-full-profile-link');
+  if (fullLink) fullLink.href = '/clinic/' + cmToSlug(clinic.name);
 
   // Logo in header
   const headerLogo = document.getElementById('cm-header-logo');
@@ -5838,41 +5875,61 @@ function openMapClinicModal(id) { openMapModal(String(id)); }
   <div class="visit-modal" id="visitModal">
     <button class="visit-modal-close" onclick="closeVisitModal()">✕</button>
 
-    <!-- Step 1 & 2 combined (single screen) -->
     <div id="visitModalForm">
-      <div class="visit-modal-logo">Skin<span>Day</span></div>
+      <!-- Clinic name is the hero -->
       <div class="visit-modal-clinic" id="visitModalClinicName"></div>
+      <div class="visit-modal-label" style="margin-bottom:1.1rem;">Would you go back to this clinic?</div>
 
-      <div class="visit-modal-label">Approximate visit date</div>
-      <input class="visit-modal-month" type="month" id="visitMonth"
-        max="" placeholder="Select month" />
-
-      <div class="visit-modal-label">Treatment</div>
-      <select class="visit-modal-select" id="visitTreatment">
-        <option value="">Select treatment…</option>
-        <option value="Botox">Botox / Toxin</option>
-        <option value="Filler">Filler</option>
-        <option value="Laser">Laser</option>
-        <option value="Other">Other</option>
-      </select>
-
-      <div class="visit-modal-label">Would you go back to this clinic?</div>
+      <!-- Step 1: Yes / No — shown first -->
       <div class="visit-return-options">
-        <button class="visit-return-btn" id="vrYes"    onclick="selectReturn('yes')">👍 Yes</button>
-        <button class="visit-return-btn" id="vrNo"     onclick="selectReturn('no')">👎 No</button>
-        <button class="visit-return-btn" id="vrUnsure" onclick="selectReturn('unsure')">🤔 Unsure</button>
+        <button class="visit-return-btn" id="vrYes" onclick="selectReturn('yes')">👍 Would go back</button>
+        <button class="visit-return-btn" id="vrNo"  onclick="selectReturn('no')">👎 Wouldn't go back</button>
       </div>
 
-      <button class="visit-submit-btn" id="visitSubmitBtn" onclick="submitVisit()" disabled>Submit</button>
+      <!-- Step 2: details — revealed after yes/no selected -->
+      <div id="visitDetails" style="display:none;margin-top:1rem;">
+        <div class="visit-modal-label">Approximate visit date</div>
+        <div style="display:flex;gap:0.5rem;margin-bottom:1rem;">
+          <select class="visit-modal-select" id="visitMonthSel" style="margin-bottom:0;flex:1;">
+            <option value="">Month</option>
+            <option value="01">January</option>
+            <option value="02">February</option>
+            <option value="03">March</option>
+            <option value="04">April</option>
+            <option value="05">May</option>
+            <option value="06">June</option>
+            <option value="07">July</option>
+            <option value="08">August</option>
+            <option value="09">September</option>
+            <option value="10">October</option>
+            <option value="11">November</option>
+            <option value="12">December</option>
+          </select>
+          <select class="visit-modal-select" id="visitYearSel" style="margin-bottom:0;flex:1;">
+            <option value="">Year</option>
+          </select>
+        </div>
+
+        <div class="visit-modal-label">Treatment</div>
+        <select class="visit-modal-select" id="visitTreatment">
+          <option value="">Select treatment…</option>
+          <option value="Botox">Botox / Toxin</option>
+          <option value="Filler">Filler</option>
+          <option value="Laser">Laser</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+
+      <button class="visit-submit-btn" id="visitSubmitBtn" onclick="submitVisit()" disabled>Submit response</button>
       <div class="visit-error" id="visitError"></div>
-      <div class="visit-modal-anon">Your response is anonymous and never tied to your name publicly.</div>
+      <div class="visit-modal-anon">Anonymous. Never shown publicly.</div>
     </div>
 
     <!-- Success state -->
     <div id="visitModalSuccess" style="display:none;">
       <div class="visit-modal-success">
         <div class="success-icon">✓</div>
-        <p>Thanks for sharing your experience.<br>You may hear from us in a few days.</p>
+        <p>Thanks for sharing.<br>You may hear from us in a few days.</p>
       </div>
     </div>
   </div>
