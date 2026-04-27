@@ -452,6 +452,157 @@
     .animate-delay-1 { animation-delay: 0.05s; }
     .animate-delay-2 { animation-delay: 0.1s; }
     .animate-delay-3 { animation-delay: 0.15s; }
+
+    /* ── VISIT SIGNAL (hero) ── */
+    .profile-visit-signal {
+      margin-top: 0.75rem;
+      font-size: 0.8rem; color: var(--dim);
+      display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+    }
+    .profile-visit-signal strong { color: #6abf8a; font-weight: 600; }
+    .profile-visit-signal-note {
+      font-size: 0.72rem; color: rgba(250,247,242,0.35);
+      font-style: italic;
+    }
+
+    /* ── VISIT BANNER (above contact) ── */
+    .visit-banner {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 1rem; padding: 0.9rem 1.75rem;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer; transition: background 0.15s;
+    }
+    .visit-banner:hover { background: var(--warm); }
+    .visit-banner-copy {
+      font-size: 0.85rem; color: var(--muted);
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .visit-banner-copy svg { flex-shrink: 0; color: var(--dim); }
+    .visit-banner-cta {
+      font-size: 0.78rem; font-weight: 500; color: var(--rose);
+      white-space: nowrap; flex-shrink: 0;
+    }
+
+    /* ── VISIT MODAL ── */
+    .visit-modal-overlay {
+      display: none; position: fixed; inset: 0; z-index: 400;
+      background: rgba(28,23,20,0.7); backdrop-filter: blur(6px);
+      align-items: center; justify-content: center; padding: 1rem;
+    }
+    .visit-modal-overlay.open { display: flex; }
+    .visit-modal {
+      background: var(--cream); border-radius: 16px;
+      width: 100%; max-width: 400px; padding: 2rem;
+      position: relative; animation: fadeUp 0.25s ease;
+    }
+    .visit-modal-close {
+      position: absolute; top: 1rem; right: 1rem;
+      background: none; border: none; font-size: 1.2rem;
+      color: var(--muted); cursor: pointer; transition: color 0.2s;
+    }
+    .visit-modal-close:hover { color: var(--deep); }
+    .visit-modal-logo {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.3rem; font-weight: 400; color: var(--deep);
+      margin-bottom: 0.2rem;
+    }
+    .visit-modal-logo span { color: var(--gold); }
+    .visit-modal-clinic {
+      font-size: 0.8rem; color: var(--muted); margin-bottom: 1.4rem;
+    }
+    .visit-modal-label {
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 0.5rem;
+    }
+    .visit-modal-select, .visit-modal-month {
+      width: 100%; padding: 0.65rem 0.85rem;
+      border: 1.5px solid var(--border); border-radius: 8px;
+      font-family: 'DM Sans', sans-serif; font-size: 0.88rem;
+      color: var(--deep); background: #fff; outline: none;
+      transition: border-color 0.2s; margin-bottom: 1rem;
+      box-sizing: border-box; appearance: none;
+    }
+    .visit-modal-select:focus, .visit-modal-month:focus { border-color: var(--gold); }
+    .visit-return-options {
+      display: flex; gap: 0.6rem; margin-bottom: 1.4rem;
+    }
+    .visit-return-btn {
+      flex: 1; padding: 0.65rem 0.5rem;
+      border: 1.5px solid var(--border); border-radius: 8px;
+      background: #fff; font-family: 'DM Sans', sans-serif;
+      font-size: 0.85rem; font-weight: 500; color: var(--muted);
+      cursor: pointer; transition: all 0.15s; text-align: center;
+    }
+    .visit-return-btn:hover { border-color: var(--deep); color: var(--deep); }
+    .visit-return-btn.selected-yes    { border-color: var(--green); background: rgba(61,122,85,0.08);   color: var(--green); }
+    .visit-return-btn.selected-no     { border-color: var(--rose);  background: rgba(200,114,90,0.08);  color: var(--rose); }
+    .visit-return-btn.selected-unsure { border-color: var(--gold);  background: rgba(201,169,110,0.08); color: #9a7a3a; }
+    .visit-submit-btn {
+      width: 100%; padding: 0.75rem; background: var(--deep); color: var(--cream);
+      border: none; border-radius: 8px; font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem; font-weight: 500; cursor: pointer;
+      transition: opacity 0.2s; margin-top: 0.25rem;
+    }
+    .visit-submit-btn:hover { opacity: 0.85; }
+    .visit-submit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .visit-modal-anon {
+      font-size: 0.72rem; color: var(--dim); text-align: center;
+      margin-top: 0.85rem; line-height: 1.5;
+    }
+    .visit-modal-success { text-align: center; padding: 1rem 0 0.5rem; }
+    .visit-modal-success .success-icon { font-size: 2rem; margin-bottom: 0.75rem; }
+    .visit-modal-success p { font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
+    .visit-error {
+      font-size: 0.78rem; color: var(--rose); text-align: center;
+      margin-top: 0.5rem; min-height: 1.1rem;
+    }
+
+    /* ── AUTH MODAL (patient sign-in) ── */
+    .auth-modal-overlay {
+      display: none; position: fixed; inset: 0; z-index: 500;
+      background: rgba(28,23,20,0.7); backdrop-filter: blur(6px);
+      align-items: center; justify-content: center; padding: 1rem;
+    }
+    .auth-modal-overlay.open { display: flex; }
+    .auth-modal {
+      background: var(--cream); border-radius: 16px;
+      width: 100%; max-width: 420px; padding: 2.2rem 2rem 2rem;
+      position: relative; animation: fadeUp 0.25s ease;
+    }
+    .auth-modal-close {
+      position: absolute; top: 1rem; right: 1rem;
+      background: none; border: none; font-size: 1.2rem;
+      color: var(--muted); cursor: pointer;
+    }
+    .auth-modal-logo { font-family: 'Cormorant Garamond', serif; font-size: 1.5rem; font-weight: 400; color: var(--deep); text-align: center; margin-bottom: 0.3rem; }
+    .auth-modal-logo span { color: var(--gold); }
+    .auth-modal-tagline { font-size: 0.82rem; color: var(--muted); text-align: center; margin-bottom: 1.6rem; }
+    .auth-modal-hint { font-size: 0.8rem; color: var(--rose); text-align: center; margin-bottom: 1.2rem; font-style: italic; }
+    .auth-google-btn {
+      width: 100%; display: flex; align-items: center; justify-content: center;
+      gap: 0.6rem; padding: 0.75rem; border: 1.5px solid var(--border); border-radius: 8px;
+      background: #fff; color: var(--deep); font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem; font-weight: 500; cursor: pointer; transition: border-color 0.2s;
+    }
+    .auth-google-btn svg { width: 18px; height: 18px; flex-shrink: 0; }
+    .auth-divider { display: flex; align-items: center; gap: 0.75rem; margin: 1.2rem 0; color: var(--dim); font-size: 0.78rem; }
+    .auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+    .auth-input {
+      width: 100%; padding: 0.7rem 0.9rem; border: 1.5px solid var(--border); border-radius: 8px;
+      font-family: 'DM Sans', sans-serif; font-size: 0.9rem; color: var(--deep); background: #fff;
+      outline: none; transition: border-color 0.2s; margin-bottom: 0.75rem; box-sizing: border-box;
+    }
+    .auth-input:focus { border-color: var(--gold); }
+    .auth-submit-btn {
+      width: 100%; padding: 0.75rem; background: var(--deep); color: var(--cream);
+      border: none; border-radius: 8px; font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem; font-weight: 500; cursor: pointer; transition: opacity 0.2s;
+    }
+    .auth-submit-btn:hover { opacity: 0.85; }
+    .auth-submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .auth-toggle { text-align: center; margin-top: 1.1rem; font-size: 0.82rem; color: var(--muted); }
+    .auth-toggle button { background: none; border: none; color: var(--rose); font-size: 0.82rem; cursor: pointer; font-family: 'DM Sans', sans-serif; text-decoration: underline; }
+    .auth-error { font-size: 0.8rem; color: var(--rose); text-align: center; margin-top: 0.5rem; min-height: 1.2rem; }
   </style>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="/favicon-32x32.png" type="image/png" sizes="32x32">
@@ -511,6 +662,12 @@ function renderClinic(clinic) {
   const isClaimed = clinic.claimed === true;
   const claimHref = '/claim2.html?clinic=' + clinic.id;
   const wrap = document.getElementById('pageWrap');
+
+  // Expose clinic id for visit submission
+  document.body.dataset.clinicId = String(clinic.id);
+
+  // Load visit signal asynchronously
+  loadVisitSignal(String(clinic.id));
 
   // ── SEO: title, meta, OG, Twitter, canonical, JSON-LD ──
   const slug = toSlug(clinic.name);
@@ -736,6 +893,7 @@ function renderClinic(clinic) {
         <span class="review-count">${(clinic.reviews || 0).toLocaleString()} reviews on Google</span>
         ${clinic.maps_url ? `<a href="${clinic.maps_url}" target="_blank" rel="noopener" class="review-link">See on Maps →</a>` : ''}
       </div>
+      <div id="profileVisitSignal"></div>
     </div>
 
     <!-- PROMO (above pricing, only when promo text exists) -->
@@ -762,6 +920,13 @@ function renderClinic(clinic) {
 
     <!-- CONTACT -->
     <div class="card animate animate-delay-2">
+      <div class="visit-banner" onclick="openVisitModal()">
+        <span class="visit-banner-copy">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          Visited this clinic? Share your experience
+        </span>
+        <span class="visit-banner-cta">Share →</span>
+      </div>
       <div class="card-section">
         <div class="section-label">Contact</div>
         <div class="contact-row">
@@ -912,6 +1077,281 @@ async function initFromDB() {
   } catch(e) {
     renderNotFound(slug);
   }
+}
+</script>
+
+<!-- SUPABASE -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<!-- VISIT MODAL -->
+<div class="visit-modal-overlay" id="visitModalOverlay">
+  <div class="visit-modal">
+    <button class="visit-modal-close" onclick="closeVisitModal()">✕</button>
+    <div id="visitModalForm">
+      <div class="visit-modal-logo">Skin<span>Day</span></div>
+      <div class="visit-modal-clinic" id="visitModalClinicName"></div>
+
+      <div class="visit-modal-label">Approximate visit date</div>
+      <input class="visit-modal-month" type="month" id="visitMonth" placeholder="Select month" />
+
+      <div class="visit-modal-label">Treatment</div>
+      <select class="visit-modal-select" id="visitTreatment">
+        <option value="">Select treatment…</option>
+        <option value="Botox">Botox / Toxin</option>
+        <option value="Filler">Filler</option>
+        <option value="Laser">Laser</option>
+        <option value="Other">Other</option>
+      </select>
+
+      <div class="visit-modal-label">Would you go back to this clinic?</div>
+      <div class="visit-return-options">
+        <button class="visit-return-btn" id="vrYes"    onclick="selectReturn('yes')">👍 Yes</button>
+        <button class="visit-return-btn" id="vrNo"     onclick="selectReturn('no')">👎 No</button>
+        <button class="visit-return-btn" id="vrUnsure" onclick="selectReturn('unsure')">🤔 Unsure</button>
+      </div>
+
+      <button class="visit-submit-btn" id="visitSubmitBtn" onclick="submitVisit()" disabled>Submit</button>
+      <div class="visit-error" id="visitError"></div>
+      <div class="visit-modal-anon">Your response is anonymous and never tied to your name publicly.</div>
+    </div>
+    <div id="visitModalSuccess" style="display:none;">
+      <div class="visit-modal-success">
+        <div class="success-icon">✓</div>
+        <p>Thanks for sharing your experience.<br>You may hear from us in a few days.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- AUTH MODAL (patient sign-in for visit feature) -->
+<div class="auth-modal-overlay" id="authModalOverlay">
+  <div class="auth-modal">
+    <button class="auth-modal-close" onclick="closeAuthModal()">✕</button>
+    <div class="auth-modal-logo">Skin<span>Day</span></div>
+    <div class="auth-modal-tagline">Save clinics, track your shortlist, and more.</div>
+    <div class="auth-modal-hint" id="authModalHint" style="display:none;"></div>
+    <button class="auth-google-btn" onclick="handleGoogleSignIn()">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+      </svg>
+      Continue with Google
+    </button>
+    <div class="auth-divider">or</div>
+    <div id="authEmailForm">
+      <input class="auth-input" type="email" id="authEmail" placeholder="Email address" autocomplete="email" />
+      <input class="auth-input" type="password" id="authPassword" placeholder="Password" autocomplete="current-password" />
+      <button class="auth-submit-btn" id="authSubmitBtn" onclick="handleEmailAuth()">Sign In</button>
+      <div class="auth-error" id="authError"></div>
+      <div class="auth-toggle">
+        <span id="authToggleText">Don't have an account?</span>
+        <button onclick="toggleAuthMode()">Sign Up</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── AUTH + VISIT (clinic.html) ──────────────────────────────────
+
+const _SB_URL = 'https://vefldlqtyxdywbzdjuia.supabase.co';
+const _SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlZmxkbHF0eXhkeXdiemRqdWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNDAwMjgsImV4cCI6MjA4NzkxNjAyOH0.o582sXiUkB3j4FiHEA5rE3ABy_pdTeeK1PnNpNirHZA';
+const _sb    = supabase.createClient(_SB_URL, _SB_KEY);
+
+let _currentUser = null;
+let _authMode    = 'signin';
+let _visitReturnVal = null;
+
+// Set max month to current month
+(function() {
+  const now = new Date();
+  const el  = document.getElementById('visitMonth');
+  if (el) el.max = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+})();
+
+// ── Init auth ──
+(async function initAuth() {
+  let session = (await _sb.auth.getSession()).data.session;
+  if (!session) {
+    await new Promise(r => setTimeout(r, 800));
+    session = (await _sb.auth.getSession()).data.session;
+  }
+  if (session?.user) _currentUser = session.user;
+
+  _sb.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_IN' && session?.user) {
+      _currentUser = session.user;
+      closeAuthModal();
+      // Re-open visit modal after sign-in
+      openVisitModal();
+    } else if (event === 'SIGNED_OUT') {
+      _currentUser = null;
+    }
+  });
+})();
+
+// ── Auth modal ──
+function openAuthModal(hint) {
+  const overlay = document.getElementById('authModalOverlay');
+  overlay.classList.add('open');
+  const hintEl = document.getElementById('authModalHint');
+  if (hint) { hintEl.textContent = hint; hintEl.style.display = 'block'; }
+  else { hintEl.style.display = 'none'; }
+  document.body.style.overflow = 'hidden';
+}
+function closeAuthModal() {
+  document.getElementById('authModalOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+document.getElementById('authModalOverlay')?.addEventListener('click', e => {
+  if (e.target === document.getElementById('authModalOverlay')) closeAuthModal();
+});
+
+async function handleGoogleSignIn() {
+  await _sb.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.href }
+  });
+}
+
+function toggleAuthMode() {
+  _authMode = _authMode === 'signin' ? 'signup' : 'signin';
+  document.getElementById('authSubmitBtn').textContent = _authMode === 'signin' ? 'Sign In' : 'Create Account';
+  document.getElementById('authToggleText').textContent = _authMode === 'signin' ? "Don't have an account?" : 'Already have an account?';
+  document.querySelector('.auth-toggle button').textContent = _authMode === 'signin' ? 'Sign Up' : 'Sign In';
+  document.getElementById('authError').textContent = '';
+}
+
+async function handleEmailAuth() {
+  const email = document.getElementById('authEmail').value.trim();
+  const password = document.getElementById('authPassword').value;
+  const btn = document.getElementById('authSubmitBtn');
+  const errEl = document.getElementById('authError');
+  if (!email || !password) { errEl.textContent = 'Please enter your email and password.'; return; }
+  btn.disabled = true;
+  errEl.textContent = '';
+  const fn = _authMode === 'signin' ? _sb.auth.signInWithPassword : _sb.auth.signUp;
+  const { error } = await fn.call(_sb.auth, { email, password });
+  btn.disabled = false;
+  if (error) { errEl.textContent = error.message; return; }
+  if (_authMode === 'signup') errEl.textContent = 'Check your email to confirm your account.';
+}
+
+// ── Visit modal ──
+function openVisitModal() {
+  if (!_currentUser) {
+    openAuthModal('Sign in to share your experience.');
+    return;
+  }
+
+  _visitReturnVal = null;
+
+  // Populate clinic name from rendered page
+  const nameEl = document.querySelector('.profile-name');
+  const clinicName = nameEl ? nameEl.textContent.trim() : '';
+  document.getElementById('visitModalClinicName').textContent = clinicName;
+
+  document.getElementById('visitMonth').value        = '';
+  document.getElementById('visitTreatment').value    = '';
+  document.getElementById('visitError').textContent  = '';
+  document.getElementById('visitSubmitBtn').disabled = true;
+  document.getElementById('visitModalForm').style.display    = '';
+  document.getElementById('visitModalSuccess').style.display = 'none';
+
+  ['vrYes','vrNo','vrUnsure'].forEach(id => {
+    document.getElementById(id).className = 'visit-return-btn';
+  });
+
+  document.getElementById('visitModalOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeVisitModal() {
+  document.getElementById('visitModalOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+document.getElementById('visitModalOverlay')?.addEventListener('click', e => {
+  if (e.target === document.getElementById('visitModalOverlay')) closeVisitModal();
+});
+
+function selectReturn(val) {
+  _visitReturnVal = val;
+  document.getElementById('vrYes').className    = 'visit-return-btn' + (val === 'yes'    ? ' selected-yes'    : '');
+  document.getElementById('vrNo').className     = 'visit-return-btn' + (val === 'no'     ? ' selected-no'     : '');
+  document.getElementById('vrUnsure').className = 'visit-return-btn' + (val === 'unsure' ? ' selected-unsure' : '');
+  document.getElementById('visitSubmitBtn').disabled = false;
+}
+
+async function submitVisit() {
+  if (!_visitReturnVal) return;
+
+  // Get clinic_id from the URL slug → match against loaded clinic
+  // clinic id is stored in a data attribute we'll read from the page
+  const clinicId = document.body.dataset.clinicId;
+  if (!clinicId) return;
+
+  const btn = document.getElementById('visitSubmitBtn');
+  btn.disabled = true;
+  btn.textContent = 'Submitting…';
+  document.getElementById('visitError').textContent = '';
+
+  const session = (await _sb.auth.getSession()).data.session;
+  if (!session?.access_token) {
+    document.getElementById('visitError').textContent = 'Session expired — please sign in again.';
+    btn.disabled = false; btn.textContent = 'Submit';
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/submit-visit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        clinic_id:      clinicId,
+        visit_month:    document.getElementById('visitMonth').value || null,
+        treatment_type: document.getElementById('visitTreatment').value || undefined,
+        would_return:   _visitReturnVal,
+        access_token:   session.access_token
+      })
+    });
+
+    if (res.status === 409) {
+      document.getElementById('visitError').textContent = 'You've already shared your experience for this clinic.';
+      btn.disabled = false; btn.textContent = 'Submit';
+      return;
+    }
+    if (!res.ok) throw new Error('Server error');
+
+    document.getElementById('visitModalForm').style.display    = 'none';
+    document.getElementById('visitModalSuccess').style.display = '';
+    setTimeout(closeVisitModal, 2500);
+
+  } catch {
+    document.getElementById('visitError').textContent = 'Something went wrong. Please try again.';
+    btn.disabled = false; btn.textContent = 'Submit';
+  }
+}
+
+// ── Visit signal (hero) ──
+async function loadVisitSignal(clinicId) {
+  try {
+    const res = await fetch(`/api/get-visit-signal?clinic_id=${encodeURIComponent(clinicId)}`);
+    if (!res.ok) return;
+    const { signal } = await res.json();
+    if (!signal) return;
+
+    const el = document.getElementById('profileVisitSignal');
+    if (!el) return;
+    el.className = 'profile-visit-signal';
+    el.innerHTML = `
+      <strong>${signal.pct}%</strong> would return
+      &middot; based on ${signal.count} patient experience${signal.count !== 1 ? 's' : ''}
+      <span class="profile-visit-signal-note">Not reviews. Real patient experiences.</span>
+    `;
+  } catch { /* non-fatal */ }
 }
 </script>
 
