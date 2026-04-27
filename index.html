@@ -3084,8 +3084,6 @@ window.SB_URL = 'https://vefldlqtyxdywbzdjuia.supabase.co';
 window.SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlZmxkbHF0eXhkeXdiemRqdWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNDAwMjgsImV4cCI6MjA4NzkxNjAyOH0.o582sXiUkB3j4FiHEA5rE3ABy_pdTeeK1PnNpNirHZA';
 
 // ─── OAUTH RETURN + PENDING VOTE ─────────────────────────────
-// Supabase JS v2 automatically processes #access_token from the URL hash.
-// We just need to clean the URL and let onAuthStateChange handle the session.
 (function handleOAuthReturn() {
   const hash = window.location.hash;
 
@@ -3095,18 +3093,20 @@ window.SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsIn
     return;
   }
 
-  // Clean any OAuth hash from URL immediately
-  if (hash.includes('access_token') || hash.includes('error=')) {
-    window.history.replaceState({}, document.title, '/');
+  // Not an OAuth return — handle signin=1 query param only
+  if (!hash.includes('access_token')) {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('signin') === '1') {
+      window.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => openAuthModal('Sign in to view your account.'), 500);
+      });
+    }
+    return;
   }
 
-  // signin=1 query param from account page redirect
-  const params = new URLSearchParams(window.location.search);
-  if (params.get('signin') === '1') {
-    window.addEventListener('DOMContentLoaded', () => {
-      setTimeout(() => openAuthModal('Sign in to view your account.'), 500);
-    });
-  }
+  // OAuth return — DO NOT clear hash here. Supabase JS needs it to extract the token.
+  // onAuthStateChange will fire SIGNED_IN once Supabase processes the hash.
+  // We handle the pending vote there.
 })();
 
 // ─── DATA ────────────────────────────────────────────────────
@@ -4022,6 +4022,10 @@ async function initAuth() {
   _sb.auth.onAuthStateChange((event, session) => {
     console.log('AUTH EVENT', event, session?.user?.email);
     if (event === 'SIGNED_IN' && session?.user) {
+      // Clean OAuth hash from URL now that Supabase has processed it
+      if (window.location.hash.includes('access_token')) {
+        window.history.replaceState({}, document.title, '/');
+      }
       setUser(session.user);
       closeAuthModal();
       mergeLocalShortlistToSupabase();
