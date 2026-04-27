@@ -891,22 +891,6 @@
       align-items: center;
       gap: 5px;
     }
-    .verified-tick {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 15px;
-      height: 15px;
-      background: var(--green);
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-    .verified-tick svg {
-      width: 9px;
-      height: 9px;
-      stroke: white;
-      stroke-width: 2.5;
-    }
     .price-range {
       font-size: 0.78rem; color: var(--muted);
       margin-top: 0.25rem;
@@ -919,20 +903,20 @@
 
     /* ── VISIT SIGNAL ROW ── */
     .card-visit-row {
-      padding: 0.6rem 1.4rem;
-      border-top: 1px solid var(--border);
+      padding: 0.45rem 1.4rem;
+      border-top: 1px solid rgba(234,226,216,0.5);
       display: flex; align-items: center; justify-content: space-between;
       gap: 0.75rem; cursor: pointer;
       transition: background 0.15s;
     }
     .card-visit-row:hover { background: var(--warm); }
     .card-visit-prompt {
-      font-size: 0.78rem; color: var(--muted);
+      font-size: 0.73rem; color: var(--dim);
       display: flex; align-items: center; gap: 0.4rem;
     }
-    .card-visit-prompt svg { flex-shrink: 0; color: var(--dim); }
+    .card-visit-prompt svg { flex-shrink: 0; color: var(--dim); opacity: 0.6; }
     .card-visit-signal {
-      font-size: 0.75rem; color: var(--muted);
+      font-size: 0.72rem; color: var(--dim);
       white-space: nowrap; flex-shrink: 0;
     }
     .card-visit-signal strong { color: var(--green); font-weight: 600; }
@@ -3321,7 +3305,7 @@ function renderPageCards(clinicsData, append) {
           <div class="card-badges"></div>
           <div class="clinic-name">
             ${c.claimed
-              ? `<span class="clinic-name-verified">${c.logo_url ? `<img src="${c.logo_url}" alt="${c.name}" style="width:24px;height:24px;border-radius:4px;object-fit:contain;border:1px solid var(--border);background:#fff;flex-shrink:0;margin-right:4px;vertical-align:middle;" onerror="this.style.display='none'">` : ''}${c.name}<span class="verified-tick"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 6 5 9 10 3"/></svg></span></span>`
+              ? `<span class="clinic-name-verified">${c.logo_url ? `<img src="${c.logo_url}" alt="${c.name}" style="width:24px;height:24px;border-radius:4px;object-fit:contain;border:1px solid var(--border);background:#fff;flex-shrink:0;margin-right:4px;vertical-align:middle;" onerror="this.style.display='none'">` : ''}${c.name}</span>`
               : c.name}
           </div>
           ${c.practitioners && c.practitioners.length > 0
@@ -3348,7 +3332,7 @@ function renderPageCards(clinicsData, append) {
         <div class="card-visit-row" onclick="openVisitModal('${c.id}', ${JSON.stringify(c.name)})">
           <span class="card-visit-prompt">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-            Been here? Share your experience
+            Been here? Would you go back?
           </span>
           <span class="card-visit-signal" id="visit-signal-${c.id}"></span>
         </div>
@@ -5543,9 +5527,7 @@ function buildCard(c, carousel) {
     ? `<img class="map-card-logo" src="${c.logo_url}" alt="" onerror="this.style.display='none'">`
     : `<div class="map-card-logo-placeholder">${c.name.charAt(0)}</div>`;
 
-  const tick = c.claimed
-    ? `<span class="verified-tick" style="width:12px;height:12px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;background:#3D7A55;border-radius:50%;"><svg viewBox="0 0 12 12" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 6 5 9 10 3"/></svg></span>`
-    : '';
+  const tick = '';
 
   const rating = c.rating ? c.rating.toFixed(1) : '—';
   const reviews = (c.reviews||0).toLocaleString();
@@ -5728,11 +5710,18 @@ let _visitReturnVal  = null;
   if (el) el.max = `${yyyy}-${mm}`;
 })();
 
-function openVisitModal(clinicId, clinicName) {
+window.openVisitModal = async function openVisitModal(clinicId, clinicName) {
+  // Always do a live session check — don't rely on _currentUser timing
   if (!_currentUser) {
-    openAuthModal('Sign in to share your experience.');
-    return;
+    const { data: { session } } = await _sb.auth.getSession();
+    if (session?.user) {
+      setUser(session.user);
+    } else {
+      openAuthModal('Sign in to add your experience.');
+      return;
+    }
   }
+
   _visitClinicId  = String(clinicId);
   _visitReturnVal = null;
 
@@ -5744,7 +5733,6 @@ function openVisitModal(clinicId, clinicName) {
   document.getElementById('visitModalForm').style.display    = '';
   document.getElementById('visitModalSuccess').style.display = 'none';
 
-  // Reset return buttons
   ['vrYes','vrNo','vrUnsure'].forEach(id => {
     document.getElementById(id).className = 'visit-return-btn';
   });
