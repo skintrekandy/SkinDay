@@ -1972,6 +1972,46 @@
     padding: 4px 12px; border-radius: 20px; letter-spacing: 0.04em;
   }
 
+  /* VOTE BLOCK */
+  .cm-vote-block {
+    margin: 0 24px;
+    padding: 14px;
+    background: rgba(200,114,90,0.06);
+    border: 1px solid rgba(200,114,90,0.2);
+    border-radius: 12px;
+    margin-top: 14px;
+    margin-bottom: 2px;
+  }
+  .cm-vote-label {
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .cm-vote-buttons {
+    display: flex; gap: 8px;
+  }
+  .cm-vote-btn {
+    flex: 1; padding: 10px 8px;
+    border-radius: 8px; border: 1.5px solid var(--border);
+    background: #fff; font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem; font-weight: 500; color: var(--muted);
+    cursor: pointer; transition: all 0.15s; text-align: center;
+  }
+  .cm-vote-btn:hover:not(:disabled) { border-color: var(--deep); color: var(--deep); }
+  .cm-vote-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .cm-vote-yes.voted { border-color: var(--green); border-width: 2px; background: rgba(61,122,85,0.12); color: var(--green); font-weight: 600; }
+  .cm-vote-no.voted  { border-color: var(--rose);  border-width: 2px; background: rgba(200,114,90,0.12); color: var(--rose);  font-weight: 600; }
+  .cm-vote-confirm {
+    margin-top: 10px;
+    font-size: 0.82rem; color: var(--green); font-weight: 500;
+    text-align: center;
+  }
+  .cm-vote-signal {
+    margin-top: 8px;
+    font-size: 0.75rem; color: var(--muted); text-align: center;
+  }
+  .cm-vote-signal strong { color: var(--green); font-weight: 600; }
+
   /* PRICE BLOCK */
   .cm-price-block {
     padding: 16px 24px 20px;
@@ -4786,6 +4826,17 @@ function maybeShowVisitPrompt() {
         <span class="cm-promo-badge" id="cm-promo" style="display:none">Promo Available</span>
       </div>
 
+      <!-- Vote block -->
+      <div class="cm-vote-block" id="cm-vote-block">
+        <div class="cm-vote-label">Been here?</div>
+        <div class="cm-vote-buttons" id="cm-vote-buttons">
+          <button class="cm-vote-btn cm-vote-yes" id="cm-vote-yes" onclick="castModalVote('yes')">👍 Would go back</button>
+          <button class="cm-vote-btn cm-vote-no"  id="cm-vote-no"  onclick="castModalVote('no')">👎 Wouldn't go back</button>
+        </div>
+        <div class="cm-vote-signal" id="cm-vote-signal"></div>
+        <div class="cm-vote-confirm" id="cm-vote-confirm" style="display:none">✓ Thanks — your response is recorded</div>
+      </div>
+
       <!-- Price block -->
       <div class="cm-price-block">
         <div class="cm-price-dark-card" id="cm-price-dark-card" style="display:none">
@@ -4947,6 +4998,69 @@ function cmToSlug(name) {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
 
+// ── INLINE VOTE IN MODAL ──────────────────────────────────────
+async function castModalVote(val) {
+  const clinicId = document.getElementById('cm-vote-block').dataset.clinicId;
+  if (!clinicId) return;
+
+  // Highlight selection immediately
+  document.getElementById('cm-vote-yes').className = 'cm-vote-btn cm-vote-yes' + (val === 'yes' ? ' voted' : '');
+  document.getElementById('cm-vote-no').className  = 'cm-vote-btn cm-vote-no'  + (val === 'no'  ? ' voted' : '');
+  document.getElementById('cm-vote-yes').disabled = true;
+  document.getElementById('cm-vote-no').disabled  = true;
+
+  // Check auth
+  if (!_currentUser) {
+    const { data: { session } } = await _sb.auth.getSession();
+    if (session?.user) {
+      setUser(session.user);
+    } else {
+      // Store pending, redirect to Google auth, come back
+      sessionStorage.setItem('sd_pending_visit_id',  clinicId);
+      sessionStorage.setItem('sd_pending_visit_val', val);
+      await _sb.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.href, queryParams: { prompt: 'select_account' } }
+      });
+      return;
+    }
+  }
+
+  // Submit
+  try {
+    const session = (await _sb.auth.getSession()).data.session;
+    const res = await fetch('/api/submit-visit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clinic_id: clinicId, would_return: val, access_token: session.access_token })
+    });
+
+    document.getElementById('cm-vote-buttons').style.display = 'none';
+    if (res.status === 409) {
+      document.getElementById('cm-vote-confirm').textContent      = 'You already shared your experience for this clinic.';
+      document.getElementById('cm-vote-confirm').style.color      = 'var(--muted)';
+    } else if (res.ok) {
+      document.getElementById('cm-vote-confirm').textContent      = '✓ Thanks — your response is recorded';
+      document.getElementById('cm-vote-confirm').style.color      = 'var(--green)';
+    } else {
+      document.getElementById('cm-vote-confirm').textContent      = 'Something went wrong. Please try again.';
+      document.getElementById('cm-vote-confirm').style.color      = 'var(--rose)';
+      document.getElementById('cm-vote-buttons').style.display    = '';
+      document.getElementById('cm-vote-yes').disabled = false;
+      document.getElementById('cm-vote-no').disabled  = false;
+    }
+    document.getElementById('cm-vote-confirm').style.display = '';
+
+  } catch {
+    document.getElementById('cm-vote-confirm').textContent   = 'Something went wrong. Please try again.';
+    document.getElementById('cm-vote-confirm').style.color   = 'var(--rose)';
+    document.getElementById('cm-vote-confirm').style.display = '';
+    document.getElementById('cm-vote-buttons').style.display = '';
+    document.getElementById('cm-vote-yes').disabled = false;
+    document.getElementById('cm-vote-no').disabled  = false;
+  }
+}
+
 function cmRenderStars(rating, container) {
   container.innerHTML = '';
   for (let i = 1; i <= 5; i++) {
@@ -5000,6 +5114,27 @@ window.openClinicModal = async function openClinicModal(clinicId) {
 
   const fullLink = document.getElementById('cm-full-profile-link');
   if (fullLink) fullLink.href = '/clinic/' + cmToSlug(clinic.name);
+
+  // Reset vote block
+  const _voteClinicId = String(clinic.id);
+  document.getElementById('cm-vote-yes').className     = 'cm-vote-btn cm-vote-yes';
+  document.getElementById('cm-vote-no').className      = 'cm-vote-btn cm-vote-no';
+  document.getElementById('cm-vote-yes').disabled      = false;
+  document.getElementById('cm-vote-no').disabled       = false;
+  document.getElementById('cm-vote-confirm').style.display = 'none';
+  document.getElementById('cm-vote-buttons').style.display = '';
+  document.getElementById('cm-vote-signal').textContent    = '';
+  document.getElementById('cm-vote-block').dataset.clinicId = _voteClinicId;
+
+  // Fetch visit signal for this clinic
+  fetch(`/api/get-visit-signal?clinic_id=${encodeURIComponent(_voteClinicId)}`)
+    .then(r => r.ok ? r.json() : null)
+    .then(data => {
+      if (data?.signal) {
+        document.getElementById('cm-vote-signal').innerHTML =
+          `<strong>${data.signal.pct}%</strong> would return &middot; ${data.signal.count} experiences`;
+      }
+    }).catch(() => {});
 
   // Logo in header
   const headerLogo = document.getElementById('cm-header-logo');
