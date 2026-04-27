@@ -4669,7 +4669,7 @@ window.openVisitModal = async function(clinicId, clinicName) {
   document.body.style.overflow = 'hidden';
 };
 
-function closeVisitModal() {
+window.closeVisitModal = function closeVisitModal() {
   document.getElementById('visitModalOverlay').classList.remove('open');
   document.body.style.overflow = '';
 }
@@ -4678,7 +4678,7 @@ document.getElementById('visitModalOverlay')?.addEventListener('click', e => {
   if (e.target === document.getElementById('visitModalOverlay')) closeVisitModal();
 });
 
-function selectReturn(val) {
+window.selectReturn = function selectReturn(val) {
   _visitReturnVal = val;
   document.getElementById('vrYes').className = 'visit-return-btn' + (val === 'yes' ? ' selected-yes' : '');
   document.getElementById('vrNo').className  = 'visit-return-btn' + (val === 'no'  ? ' selected-no'  : '');
@@ -5029,7 +5029,7 @@ function cmToSlug(name) {
 }
 
 // ── INLINE VOTE IN MODAL ──────────────────────────────────────
-async function castModalVote(val) {
+window.castModalVote = async function castModalVote(val) {
   const clinicId = document.getElementById('cm-vote-block').dataset.clinicId;
   if (!clinicId) return;
 
