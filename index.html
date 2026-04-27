@@ -4700,12 +4700,12 @@ async function submitVisit() {
   }
 }
 
-// Google sign-in — redirects back to current page, pending vote in sessionStorage survives
+// Google sign-in — redirects back to index, pending vote in sessionStorage survives
 async function handleGoogleSignInPopup() {
   const { error } = await _sb.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: window.location.href,
+      redirectTo: window.location.origin + '/',
       queryParams: { prompt: 'select_account' }
     }
   });
@@ -5020,7 +5020,7 @@ async function castModalVote(val) {
       sessionStorage.setItem('sd_pending_visit_val', val);
       await _sb.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo: window.location.href, queryParams: { prompt: 'select_account' } }
+        options: { redirectTo: window.location.origin + '/', queryParams: { prompt: 'select_account' } }
       });
       return;
     }
