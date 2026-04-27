@@ -910,7 +910,7 @@
       gap: 0.75rem; cursor: pointer;
       transition: background 0.15s;
     }
-    .card-visit-row:hover { background: rgba(200,114,90,0.09); }
+    .card-visit-row:hover { background: rgba(200,114,90,0.1); }
     .card-visit-prompt {
       display: flex; flex-direction: column; gap: 0.1rem;
     }
@@ -918,7 +918,7 @@
       font-size: 0.68rem; color: var(--muted); font-weight: 400;
     }
     .card-visit-line2 {
-      font-size: 0.75rem; color: var(--rose); font-weight: 500;
+      font-size: 0.76rem; color: #c8725a; font-weight: 600; letter-spacing: 0.01em;
     }
     .card-visit-signal {
       font-size: 0.72rem; color: var(--dim);
@@ -972,13 +972,14 @@
       display: flex; gap: 0.6rem; margin-bottom: 0.5rem;
     }
     .visit-return-btn {
-      flex: 1; padding: 0.75rem 0.5rem;
+      flex: 1; padding: 1rem 0.5rem;
       border: 1.5px solid var(--border); border-radius: 8px;
       background: #fff; font-family: 'DM Sans', sans-serif;
-      font-size: 0.85rem; font-weight: 500; color: var(--muted);
+      font-size: 0.95rem; font-weight: 500; color: var(--muted);
       cursor: pointer; transition: all 0.15s; text-align: center;
     }
-    .visit-return-btn:hover { border-color: var(--deep); color: var(--deep); }
+    .visit-return-btn:hover:not(:disabled) { border-color: var(--deep); color: var(--deep); }
+    .visit-return-btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .visit-return-btn.selected-yes {
       border-color: var(--green); border-width: 2px;
       background: rgba(61,122,85,0.12); color: var(--green); font-weight: 600;
@@ -3974,15 +3975,18 @@ async function initAuth() {
       setUser(session.user);
       closeAuthModal();
       mergeLocalShortlistToSupabase();
-      // Restore pending visit from memory or sessionStorage (survives OAuth redirect)
-      const id   = _pendingVisitId   || sessionStorage.getItem('sd_pending_visit_id');
-      const name = _pendingVisitName || sessionStorage.getItem('sd_pending_visit_name') || '';
+      // Check for pending vote from sessionStorage (survives popup + redirect)
+      const pendingId  = sessionStorage.getItem('sd_pending_visit_id');
+      const pendingVal = sessionStorage.getItem('sd_pending_visit_val');
       sessionStorage.removeItem('sd_pending_visit_id');
+      sessionStorage.removeItem('sd_pending_visit_val');
       sessionStorage.removeItem('sd_pending_visit_name');
-      _pendingVisitId   = null;
-      _pendingVisitName = null;
-      if (id) {
-        setTimeout(() => window.openVisitModal(id, name), 400);
+      _pendingVisitId = null; _pendingVisitName = null;
+      if (pendingId && pendingVal) {
+        // Modal may still be open with selection highlighted — just submit
+        _visitClinicId  = pendingId;
+        _visitReturnVal = pendingVal;
+        setTimeout(submitVisit, 300);
       }
     } else if (event === 'SIGNED_OUT') {
       setLoggedOut();
@@ -4579,18 +4583,15 @@ window.openVisitModal = async function(clinicId, clinicName) {
   _visitReturnVal = null;
 
   document.getElementById('visitModalClinicName').textContent = clinicName || '';
-  document.getElementById('visitMonthSel').value     = '';
-  document.getElementById('visitYearSel').value      = '';
-  document.getElementById('visitTreatment').value    = '';
   document.getElementById('visitError').textContent  = '';
-  document.getElementById('visitDetails').style.display     = 'none';
-  document.getElementById('visitSubmitBtn').disabled = true;
+  document.getElementById('visitSignInHint').style.display = 'none';
+  document.getElementById('visitAnonNote').style.display   = '';
   document.getElementById('visitModalForm').style.display    = '';
   document.getElementById('visitModalSuccess').style.display = 'none';
-
-  ['vrYes','vrNo'].forEach(id => {
-    document.getElementById(id).className = 'visit-return-btn';
-  });
+  document.getElementById('vrYes').className = 'visit-return-btn';
+  document.getElementById('vrYes').disabled  = false;
+  document.getElementById('vrNo').className  = 'visit-return-btn';
+  document.getElementById('vrNo').disabled   = false;
 
   document.getElementById('visitModalOverlay').classList.add('open');
   document.body.style.overflow = 'hidden';
@@ -4609,59 +4610,75 @@ function selectReturn(val) {
   _visitReturnVal = val;
   document.getElementById('vrYes').className = 'visit-return-btn' + (val === 'yes' ? ' selected-yes' : '');
   document.getElementById('vrNo').className  = 'visit-return-btn' + (val === 'no'  ? ' selected-no'  : '');
-  document.getElementById('visitSubmitBtn').disabled = false;
-  // Progressive reveal — show date/treatment after decision made
-  document.getElementById('visitDetails').style.display = '';
+
+  if (_currentUser) {
+    // Logged in — auto-submit immediately
+    submitVisit();
+  } else {
+    // Not logged in — highlight selection, show sign-in prompt
+    document.getElementById('visitSignInHint').style.display = '';
+    document.getElementById('visitAnonNote').style.display   = 'none';
+    // Persist so popup callback can submit after sign-in
+    sessionStorage.setItem('sd_pending_visit_id',  _visitClinicId);
+    sessionStorage.setItem('sd_pending_visit_val', val);
+  }
 }
 
 async function submitVisit() {
   if (!_visitReturnVal || !_visitClinicId) return;
 
-  const btn = document.getElementById('visitSubmitBtn');
-  btn.disabled = true;
-  btn.textContent = 'Submitting...';
+  document.getElementById('vrYes').disabled = true;
+  document.getElementById('vrNo').disabled  = true;
   document.getElementById('visitError').textContent = '';
 
   const session = (await _sb.auth.getSession()).data.session;
   if (!session?.access_token) {
     document.getElementById('visitError').textContent = 'Session expired - please sign in again.';
-    btn.disabled = false; btn.textContent = 'Submit';
+    document.getElementById('vrYes').disabled = false;
+    document.getElementById('vrNo').disabled  = false;
     return;
   }
-
-  const month = document.getElementById('visitMonthSel').value;
-  const year  = document.getElementById('visitYearSel').value;
-  const monthVal     = (month && year) ? `${year}-${month}` : null;
-  const treatmentVal = document.getElementById('visitTreatment').value || null;
 
   try {
     const res = await fetch('/api/submit-visit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        clinic_id:      _visitClinicId,
-        visit_month:    monthVal,
-        treatment_type: treatmentVal || undefined,
-        would_return:   _visitReturnVal,
-        access_token:   session.access_token
+        clinic_id:    _visitClinicId,
+        would_return: _visitReturnVal,
+        access_token: session.access_token
       })
     });
 
     if (res.status === 409) {
       document.getElementById('visitError').textContent = 'You already shared your experience for this clinic.';
-      btn.disabled = false; btn.textContent = 'Submit';
+      document.getElementById('vrYes').disabled = false;
+      document.getElementById('vrNo').disabled  = false;
       return;
     }
     if (!res.ok) throw new Error('Server error');
 
     document.getElementById('visitModalForm').style.display    = 'none';
     document.getElementById('visitModalSuccess').style.display = '';
-    setTimeout(closeVisitModal, 2500);
+    setTimeout(closeVisitModal, 2000);
 
-  } catch (err) {
+  } catch {
     document.getElementById('visitError').textContent = 'Something went wrong. Please try again.';
-    btn.disabled = false; btn.textContent = 'Submit';
+    document.getElementById('vrYes').disabled = false;
+    document.getElementById('vrNo').disabled  = false;
   }
+}
+
+// Popup-based Google sign-in — no page redirect
+async function handleGoogleSignInPopup() {
+  const { error } = await _sb.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      queryParams: { prompt: 'select_account' },
+      skipBrowserRedirect: true
+    }
+  });
+  if (error) document.getElementById('visitError').textContent = error.message;
 }
 
 async function fetchVisitSignals(clinicIds) {
@@ -5891,56 +5908,32 @@ function openMapClinicModal(id) { openMapModal(String(id)); }
     <button class="visit-modal-close" onclick="closeVisitModal()">✕</button>
 
     <div id="visitModalForm">
-      <!-- Clinic name is the hero -->
       <div class="visit-modal-clinic" id="visitModalClinicName"></div>
-      <div class="visit-modal-label" style="margin-bottom:1.1rem;">Would you go back to this clinic?</div>
+      <div class="visit-modal-label" style="margin-bottom:1.25rem;">Would you go back to this clinic?</div>
 
-      <!-- Step 1: Yes / No — shown first -->
       <div class="visit-return-options">
         <button class="visit-return-btn" id="vrYes" onclick="selectReturn('yes')">👍 Would go back</button>
         <button class="visit-return-btn" id="vrNo"  onclick="selectReturn('no')">👎 Wouldn't go back</button>
       </div>
 
-      <!-- Step 2: details — revealed after yes/no selected -->
-      <div id="visitDetails" style="display:none;margin-top:1rem;">
-        <div class="visit-modal-label">Approximate visit date</div>
-        <div style="display:flex;gap:0.5rem;margin-bottom:1rem;">
-          <select class="visit-modal-select" id="visitMonthSel" style="margin-bottom:0;flex:1;">
-            <option value="">Month</option>
-            <option value="01">January</option>
-            <option value="02">February</option>
-            <option value="03">March</option>
-            <option value="04">April</option>
-            <option value="05">May</option>
-            <option value="06">June</option>
-            <option value="07">July</option>
-            <option value="08">August</option>
-            <option value="09">September</option>
-            <option value="10">October</option>
-            <option value="11">November</option>
-            <option value="12">December</option>
-          </select>
-          <select class="visit-modal-select" id="visitYearSel" style="margin-bottom:0;flex:1;">
-            <option value="">Year</option>
-          </select>
-        </div>
-
-        <div class="visit-modal-label">Treatment</div>
-        <select class="visit-modal-select" id="visitTreatment">
-          <option value="">Select treatment…</option>
-          <option value="Botox">Botox / Toxin</option>
-          <option value="Filler">Filler</option>
-          <option value="Laser">Laser</option>
-          <option value="Other">Other</option>
-        </select>
+      <!-- Shown only when not logged in after selection -->
+      <div id="visitSignInHint" style="display:none;margin-top:1rem;text-align:center;">
+        <div style="font-size:0.82rem;color:var(--muted);margin-bottom:0.75rem;">Sign in to confirm your response</div>
+        <button class="auth-google-btn" onclick="handleGoogleSignInPopup()" style="max-width:280px;margin:0 auto;">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+          </svg>
+          Continue with Google
+        </button>
       </div>
 
-      <button class="visit-submit-btn" id="visitSubmitBtn" onclick="submitVisit()" disabled>Submit response</button>
       <div class="visit-error" id="visitError"></div>
-      <div class="visit-modal-anon">Anonymous. Never shown publicly.</div>
+      <div class="visit-modal-anon" id="visitAnonNote">Anonymous. Never shown publicly.</div>
     </div>
 
-    <!-- Success state -->
     <div id="visitModalSuccess" style="display:none;">
       <div class="visit-modal-success">
         <div class="success-icon">✓</div>
