@@ -3084,8 +3084,8 @@ window.SB_URL = 'https://vefldlqtyxdywbzdjuia.supabase.co';
 window.SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlZmxkbHF0eXhkeXdiemRqdWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNDAwMjgsImV4cCI6MjA4NzkxNjAyOH0.o582sXiUkB3j4FiHEA5rE3ABy_pdTeeK1PnNpNirHZA';
 
 // ─── OAUTH RETURN + PENDING VOTE ─────────────────────────────
-// Must run BEFORE hash routing. Handles access_token in URL hash
-// from Google OAuth redirect, submits any pending vote, then cleans URL.
+// Supabase JS v2 automatically processes #access_token from the URL hash.
+// We just need to clean the URL and let onAuthStateChange handle the session.
 (function handleOAuthReturn() {
   const hash = window.location.hash;
 
@@ -3095,51 +3095,18 @@ window.SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsIn
     return;
   }
 
-  // Not an OAuth return — nothing to do
-  if (!hash.includes('access_token')) {
-    // Still handle signin=1 query param
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('signin') === '1') {
-      window.addEventListener('DOMContentLoaded', () => {
-        setTimeout(() => openAuthModal('Sign in to view your account.'), 500);
-      });
-    }
-    return;
+  // Clean any OAuth hash from URL immediately
+  if (hash.includes('access_token') || hash.includes('error=')) {
+    window.history.replaceState({}, document.title, '/');
   }
 
-  // OAuth return — clean URL immediately so hash routing doesn't misparse it
-  window.history.replaceState({}, document.title, '/');
-
-  // Read pending vote from localStorage
-  let pending = null;
-  try { pending = JSON.parse(localStorage.getItem('sd_pending_vote')); } catch {}
-
-  if (!pending?.clinic_id || !pending?.vote) return;
-  localStorage.removeItem('sd_pending_vote');
-
-  // Wait for Supabase to process session from hash, then submit directly
-  const trySubmit = async (attempts) => {
-    try {
-      const { data: { session } } = await _sb.auth.getSession();
-      if (session?.access_token) {
-        await fetch('/api/submit-visit', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            clinic_id:    String(pending.clinic_id),
-            would_return: pending.vote,
-            access_token: session.access_token
-          })
-        });
-        // Store result so modal can show confirmation when it opens
-        sessionStorage.setItem('sd_vote_confirmed', pending.clinic_id);
-      } else if (attempts > 0) {
-        setTimeout(() => trySubmit(attempts - 1), 500);
-      }
-    } catch { /* non-fatal */ }
-  };
-
-  setTimeout(() => trySubmit(12), 400);
+  // signin=1 query param from account page redirect
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('signin') === '1') {
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => openAuthModal('Sign in to view your account.'), 500);
+    });
+  }
 })();
 
 // ─── DATA ────────────────────────────────────────────────────
@@ -4057,6 +4024,22 @@ async function initAuth() {
       setUser(session.user);
       closeAuthModal();
       mergeLocalShortlistToSupabase();
+
+      // Submit any pending vote from before OAuth redirect
+      let pending = null;
+      try { pending = JSON.parse(localStorage.getItem('sd_pending_vote')); } catch {}
+      if (pending?.clinic_id && pending?.vote) {
+        localStorage.removeItem('sd_pending_vote');
+        fetch('/api/submit-visit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            clinic_id:    String(pending.clinic_id),
+            would_return: pending.vote,
+            access_token: session.access_token
+          })
+        }).catch(() => {});
+      }
     } else if (event === 'SIGNED_OUT') {
       setLoggedOut();
     }
