@@ -4570,15 +4570,6 @@ document.addEventListener('DOMContentLoaded', function() {
 })();
 
 window.openVisitModal = async function(clinicId, clinicName) {
-  if (!_currentUser) {
-    // Store pending visit — survives OAuth page redirect via sessionStorage
-    _pendingVisitId   = String(clinicId);
-    _pendingVisitName = clinicName || '';
-    sessionStorage.setItem('sd_pending_visit_id',   _pendingVisitId);
-    sessionStorage.setItem('sd_pending_visit_name', _pendingVisitName);
-    openAuthModal('Sign in to share your experience.');
-    return;
-  }
   _visitClinicId  = String(clinicId);
   _visitReturnVal = null;
 
@@ -4669,13 +4660,13 @@ async function submitVisit() {
   }
 }
 
-// Popup-based Google sign-in — no page redirect
+// Google sign-in — redirects back to current page, pending vote in sessionStorage survives
 async function handleGoogleSignInPopup() {
   const { error } = await _sb.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      queryParams: { prompt: 'select_account' },
-      skipBrowserRedirect: true
+      redirectTo: window.location.href,
+      queryParams: { prompt: 'select_account' }
     }
   });
   if (error) document.getElementById('visitError').textContent = error.message;

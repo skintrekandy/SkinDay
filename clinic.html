@@ -468,11 +468,12 @@
     /* ── VISIT BANNER (above contact) ── */
     .visit-banner {
       display: flex; align-items: center; justify-content: space-between;
-      gap: 1rem; padding: 0.9rem 1.75rem;
-      border-bottom: 1px solid var(--border);
+      gap: 1rem; padding: 1rem 1.75rem;
+      background: rgba(200,114,90,0.06);
+      border-bottom: 1px solid rgba(200,114,90,0.15);
       cursor: pointer; transition: background 0.15s;
     }
-    .visit-banner:hover { background: rgba(200,114,90,0.1); }
+    .visit-banner:hover { background: rgba(200,114,90,0.12); }
     .visit-banner-copy {
       font-size: 0.85rem; color: var(--muted);
       display: flex; align-items: center; gap: 0.5rem;
@@ -1271,11 +1272,6 @@ async function handleEmailAuth() {
 
 // ── Visit modal ──
 window.openVisitModal = async function openVisitModal() {
-  if (!_currentUser) {
-    const { data: { session } } = await _sb.auth.getSession();
-    if (session?.user) _currentUser = session.user;
-  }
-
   _visitReturnVal = null;
   const nameEl = document.querySelector('.profile-name');
   document.getElementById('visitModalClinicName').textContent = nameEl ? nameEl.textContent.trim() : '';
@@ -1364,7 +1360,10 @@ async function submitVisit() {
 async function handleGoogleSignInPopup() {
   const { error } = await _sb.auth.signInWithOAuth({
     provider: 'google',
-    options: { queryParams: { prompt: 'select_account' }, skipBrowserRedirect: true }
+    options: {
+      redirectTo: window.location.href,
+      queryParams: { prompt: 'select_account' }
+    }
   });
   if (error) document.getElementById('visitError').textContent = error.message;
 }
