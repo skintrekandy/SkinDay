@@ -4020,6 +4020,7 @@ async function initAuth() {
 
   // Listen for subsequent auth changes (email sign-in, sign-out)
   _sb.auth.onAuthStateChange((event, session) => {
+    console.log('AUTH EVENT', event, session?.user?.email);
     if (event === 'SIGNED_IN' && session?.user) {
       setUser(session.user);
       closeAuthModal();
