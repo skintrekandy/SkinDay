@@ -3329,15 +3329,14 @@ function renderPageCards(clinicsData, append) {
           <div class="price-label">${toxinLabel} — per unit</div>
           ${priceHTML}
         </div>
-        <div class="card-visit-row" onclick="openVisitModal('${c.id}', ${JSON.stringify(c.name)})">
+        <div class="card-visit-row" onclick="openVisitModal('${c.id}', '${(c.name||'').replace(/'/g, "\\'").replace(/"/g, '&quot;')}')">
           <span class="card-visit-prompt">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
             Been here? Would you go back?
           </span>
           <span class="card-visit-signal" id="visit-signal-${c.id}"></span>
         </div>
         <div class="card-footer">
-          <a href="#" class="view-link" onclick="event.preventDefault(); openClinicModal(${c.id})">View Profile →</a>
+          <a href="#" class="view-link" onclick="event.preventDefault(); openClinicModal('${c.id}')">View Profile →</a>
           <div style="display:flex;gap:0.4rem;align-items:center;">
             ${(() => {
               if (!c.claimed) return '';
@@ -4130,7 +4129,7 @@ async function getShortlistIds() {
   return getShortlist();
 }
 
-async function toggleSave(id, e) {
+window.toggleSave = async function toggleSave(id, e) {
   if (e) { e.preventDefault(); e.stopPropagation(); }
   const sid = String(id);
 
@@ -4274,7 +4273,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // ─── COMPARE LOGIC ──────────────────────────────────────────
 
-function toggleCompare(id) {
+window.toggleCompare = function toggleCompare(id) {
   // Normalize: numeric string ids to int, demo string ids stay as string
   const nid = (typeof id === 'string' && !isNaN(id)) ? parseInt(id) : id;
   id = nid;
@@ -4769,7 +4768,7 @@ function cmRenderStars(rating, container) {
   }
 }
 
-async function openClinicModal(clinicId) {
+window.openClinicModal = async function openClinicModal(clinicId) {
   let clinic = findClinic(clinicId);
   if (!clinic) return;
 
