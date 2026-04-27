@@ -916,6 +916,106 @@
       border-top: 1px solid var(--border);
       display: flex; align-items: center; justify-content: space-between;
     }
+
+    /* ── VISIT SIGNAL ROW ── */
+    .card-visit-row {
+      padding: 0.6rem 1.4rem;
+      border-top: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 0.75rem; cursor: pointer;
+      transition: background 0.15s;
+    }
+    .card-visit-row:hover { background: var(--warm); }
+    .card-visit-prompt {
+      font-size: 0.78rem; color: var(--muted);
+      display: flex; align-items: center; gap: 0.4rem;
+    }
+    .card-visit-prompt svg { flex-shrink: 0; color: var(--dim); }
+    .card-visit-signal {
+      font-size: 0.75rem; color: var(--muted);
+      white-space: nowrap; flex-shrink: 0;
+    }
+    .card-visit-signal strong { color: var(--green); font-weight: 600; }
+
+    /* ── VISIT MODAL ── */
+    .visit-modal-overlay {
+      display: none; position: fixed; inset: 0; z-index: 400;
+      background: rgba(28,23,20,0.7); backdrop-filter: blur(6px);
+      align-items: center; justify-content: center; padding: 1rem;
+    }
+    .visit-modal-overlay.open { display: flex; }
+    .visit-modal {
+      background: var(--cream); border-radius: 16px;
+      width: 100%; max-width: 400px; padding: 2rem;
+      position: relative; animation: fadeUp 0.25s ease;
+    }
+    .visit-modal-close {
+      position: absolute; top: 1rem; right: 1rem;
+      background: none; border: none; font-size: 1.2rem;
+      color: var(--muted); cursor: pointer; transition: color 0.2s;
+    }
+    .visit-modal-close:hover { color: var(--deep); }
+    .visit-modal-logo {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.3rem; font-weight: 400; color: var(--deep);
+      margin-bottom: 0.2rem;
+    }
+    .visit-modal-logo span { color: var(--gold); }
+    .visit-modal-clinic {
+      font-size: 0.8rem; color: var(--muted); margin-bottom: 1.4rem;
+    }
+    .visit-modal-label {
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 0.5rem;
+    }
+    .visit-modal-select, .visit-modal-month {
+      width: 100%; padding: 0.65rem 0.85rem;
+      border: 1.5px solid var(--border); border-radius: 8px;
+      font-family: 'DM Sans', sans-serif; font-size: 0.88rem;
+      color: var(--deep); background: #fff; outline: none;
+      transition: border-color 0.2s; margin-bottom: 1rem;
+      box-sizing: border-box; appearance: none;
+    }
+    .visit-modal-select:focus, .visit-modal-month:focus { border-color: var(--gold); }
+    .visit-return-options {
+      display: flex; gap: 0.6rem; margin-bottom: 1.4rem;
+    }
+    .visit-return-btn {
+      flex: 1; padding: 0.65rem 0.5rem;
+      border: 1.5px solid var(--border); border-radius: 8px;
+      background: #fff; font-family: 'DM Sans', sans-serif;
+      font-size: 0.85rem; font-weight: 500; color: var(--muted);
+      cursor: pointer; transition: all 0.15s; text-align: center;
+    }
+    .visit-return-btn:hover { border-color: var(--deep); color: var(--deep); }
+    .visit-return-btn.selected-yes { border-color: var(--green); background: rgba(61,122,85,0.08); color: var(--green); }
+    .visit-return-btn.selected-no  { border-color: var(--rose);  background: rgba(200,114,90,0.08);  color: var(--rose); }
+    .visit-return-btn.selected-unsure { border-color: var(--gold); background: rgba(201,169,110,0.08); color: #9a7a3a; }
+    .visit-submit-btn {
+      width: 100%; padding: 0.75rem; background: var(--deep); color: var(--cream);
+      border: none; border-radius: 8px; font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem; font-weight: 500; cursor: pointer;
+      transition: opacity 0.2s; margin-top: 0.25rem;
+    }
+    .visit-submit-btn:hover { opacity: 0.85; }
+    .visit-submit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .visit-modal-anon {
+      font-size: 0.72rem; color: var(--dim); text-align: center;
+      margin-top: 0.85rem; line-height: 1.5;
+    }
+    .visit-modal-success {
+      text-align: center; padding: 1rem 0 0.5rem;
+    }
+    .visit-modal-success .success-icon {
+      font-size: 2rem; margin-bottom: 0.75rem;
+    }
+    .visit-modal-success p {
+      font-size: 0.88rem; color: var(--muted); line-height: 1.6;
+    }
+    .visit-error {
+      font-size: 0.78rem; color: var(--rose); text-align: center;
+      margin-top: 0.5rem; min-height: 1.1rem;
+    }
     .view-link {
       font-size: 0.8rem; font-weight: 500;
       color: var(--rose); text-decoration: none;
@@ -3245,6 +3345,13 @@ function renderPageCards(clinicsData, append) {
           <div class="price-label">${toxinLabel} — per unit</div>
           ${priceHTML}
         </div>
+        <div class="card-visit-row" onclick="openVisitModal('${c.id}', ${JSON.stringify(c.name)})">
+          <span class="card-visit-prompt">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            Been here? Share your experience
+          </span>
+          <span class="card-visit-signal" id="visit-signal-${c.id}"></span>
+        </div>
         <div class="card-footer">
           <a href="#" class="view-link" onclick="event.preventDefault(); openClinicModal(${c.id})">View Profile →</a>
           <div style="display:flex;gap:0.4rem;align-items:center;">
@@ -3272,6 +3379,10 @@ function renderPageCards(clinicsData, append) {
 
   syncCompareButtons();
   syncSaveButtons().catch(() => {});
+
+  // Fetch visit signals for rendered clinics (non-blocking)
+  const renderedIds = clinicsData.map(c => String(c.id));
+  fetchVisitSignals(renderedIds).catch(() => {});
 }
 
 // ─── FETCH PAGE ────────────────────────────────────────────────
@@ -4064,6 +4175,9 @@ async function toggleSave(id, e) {
 
   await syncSaveButtons();
   await updateShortlistBadge();
+
+  // Softly prompt about visit experience after saving
+  setTimeout(maybeShowVisitPrompt, 1200);
 }
 
 async function syncSaveButtons() {
@@ -5600,7 +5714,246 @@ function toggleMapDrawer() {}
 function activatePinById(id) { onCardClick(String(id)); }
 function openMapClinicModal(id) { openMapModal(String(id)); }
 
+// ─── VISIT MODAL ────────────────────────────────────────────────
+
+let _visitClinicId   = null;
+let _visitReturnVal  = null;
+
+// Set max month to current month so users can't pick the future
+(function setMaxMonth() {
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm   = String(now.getMonth() + 1).padStart(2, '0');
+  const el   = document.getElementById('visitMonth');
+  if (el) el.max = `${yyyy}-${mm}`;
+})();
+
+function openVisitModal(clinicId, clinicName) {
+  if (!_currentUser) {
+    openAuthModal('Sign in to share your experience.');
+    return;
+  }
+  _visitClinicId  = String(clinicId);
+  _visitReturnVal = null;
+
+  document.getElementById('visitModalClinicName').textContent = clinicName;
+  document.getElementById('visitMonth').value       = '';
+  document.getElementById('visitTreatment').value   = '';
+  document.getElementById('visitError').textContent = '';
+  document.getElementById('visitSubmitBtn').disabled = true;
+  document.getElementById('visitModalForm').style.display    = '';
+  document.getElementById('visitModalSuccess').style.display = 'none';
+
+  // Reset return buttons
+  ['vrYes','vrNo','vrUnsure'].forEach(id => {
+    document.getElementById(id).className = 'visit-return-btn';
+  });
+
+  document.getElementById('visitModalOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeVisitModal() {
+  document.getElementById('visitModalOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+document.getElementById('visitModalOverlay')?.addEventListener('click', e => {
+  if (e.target === document.getElementById('visitModalOverlay')) closeVisitModal();
+});
+
+function selectReturn(val) {
+  _visitReturnVal = val;
+  const map = { yes: 'selected-yes', no: 'selected-no', unsure: 'selected-unsure' };
+  document.getElementById('vrYes').className    = 'visit-return-btn' + (val === 'yes'    ? ' selected-yes'    : '');
+  document.getElementById('vrNo').className     = 'visit-return-btn' + (val === 'no'     ? ' selected-no'     : '');
+  document.getElementById('vrUnsure').className = 'visit-return-btn' + (val === 'unsure' ? ' selected-unsure' : '');
+  document.getElementById('visitSubmitBtn').disabled = false;
+}
+
+async function submitVisit() {
+  if (!_visitReturnVal || !_visitClinicId) return;
+
+  const btn = document.getElementById('visitSubmitBtn');
+  btn.disabled = true;
+  btn.textContent = 'Submitting…';
+  document.getElementById('visitError').textContent = '';
+
+  const session = (await _sb.auth.getSession()).data.session;
+  if (!session?.access_token) {
+    document.getElementById('visitError').textContent = 'Session expired — please sign in again.';
+    btn.disabled = false;
+    btn.textContent = 'Submit';
+    return;
+  }
+
+  const monthVal     = document.getElementById('visitMonth').value || null;
+  const treatmentVal = document.getElementById('visitTreatment').value || null;
+
+  try {
+    const res = await fetch('/api/submit-visit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        clinic_id:      _visitClinicId,
+        visit_month:    monthVal,
+        treatment_type: treatmentVal || undefined,
+        would_return:   _visitReturnVal,
+        access_token:   session.access_token
+      })
+    });
+
+    if (res.status === 409) {
+      document.getElementById('visitError').textContent = 'You've already shared your experience for this clinic.';
+      btn.disabled = false;
+      btn.textContent = 'Submit';
+      return;
+    }
+
+    if (!res.ok) throw new Error('Server error');
+
+    // Show success
+    document.getElementById('visitModalForm').style.display    = 'none';
+    document.getElementById('visitModalSuccess').style.display = '';
+
+    // Close after 2.5 seconds
+    setTimeout(closeVisitModal, 2500);
+
+  } catch (err) {
+    document.getElementById('visitError').textContent = 'Something went wrong. Please try again.';
+    btn.disabled = false;
+    btn.textContent = 'Submit';
+  }
+}
+
+// ─── VISIT SIGNALS ──────────────────────────────────────────────
+// Fetch signals for all visible clinic IDs and populate signal spans.
+// Called after cards render. Fires quietly — no errors shown to user.
+
+async function fetchVisitSignals(clinicIds) {
+  if (!clinicIds || clinicIds.length === 0) return;
+
+  // Batch: fetch signals for up to 50 clinics in parallel
+  const chunks = [];
+  for (let i = 0; i < clinicIds.length; i += 50) {
+    chunks.push(clinicIds.slice(i, i + 50));
+  }
+
+  for (const chunk of chunks) {
+    await Promise.allSettled(
+      chunk.map(async id => {
+        try {
+          const res = await fetch(`/api/get-visit-signal?clinic_id=${encodeURIComponent(id)}`);
+          if (!res.ok) return;
+          const { signal } = await res.json();
+          if (!signal) return;
+
+          const el = document.getElementById(`visit-signal-${id}`);
+          if (!el) return;
+
+          // Tiered display: 6–20 → signal only, 20+ → same (benchmark removed per scope)
+          el.innerHTML = `<strong>${signal.pct}%</strong> would return &middot; ${signal.count} experiences`;
+        } catch { /* non-fatal */ }
+      })
+    );
+  }
+}
+
+// ─── SHORTLIST VISIT PROMPT ─────────────────────────────────────
+// After user saves/compares clinics, softly prompt if they've been to any.
+// Shown once per session, only when logged in and shortlist has 2+ clinics.
+
+let _visitPromptShown = false;
+
+function maybeShowVisitPrompt() {
+  if (_visitPromptShown) return;
+  if (!_currentUser) return;
+  const shortlist = JSON.parse(localStorage.getItem('sd_shortlist') || '[]');
+  if (shortlist.length < 2) return;
+
+  _visitPromptShown = true;
+
+  // Find first shortlisted clinic name for the prompt
+  const firstId = shortlist[0];
+  const firstCard = document.querySelector(`.clinic-card[data-id="${firstId}"] .clinic-name`);
+  const hint = firstCard ? `Have you visited ${firstCard.textContent.trim()}?` : 'Have you visited any of these clinics?';
+
+  // Show as a dismissable toast-style prompt
+  const toast = document.createElement('div');
+  toast.id = 'visitPromptToast';
+  toast.style.cssText = `
+    position:fixed; bottom:80px; left:50%; transform:translateX(-50%);
+    background:var(--deep); color:var(--cream);
+    padding:0.75rem 1.2rem; border-radius:10px;
+    font-family:'DM Sans',sans-serif; font-size:0.82rem;
+    display:flex; align-items:center; gap:0.75rem;
+    box-shadow:0 4px 20px rgba(28,23,20,0.35);
+    z-index:300; animation:fadeUp 0.3s ease;
+    max-width:90vw;
+  `;
+  toast.innerHTML = `
+    <span>${hint}</span>
+    <button onclick="closeVisitModal(); document.getElementById('visitPromptToast')?.remove();" 
+      style="background:var(--rose);border:none;color:#fff;padding:0.3rem 0.75rem;border-radius:6px;
+      font-family:'DM Sans',sans-serif;font-size:0.78rem;font-weight:500;cursor:pointer;white-space:nowrap;"
+      onclick="openVisitModal('${firstId}', ''); document.getElementById('visitPromptToast')?.remove();">
+      Share experience →
+    </button>
+    <button onclick="document.getElementById('visitPromptToast')?.remove();"
+      style="background:none;border:none;color:var(--dim);font-size:1rem;cursor:pointer;padding:0 0.2rem;">✕</button>
+  `;
+  document.body.appendChild(toast);
+
+  // Auto-dismiss after 6 seconds
+  setTimeout(() => toast?.remove(), 6000);
+}
+
 </script>
+<!-- VISIT MODAL -->
+<div class="visit-modal-overlay" id="visitModalOverlay">
+  <div class="visit-modal" id="visitModal">
+    <button class="visit-modal-close" onclick="closeVisitModal()">✕</button>
+
+    <!-- Step 1 & 2 combined (single screen) -->
+    <div id="visitModalForm">
+      <div class="visit-modal-logo">Skin<span>Day</span></div>
+      <div class="visit-modal-clinic" id="visitModalClinicName"></div>
+
+      <div class="visit-modal-label">Approximate visit date</div>
+      <input class="visit-modal-month" type="month" id="visitMonth"
+        max="" placeholder="Select month" />
+
+      <div class="visit-modal-label">Treatment</div>
+      <select class="visit-modal-select" id="visitTreatment">
+        <option value="">Select treatment…</option>
+        <option value="Botox">Botox / Toxin</option>
+        <option value="Filler">Filler</option>
+        <option value="Laser">Laser</option>
+        <option value="Other">Other</option>
+      </select>
+
+      <div class="visit-modal-label">Would you go back to this clinic?</div>
+      <div class="visit-return-options">
+        <button class="visit-return-btn" id="vrYes"    onclick="selectReturn('yes')">👍 Yes</button>
+        <button class="visit-return-btn" id="vrNo"     onclick="selectReturn('no')">👎 No</button>
+        <button class="visit-return-btn" id="vrUnsure" onclick="selectReturn('unsure')">🤔 Unsure</button>
+      </div>
+
+      <button class="visit-submit-btn" id="visitSubmitBtn" onclick="submitVisit()" disabled>Submit</button>
+      <div class="visit-error" id="visitError"></div>
+      <div class="visit-modal-anon">Your response is anonymous and never tied to your name publicly.</div>
+    </div>
+
+    <!-- Success state -->
+    <div id="visitModalSuccess" style="display:none;">
+      <div class="visit-modal-success">
+        <div class="success-icon">✓</div>
+        <p>Thanks for sharing your experience.<br>You may hear from us in a few days.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- AUTH MODAL -->
 <div class="auth-modal-overlay" id="authModalOverlay">
   <div class="auth-modal">
