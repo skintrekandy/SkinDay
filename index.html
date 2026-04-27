@@ -4753,11 +4753,14 @@ async function fetchVisitSignals(clinicIds) {
       try {
         const res = await fetch(`/api/get-visit-signal?clinic_id=${encodeURIComponent(id)}`);
         if (!res.ok) return;
-        const { signal } = await res.json();
-        if (!signal) return;
+        const data = await res.json();
         const el = document.getElementById(`visit-signal-${id}`);
         if (!el) return;
-        el.innerHTML = `<strong>${signal.pct}%</strong> would return &middot; ${signal.count} experiences`;
+        if (data.signal) {
+          el.innerHTML = `<strong>${data.signal.pct}%</strong> would return &middot; ${data.signal.count} experiences`;
+        } else if (data.ghost) {
+          el.innerHTML = `<span style="color:var(--dim);font-style:italic;font-size:0.7rem;">Be the first to share</span>`;
+        }
       } catch { /* non-fatal */ }
     }));
   }
@@ -5169,9 +5172,12 @@ window.openClinicModal = async function openClinicModal(clinicId) {
   fetch(`/api/get-visit-signal?clinic_id=${encodeURIComponent(_voteClinicId)}`)
     .then(r => r.ok ? r.json() : null)
     .then(data => {
+      const sigEl = document.getElementById('cm-vote-signal');
+      if (!sigEl) return;
       if (data?.signal) {
-        document.getElementById('cm-vote-signal').innerHTML =
-          `<strong>${data.signal.pct}%</strong> would return &middot; ${data.signal.count} experiences`;
+        sigEl.innerHTML = `<strong>${data.signal.pct}%</strong> would return &middot; ${data.signal.count} experiences`;
+      } else if (data?.ghost) {
+        sigEl.innerHTML = `<span style="font-style:italic;color:var(--dim);">No responses yet — be the first</span>`;
       }
     }).catch(() => {});
 
