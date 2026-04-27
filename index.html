@@ -3974,13 +3974,15 @@ async function initAuth() {
       setUser(session.user);
       closeAuthModal();
       mergeLocalShortlistToSupabase();
-      // If user signed in via the visit row, reopen the visit modal
-      if (_pendingVisitId) {
-        const id   = _pendingVisitId;
-        const name = _pendingVisitName;
-        _pendingVisitId   = null;
-        _pendingVisitName = null;
-        setTimeout(() => window.openVisitModal(id, name), 300);
+      // Restore pending visit from memory or sessionStorage (survives OAuth redirect)
+      const id   = _pendingVisitId   || sessionStorage.getItem('sd_pending_visit_id');
+      const name = _pendingVisitName || sessionStorage.getItem('sd_pending_visit_name') || '';
+      sessionStorage.removeItem('sd_pending_visit_id');
+      sessionStorage.removeItem('sd_pending_visit_name');
+      _pendingVisitId   = null;
+      _pendingVisitName = null;
+      if (id) {
+        setTimeout(() => window.openVisitModal(id, name), 400);
       }
     } else if (event === 'SIGNED_OUT') {
       setLoggedOut();
@@ -4539,24 +4541,37 @@ let _visitReturnVal = null;
 let _pendingVisitId   = null; // set when auth modal opened from visit row
 let _pendingVisitName = null;
 
-// Populate year dropdown: current year back 3 years
+// Populate year dropdown after DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+  const sel = document.getElementById('visitYearSel');
+  if (!sel) return;
+  const now = new Date().getFullYear();
+  for (let y = now; y >= now - 3; y--) {
+    const opt = document.createElement('option');
+    opt.value = String(y); opt.textContent = String(y);
+    sel.appendChild(opt);
+  }
+});
+
+// Also populate immediately in case DOMContentLoaded already fired
 (function populateYears() {
   const sel = document.getElementById('visitYearSel');
   if (!sel) return;
   const now = new Date().getFullYear();
   for (let y = now; y >= now - 3; y--) {
     const opt = document.createElement('option');
-    opt.value = String(y);
-    opt.textContent = String(y);
+    opt.value = String(y); opt.textContent = String(y);
     sel.appendChild(opt);
   }
 })();
 
 window.openVisitModal = async function(clinicId, clinicName) {
   if (!_currentUser) {
-    // Store pending visit so auth callback can reopen
+    // Store pending visit — survives OAuth page redirect via sessionStorage
     _pendingVisitId   = String(clinicId);
     _pendingVisitName = clinicName || '';
+    sessionStorage.setItem('sd_pending_visit_id',   _pendingVisitId);
+    sessionStorage.setItem('sd_pending_visit_name', _pendingVisitName);
     openAuthModal('Sign in to share your experience.');
     return;
   }

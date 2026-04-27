@@ -922,10 +922,9 @@ function renderClinic(clinic) {
     <div class="card animate animate-delay-2">
       <div class="visit-banner" onclick="openVisitModal()">
         <span class="visit-banner-copy">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-          Visited this clinic? Would you go back?
+          <span style="display:block;font-size:0.68rem;color:var(--muted);font-weight:400;">Been here?</span>
+          <span style="display:block;font-size:0.8rem;color:var(--rose);font-weight:500;">Would you go back →</span>
         </span>
-        <span class="visit-banner-cta">Share →</span>
       </div>
       <div class="card-section">
         <div class="section-label">Contact</div>
@@ -1088,36 +1087,54 @@ async function initFromDB() {
   <div class="visit-modal">
     <button class="visit-modal-close" onclick="closeVisitModal()">✕</button>
     <div id="visitModalForm">
-      <div class="visit-modal-logo">Skin<span>Day</span></div>
       <div class="visit-modal-clinic" id="visitModalClinicName"></div>
+      <div class="visit-modal-label" style="margin-bottom:1.1rem;">Would you go back to this clinic?</div>
 
-      <div class="visit-modal-label">Approximate visit date</div>
-      <input class="visit-modal-month" type="month" id="visitMonth" placeholder="Select month" />
-
-      <div class="visit-modal-label">Treatment</div>
-      <select class="visit-modal-select" id="visitTreatment">
-        <option value="">Select treatment…</option>
-        <option value="Botox">Botox / Toxin</option>
-        <option value="Filler">Filler</option>
-        <option value="Laser">Laser</option>
-        <option value="Other">Other</option>
-      </select>
-
-      <div class="visit-modal-label">Would you go back to this clinic?</div>
       <div class="visit-return-options">
-        <button class="visit-return-btn" id="vrYes"    onclick="selectReturn('yes')">👍 Yes</button>
-        <button class="visit-return-btn" id="vrNo"     onclick="selectReturn('no')">👎 No</button>
-        <button class="visit-return-btn" id="vrUnsure" onclick="selectReturn('unsure')">🤔 Unsure</button>
+        <button class="visit-return-btn" id="vrYes" onclick="selectReturn('yes')">👍 Would go back</button>
+        <button class="visit-return-btn" id="vrNo"  onclick="selectReturn('no')">👎 Wouldn't go back</button>
       </div>
 
-      <button class="visit-submit-btn" id="visitSubmitBtn" onclick="submitVisit()" disabled>Submit</button>
+      <div id="visitDetails" style="display:none;margin-top:1rem;">
+        <div class="visit-modal-label">Approximate visit date</div>
+        <div style="display:flex;gap:0.5rem;margin-bottom:1rem;">
+          <select class="visit-modal-select" id="visitMonthSel" style="margin-bottom:0;flex:1;">
+            <option value="">Month</option>
+            <option value="01">January</option>
+            <option value="02">February</option>
+            <option value="03">March</option>
+            <option value="04">April</option>
+            <option value="05">May</option>
+            <option value="06">June</option>
+            <option value="07">July</option>
+            <option value="08">August</option>
+            <option value="09">September</option>
+            <option value="10">October</option>
+            <option value="11">November</option>
+            <option value="12">December</option>
+          </select>
+          <select class="visit-modal-select" id="visitYearSel" style="margin-bottom:0;flex:1;">
+            <option value="">Year</option>
+          </select>
+        </div>
+        <div class="visit-modal-label">Treatment</div>
+        <select class="visit-modal-select" id="visitTreatment">
+          <option value="">Select treatment…</option>
+          <option value="Botox">Botox / Toxin</option>
+          <option value="Filler">Filler</option>
+          <option value="Laser">Laser</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+
+      <button class="visit-submit-btn" id="visitSubmitBtn" onclick="submitVisit()" disabled>Submit response</button>
       <div class="visit-error" id="visitError"></div>
-      <div class="visit-modal-anon">Your response is anonymous and never tied to your name publicly.</div>
+      <div class="visit-modal-anon">Anonymous. Never shown publicly.</div>
     </div>
     <div id="visitModalSuccess" style="display:none;">
       <div class="visit-modal-success">
         <div class="success-icon">✓</div>
-        <p>Thanks for sharing your experience.<br>You may hear from us in a few days.</p>
+        <p>Thanks for sharing.<br>You may hear from us in a few days.</p>
       </div>
     </div>
   </div>
@@ -1240,6 +1257,19 @@ async function handleEmailAuth() {
 }
 
 // ── Visit modal ──
+
+// Populate year dropdown
+(function populateYears() {
+  const sel = document.getElementById('visitYearSel');
+  if (!sel) return;
+  const now = new Date().getFullYear();
+  for (let y = now; y >= now - 3; y--) {
+    const opt = document.createElement('option');
+    opt.value = String(y); opt.textContent = String(y);
+    sel.appendChild(opt);
+  }
+})();
+
 window.openVisitModal = async function openVisitModal() {
   if (!_currentUser) {
     const { data: { session } } = await _sb.auth.getSession();
@@ -1253,19 +1283,20 @@ window.openVisitModal = async function openVisitModal() {
 
   _visitReturnVal = null;
 
-  // Populate clinic name from rendered page
   const nameEl = document.querySelector('.profile-name');
   const clinicName = nameEl ? nameEl.textContent.trim() : '';
   document.getElementById('visitModalClinicName').textContent = clinicName;
 
-  document.getElementById('visitMonth').value        = '';
+  document.getElementById('visitMonthSel').value     = '';
+  document.getElementById('visitYearSel').value      = '';
   document.getElementById('visitTreatment').value    = '';
   document.getElementById('visitError').textContent  = '';
+  document.getElementById('visitDetails').style.display     = 'none';
   document.getElementById('visitSubmitBtn').disabled = true;
   document.getElementById('visitModalForm').style.display    = '';
   document.getElementById('visitModalSuccess').style.display = 'none';
 
-  ['vrYes','vrNo','vrUnsure'].forEach(id => {
+  ['vrYes','vrNo'].forEach(id => {
     document.getElementById(id).className = 'visit-return-btn';
   });
 
@@ -1284,31 +1315,34 @@ document.getElementById('visitModalOverlay')?.addEventListener('click', e => {
 
 function selectReturn(val) {
   _visitReturnVal = val;
-  document.getElementById('vrYes').className    = 'visit-return-btn' + (val === 'yes'    ? ' selected-yes'    : '');
-  document.getElementById('vrNo').className     = 'visit-return-btn' + (val === 'no'     ? ' selected-no'     : '');
-  document.getElementById('vrUnsure').className = 'visit-return-btn' + (val === 'unsure' ? ' selected-unsure' : '');
+  document.getElementById('vrYes').className = 'visit-return-btn' + (val === 'yes' ? ' selected-yes' : '');
+  document.getElementById('vrNo').className  = 'visit-return-btn' + (val === 'no'  ? ' selected-no'  : '');
   document.getElementById('visitSubmitBtn').disabled = false;
+  document.getElementById('visitDetails').style.display = '';
 }
 
 async function submitVisit() {
   if (!_visitReturnVal) return;
 
-  // Get clinic_id from the URL slug → match against loaded clinic
-  // clinic id is stored in a data attribute we'll read from the page
   const clinicId = document.body.dataset.clinicId;
   if (!clinicId) return;
 
   const btn = document.getElementById('visitSubmitBtn');
   btn.disabled = true;
-  btn.textContent = 'Submitting…';
+  btn.textContent = 'Submitting...';
   document.getElementById('visitError').textContent = '';
 
   const session = (await _sb.auth.getSession()).data.session;
   if (!session?.access_token) {
-    document.getElementById('visitError').textContent = 'Session expired — please sign in again.';
-    btn.disabled = false; btn.textContent = 'Submit';
+    document.getElementById('visitError').textContent = 'Session expired - please sign in again.';
+    btn.disabled = false; btn.textContent = 'Submit response';
     return;
   }
+
+  const month = document.getElementById('visitMonthSel').value;
+  const year  = document.getElementById('visitYearSel').value;
+  const monthVal     = (month && year) ? `${year}-${month}` : null;
+  const treatmentVal = document.getElementById('visitTreatment').value || null;
 
   try {
     const res = await fetch('/api/submit-visit', {
@@ -1316,8 +1350,8 @@ async function submitVisit() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         clinic_id:      clinicId,
-        visit_month:    document.getElementById('visitMonth').value || null,
-        treatment_type: document.getElementById('visitTreatment').value || undefined,
+        visit_month:    monthVal,
+        treatment_type: treatmentVal || undefined,
         would_return:   _visitReturnVal,
         access_token:   session.access_token
       })
@@ -1325,7 +1359,7 @@ async function submitVisit() {
 
     if (res.status === 409) {
       document.getElementById('visitError').textContent = 'You already shared your experience for this clinic.';
-      btn.disabled = false; btn.textContent = 'Submit';
+      btn.disabled = false; btn.textContent = 'Submit response';
       return;
     }
     if (!res.ok) throw new Error('Server error');
@@ -1336,7 +1370,7 @@ async function submitVisit() {
 
   } catch {
     document.getElementById('visitError').textContent = 'Something went wrong. Please try again.';
-    btn.disabled = false; btn.textContent = 'Submit';
+    btn.disabled = false; btn.textContent = 'Submit response';
   }
 }
 
