@@ -53,7 +53,7 @@ exports.handler = async (event) => {
   if (count < 6) {
     return {
       statusCode: 200,
-      headers: { 'Cache-Control': 'public, max-age=3600' },
+      headers: { 'Cache-Control': 'public, max-age=60' },
       body: JSON.stringify({ signal: null, ghost: true })
     };
   }
@@ -68,7 +68,7 @@ exports.handler = async (event) => {
   if (scored === 0) {
     return {
       statusCode: 200,
-      headers: { 'Cache-Control': 'public, max-age=3600' },
+      headers: { 'Cache-Control': 'public, max-age=60' },
       body: JSON.stringify({ signal: null })
     };
   }
@@ -77,7 +77,7 @@ exports.handler = async (event) => {
 
   return {
     statusCode: 200,
-    headers: { 'Cache-Control': 'public, max-age=3600' },
+    headers: { 'Cache-Control': 'public, max-age=60' },
     body: JSON.stringify({ signal: { pct, count } })
   };
 };
