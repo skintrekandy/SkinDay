@@ -49,6 +49,16 @@
   status = 200
 
 [[redirects]]
+  from   = "/api/submit-visit"
+  to     = "/.netlify/functions/submit-visit"
+  status = 200
+
+[[redirects]]
+  from   = "/api/get-visit-signal"
+  to     = "/.netlify/functions/get-visit-signal"
+  status = 200
+
+[[redirects]]
   from   = "/botox-north-york"
   to     = "/botox-north-york.html"
   status = 200
