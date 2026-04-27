@@ -4164,8 +4164,8 @@ async function handleGoogleSignIn() {
   if (error) document.getElementById('authError').textContent = error.message;
 }
 
-// Vote-triggered Google sign-in — returns to index for pending vote processing
-async function handleGoogleSignInPopup() {
+// Vote-triggered Google sign-in — redirects to / so pending vote is processed on return
+window.handleGoogleSignInPopup = async function() {
   const { error } = await _sb.auth.signInWithOAuth({
     provider: 'google',
     options: { redirectTo: window.location.origin + '/', queryParams: { prompt: 'select_account' } }
@@ -4174,7 +4174,7 @@ async function handleGoogleSignInPopup() {
     const el = document.getElementById('visitError') || document.getElementById('authError');
     if (el) el.textContent = error.message;
   }
-}
+};
 
 async function handleEmailAuth() {
   const email = document.getElementById('authEmail').value.trim();
