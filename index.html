@@ -905,16 +905,18 @@
     .card-visit-row {
       padding: 0.45rem 1.4rem;
       border-top: 1px solid rgba(234,226,216,0.5);
+      background: rgba(200,114,90,0.04);
       display: flex; align-items: center; justify-content: space-between;
       gap: 0.75rem; cursor: pointer;
       transition: background 0.15s;
     }
-    .card-visit-row:hover { background: var(--warm); }
+    .card-visit-row:hover { background: rgba(200,114,90,0.09); }
     .card-visit-prompt {
-      font-size: 0.73rem; color: var(--dim);
+      font-size: 0.73rem; color: var(--rose);
+      font-weight: 500;
       display: flex; align-items: center; gap: 0.4rem;
     }
-    .card-visit-prompt svg { flex-shrink: 0; color: var(--dim); opacity: 0.6; }
+    .card-visit-prompt svg { flex-shrink: 0; color: var(--rose); opacity: 0.7; }
     .card-visit-signal {
       font-size: 0.72rem; color: var(--dim);
       white-space: nowrap; flex-shrink: 0;
@@ -3329,14 +3331,12 @@ function renderPageCards(clinicsData, append) {
           <div class="price-label">${toxinLabel} — per unit</div>
           ${priceHTML}
         </div>
-        <div class="card-visit-row" onclick="openVisitModal('${c.id}', '${(c.name||'').replace(/'/g, "\\'").replace(/"/g, '&quot;')}')">
-          <span class="card-visit-prompt">
-            Been here? Would you go back?
-          </span>
+        <div class="card-visit-row" data-cid="${c.id}" data-cname="${(c.name||'').replace(/"/g,'&quot;')}" onclick="window.openVisitModal(this.dataset.cid, this.dataset.cname)">
+          <span class="card-visit-prompt">Been here? Would you go back?</span>
           <span class="card-visit-signal" id="visit-signal-${c.id}"></span>
         </div>
         <div class="card-footer">
-          <a href="#" class="view-link" onclick="event.preventDefault(); openClinicModal('${c.id}')">View Profile →</a>
+          <a href="#" class="view-link" onclick="event.preventDefault(); event.stopPropagation(); window.openClinicModal('${c.id}')">View Profile →</a>
           <div style="display:flex;gap:0.4rem;align-items:center;">
             ${(() => {
               if (!c.claimed) return '';
