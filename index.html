@@ -4712,6 +4712,59 @@ async function handleGoogleSignInPopup() {
   if (error) document.getElementById('visitError').textContent = error.message;
 }
 
+// ── HANDLE OAUTH RETURN ──────────────────────────────────────
+// When Google redirects back with #access_token in URL:
+// 1. Clean the ugly hash from the URL
+// 2. Restore pending vote and reopen clinic modal
+(function handleOAuthReturn() {
+  const hash = window.location.hash;
+  if (!hash.includes('access_token')) return;
+
+  // Clean the URL immediately
+  window.history.replaceState({}, document.title, window.location.pathname);
+
+  // Pending vote stored before redirect
+  const pendingId  = sessionStorage.getItem('sd_pending_visit_id');
+  const pendingVal = sessionStorage.getItem('sd_pending_visit_val');
+
+  if (!pendingId || !pendingVal) return;
+
+  // Wait for Supabase to process the session from hash, then act
+  const tryRestore = async (attempts) => {
+    const { data: { session } } = await _sb.auth.getSession();
+    if (session?.user) {
+      sessionStorage.removeItem('sd_pending_visit_id');
+      sessionStorage.removeItem('sd_pending_visit_val');
+      _visitClinicId  = pendingId;
+      _visitReturnVal = pendingVal;
+      // If clinic modal can be reopened, do it — else submit directly
+      const clinic = findClinic(pendingId);
+      if (clinic) {
+        // Reopen the modal with vote pre-selected
+        await window.openClinicModal(pendingId);
+        // Highlight the voted button
+        const yesBtn = document.getElementById('cm-vote-yes');
+        const noBtn  = document.getElementById('cm-vote-no');
+        if (yesBtn && noBtn) {
+          yesBtn.className = 'cm-vote-btn cm-vote-yes' + (pendingVal === 'yes' ? ' voted' : '');
+          noBtn.className  = 'cm-vote-btn cm-vote-no'  + (pendingVal === 'no'  ? ' voted' : '');
+          yesBtn.disabled = true;
+          noBtn.disabled  = true;
+        }
+        // Submit after short delay so modal is visible
+        setTimeout(() => castModalVoteSubmit(pendingId, pendingVal), 600);
+      } else {
+        // Clinic not yet loaded — submit directly
+        setTimeout(submitVisit, 800);
+      }
+    } else if (attempts > 0) {
+      setTimeout(() => tryRestore(attempts - 1), 400);
+    }
+  };
+
+  setTimeout(() => tryRestore(8), 500);
+})();
+
 async function fetchVisitSignals(clinicIds) {
   if (!clinicIds || clinicIds.length === 0) return;
   const chunks = [];
@@ -5015,7 +5068,7 @@ async function castModalVote(val) {
     if (session?.user) {
       setUser(session.user);
     } else {
-      // Store pending, redirect to Google auth, come back
+      // Store pending in sessionStorage — survives redirect
       sessionStorage.setItem('sd_pending_visit_id',  clinicId);
       sessionStorage.setItem('sd_pending_visit_val', val);
       await _sb.auth.signInWithOAuth({
@@ -5026,9 +5079,15 @@ async function castModalVote(val) {
     }
   }
 
-  // Submit
+  await castModalVoteSubmit(clinicId, val);
+}
+
+// Submit a modal vote — called directly when logged in, or after OAuth return
+async function castModalVoteSubmit(clinicId, val) {
   try {
     const session = (await _sb.auth.getSession()).data.session;
+    if (!session?.access_token) return;
+
     const res = await fetch('/api/submit-visit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -5037,15 +5096,15 @@ async function castModalVote(val) {
 
     document.getElementById('cm-vote-buttons').style.display = 'none';
     if (res.status === 409) {
-      document.getElementById('cm-vote-confirm').textContent      = 'You already shared your experience for this clinic.';
-      document.getElementById('cm-vote-confirm').style.color      = 'var(--muted)';
+      document.getElementById('cm-vote-confirm').textContent = 'You already shared your experience for this clinic.';
+      document.getElementById('cm-vote-confirm').style.color = 'var(--muted)';
     } else if (res.ok) {
-      document.getElementById('cm-vote-confirm').textContent      = '✓ Thanks — your response is recorded';
-      document.getElementById('cm-vote-confirm').style.color      = 'var(--green)';
+      document.getElementById('cm-vote-confirm').textContent = '✓ Thanks — your response is recorded';
+      document.getElementById('cm-vote-confirm').style.color = 'var(--green)';
     } else {
-      document.getElementById('cm-vote-confirm').textContent      = 'Something went wrong. Please try again.';
-      document.getElementById('cm-vote-confirm').style.color      = 'var(--rose)';
-      document.getElementById('cm-vote-buttons').style.display    = '';
+      document.getElementById('cm-vote-confirm').textContent = 'Something went wrong. Please try again.';
+      document.getElementById('cm-vote-confirm').style.color = 'var(--rose)';
+      document.getElementById('cm-vote-buttons').style.display = '';
       document.getElementById('cm-vote-yes').disabled = false;
       document.getElementById('cm-vote-no').disabled  = false;
     }
