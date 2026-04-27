@@ -4033,6 +4033,7 @@ async function initAuth() {
       // Submit any pending vote from before OAuth redirect
       let pending = null;
       try { pending = JSON.parse(localStorage.getItem('sd_pending_vote')); } catch {}
+      console.log('PENDING VOTE', pending);
       if (pending?.clinic_id && pending?.vote) {
         localStorage.removeItem('sd_pending_vote');
         fetch('/api/submit-visit', {
@@ -4043,6 +4044,15 @@ async function initAuth() {
             would_return: pending.vote,
             access_token: session.access_token
           })
+        }).then(res => {
+          if (res.ok || res.status === 409) {
+            // Show toast confirmation
+            const toast = document.createElement('div');
+            toast.style.cssText = 'position:fixed;bottom:2rem;left:50%;transform:translateX(-50%);background:#3D7A55;color:#fff;padding:0.75rem 1.5rem;border-radius:8px;font-family:\'DM Sans\',sans-serif;font-size:0.88rem;font-weight:500;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,0.2);';
+            toast.textContent = res.status === 409 ? 'You already voted for this clinic.' : '✓ Your response was recorded';
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+          }
         }).catch(() => {});
       }
     } else if (event === 'SIGNED_OUT') {
