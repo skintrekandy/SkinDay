@@ -49,12 +49,12 @@ exports.handler = async (event) => {
   const rows = await res.json();
   const count = rows.length;
 
-  // Below threshold — return null, nothing shown publicly
+  // Below threshold — return ghost state so UI can show "be first" prompt
   if (count < 6) {
     return {
       statusCode: 200,
       headers: { 'Cache-Control': 'public, max-age=3600' },
-      body: JSON.stringify({ signal: null })
+      body: JSON.stringify({ signal: null, ghost: true })
     };
   }
 
