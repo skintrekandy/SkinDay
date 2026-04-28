@@ -554,35 +554,8 @@
   <h2 class="section-title reveal">Clinics by province</h2>
   <p class="section-sub reveal">Ontario leads the national count. SkinDay now covers all 13 provinces and territories — coast to coast as of early 2026.</p>
 
-  <div class="province-grid reveal">
-    <div class="province-card" style="--accent:#C8725A;">
-      <div class="province-abbr">ON</div>
-      <div class="province-name">Ontario</div>
-      <div class="province-count">2,788</div>
-      <div class="province-count-label">approved clinics</div>
-      <div class="province-bar-wrap"><div class="province-bar" data-width="100"></div></div>
-    </div>
-    <div class="province-card" style="--accent:#C9A96E;">
-      <div class="province-abbr">QC</div>
-      <div class="province-name">Quebec</div>
-      <div class="province-count">823</div>
-      <div class="province-count-label">approved clinics</div>
-      <div class="province-bar-wrap"><div class="province-bar" data-width="28"></div></div>
-    </div>
-    <div class="province-card" style="--accent:#A07855;">
-      <div class="province-abbr">AB</div>
-      <div class="province-name">Alberta</div>
-      <div class="province-count">811</div>
-      <div class="province-count-label">approved clinics</div>
-      <div class="province-bar-wrap"><div class="province-bar" data-width="27"></div></div>
-    </div>
-    <div class="province-card" style="--accent:#8E9E7A;">
-      <div class="province-abbr">BC</div>
-      <div class="province-name">British Columbia</div>
-      <div class="province-count">825</div>
-      <div class="province-count-label">approved clinics</div>
-      <div class="province-bar-wrap"><div class="province-bar" data-width="28"></div></div>
-    </div>
+  <div class="province-grid reveal" id="provinceGrid">
+    <!-- Cards rendered dynamically by loadProvinceData() below -->
   </div>
 
   <!-- CANADA MAP -->
@@ -599,102 +572,215 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
   <script>
   (function() {
-    var clinics = {
-      'British Columbia':          { count: 825,  code: 'BC', pos: [-124.5, 53.0] },
-      'Alberta':                   { count: 811,  code: 'AB', pos: [-114.5, 53.5] },
-      'Saskatchewan':              { count: 95,   code: 'SK', pos: [-105.5, 53.5] },
-      'Manitoba':                  { count: 167,  code: 'MB', pos: [-97.0,  53.5] },
-      'Ontario':                   { count: 2788, code: 'ON', pos: [-84.5,  49.5] },
-      'Quebec':                    { count: 823,  code: 'QC', pos: [-71.5,  51.5] },
-      'New Brunswick':             { count: 52,   code: 'NB', pos: [-66.5,  46.5] },
-      'Nova Scotia':               { count: 48,   code: 'NS', pos: [-63.0,  44.8] },
-      'Prince Edward Island':      { count: 12,   code: 'PE', pos: [-63.2,  46.5] },
-      'Newfoundland and Labrador': { count: 38,   code: 'NL', pos: [-57.0,  53.0] },
-      'Yukon':                     { count: 8,    code: 'YT', pos: [-135.5, 63.0] },
-      'Northwest Territories':     { count: 5,    code: 'NT', pos: [-116.0, 65.5] },
-      'Nunavut':                   { count: 2,    code: 'NU', pos: [-88.0,  68.0] }
+    // Static metadata only — counts come from Supabase
+    var PROVINCE_META = {
+      'BC': { name: 'British Columbia',          pos: [-124.5, 53.0] },
+      'AB': { name: 'Alberta',                   pos: [-114.5, 53.5] },
+      'SK': { name: 'Saskatchewan',              pos: [-105.5, 53.5] },
+      'MB': { name: 'Manitoba',                  pos: [-97.0,  53.5] },
+      'ON': { name: 'Ontario',                   pos: [-84.5,  49.5] },
+      'QC': { name: 'Quebec',                    pos: [-71.5,  51.5] },
+      'NB': { name: 'New Brunswick',             pos: [-66.5,  46.5] },
+      'NS': { name: 'Nova Scotia',               pos: [-63.0,  44.8] },
+      'PE': { name: 'Prince Edward Island',      pos: [-63.2,  46.5] },
+      'NL': { name: 'Newfoundland and Labrador', pos: [-57.0,  53.0] },
+      'YT': { name: 'Yukon',                     pos: [-135.5, 63.0] },
+      'NT': { name: 'Northwest Territories',     pos: [-116.0, 65.5] },
+      'NU': { name: 'Nunavut',                   pos: [-88.0,  68.0] }
     };
+
+    // Top-4 card accent colors (same order regardless of which provinces lead)
+    var CARD_ACCENTS = ['#C8725A', '#C9A96E', '#A07855', '#8E9E7A'];
+
+    // Fallback counts if Supabase query fails — kept current as of 2026-04-28
+    var FALLBACK_COUNTS = {
+      'ON': 2769, 'BC': 714, 'QC': 706, 'AB': 690, 'MB': 165,
+      'NS':   97, 'SK':  79, 'NB':  55, 'NL':  37, 'PE':  29,
+      'NT':    6, 'YT':   3, 'NU':   0
+    };
+
+    var SUPABASE_URL = 'https://vefldlqtyxdywbzdjuia.supabase.co';
+    var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlZmxkbHF0eXhkeXdiemRqdWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNDAwMjgsImV4cCI6MjA4NzkxNjAyOH0.o582sXiUkB3j4FiHEA5rE3ABy_pdTeeK1PnNpNirHZA';
 
     function getColor(count) {
       if (count >= 2000) return '#7A1E00';
-      if (count >= 700)  return '#C8725A';
+      if (count >= 600)  return '#C8725A';
       if (count >= 150)  return '#4A8C6E';
       if (count >= 40)   return '#5B9EC9';
       return '#8892A4';
     }
 
-    var width = 960, height = 520;
-    var svg = d3.select('#insightsMapSvg');
-    var tooltip = document.getElementById('insightsTooltip');
-    var wrap = document.getElementById('insightsMapWrap');
-    var maxCount = Math.max.apply(null, Object.values(clinics).map(function(d){ return d.count; }));
-    var r = d3.scaleSqrt().domain([0, maxCount]).range([5, 32]);
-
-    d3.json('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-10m.json').then(function(world) {
-      var countries = topojson.feature(world, world.objects.countries);
-      var canada = countries.features.find(function(f){ return f.id === '124'; });
-
-      var projection = d3.geoConicConformal()
-        .parallels([49, 77])
-        .rotate([96, -60])
-        .fitSize([width, height], canada);
-
-      var path = d3.geoPath().projection(projection);
-
-      svg.append('path').datum(canada)
-        .attr('d', path)
-        .attr('fill', '#EDE8E0')
-        .attr('stroke', '#ccc')
-        .attr('stroke-width', 0.5);
-
-      Object.entries(clinics).forEach(function(entry) {
-        var name = entry[0], d = entry[1];
-        var xy = projection(d.pos);
-        if (!xy) return;
-        var radius = r(d.count);
-        var color = getColor(d.count);
-        var g = svg.append('g').style('cursor', 'pointer');
-
-        g.append('circle')
-          .attr('cx', xy[0]).attr('cy', xy[1]).attr('r', radius)
-          .attr('fill', color).attr('stroke', '#fff').attr('stroke-width', 1.5).attr('opacity', 0.93);
-
-        g.append('text')
-          .attr('x', xy[0]).attr('y', xy[1])
-          .attr('text-anchor', 'middle').attr('dominant-baseline', 'middle')
-          .attr('font-size', Math.max(9, Math.min(11, radius * 0.75)))
-          .attr('font-weight', '500').attr('fill', '#fff').attr('pointer-events', 'none')
-          .text(d.code);
-
-        if (d.count >= 40) {
-          g.append('text')
-            .attr('x', xy[0]).attr('y', xy[1] + radius + 11)
-            .attr('text-anchor', 'middle').attr('font-size', 10)
-            .attr('fill', '#8C7B6B').attr('pointer-events', 'none')
-            .text(d.count.toLocaleString());
+    // Fetch province counts via the count_clinics_by_province RPC if available,
+    // otherwise fall back to fetching all approved IDs+provinces and counting client-side.
+    function fetchProvinceCounts() {
+      // Single query: get all approved clinic IDs with province, count client-side.
+      // 5,350 rows × ~20 bytes = ~100 KB — acceptable for a one-time stat fetch.
+      return fetch(SUPABASE_URL + '/rest/v1/clinics?select=province&approved=eq.true&limit=20000', {
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_KEY
         }
-
-        g.on('mousemove', function(event) {
-          tooltip.style.display = 'block';
-          tooltip.innerHTML = '<strong>' + name + '</strong><br>' + d.count.toLocaleString() + ' clinics';
-          var rect = wrap.getBoundingClientRect();
-          tooltip.style.left = (event.clientX - rect.left + 14) + 'px';
-          tooltip.style.top  = (event.clientY - rect.top  - 40) + 'px';
-        }).on('mouseleave', function() { tooltip.style.display = 'none'; });
+      })
+      .then(function(res) { return res.ok ? res.json() : Promise.reject(); })
+      .then(function(rows) {
+        var counts = {};
+        Object.keys(PROVINCE_META).forEach(function(code) { counts[code] = 0; });
+        rows.forEach(function(row) {
+          if (row.province && counts.hasOwnProperty(row.province)) {
+            counts[row.province] += 1;
+          }
+        });
+        return counts;
       });
+    }
 
-      var legendData = [
-        { color: '#7A1E00', label: 'Ontario — 2,788' },
-        { color: '#C8725A', label: 'BC / QC / AB — ~811–825' },
-        { color: '#4A8C6E', label: 'Manitoba — 167' },
-        { color: '#5B9EC9', label: 'SK / NB / NS — 48–95' },
-        { color: '#8892A4', label: 'Territories / NL / PE — 2–38' }
-      ];
+    function renderProvinceCards(counts) {
+      var grid = document.getElementById('provinceGrid');
+      if (!grid) return;
+      // Top 4 by count, descending
+      var sorted = Object.keys(counts)
+        .map(function(code) { return { code: code, count: counts[code] }; })
+        .sort(function(a, b) { return b.count - a.count; })
+        .slice(0, 4);
+
+      var max = sorted[0] ? sorted[0].count : 1;
+      grid.innerHTML = sorted.map(function(p, i) {
+        var pct = Math.round((p.count / max) * 100);
+        return '<div class="province-card" style="--accent:' + CARD_ACCENTS[i] + ';">' +
+               '<div class="province-abbr">' + p.code + '</div>' +
+               '<div class="province-name">' + PROVINCE_META[p.code].name + '</div>' +
+               '<div class="province-count">' + p.count.toLocaleString('en-CA') + '</div>' +
+               '<div class="province-count-label">approved clinics</div>' +
+               '<div class="province-bar-wrap"><div class="province-bar" data-width="' + pct + '"></div></div>' +
+               '</div>';
+      }).join('');
+
+      // Animate bars on next tick
+      setTimeout(function() {
+        grid.querySelectorAll('[data-width]').forEach(function(bar) {
+          bar.style.width = bar.dataset.width + '%';
+        });
+      }, 100);
+    }
+
+    function renderMap(counts) {
+      var width = 960, height = 520;
+      var svg = d3.select('#insightsMapSvg');
+      var tooltip = document.getElementById('insightsTooltip');
+      var wrap = document.getElementById('insightsMapWrap');
+      var values = Object.values(counts).filter(function(v) { return v > 0; });
+      var maxCount = values.length ? Math.max.apply(null, values) : 1;
+      var r = d3.scaleSqrt().domain([0, maxCount]).range([5, 32]);
+
+      d3.json('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-10m.json').then(function(world) {
+        var countries = topojson.feature(world, world.objects.countries);
+        var canada = countries.features.find(function(f) { return f.id === '124'; });
+
+        var projection = d3.geoConicConformal()
+          .parallels([49, 77])
+          .rotate([96, -60])
+          .fitSize([width, height], canada);
+
+        var path = d3.geoPath().projection(projection);
+
+        svg.append('path').datum(canada)
+          .attr('d', path)
+          .attr('fill', '#EDE8E0')
+          .attr('stroke', '#ccc')
+          .attr('stroke-width', 0.5);
+
+        Object.keys(PROVINCE_META).forEach(function(code) {
+          var meta = PROVINCE_META[code];
+          var count = counts[code] || 0;
+          if (count === 0) return; // skip provinces with no clinics
+          var xy = projection(meta.pos);
+          if (!xy) return;
+          var radius = r(count);
+          var color = getColor(count);
+          var g = svg.append('g').style('cursor', 'pointer');
+
+          g.append('circle')
+            .attr('cx', xy[0]).attr('cy', xy[1]).attr('r', radius)
+            .attr('fill', color).attr('stroke', '#fff').attr('stroke-width', 1.5).attr('opacity', 0.93);
+
+          g.append('text')
+            .attr('x', xy[0]).attr('y', xy[1])
+            .attr('text-anchor', 'middle').attr('dominant-baseline', 'middle')
+            .attr('font-size', Math.max(9, Math.min(11, radius * 0.75)))
+            .attr('font-weight', '500').attr('fill', '#fff').attr('pointer-events', 'none')
+            .text(code);
+
+          if (count >= 40) {
+            g.append('text')
+              .attr('x', xy[0]).attr('y', xy[1] + radius + 11)
+              .attr('text-anchor', 'middle').attr('font-size', 10)
+              .attr('fill', '#8C7B6B').attr('pointer-events', 'none')
+              .text(count.toLocaleString());
+          }
+
+          g.on('mousemove', function(event) {
+            tooltip.style.display = 'block';
+            tooltip.innerHTML = '<strong>' + meta.name + '</strong><br>' + count.toLocaleString() + ' clinics';
+            var rect = wrap.getBoundingClientRect();
+            tooltip.style.left = (event.clientX - rect.left + 14) + 'px';
+            tooltip.style.top  = (event.clientY - rect.top  - 40) + 'px';
+          }).on('mouseleave', function() { tooltip.style.display = 'none'; });
+        });
+
+        renderLegend(counts);
+      }).catch(function() {});
+    }
+
+    function renderLegend(counts) {
+      // Build legend from actual data buckets
       var leg = document.getElementById('insightsMapLegend');
-      legendData.forEach(function(l) {
-        leg.innerHTML += '<span style="display:flex;align-items:center;gap:5px;"><span style="width:11px;height:11px;border-radius:2px;background:' + l.color + ';flex-shrink:0;display:inline-block;"></span>' + l.label + '</span>';
+      if (!leg) return;
+
+      var bucketed = { large: [], big: [], mid: [], small: [], tiny: [] };
+      Object.keys(counts).forEach(function(code) {
+        var c = counts[code];
+        if (c === 0) return;
+        if (c >= 2000) bucketed.large.push({ code: code, count: c });
+        else if (c >= 600) bucketed.big.push({ code: code, count: c });
+        else if (c >= 150) bucketed.mid.push({ code: code, count: c });
+        else if (c >= 40) bucketed.small.push({ code: code, count: c });
+        else bucketed.tiny.push({ code: code, count: c });
       });
-    }).catch(function() {});
+
+      function fmtRange(arr) {
+        if (!arr.length) return null;
+        var codes = arr.map(function(p) { return p.code; }).join(' / ');
+        var nums = arr.map(function(p) { return p.count; });
+        var min = Math.min.apply(null, nums), max = Math.max.apply(null, nums);
+        var label = (min === max) ? min.toLocaleString() : min.toLocaleString() + '–' + max.toLocaleString();
+        return codes + ' — ' + label;
+      }
+
+      var legendItems = [
+        { color: '#7A1E00', label: fmtRange(bucketed.large) },
+        { color: '#C8725A', label: fmtRange(bucketed.big) },
+        { color: '#4A8C6E', label: fmtRange(bucketed.mid) },
+        { color: '#5B9EC9', label: fmtRange(bucketed.small) },
+        { color: '#8892A4', label: fmtRange(bucketed.tiny) }
+      ].filter(function(item) { return item.label; });
+
+      leg.innerHTML = legendItems.map(function(l) {
+        return '<span style="display:flex;align-items:center;gap:5px;">' +
+               '<span style="width:11px;height:11px;border-radius:2px;background:' + l.color + ';flex-shrink:0;display:inline-block;"></span>' +
+               l.label + '</span>';
+      }).join('');
+    }
+
+    // Kick everything off
+    fetchProvinceCounts()
+      .then(function(counts) {
+        renderProvinceCards(counts);
+        renderMap(counts);
+      })
+      .catch(function() {
+        renderProvinceCards(FALLBACK_COUNTS);
+        renderMap(FALLBACK_COUNTS);
+      });
   })();
   </script>
 </section>
@@ -1076,7 +1162,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 (async function loadLiveCounts() {
   try {
     // Total clinic count
-    const totalRes = await fetch(`${SUPABASE_URL}/rest/v1/clinics?select=id&or=(approved.eq.true,approved.is.null)`, {
+    const totalRes = await fetch(`${SUPABASE_URL}/rest/v1/clinics?select=id&approved=eq.true`, {
       headers: {
         'apikey': SUPABASE_KEY,
         'Authorization': `Bearer ${SUPABASE_KEY}`,
@@ -1135,7 +1221,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
   } catch(e) {
     // Fallback values already in HTML
-    document.getElementById('heroTotalCount').innerHTML = '5,374<span>+</span>';
+    document.getElementById('heroTotalCount').innerHTML = '5,350<span>+</span>';
     document.getElementById('pricedPct').textContent = '7.5%';
     document.getElementById('pricedCount').textContent = '293';
     setTimeout(() => {
