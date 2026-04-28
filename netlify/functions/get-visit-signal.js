@@ -1,16 +1,13 @@
 // netlify/functions/get-visit-signal.js
 //
 // Returns the public would-return signal for a clinic.
-// Minimum 6 non-flagged responses required before anything is returned.
-// Never exposes raw visit counts or individual responses publicly.
+// Three display phases based on response count:
+//
+//   0 votes      → { signal: null, ghost: true }
+//   1–19 votes   → { signal: { yes, no, total, phase: 'counts' } }
+//   20+ votes    → { signal: { yes, no, total, pct, phase: 'pct' } }
 //
 // Query: GET /api/get-visit-signal?clinic_id=123
-//
-// Response (threshold met):
-//   { signal: { pct: 84, count: 14 } }
-//
-// Response (below threshold or no data):
-//   { signal: null }
 
 const SUPABASE_URL         = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -21,15 +18,10 @@ exports.handler = async (event) => {
   }
 
   const clinic_id = event.queryStringParameters?.clinic_id;
-
   if (!clinic_id) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ error: 'Missing clinic_id' })
-    };
+    return { statusCode: 400, body: JSON.stringify({ error: 'Missing clinic_id' }) };
   }
 
-  // ── Fetch all non-flagged would_return values for this clinic ──
   const res = await fetch(
     `${SUPABASE_URL}/rest/v1/clinic_visits?clinic_id=eq.${encodeURIComponent(clinic_id)}&flagged=eq.false&select=would_return`,
     {
@@ -41,43 +33,46 @@ exports.handler = async (event) => {
   );
 
   if (!res.ok) {
-    const errText = await res.text();
-    console.error('get-visit-signal fetch error:', errText);
+    console.error('get-visit-signal fetch error:', await res.text());
     return { statusCode: 500, body: JSON.stringify({ error: 'Server error' }) };
   }
 
-  const rows = await res.json();
-  const count = rows.length;
+  const rows  = await res.json();
+  const total = rows.length;
+  const yes   = rows.filter(r => r.would_return === 'yes').length;
+  const no    = rows.filter(r => r.would_return === 'no').length;
 
-  // Below threshold — return ghost state so UI can show "be first" prompt
-  if (count < 6) {
+  const headers = { 'Cache-Control': 'public, max-age=300' };
+
+  // Phase 0 — no votes yet
+  if (total === 0) {
     return {
       statusCode: 200,
-      headers: { 'Cache-Control': 'public, max-age=60' },
+      headers,
       body: JSON.stringify({ signal: null, ghost: true })
     };
   }
 
-  // ── Calculate would-return percentage ──
-  // 'unsure' responses are excluded from the percentage calculation
-  // but count toward the threshold so they still contribute to signal confidence
-  const positives = rows.filter(r => r.would_return === 'yes').length;
-  const scored    = rows.filter(r => r.would_return === 'yes' || r.would_return === 'no').length;
-
-  // Edge case: if everyone answered 'unsure', don't show a percentage
-  if (scored === 0) {
+  // Phase 1 — counts only (1–19 votes)
+  if (total < 20) {
     return {
       statusCode: 200,
-      headers: { 'Cache-Control': 'public, max-age=60' },
-      body: JSON.stringify({ signal: null })
+      headers,
+      body: JSON.stringify({
+        signal: { yes, no, total, phase: 'counts' }
+      })
     };
   }
 
-  const pct = Math.round((positives / scored) * 100);
+  // Phase 2 — percentage primary + counts supporting (20+ votes)
+  const scored = yes + no;
+  const pct    = scored > 0 ? Math.round((yes / scored) * 100) : null;
 
   return {
     statusCode: 200,
-    headers: { 'Cache-Control': 'public, max-age=60' },
-    body: JSON.stringify({ signal: { pct, count } })
+    headers,
+    body: JSON.stringify({
+      signal: { yes, no, total, pct, phase: 'pct' }
+    })
   };
 };
