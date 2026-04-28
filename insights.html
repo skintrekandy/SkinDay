@@ -282,6 +282,10 @@
     .density-table-sub {
       font-size: 0.78rem; color: var(--muted);
       margin-bottom: 1.5rem; line-height: 1.5;
+      min-height: 4.2em;
+    }
+    @media (max-width: 768px) {
+      .density-table-sub { min-height: 0; }
     }
     .density-list { display: flex; flex-direction: column; }
     .density-row {
@@ -295,10 +299,11 @@
     .density-row:last-child { border-bottom: none; }
     .density-rank {
       font-family: 'Cormorant Garamond', serif;
-      font-size: 1rem; font-weight: 400;
-      color: var(--dim); text-align: center;
+      font-size: 1.25rem; font-weight: 500;
+      color: var(--deep); text-align: center;
+      opacity: 0.55;
     }
-    .density-rank.gold { color: var(--gold); font-weight: 500; font-size: 1.1rem; }
+    .density-rank.gold { color: var(--gold); font-weight: 600; font-size: 1.4rem; opacity: 1; }
     .density-name {
       font-size: 0.88rem; font-weight: 500; color: var(--deep);
     }
@@ -1040,17 +1045,15 @@
 
 <!-- CTA -->
 <section class="cta-section">
-  <div class="cta-eyebrow">Full Dataset Access</div>
-  <h2 class="cta-title">This is what your territory<br>actually looks like.</h2>
-  <p class="cta-sub">Pharma reps, device distributors, and brand teams use SkinDay data to map real clinic coverage, benchmark pricing by market, identify high-density territories, and track how brands are positioned at the clinic level. Tell us what you're working on.</p>
-  <p style="font-size:0.78rem;color:rgba(255,255,255,0.25);max-width:420px;margin:0 auto 2rem;line-height:1.6;">No surveys. No panels. Actual clinic data — verified through direct outreach and self-reported pricing.</p>
+  <div class="cta-eyebrow">Access</div>
+  <h2 class="cta-title">See what your market<br>actually looks like.</h2>
+  <p class="cta-sub">Pricing, positioning, and real clinic-level signals — all in one place. Understand how clinics compare and where the opportunities are.</p>
 
   <div class="lead-form" id="leadForm">
-    <input class="lead-input" type="text" id="lead-name" placeholder="Your name" />
-    <input class="lead-input" type="text" id="lead-company" placeholder="Company / organization" />
     <input class="lead-input" type="email" id="lead-email" placeholder="Work email address" />
-    <button class="lead-btn" id="lead-submit-btn" onclick="submitLead()">Request Dataset Access →</button>
-    <p class="lead-fine">We'll follow up within 1 business day. No spam.</p>
+    <input class="lead-input" type="text" id="lead-company" placeholder="Company (optional)" />
+    <button class="lead-btn" id="lead-submit-btn" onclick="submitLead()">Request access →</button>
+    <p class="lead-fine">We'll follow up within 1 business day.</p>
   </div>
   <div class="lead-success" id="leadSuccess">
     <div style="font-size:1.5rem;margin-bottom:0.5rem;">✓</div>
@@ -1170,12 +1173,11 @@ document.querySelectorAll('.province-grid, .density-list, .density-grid').forEac
 
 // ── LEAD FORM ──────────────────────────────────────────────────
 async function submitLead() {
-  const name    = document.getElementById('lead-name').value.trim();
   const company = document.getElementById('lead-company').value.trim();
   const email   = document.getElementById('lead-email').value.trim();
   const btn     = document.getElementById('lead-submit-btn');
 
-  if (!name || !email) { alert('Please enter your name and email.'); return; }
+  if (!email) { alert('Please enter your work email.'); return; }
 
   btn.disabled = true;
   btn.textContent = 'Submitting…';
@@ -1189,7 +1191,7 @@ async function submitLead() {
         'Content-Type': 'application/json',
         'Prefer': 'return=minimal',
       },
-      body: JSON.stringify({ name, company, email, source: 'insights_page' }),
+      body: JSON.stringify({ company, email, source: 'insights_page' }),
     });
   } catch(e) {}
 
