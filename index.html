@@ -927,8 +927,17 @@
     .card-visit-signal {
       font-size: 0.72rem; color: var(--dim);
       white-space: nowrap; flex-shrink: 0;
+      display: flex; align-items: center; gap: 0.3rem;
     }
     .card-visit-signal strong { color: var(--green); font-weight: 600; }
+    .card-vote-btn {
+      background: none; border: none; cursor: pointer;
+      font-size: 1rem; padding: 0.1rem 0.25rem;
+      border-radius: 4px; transition: background 0.15s;
+      line-height: 1;
+    }
+    .card-vote-btn:hover { background: rgba(0,0,0,0.06); }
+    .card-vote-btn.voted { opacity: 0.4; cursor: default; }
 
     /* ── VISIT MODAL ── */
     .visit-modal-overlay {
@@ -3401,12 +3410,16 @@ function renderPageCards(clinicsData, append) {
           <div class="price-label">${toxinLabel} — per unit</div>
           ${priceHTML}
         </div>
-        <div class="card-visit-row" data-cid="${c.id}" data-cname="${(c.name||'').replace(/"/g,'&quot;')}" onclick="window.openVisitModal(this.dataset.cid, this.dataset.cname)">
+        <div class="card-visit-row">
           <span class="card-visit-prompt">
             <span class="card-visit-line1">Been here?</span>
-            <span class="card-visit-line2">Would you go back →</span>
+            <span class="card-visit-line2">Would you go back?</span>
           </span>
-          <span class="card-visit-signal" id="visit-signal-${c.id}"></span>
+          <span class="card-visit-signal" id="visit-signal-${c.id}" data-yes="0" data-no="0">
+            <span class="card-vote-counts" id="visit-counts-${c.id}"></span>
+            <button class="card-vote-btn" id="vote-yes-${c.id}" onclick="event.stopPropagation();window.cardVote('${c.id}','yes',this)" title="Yes">👍</button>
+            <button class="card-vote-btn" id="vote-no-${c.id}"  onclick="event.stopPropagation();window.cardVote('${c.id}','no',this)"  title="No">👎</button>
+          </span>
         </div>
         <div class="card-footer">
           <a href="#" class="view-link" onclick="event.preventDefault(); event.stopPropagation(); window.openClinicModal('${c.id}')">View Profile →</a>
@@ -4684,8 +4697,59 @@ document.getElementById('visitModalOverlay')?.addEventListener('click', e => {
   if (e.target === document.getElementById('visitModalOverlay')) closeVisitModal();
 });
 
+// ── INLINE CARD VOTE ─────────────────────────────────────────
+// Direct yes/no vote from card row. No modal. Optimistic UI update.
+window.cardVote = async function(clinicId, val, btnEl) {
+  // Check auth
+  if (!_currentUser) {
+    const { data: { session } } = await _sb.auth.getSession();
+    if (session?.user) {
+      setUser(session.user);
+    } else {
+      localStorage.setItem('sd_pending_vote', JSON.stringify({ clinic_id: clinicId, vote: val }));
+      await _sb.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.origin, queryParams: { prompt: 'select_account' } }
+      });
+      return;
+    }
+  }
+
+  // Optimistic UI — immediately update the count display
+  const sigEl = document.getElementById(`visit-signal-${clinicId}`);
+  const cntEl = document.getElementById(`visit-counts-${clinicId}`);
+  if (sigEl && cntEl) {
+    const yes = parseInt(sigEl.dataset.yes || 0) + (val === 'yes' ? 1 : 0);
+    const no  = parseInt(sigEl.dataset.no  || 0) + (val === 'no'  ? 1 : 0);
+    sigEl.dataset.yes = yes;
+    sigEl.dataset.no  = no;
+    cntEl.innerHTML = renderSignalHTML({ signal: { yes, no, total: yes + no, phase: 'counts' } });
+  }
+
+  // Disable both buttons on this card
+  const row = btnEl?.closest('.card-visit-row');
+  if (row) row.querySelectorAll('.card-vote-btn').forEach(b => {
+    b.classList.add('voted');
+    b.disabled = true;
+  });
+
+  // Submit
+  try {
+    const session = (await _sb.auth.getSession()).data.session;
+    const res = await fetch('/api/submit-visit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clinic_id: String(clinicId), would_return: val, access_token: session.access_token })
+    });
+    if (res.status === 409) {
+      fetchVisitSignals([String(clinicId)]);
+    }
+  } catch {
+    fetchVisitSignals([String(clinicId)]);
+  }
+};
+
 window.selectReturn = function selectReturn(val) {
-  _visitReturnVal = val;
   document.getElementById('vrYes').className = 'visit-return-btn' + (val === 'yes' ? ' selected-yes' : '');
   document.getElementById('vrNo').className  = 'visit-return-btn' + (val === 'no'  ? ' selected-no'  : '');
 
@@ -4750,20 +4814,13 @@ async function submitVisit() {
 
 // ── Signal display helper ─────────────────────────────────────
 function renderSignalHTML(data) {
-  if (!data) return '';
+  if (!data?.signal) return '';
   const s = data.signal;
-
-  // Phase 0 — no votes or ghost: show 👍 0 👎 0
-  if (!s) {
-    return `<span style="font-size:0.75rem;color:var(--dim);">👍 0 &nbsp;👎 0</span>`;
-  }
   if (s.phase === 'counts') {
-    // Phase 1: raw counts
-    return `<span style="font-size:0.75rem;color:var(--muted);">👍 ${s.yes} &nbsp;👎 ${s.no}</span>`;
+    return `<span style="font-size:0.72rem;color:var(--muted);">${s.yes} / ${s.no}</span>`;
   }
   if (s.phase === 'pct' && s.pct !== null) {
-    // Phase 2: percentage primary, counts secondary
-    return `<span style="font-size:0.75rem;color:var(--muted);"><strong style="color:var(--green);">${s.pct}%</strong> would go back <span style="color:var(--dim);font-size:0.7rem;">· 👍 ${s.yes} 👎 ${s.no}</span></span>`;
+    return `<span style="font-size:0.72rem;color:var(--muted);"><strong style="color:var(--green);">${s.pct}%</strong> · ${s.yes}/${s.no}</span>`;
   }
   return '';
 }
@@ -4778,8 +4835,14 @@ async function fetchVisitSignals(clinicIds) {
         const res = await fetch(`/api/get-visit-signal?clinic_id=${encodeURIComponent(id)}`);
         if (!res.ok) return;
         const data = await res.json();
-        const el = document.getElementById(`visit-signal-${id}`);
-        if (el) el.innerHTML = renderSignalHTML(data);
+        const sigEl = document.getElementById(`visit-signal-${id}`);
+        const cntEl = document.getElementById(`visit-counts-${id}`);
+        if (!sigEl || !cntEl) return;
+        if (data.signal) {
+          sigEl.dataset.yes = data.signal.yes || 0;
+          sigEl.dataset.no  = data.signal.no  || 0;
+          cntEl.innerHTML   = renderSignalHTML(data);
+        }
       } catch { /* non-fatal */ }
     }));
   }
