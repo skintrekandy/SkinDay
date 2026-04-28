@@ -1377,9 +1377,18 @@ _sb.auth.onAuthStateChange((event, session) => {
     const pendingVal = sessionStorage.getItem('sd_pending_visit_val');
     sessionStorage.removeItem('sd_pending_visit_id');
     sessionStorage.removeItem('sd_pending_visit_val');
-    if (pendingId && pendingVal && pendingId === document.body.dataset.clinicId) {
+    if (pendingId && pendingVal) {
       _visitReturnVal = pendingVal;
-      setTimeout(submitVisit, 300);
+      // Wait for renderClinic to set body.dataset.clinicId, then submit
+      const waitAndSubmit = (attempts) => {
+        const clinicId = document.body.dataset.clinicId;
+        if (clinicId && clinicId === pendingId) {
+          submitVisit();
+        } else if (attempts > 0) {
+          setTimeout(() => waitAndSubmit(attempts - 1), 300);
+        }
+      };
+      setTimeout(() => waitAndSubmit(10), 300);
     }
   } else if (event === 'SIGNED_OUT') {
     _currentUser = null;
@@ -1391,17 +1400,25 @@ async function loadVisitSignal(clinicId) {
   try {
     const res = await fetch(`/api/get-visit-signal?clinic_id=${encodeURIComponent(clinicId)}`);
     if (!res.ok) return;
-    const { signal } = await res.json();
-    if (!signal) return;
-
+    const data = await res.json();
     const el = document.getElementById('profileVisitSignal');
     if (!el) return;
+
+    if (!data.signal && !data.ghost) return;
+
     el.className = 'profile-visit-signal';
-    el.innerHTML = `
-      <strong>${signal.pct}%</strong> would return
-      &middot; based on ${signal.count} patient experience${signal.count !== 1 ? 's' : ''}
-      <span class="profile-visit-signal-note">Not reviews. Real patient experiences.</span>
-    `;
+
+    if (data.ghost || !data.signal) {
+      el.innerHTML = `<span class="profile-visit-signal-note">No responses yet — be the first to share</span>`;
+      return;
+    }
+
+    const s = data.signal;
+    if (s.phase === 'counts') {
+      el.innerHTML = `👍 ${s.yes} &nbsp; 👎 ${s.no}`;
+    } else if (s.phase === 'pct' && s.pct !== null) {
+      el.innerHTML = `<strong>${s.pct}%</strong> would go back &middot; 👍 ${s.yes} &nbsp;👎 ${s.no} <span class="profile-visit-signal-note">· Not reviews. Real patient signals.</span>`;
+    }
   } catch { /* non-fatal */ }
 }
 </script>

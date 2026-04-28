@@ -4748,6 +4748,24 @@ async function submitVisit() {
 
 
 
+// ── Signal display helper ─────────────────────────────────────
+function renderSignalHTML(data) {
+  if (!data) return '';
+  if (data.ghost || !data.signal) {
+    return `<span style="color:var(--dim);font-style:italic;font-size:0.7rem;">Be the first to share</span>`;
+  }
+  const s = data.signal;
+  if (s.phase === 'counts') {
+    // Phase 1: raw counts
+    return `<span style="font-size:0.75rem;color:var(--muted);">👍 ${s.yes} &nbsp;👎 ${s.no}</span>`;
+  }
+  if (s.phase === 'pct' && s.pct !== null) {
+    // Phase 2: percentage primary, counts secondary
+    return `<span style="font-size:0.75rem;color:var(--muted);"><strong style="color:var(--green);">${s.pct}%</strong> would go back <span style="color:var(--dim);font-size:0.7rem;">· 👍 ${s.yes} 👎 ${s.no}</span></span>`;
+  }
+  return '';
+}
+
 async function fetchVisitSignals(clinicIds) {
   if (!clinicIds || clinicIds.length === 0) return;
   const chunks = [];
@@ -4759,12 +4777,7 @@ async function fetchVisitSignals(clinicIds) {
         if (!res.ok) return;
         const data = await res.json();
         const el = document.getElementById(`visit-signal-${id}`);
-        if (!el) return;
-        if (data.signal) {
-          el.innerHTML = `<strong>${data.signal.pct}%</strong> would return &middot; ${data.signal.count} experiences`;
-        } else if (data.ghost) {
-          el.innerHTML = `<span style="color:var(--dim);font-style:italic;font-size:0.7rem;">Be the first to share</span>`;
-        }
+        if (el) el.innerHTML = renderSignalHTML(data);
       } catch { /* non-fatal */ }
     }));
   }
@@ -5177,12 +5190,7 @@ window.openClinicModal = async function openClinicModal(clinicId) {
     .then(r => r.ok ? r.json() : null)
     .then(data => {
       const sigEl = document.getElementById('cm-vote-signal');
-      if (!sigEl) return;
-      if (data?.signal) {
-        sigEl.innerHTML = `<strong>${data.signal.pct}%</strong> would return &middot; ${data.signal.count} experiences`;
-      } else if (data?.ghost) {
-        sigEl.innerHTML = `<span style="font-style:italic;color:var(--dim);">No responses yet — be the first</span>`;
-      }
+      if (sigEl) sigEl.innerHTML = renderSignalHTML(data);
     }).catch(() => {});
 
   // Logo in header
