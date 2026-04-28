@@ -937,7 +937,12 @@
       line-height: 1;
     }
     .card-vote-btn:hover { background: rgba(0,0,0,0.06); }
-    .card-vote-btn.voted { opacity: 0.4; cursor: default; }
+    .card-vote-btn.voted { opacity: 0.5; cursor: default; }
+    .card-vote-count {
+      font-size: 0.72rem; color: var(--muted);
+      font-weight: 500; min-width: 0.8rem; display: inline-block;
+      text-align: left;
+    }
 
     /* ── VISIT MODAL ── */
     .visit-modal-overlay {
@@ -3415,10 +3420,9 @@ function renderPageCards(clinicsData, append) {
             <span class="card-visit-line1">Been here?</span>
             <span class="card-visit-line2">Would you go back?</span>
           </span>
-          <span class="card-visit-signal" id="visit-signal-${c.id}" data-yes="0" data-no="0">
-            <span class="card-vote-counts" id="visit-counts-${c.id}"></span>
-            <button class="card-vote-btn" id="vote-yes-${c.id}" onclick="event.stopPropagation();window.cardVote('${c.id}','yes',this)" title="Yes">👍</button>
-            <button class="card-vote-btn" id="vote-no-${c.id}"  onclick="event.stopPropagation();window.cardVote('${c.id}','no',this)"  title="No">👎</button>
+          <span class="card-visit-signal" id="visit-signal-${c.id}" data-yes="0" data-no="0" style="display:flex;align-items:center;gap:0.35rem;">
+            <button class="card-vote-btn" id="vote-yes-${c.id}" onclick="event.stopPropagation();window.cardVote('${c.id}','yes',this)" title="Would go back">👍</button><span class="card-vote-count" id="vote-yes-count-${c.id}">0</span>
+            <button class="card-vote-btn" id="vote-no-${c.id}"  onclick="event.stopPropagation();window.cardVote('${c.id}','no',this)"  title="Wouldn't go back">👎</button><span class="card-vote-count" id="vote-no-count-${c.id}">0</span>
           </span>
         </div>
         <div class="card-footer">
@@ -4715,15 +4719,17 @@ window.cardVote = async function(clinicId, val, btnEl) {
     }
   }
 
-  // Optimistic UI — immediately update the count display
+  // Optimistic UI — immediately update counts
   const sigEl = document.getElementById(`visit-signal-${clinicId}`);
-  const cntEl = document.getElementById(`visit-counts-${clinicId}`);
-  if (sigEl && cntEl) {
+  if (sigEl) {
     const yes = parseInt(sigEl.dataset.yes || 0) + (val === 'yes' ? 1 : 0);
     const no  = parseInt(sigEl.dataset.no  || 0) + (val === 'no'  ? 1 : 0);
     sigEl.dataset.yes = yes;
     sigEl.dataset.no  = no;
-    cntEl.innerHTML = renderSignalHTML({ signal: { yes, no, total: yes + no, phase: 'counts' } });
+    const yc = document.getElementById(`vote-yes-count-${clinicId}`);
+    const nc = document.getElementById(`vote-no-count-${clinicId}`);
+    if (yc) yc.textContent = yes;
+    if (nc) nc.textContent = no;
   }
 
   // Disable both buttons on this card
@@ -4836,13 +4842,15 @@ async function fetchVisitSignals(clinicIds) {
         if (!res.ok) return;
         const data = await res.json();
         const sigEl = document.getElementById(`visit-signal-${id}`);
-        const cntEl = document.getElementById(`visit-counts-${id}`);
-        if (!sigEl || !cntEl) return;
-        if (data.signal) {
-          sigEl.dataset.yes = data.signal.yes || 0;
-          sigEl.dataset.no  = data.signal.no  || 0;
-          cntEl.innerHTML   = renderSignalHTML(data);
-        }
+        if (!sigEl) return;
+        const yes = data.signal?.yes || 0;
+        const no  = data.signal?.no  || 0;
+        sigEl.dataset.yes = yes;
+        sigEl.dataset.no  = no;
+        const yc = document.getElementById(`vote-yes-count-${id}`);
+        const nc = document.getElementById(`vote-no-count-${id}`);
+        if (yc) yc.textContent = yes;
+        if (nc) nc.textContent = no;
       } catch { /* non-fatal */ }
     }));
   }
