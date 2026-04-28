@@ -937,7 +937,7 @@
       line-height: 1;
     }
     .card-vote-btn:hover { background: rgba(0,0,0,0.06); }
-    .card-vote-btn.voted { opacity: 0.5; cursor: default; }
+    .card-vote-btn.voted { opacity: 0.6; cursor: default; pointer-events: none; }
     .card-vote-count {
       font-size: 0.72rem; color: var(--muted);
       font-weight: 500; min-width: 0.8rem; display: inline-block;
@@ -4719,27 +4719,9 @@ window.cardVote = async function(clinicId, val, btnEl) {
     }
   }
 
-  // Optimistic UI — immediately update counts
-  const sigEl = document.getElementById(`visit-signal-${clinicId}`);
-  if (sigEl) {
-    const yes = parseInt(sigEl.dataset.yes || 0) + (val === 'yes' ? 1 : 0);
-    const no  = parseInt(sigEl.dataset.no  || 0) + (val === 'no'  ? 1 : 0);
-    sigEl.dataset.yes = yes;
-    sigEl.dataset.no  = no;
-    const yc = document.getElementById(`vote-yes-count-${clinicId}`);
-    const nc = document.getElementById(`vote-no-count-${clinicId}`);
-    if (yc) yc.textContent = yes;
-    if (nc) nc.textContent = no;
-  }
-
-  // Disable both buttons on this card
   const row = btnEl?.closest('.card-visit-row');
-  if (row) row.querySelectorAll('.card-vote-btn').forEach(b => {
-    b.classList.add('voted');
-    b.disabled = true;
-  });
 
-  // Submit
+  // Submit first — no optimistic update until we know it succeeded
   try {
     const session = (await _sb.auth.getSession()).data.session;
     const res = await fetch('/api/submit-visit', {
@@ -4747,11 +4729,40 @@ window.cardVote = async function(clinicId, val, btnEl) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ clinic_id: String(clinicId), would_return: val, access_token: session.access_token })
     });
+
     if (res.status === 409) {
-      fetchVisitSignals([String(clinicId)]);
+      // Already voted — show message, don't change counts
+      const prompt = row?.querySelector('.card-visit-prompt');
+      if (prompt) {
+        const orig = prompt.innerHTML;
+        prompt.innerHTML = '<span style="font-size:0.73rem;color:var(--muted);font-style:italic;">Already recorded ✓</span>';
+        setTimeout(() => { prompt.innerHTML = orig; }, 2500);
+      }
+      return;
     }
+
+    if (res.ok) {
+      // Success — now update counts optimistically
+      const sigEl = document.getElementById(`visit-signal-${clinicId}`);
+      if (sigEl) {
+        const yes = parseInt(sigEl.dataset.yes || 0) + (val === 'yes' ? 1 : 0);
+        const no  = parseInt(sigEl.dataset.no  || 0) + (val === 'no'  ? 1 : 0);
+        sigEl.dataset.yes = yes;
+        sigEl.dataset.no  = no;
+        const yc = document.getElementById(`vote-yes-count-${clinicId}`);
+        const nc = document.getElementById(`vote-no-count-${clinicId}`);
+        if (yc) yc.textContent = yes;
+        if (nc) nc.textContent = no;
+      }
+      // Lock buttons
+      if (row) row.querySelectorAll('.card-vote-btn').forEach(b => {
+        b.classList.add('voted');
+        b.onclick = null;
+      });
+    }
+
   } catch {
-    fetchVisitSignals([String(clinicId)]);
+    // silent fail
   }
 };
 
