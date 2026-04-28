@@ -4751,10 +4751,12 @@ async function submitVisit() {
 // ── Signal display helper ─────────────────────────────────────
 function renderSignalHTML(data) {
   if (!data) return '';
-  if (data.ghost || !data.signal) {
-    return `<span style="color:var(--dim);font-style:italic;font-size:0.7rem;">Be the first to share</span>`;
-  }
   const s = data.signal;
+
+  // Phase 0 — no votes or ghost: show 👍 0 👎 0
+  if (!s) {
+    return `<span style="font-size:0.75rem;color:var(--dim);">👍 0 &nbsp;👎 0</span>`;
+  }
   if (s.phase === 'counts') {
     // Phase 1: raw counts
     return `<span style="font-size:0.75rem;color:var(--muted);">👍 ${s.yes} &nbsp;👎 ${s.no}</span>`;

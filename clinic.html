@@ -1409,7 +1409,7 @@ async function loadVisitSignal(clinicId) {
     el.className = 'profile-visit-signal';
 
     if (data.ghost || !data.signal) {
-      el.innerHTML = `<span class="profile-visit-signal-note">No responses yet — be the first to share</span>`;
+      el.innerHTML = `<span style="color:var(--dim);font-size:0.85rem;">👍 0 &nbsp; 👎 0</span>`;
       return;
     }
 
