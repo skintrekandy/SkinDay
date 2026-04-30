@@ -2896,31 +2896,102 @@
     </div>
     <script>
     (function() {
-      var provinces = [
-        { label: 'Ontario',          abbr: 'ON', count: 2978, filter: 'ontario',          color: '#C9A96E' },
-        { label: 'Quebec',           abbr: 'QC', count: 823,  filter: 'quebec',           color: '#C8725A' },
-        { label: 'British Columbia', abbr: 'BC', count: 825,  filter: 'british-columbia', color: '#B5A898' },
-        { label: 'Alberta',          abbr: 'AB', count: 811,  filter: 'alberta',          color: '#8C7B6B' },
-        { label: 'Manitoba',         abbr: 'MB', count: 167,  filter: 'manitoba',         color: '#C9A96E' },
-      ];
-      var total = 5848;
+      // Static metadata only — counts come from Supabase
+      var PROVINCE_META = {
+        'ON': { label: 'Ontario',          filter: 'ontario',          color: '#C9A96E' },
+        'QC': { label: 'Quebec',           filter: 'quebec',           color: '#C8725A' },
+        'BC': { label: 'British Columbia', filter: 'british-columbia', color: '#B5A898' },
+        'AB': { label: 'Alberta',          filter: 'alberta',          color: '#8C7B6B' },
+        'MB': { label: 'Manitoba',         filter: 'manitoba',         color: '#C9A96E' }
+      };
+
+      // Last-known fallback (2026-04-29) — used only if Supabase fetch fails.
+      // Order matches sort-by-count-desc so render order is consistent.
+      var FALLBACK = {
+        provinces:      [{abbr:'ON',count:2769},{abbr:'BC',count:714},{abbr:'QC',count:706},{abbr:'AB',count:690},{abbr:'MB',count:165}],
+        total:          5350,
+        ratedHighPct:   72,
+        kelownaCount:   87,
+        torontoCount:   383,
+        avgReviews:     117
+      };
+
+      var SB_URL = 'https://vefldlqtyxdywbzdjuia.supabase.co';
+      var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlZmxkbHF0eXhkeXdiemRqdWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNDAwMjgsImV4cCI6MjA4NzkxNjAyOH0.o582sXiUkB3j4FiHEA5rE3ABy_pdTeeK1PnNpNirHZA';
+      var KELOWNA_POP = 144576;
+
       var active = null;
       var container = document.getElementById('province-bars');
+      var data = null;
 
-      function render() {
+      function fetchAll() {
+        // Single query: get all approved clinics with the fields we need.
+        // ~5,350 rows × ~80 bytes = ~430 KB. One-time on page load. Acceptable.
+        return fetch(SB_URL + '/rest/v1/clinics?select=province,neighbourhood,rating,reviews&approved=eq.true&limit=20000', {
+          headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }
+        })
+        .then(function(res) { return res.ok ? res.json() : Promise.reject(); })
+        .then(function(rows) {
+          // Province counts
+          var provinceCounts = {};
+          Object.keys(PROVINCE_META).forEach(function(c) { provinceCounts[c] = 0; });
+
+          var torontoCount = 0;
+          var kelownaCount = 0;
+          var ratedHigh = 0;
+          var ratedTotal = 0;
+          var reviewsSum = 0;
+          var reviewsCount = 0;
+          var total = rows.length;
+
+          rows.forEach(function(r) {
+            if (r.province && provinceCounts.hasOwnProperty(r.province)) {
+              provinceCounts[r.province] += 1;
+            }
+            if (r.neighbourhood === 'Toronto') torontoCount += 1;
+            if (r.neighbourhood === 'Kelowna') kelownaCount += 1;
+            if (r.rating != null) {
+              ratedTotal += 1;
+              if (r.rating >= 4.8) ratedHigh += 1;
+            }
+            if (r.reviews != null) {
+              reviewsSum += r.reviews;
+              reviewsCount += 1;
+            }
+          });
+
+          var provinces = Object.keys(PROVINCE_META).map(function(c) {
+            return { abbr: c, count: provinceCounts[c] };
+          }).sort(function(a, b) { return b.count - a.count; });
+
+          return {
+            provinces: provinces,
+            total: total,
+            ratedHighPct: ratedTotal ? Math.round(100 * ratedHigh / ratedTotal) : 0,
+            kelownaCount: kelownaCount,
+            torontoCount: torontoCount,
+            avgReviews: reviewsCount ? Math.round(reviewsSum / reviewsCount) : 0
+          };
+        });
+      }
+
+      function renderProvinceBars() {
+        if (!container || !data) return;
         container.innerHTML = '';
-        provinces.forEach(function(p) {
-          var pct = Math.round(p.count / total * 100);
+        data.provinces.forEach(function(p) {
+          var meta = PROVINCE_META[p.abbr];
+          if (!meta) return;
+          var pct = data.total > 0 ? Math.round(p.count / data.total * 100) : 0;
           var isActive = active === p.abbr;
           var row = document.createElement('div');
           row.style.cssText = 'cursor:pointer;';
           row.innerHTML =
             '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:0.3rem;">' +
-              '<span style="font-size:0.82rem;font-weight:' + (isActive?'700':'500') + ';color:var(--deep);">' + p.label + '</span>' +
+              '<span style="font-size:0.82rem;font-weight:' + (isActive?'700':'500') + ';color:var(--deep);">' + meta.label + '</span>' +
               '<span style="font-size:0.78rem;color:var(--deep);opacity:0.55;">' + p.count.toLocaleString() + '+ &nbsp;·&nbsp; ' + pct + '%</span>' +
             '</div>' +
             '<div style="height:8px;background:rgba(28,23,20,0.08);border-radius:4px;overflow:hidden;">' +
-              '<div style="height:100%;width:' + pct + '%;background:' + p.color + ';border-radius:4px;opacity:' + (isActive?'1':'0.7') + ';transition:width 0.6s ease,opacity 0.2s;"></div>' +
+              '<div style="height:100%;width:' + pct + '%;background:' + meta.color + ';border-radius:4px;opacity:' + (isActive?'1':'0.7') + ';transition:width 0.6s ease,opacity 0.2s;"></div>' +
             '</div>';
           row.addEventListener('click', function() {
             if (active === p.abbr) {
@@ -2933,12 +3004,12 @@
               if (dir) dir.scrollIntoView({ behavior: 'smooth', block: 'start' });
               var btns = document.querySelectorAll('.filter-btn');
               btns.forEach(function(b) {
-                if (b.getAttribute('onclick') && b.getAttribute('onclick').indexOf("'" + p.filter + "'") !== -1) {
-                  if (typeof filterCards === 'function') filterCards(p.filter, b);
+                if (b.getAttribute('onclick') && b.getAttribute('onclick').indexOf("'" + meta.filter + "'") !== -1) {
+                  if (typeof filterCards === 'function') filterCards(meta.filter, b);
                 }
               });
             }
-            render();
+            renderProvinceBars();
           });
           row.addEventListener('mouseenter', function() { row.style.opacity = '0.8'; });
           row.addEventListener('mouseleave', function() { row.style.opacity = '1'; });
@@ -2946,10 +3017,43 @@
         });
       }
 
+      function setText(id, text) {
+        var el = document.getElementById(id);
+        if (el) el.textContent = text;
+      }
+
+      function renderHeadlineStats() {
+        if (!data) return;
+        var ontarioRow = data.provinces.find(function(p) { return p.abbr === 'ON'; });
+        var ontarioPct = data.total > 0 && ontarioRow
+          ? Math.round(100 * ontarioRow.count / data.total)
+          : 0;
+        var kelownaPer100k = data.kelownaCount > 0
+          ? (100000 * data.kelownaCount / KELOWNA_POP).toFixed(1)
+          : '—';
+
+        setText('stat-rated-high',   data.ratedHighPct + '%');
+        setText('stat-kelowna-100k', kelownaPer100k);
+        setText('stat-ontario-pct',  ontarioPct + '%');
+        setText('stat-toronto',      data.torontoCount.toLocaleString() + '+');
+        setText('stat-avg-reviews',  data.avgReviews.toLocaleString());
+      }
+
+      function renderAll() {
+        renderProvinceBars();
+        renderHeadlineStats();
+      }
+
+      function init() {
+        fetchAll()
+          .then(function(result) { data = result; renderAll(); })
+          .catch(function() { data = FALLBACK; renderAll(); });
+      }
+
       if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', render);
+        document.addEventListener('DOMContentLoaded', init);
       } else {
-        render();
+        init();
       }
     })();
     </script>
@@ -2959,23 +3063,23 @@
         <div class="stat-strip-desc">clinics listed across Canada</div>
       </div>
       <div class="stat-strip-item">
-        <div class="stat-strip-num"><em>72%</em></div>
+        <div class="stat-strip-num"><em id="stat-rated-high">—</em></div>
         <div class="stat-strip-desc">of clinics rated 4.8+ stars — across Canada</div>
       </div>
       <div class="stat-strip-item">
-        <div class="stat-strip-num"><em>60.2</em></div>
+        <div class="stat-strip-num"><em id="stat-kelowna-100k">—</em></div>
         <div class="stat-strip-desc">clinics per 100k in <strong>Kelowna, BC</strong> — highest density in Canada</div>
       </div>
       <div class="stat-strip-item">
-        <div class="stat-strip-num"><em>52%</em></div>
+        <div class="stat-strip-num"><em id="stat-ontario-pct">—</em></div>
         <div class="stat-strip-desc">of cosmetic clinics in Canada are in <strong>Ontario</strong></div>
       </div>
       <div class="stat-strip-item">
-        <div class="stat-strip-num"><em>383+</em></div>
+        <div class="stat-strip-num"><em id="stat-toronto">—</em></div>
         <div class="stat-strip-desc">clinics in <strong>Toronto</strong> — largest single-city concentration in Canada</div>
       </div>
       <div class="stat-strip-item">
-        <div class="stat-strip-num"><em>117</em></div>
+        <div class="stat-strip-num"><em id="stat-avg-reviews">—</em></div>
         <div class="stat-strip-desc">avg Google reviews per clinic — patients are engaged</div>
       </div>
     </div>
