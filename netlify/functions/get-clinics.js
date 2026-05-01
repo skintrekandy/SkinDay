@@ -1,7 +1,7 @@
 const { createClient } = require('@supabase/supabase-js');
 
 const CARD_FIELDS = `
-  id, name, neighbourhood, area, province, region,
+  id, name, slug, neighbourhood, area, province, region,
   rating, reviews, place_id, maps_url, rank,
   phone, website, booking_url, logo_url, email,
   claimed, approved, promo, promo_text, consult_free,
@@ -20,6 +20,33 @@ exports.handler = async (event) => {
     );
 
     const params = event.queryStringParameters || {};
+
+    // ── MODE: lookup by slug (for clinic.html) ──────────────
+    if (params.slug) {
+      const { data, error } = await supabase
+        .from('clinics')
+        .select(CARD_FIELDS)
+        .eq('approved', true)
+        .eq('slug', params.slug)
+        .limit(1)
+        .single();
+
+      if (error || !data) return {
+        statusCode: 404,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        body: JSON.stringify({ error: 'Not found' })
+      };
+
+      return {
+        statusCode: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60',
+        },
+        body: JSON.stringify(data),
+      };
+    }
 
     // ── MODE: lightweight index for chain detection ──────────
     if (params.mode === 'index') {
@@ -137,7 +164,7 @@ exports.handler = async (event) => {
 
     // ── MERGE + STRIP NULLS ───────────────────────────────────
     const keep = [
-      'id','name','neighbourhood','area','province','region',
+      'id','name','slug','neighbourhood','area','province','region',
       'rating','reviews','place_id','maps_url','rank',
       'phone','website','booking_url','logo_url','email',
       'claimed','approved','promo','promo_text',
