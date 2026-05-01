@@ -704,7 +704,7 @@ function renderClinic(clinic) {
   }).catch(() => {});
 
   // ── SEO: title, meta, OG, Twitter, canonical, JSON-LD ──
-  const slug = toSlug(clinic.name);
+  const slug = clinic.slug || toSlug(clinic.name);
   const pageUrl = `https://skinday.ca/clinic/${slug}`;
   const priceDesc = clinic.price ? `Botox from $${clinic.price}/unit. ` : '';
   const credDesc = (clinic.injector_credentials || []).length
@@ -1069,24 +1069,31 @@ async function initFromDB() {
   if (!slug) { renderNotFound(''); return; }
 
   try {
-    const res = await fetch('/api/get-clinics');
-    const data = res.ok ? await res.json() : [];
-    const all = Array.isArray(data) ? data : (data.clinics || data.data || []);
+    // Direct slug lookup — no full table fetch needed
+    const res = await fetch(`/api/get-clinics?slug=${encodeURIComponent(slug)}`);
+
+    if (!res.ok) {
+      // Fallback: try numeric id
+      if (!isNaN(slug)) {
+        const res2 = await fetch('/api/get-clinics');
+        const data2 = res2.ok ? await res2.json() : [];
+        const all = Array.isArray(data2) ? data2 : (data2.clinics || []);
+        const clinic = all.find(c => String(c.id) === String(slug));
+        if (clinic) { renderClinic(clinic); return; }
+      }
+      renderNotFound(slug);
+      return;
+    }
+
+    const clinic = await res.json();
 
     // Normalise array fields
-    all.forEach(o => {
-      ['injector_credentials', 'languages'].forEach(field => {
-        if (typeof o[field] === 'string') { try { o[field] = JSON.parse(o[field]); } catch(e) { o[field] = []; } }
-        if (!Array.isArray(o[field])) o[field] = [];
-      });
-      o.id = Number(o.id) || o.id;
+    ['injector_credentials', 'languages'].forEach(field => {
+      if (typeof clinic[field] === 'string') {
+        try { clinic[field] = JSON.parse(clinic[field]); } catch { clinic[field] = []; }
+      }
+      if (!Array.isArray(clinic[field])) clinic[field] = [];
     });
-
-    // Match by slug first, then by numeric id
-    let clinic = all.find(c => toSlug(c.name) === slug);
-    if (!clinic && !isNaN(slug)) clinic = all.find(c => c.id == slug);
-
-    if (!clinic) { renderNotFound(slug); return; }
 
     renderClinic(clinic);
 

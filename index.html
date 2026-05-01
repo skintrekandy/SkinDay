@@ -3931,6 +3931,19 @@ function useNearMe() {
       btn.textContent = '📍 Near Me';
       btn.disabled = false;
 
+      // Sort by distance from user
+      currentSort = 'nearest';
+      const sortSelect = document.getElementById('sortSelect');
+      if (sortSelect) {
+        // Add nearest option if not present
+        if (![...sortSelect.options].find(o => o.value === 'nearest')) {
+          const opt = document.createElement('option');
+          opt.value = 'nearest'; opt.textContent = 'Nearest First';
+          sortSelect.insertBefore(opt, sortSelect.firstChild);
+        }
+        sortSelect.value = 'nearest';
+      }
+
       if (nearest && nearestDist < 60) {
         currentFilter    = nearest;
         currentNameQuery = '';
@@ -5354,13 +5367,13 @@ window.openClinicModal = async function openClinicModal(clinicId) {
   // Name + neighbourhood
   const nameEl = document.getElementById('cm-name');
   nameEl.textContent = clinic.name;
-  nameEl.onclick = () => window.location.href = '/clinic/' + cmToSlug(clinic.name);
+  nameEl.onclick = () => window.location.href = '/clinic/' + (clinic.slug || cmToSlug(clinic.name));
   nameEl.style.cursor = 'pointer';
   nameEl.title = 'View full profile';
   document.getElementById('cm-neighbourhood').textContent = clinic.neighbourhood;
 
   const fullLink = document.getElementById('cm-full-profile-link');
-  if (fullLink) fullLink.href = '/clinic/' + cmToSlug(clinic.name);
+  if (fullLink) fullLink.href = '/clinic/' + (clinic.slug || cmToSlug(clinic.name));
 
   // Reset vote block
   const _voteClinicId = String(clinic.id);
@@ -5616,7 +5629,7 @@ window.openClinicModal = async function openClinicModal(clinicId) {
   }).catch(() => {});
 
   // Open
-  history.pushState({ clinicId }, '', '#clinic/' + cmToSlug(clinic.name));
+  history.pushState({ clinicId }, '', '#clinic/' + (clinic.slug || cmToSlug(clinic.name)));
   document.getElementById('clinicModalOverlay').classList.add('open');
   document.body.style.overflow = 'hidden';
 }
