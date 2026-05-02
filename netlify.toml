@@ -82,3 +82,8 @@
   from   = "/botox-toronto"
   to     = "/botox-toronto.html"
   status = 200
+
+[[redirects]]
+  from   = "/api/update-visit"
+  to     = "/.netlify/functions/update-visit"
+  status = 200

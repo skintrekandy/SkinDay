@@ -3551,6 +3551,9 @@ function renderPageCards(clinicsData, append) {
   // Fetch visit signals for rendered clinics (non-blocking)
   const renderedIds = clinicsData.map(c => String(c.id));
   fetchVisitSignals(renderedIds).catch(() => {});
+
+  // Fetch user's own votes to show toggle/switch state
+  fetchMyVotes(renderedIds).catch(() => {});
 }
 
 // ─── FETCH PAGE ────────────────────────────────────────────────
@@ -4818,16 +4821,51 @@ document.getElementById('visitModalOverlay')?.addEventListener('click', e => {
   if (e.target === document.getElementById('visitModalOverlay')) closeVisitModal();
 });
 
-// ── INLINE CARD VOTE ─────────────────────────────────────────
+// ── USER'S OWN VOTES ─────────────────────────────────────────
+// Tracks current user's votes: { clinic_id: 'yes' | 'no' }
+const _myVotes = {};
+
+async function fetchMyVotes(clinicIds) {
+  if (!_currentUser || !clinicIds.length) return;
+  try {
+    const session = (await _sb.auth.getSession()).data.session;
+    if (!session?.access_token) return;
+    const ids = clinicIds.map(id => `clinic_id=eq.${encodeURIComponent(String(id))}`).join(',');
+    const res = await fetch(
+      `${window.SB_URL}/rest/v1/clinic_visits?user_id=eq.${_currentUser.id}&or=(${ids})&select=clinic_id,would_return&flagged=eq.false`,
+      { headers: { 'apikey': window.SB_KEY, 'Authorization': `Bearer ${session.access_token}` } }
+    );
+    if (!res.ok) return;
+    const rows = await res.json();
+    rows.forEach(r => { _myVotes[String(r.clinic_id)] = r.would_return; });
+    // Update button states for visible cards
+    clinicIds.forEach(id => updateVoteButtons(String(id)));
+  } catch { /* non-fatal */ }
+}
+
+function updateVoteButtons(clinicId) {
+  const vote = _myVotes[clinicId];
+  const yBtn = document.getElementById(`vote-yes-${clinicId}`);
+  const nBtn = document.getElementById(`vote-no-${clinicId}`);
+  if (!yBtn || !nBtn) return;
+  if (vote === 'yes') {
+    yBtn.style.opacity = '1'; yBtn.style.filter = 'none';
+    nBtn.style.opacity = '0.4'; nBtn.style.filter = 'grayscale(1)';
+  } else if (vote === 'no') {
+    nBtn.style.opacity = '1'; nBtn.style.filter = 'none';
+    yBtn.style.opacity = '0.4'; yBtn.style.filter = 'grayscale(1)';
+  }
+}
 // Direct yes/no vote from card row. No modal. Optimistic UI update.
 window.cardVote = async function(clinicId, val, btnEl) {
-  // Check auth
+  const id = String(clinicId);
+
+  // Auth check
   if (!_currentUser) {
     const { data: { session } } = await _sb.auth.getSession();
-    if (session?.user) {
-      setUser(session.user);
-    } else {
-      localStorage.setItem('sd_pending_vote', JSON.stringify({ clinic_id: clinicId, vote: val }));
+    if (session?.user) { setUser(session.user); }
+    else {
+      localStorage.setItem('sd_pending_vote', JSON.stringify({ clinic_id: id, vote: val }));
       await _sb.auth.signInWithOAuth({
         provider: 'google',
         options: { redirectTo: window.location.origin, queryParams: { prompt: 'select_account' } }
@@ -4836,19 +4874,52 @@ window.cardVote = async function(clinicId, val, btnEl) {
     }
   }
 
-  const row = btnEl?.closest('.card-visit-row');
+  const session = (await _sb.auth.getSession()).data.session;
+  if (!session?.access_token) return;
 
-  // Submit first — no optimistic update until we know it succeeded
-  try {
-    const session = (await _sb.auth.getSession()).data.session;
+  const currentVote = _myVotes[id];
+  const row = btnEl?.closest('.card-visit-row');
+  const sigEl = document.getElementById(`visit-signal-${id}`);
+  const yc = document.getElementById(`vote-yes-count-${id}`);
+  const nc = document.getElementById(`vote-no-count-${id}`);
+  let yes = parseInt(sigEl?.dataset.yes || 0);
+  let no  = parseInt(sigEl?.dataset.no  || 0);
+
+  if (currentVote === val) {
+    // TOGGLE — same button = undo
+    const res = await fetch('/api/update-visit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clinic_id: id, action: 'delete', access_token: session.access_token })
+    });
+    if (res.ok) {
+      delete _myVotes[id];
+      if (val === 'yes') yes = Math.max(0, yes - 1);
+      else no = Math.max(0, no - 1);
+      updateVoteButtons(id);
+    }
+  } else if (currentVote && currentVote !== val) {
+    // SWITCH — opposite button = change
+    const res = await fetch('/api/update-visit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clinic_id: id, action: 'update', would_return: val, access_token: session.access_token })
+    });
+    if (res.ok) {
+      _myVotes[id] = val;
+      if (val === 'yes') { yes++; no = Math.max(0, no - 1); }
+      else { no++; yes = Math.max(0, yes - 1); }
+      updateVoteButtons(id);
+    }
+  } else {
+    // NEW VOTE
     const res = await fetch('/api/submit-visit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ clinic_id: String(clinicId), would_return: val, access_token: session.access_token })
+      body: JSON.stringify({ clinic_id: id, would_return: val, access_token: session.access_token })
     });
-
     if (res.status === 409) {
-      // Already voted — show message, don't change counts
+      await fetchMyVotes([id]);
       const prompt = row?.querySelector('.card-visit-prompt');
       if (prompt) {
         const orig = prompt.innerHTML;
@@ -4857,30 +4928,17 @@ window.cardVote = async function(clinicId, val, btnEl) {
       }
       return;
     }
-
     if (res.ok) {
-      // Success — now update counts optimistically
-      const sigEl = document.getElementById(`visit-signal-${clinicId}`);
-      if (sigEl) {
-        const yes = parseInt(sigEl.dataset.yes || 0) + (val === 'yes' ? 1 : 0);
-        const no  = parseInt(sigEl.dataset.no  || 0) + (val === 'no'  ? 1 : 0);
-        sigEl.dataset.yes = yes;
-        sigEl.dataset.no  = no;
-        const yc = document.getElementById(`vote-yes-count-${clinicId}`);
-        const nc = document.getElementById(`vote-no-count-${clinicId}`);
-        if (yc) yc.textContent = yes;
-        if (nc) nc.textContent = no;
-      }
-      // Lock buttons
-      if (row) row.querySelectorAll('.card-vote-btn').forEach(b => {
-        b.classList.add('voted');
-        b.onclick = null;
-      });
+      _myVotes[id] = val;
+      if (val === 'yes') yes++; else no++;
+      updateVoteButtons(id);
     }
-
-  } catch {
-    // silent fail
   }
+
+  // Update counts
+  if (sigEl) { sigEl.dataset.yes = yes; sigEl.dataset.no = no; }
+  if (yc) yc.textContent = yes;
+  if (nc) nc.textContent = no;
 };
 
 window.selectReturn = function selectReturn(val) {
