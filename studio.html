@@ -4,11 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
   <title>SkinDay Studio — Free Before & After Photo Tool</title>
-  <meta name="description" content="Create professional before & after photos in seconds. Free for all clinics. Auto-crop, brand, and export marketing-ready images." />
+  <meta name="description" content="Create professional before & after photos in seconds. Free for all clinics." />
   <link rel="icon" href="/favicon.ico" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -20,7 +21,7 @@
     html { scroll-behavior: smooth; overflow-x: hidden; }
     body { font-family: 'DM Sans', sans-serif; background: var(--cream); color: var(--deep); -webkit-font-smoothing: antialiased; }
 
-    /* ── NAV ── */
+    /* NAV */
     nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: rgba(28,23,20,0.95); backdrop-filter: blur(12px); border-bottom: 1px solid var(--hero-border); padding: 0 5%; display: flex; align-items: center; justify-content: space-between; height: 64px; }
     .nav-logo { font-family: 'Cormorant Garamond', serif; font-size: 1.6rem; font-weight: 400; color: var(--cream); letter-spacing: 0.04em; text-decoration: none; }
     .nav-logo span { color: var(--gold); }
@@ -49,31 +50,31 @@
     .nav-overlay-links a:hover { color: var(--gold); }
     .nav-overlay-links a.cta-link { color: var(--rose); }
     .nav-overlay-bottom { position: absolute; bottom: 2rem; font-size: 0.72rem; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
-    @media (max-width: 640px) { .hamburger { display: flex; } .nav-ctas .nav-signin-btn { display: none; } }
+    @media (max-width: 640px) { .hamburger { display: flex; } .nav-signin-btn { display: none; } }
     @media (max-width: 480px) { nav { padding: 0 4%; } .nav-cta { padding: 0.28rem 0.55rem; font-size: 0.72rem; } }
 
-    /* ── PAGE ── */
+    /* PAGE */
     .page { max-width: 860px; margin: 0 auto; padding: 88px 20px 80px; }
 
-    /* ── HERO ── */
+    /* HERO */
     .hero { text-align: center; padding: 44px 0 48px; border-bottom: 1px solid var(--border); margin-bottom: 48px; }
     .eyebrow { font-size: 0.7rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); margin-bottom: 14px; }
-    .hero h1 { font-family: 'Cormorant Garamond', serif; font-size: clamp(2rem, 5vw, 3rem); font-weight: 300; line-height: 1.15; margin-bottom: 14px; }
+    .hero h1 { font-family: 'Cormorant Garamond', serif; font-size: clamp(2rem,5vw,3rem); font-weight: 300; line-height: 1.15; margin-bottom: 14px; }
     .hero h1 em { font-style: italic; color: var(--rose); }
     .hero p { font-size: 0.92rem; color: var(--muted); max-width: 420px; margin: 0 auto; line-height: 1.7; }
 
-    /* ── STEPS ── */
+    /* STEPS */
     .step { margin-bottom: 40px; }
     .step-num { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: var(--dim); margin-bottom: 14px; }
 
-    /* ── UPLOAD ── */
+    /* UPLOAD */
     .upload-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
     .upload-zone { border: 1.5px dashed var(--border); border-radius: 8px; aspect-ratio: 3/4; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; position: relative; overflow: hidden; background: var(--warm); transition: border-color 0.2s; cursor: pointer; }
     .upload-zone:hover { border-color: var(--gold); }
     .upload-zone.filled { border-style: solid; border-color: var(--border); }
     .upload-zone img.thumb { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
     .upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-    .upload-zone.filled input { display: none; }
+    .upload-zone.filled input.main-input { display: none; }
     .upload-plus { width: 32px; height: 32px; border: 1.5px solid var(--border); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 18px; }
     .upload-txt { font-size: 0.78rem; color: var(--muted); }
     .zone-tag { position: absolute; bottom: 0; left: 0; right: 0; padding: 9px 12px; background: linear-gradient(transparent, rgba(28,23,20,0.72)); font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(250,247,242,0.8); pointer-events: none; }
@@ -82,7 +83,7 @@
     .change-input { position: absolute; top: 8px; right: 8px; z-index: 4; opacity: 0; width: 60px; height: 24px; cursor: pointer; display: none; }
     .upload-zone.filled .change-input { display: block; }
 
-    /* ── STATUS ── */
+    /* STATUS */
     .status { display: flex; align-items: center; gap: 10px; padding: 11px 15px; background: #fff; border: 1px solid var(--border); border-radius: 6px; font-size: 0.83rem; color: var(--muted); margin-top: 14px; }
     .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border); flex-shrink: 0; transition: background 0.3s; }
     .dot.spin { background: var(--gold); animation: blink 1s infinite; }
@@ -90,43 +91,47 @@
     .dot.warn { background: var(--gold); }
     .dot.err { background: var(--rose); }
     @keyframes blink { 0%,100%{opacity:1}50%{opacity:.3} }
+    .progress { height: 2px; background: var(--border); border-radius: 1px; overflow: hidden; margin-top: 8px; display: none; }
+    .progress.on { display: block; }
+    .progress-fill { height: 100%; background: var(--gold); width: 0%; transition: width 0.4s; }
 
-    /* ── CROP PRESETS ── */
-    .presets-section { display: none; }
-    .presets-section.visible { display: block; }
-    .section-title { font-family: 'Cormorant Garamond', serif; font-size: 1.35rem; font-weight: 300; margin-bottom: 6px; }
-    .section-hint { font-size: 0.82rem; color: var(--muted); line-height: 1.6; margin-bottom: 20px; }
-    .preset-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 32px; }
-    .preset-btn { border: 1.5px solid var(--border); border-radius: 8px; padding: 16px 8px 14px; background: #fff; cursor: pointer; text-align: center; transition: all 0.2s; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    /* CROP SECTION */
+    .crop-section { display: none; }
+    .crop-section.visible { display: block; }
+    .divider { border: none; border-top: 1px solid var(--border); margin: 36px 0; }
+
+    /* PRESETS */
+    .preset-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 28px; }
+    .preset-btn { border: 1.5px solid var(--border); border-radius: 8px; padding: 14px 8px 12px; background: #fff; cursor: pointer; text-align: center; transition: all 0.2s; display: flex; flex-direction: column; align-items: center; gap: 6px; }
     .preset-btn:hover { border-color: var(--gold); background: var(--warm); }
     .preset-btn.active { border-color: var(--rose); background: #fdf1ee; }
-    .preset-icon { font-size: 22px; line-height: 1; }
+    .preset-icon { font-size: 20px; line-height: 1; }
     .preset-name { font-size: 0.78rem; font-weight: 500; color: var(--deep); }
-    .preset-desc { font-size: 0.68rem; color: var(--muted); line-height: 1.4; }
+    .preset-desc { font-size: 0.67rem; color: var(--muted); line-height: 1.4; }
 
-    /* ── PREVIEW ── */
-    .preview-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 32px; }
+    /* PREVIEWS */
+    .preview-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 28px; }
     .preview-box { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: var(--deep); position: relative; }
     .preview-box canvas { display: block; width: 100%; }
-    .preview-tag { position: absolute; bottom: 0; left: 0; right: 0; padding: 8px 12px; background: linear-gradient(transparent, rgba(28,23,20,0.75)); font-size: 0.68rem; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(250,247,242,0.8); pointer-events: none; }
+    .preview-tag { position: absolute; bottom: 0; left: 0; right: 0; padding: 8px 12px; background: linear-gradient(transparent,rgba(28,23,20,0.75)); font-size: 0.68rem; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(250,247,242,0.8); pointer-events: none; }
 
-    /* ── BRANDING ── */
-    .brand-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+    /* BRANDING */
+    .brand-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; margin-bottom: 28px; }
     .field { display: flex; flex-direction: column; gap: 5px; }
     .field label { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim); }
     .field input, .field select { background: #fff; border: 1px solid var(--border); color: var(--deep); padding: 10px 12px; font-size: 0.88rem; font-family: 'DM Sans', sans-serif; border-radius: 6px; outline: none; transition: border-color 0.2s; }
     .field input:focus, .field select:focus { border-color: var(--rose); }
     .field input::placeholder { color: var(--dim); }
 
-    /* ── GENERATE ── */
-    .gen-wrap { display: flex; justify-content: center; margin: 28px 0; }
+    /* GENERATE */
+    .gen-wrap { display: flex; justify-content: center; margin: 8px 0 32px; }
     .btn-gen { background: var(--rose); color: #fff; border: none; padding: 14px 52px; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; font-weight: 500; letter-spacing: 0.06em; border-radius: 6px; cursor: pointer; transition: background 0.2s; }
     .btn-gen:hover { background: var(--rose-m); }
 
-    /* ── OUTPUT ── */
-    .output { display: none; border-top: 1px solid var(--border); padding-top: 36px; margin-top: 8px; }
+    /* OUTPUT */
+    .output { display: none; }
     .output.visible { display: block; }
-    .output-canvas-wrap { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--deep); }
+    .output-wrap { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--deep); }
     #outputCanvas { display: block; width: 100%; }
     .output-actions { display: flex; gap: 12px; margin-top: 16px; }
     .btn-dl { background: var(--deep); color: var(--cream); border: none; padding: 12px 32px; font-family: 'DM Sans', sans-serif; font-size: 0.85rem; font-weight: 500; border-radius: 6px; cursor: pointer; transition: background 0.2s; }
@@ -134,7 +139,7 @@
     .btn-reset { background: transparent; color: var(--muted); border: 1px solid var(--border); padding: 12px 24px; font-family: 'DM Sans', sans-serif; font-size: 0.85rem; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
     .btn-reset:hover { border-color: var(--muted); color: var(--deep); }
 
-    /* ── FOOTER ── */
+    /* FOOTER */
     footer { background: var(--deep); padding: 48px 5% 32px; border-top: 1px solid rgba(201,169,110,0.15); margin-top: 80px; }
     .footer-top { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 2.5rem; max-width: 1280px; margin: 0 auto 3rem; }
     .footer-brand { font-family: 'Cormorant Garamond', serif; font-size: 1.5rem; font-weight: 400; color: var(--cream); margin-bottom: 0.6rem; }
@@ -150,9 +155,8 @@
     .footer-disclaimer { font-size: 0.78rem; color: var(--muted); opacity: 0.7; line-height: 1.5; }
 
     @media (max-width: 580px) {
-      .preset-grid { grid-template-columns: repeat(2, 1fr); }
-      .brand-row { grid-template-columns: 1fr; }
-      .preview-row { grid-template-columns: 1fr 1fr; gap: 8px; }
+      .preset-grid { grid-template-columns: repeat(2,1fr); }
+      .brand-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -183,7 +187,6 @@
 
 <div class="page">
 
-  <!-- HERO -->
   <div class="hero">
     <div class="eyebrow">SkinDay Studio</div>
     <h1>Before & after photos.<br><em>Ready in seconds.</em></h1>
@@ -197,7 +200,7 @@
       <div class="upload-zone" id="zone-before">
         <div class="upload-plus">+</div>
         <div class="upload-txt">Before photo</div>
-        <input type="file" accept="image/*" id="input-before"/>
+        <input type="file" accept="image/*" class="main-input" id="input-before"/>
         <div class="zone-tag">Before</div>
         <button class="change-btn">Change</button>
         <input type="file" accept="image/*" class="change-input" id="change-before"/>
@@ -205,7 +208,7 @@
       <div class="upload-zone" id="zone-after">
         <div class="upload-plus">+</div>
         <div class="upload-txt">After photo</div>
-        <input type="file" accept="image/*" id="input-after"/>
+        <input type="file" accept="image/*" class="main-input" id="input-after"/>
         <div class="zone-tag">After</div>
         <button class="change-btn">Change</button>
         <input type="file" accept="image/*" class="change-input" id="change-after"/>
@@ -215,10 +218,12 @@
       <div class="dot" id="dot"></div>
       <span id="statusText">Upload a before and after photo to begin</span>
     </div>
+    <div class="progress" id="progressBar"><div class="progress-fill" id="progressFill"></div></div>
   </div>
 
-  <!-- STEP 2 + 3 -->
-  <div class="presets-section" id="presetsSection">
+  <!-- STEP 2 + 3 (shown after upload) -->
+  <div class="crop-section" id="cropSection">
+    <hr class="divider" style="margin-top:0">
 
     <div class="step">
       <div class="step-num">Step 2 — Choose crop area</div>
@@ -245,7 +250,6 @@
         </button>
       </div>
 
-      <!-- Live previews -->
       <div class="preview-row">
         <div class="preview-box">
           <canvas id="cvBefore"></canvas>
@@ -258,9 +262,11 @@
       </div>
     </div>
 
+    <hr class="divider">
+
     <div class="step">
       <div class="step-num">Step 3 — Add your branding (optional)</div>
-      <div class="brand-row" style="margin-top:14px;">
+      <div class="brand-grid">
         <div class="field">
           <label>Clinic name</label>
           <input type="text" id="clinicName" placeholder="Your clinic name" maxlength="60"/>
@@ -288,13 +294,13 @@
         <button class="btn-gen" onclick="generate()">Generate image</button>
       </div>
     </div>
-
   </div>
 
   <!-- OUTPUT -->
   <div class="output" id="outputSection">
+    <hr class="divider" style="margin-top:0">
     <div class="step-num" style="margin-bottom:16px;">Your image</div>
-    <div class="output-canvas-wrap">
+    <div class="output-wrap">
       <canvas id="outputCanvas"></canvas>
     </div>
     <div class="output-actions">
@@ -305,7 +311,6 @@
 
 </div>
 
-<!-- FOOTER -->
 <footer>
   <div class="footer-top">
     <div>
@@ -345,123 +350,236 @@
 </footer>
 
 <script>
-// ── State ─────────────────────────────────────────────────
+// ── State ──────────────────────────────────────────────────────
 const S = {
   beforeImg: null, afterImg: null,
-  preset: 'lower'
+  faceMesh: null,
+  preset: 'lower',
+  // Detected landmark-based crop boxes (fractions 0-1)
+  beforeCrop: null, afterCrop: null,
 };
 
-// Crop presets as fractions { t, b, l, r }
-// These are applied identically to both images so they always match
-const PRESETS = {
-  full:  { t: 0.02, b: 0.98, l: 0.10, r: 0.90 },
-  lower: { t: 0.42, b: 0.92, l: 0.08, r: 0.92 },
-  upper: { t: 0.02, b: 0.38, l: 0.10, r: 0.90 },
-  eyes:  { t: 0.28, b: 0.58, l: 0.08, r: 0.92 },
-};
+// Landmark indices for MediaPipe FaceMesh (468 points)
+const NOSE=1, CHIN=152, LEYE=33, REYE=263, BROW_L=70, BROW_R=300;
 
-// ── Nav hamburger ─────────────────────────────────────────
+// ── Nav ────────────────────────────────────────────────────────
 document.getElementById('hamburger').addEventListener('click', function() {
   this.classList.toggle('open');
   document.getElementById('navOverlay').classList.toggle('open');
 });
 
-// ── Status ────────────────────────────────────────────────
+// ── Status ─────────────────────────────────────────────────────
 function setStatus(msg, type='idle') {
   document.getElementById('statusText').textContent = msg;
   const d = document.getElementById('dot');
   d.className = 'dot' + (type !== 'idle' ? ' '+type : '');
 }
+function setProgress(p) {
+  const bar=document.getElementById('progressBar'), fill=document.getElementById('progressFill');
+  if(p>0&&p<100){bar.classList.add('on');fill.style.width=p+'%';}
+  else{bar.classList.remove('on');fill.style.width='0%';}
+}
 
-// ── Upload ────────────────────────────────────────────────
-function loadImage(file, which) {
+// ── Upload ──────────────────────────────────────────────────────
+function loadFile(file, which) {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = ev => {
     const img = new Image();
     img.onload = () => {
       S[which+'Img'] = img;
+      S[which+'Crop'] = null; // reset crop on new upload
       const zone = document.getElementById('zone-'+which);
       zone.classList.add('filled');
       let old = zone.querySelector('img.thumb'); if(old) old.remove();
-      const th = document.createElement('img');
-      th.className = 'thumb'; th.src = ev.target.result;
+      const th = document.createElement('img'); th.className='thumb'; th.src=ev.target.result;
       zone.insertBefore(th, zone.querySelector('.zone-tag'));
-      if (S.beforeImg && S.afterImg) {
-        document.getElementById('presetsSection').classList.add('visible');
-        document.getElementById('presetsSection').scrollIntoView({ behavior:'smooth', block:'start' });
-        renderPreviews();
-        setStatus('Both photos loaded — choose your crop area below.', 'ok');
-      } else {
-        setStatus(which === 'before' ? 'Before photo loaded — now upload the after photo.' : 'After photo loaded — now upload the before photo.', 'warn');
-      }
+      if (S.beforeImg && S.afterImg) runDetection();
+      else setStatus(which==='before' ? 'Before loaded — now upload the after photo.' : 'After loaded — now upload the before photo.', 'warn');
     };
     img.src = ev.target.result;
   };
   reader.readAsDataURL(file);
 }
-
 ['before','after'].forEach(w => {
-  document.getElementById('input-'+w).addEventListener('change', e => loadImage(e.target.files[0], w));
-  document.getElementById('change-'+w).addEventListener('change', e => loadImage(e.target.files[0], w));
+  document.getElementById('input-'+w).addEventListener('change', e => loadFile(e.target.files[0], w));
+  document.getElementById('change-'+w).addEventListener('change', e => loadFile(e.target.files[0], w));
 });
 
-// ── Preset selection ──────────────────────────────────────
+// ── MediaPipe FaceMesh ──────────────────────────────────────────
+function initFM() {
+  return new Promise(res => {
+    const fm = new FaceMesh({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}` });
+    fm.setOptions({ maxNumFaces:1, refineLandmarks:true, minDetectionConfidence:0.4, minTrackingConfidence:0.4 });
+    fm.initialize().then(() => { S.faceMesh = fm; res(fm); });
+  });
+}
+
+function detect(img) {
+  return new Promise(async (res, rej) => {
+    S.faceMesh.onResults(r => {
+      if (r.multiFaceLandmarks?.length > 0) res(r.multiFaceLandmarks[0]);
+      else rej(new Error('no face'));
+    });
+    const c = document.createElement('canvas');
+    c.width = img.naturalWidth; c.height = img.naturalHeight;
+    c.getContext('2d').drawImage(img, 0, 0);
+    await S.faceMesh.send({ image: c });
+  });
+}
+
+// Convert landmarks to crop fractions for a given preset
+function lmToCrop(lm, preset) {
+  const nose  = lm[NOSE],  chin  = lm[CHIN];
+  const leye  = lm[LEYE],  reye  = lm[REYE];
+  const browL = lm[BROW_L],browR = lm[BROW_R];
+  // Forehead estimate: above brows by ~same distance as brow-to-nose
+  const browY = (browL.y + browR.y) / 2;
+  const foreheadY = browY - (lm[NOSE].y - browY) * 0.9;
+  const faceH = chin.y - browY;
+  const cx    = (leye.x + reye.x) / 2;
+  // Width: use jaw landmarks for frontal, fall back to eye-based for profiles
+  const eyeDist = Math.abs(reye.x - leye.x);
+  const isProfile = eyeDist < 0.12; // normalized coords
+  const halfW = isProfile
+    ? Math.max(Math.abs(reye.x - leye.x) * 2.5, 0.3)
+    : Math.abs(reye.x - leye.x) * 1.8;
+
+  let t, b;
+  if (preset === 'full')  { t = foreheadY - faceH*0.15; b = chin.y + faceH*0.18; }
+  if (preset === 'lower') { t = nose.y    - faceH*0.08; b = chin.y + faceH*0.30; }
+  if (preset === 'upper') { t = foreheadY - faceH*0.12; b = nose.y - faceH*0.05; }
+  if (preset === 'eyes')  { t = browY     - faceH*0.18; b = nose.y + faceH*0.05; }
+
+  // For profile shots, center on detected face box rather than eye midpoint
+  const cx2 = isProfile ? (leye.x + reye.x) / 2 : cx;
+
+  const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
+  return {
+    t: clamp(t, 0, 0.85),
+    b: clamp(b, 0.1, 1.0),
+    l: clamp(cx2 - halfW, 0, 0.5),
+    r: clamp(cx2 + halfW, 0.5, 1.0),
+  };
+}
+
+// Fallback crop when face not detected (centre-weighted)
+function fallbackCrop(preset) {
+  const crops = {
+    full:  { t:0.02, b:0.96, l:0.08, r:0.92 },
+    lower: { t:0.42, b:0.90, l:0.10, r:0.90 },
+    upper: { t:0.02, b:0.40, l:0.10, r:0.90 },
+    eyes:  { t:0.25, b:0.55, l:0.10, r:0.90 },
+  };
+  return crops[preset];
+}
+
+async function runDetection() {
+  setStatus('Analysing photos…', 'spin'); setProgress(15);
+  if (!S.faceMesh) await initFM();
+
+  let warns = [];
+  for (const w of ['before','after']) {
+    try {
+      setProgress(w==='before' ? 35 : 65);
+      const lm = await detect(S[w+'Img']);
+      S[w+'Crop'] = lmToCrop(lm, S.preset);
+    } catch {
+      S[w+'Crop'] = fallbackCrop(S.preset);
+      warns.push(w);
+    }
+  }
+
+  setProgress(100);
+  document.getElementById('cropSection').classList.add('visible');
+  document.getElementById('cropSection').scrollIntoView({ behavior:'smooth', block:'start' });
+  renderPreviews();
+
+  if (warns.length === 0) {
+    setStatus('Face detected — crop preview ready. Adjust preset if needed.', 'ok');
+  } else if (warns.length === 2) {
+    setStatus('Profile or angled shots — centre crop applied. Try different preset if needed.', 'warn');
+  } else {
+    setStatus(`Could not detect face in ${warns[0]} photo — centre crop applied.`, 'warn');
+  }
+  setProgress(0);
+}
+
+// ── Presets ────────────────────────────────────────────────────
 function selectPreset(key) {
   S.preset = key;
   document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
   document.querySelector(`[data-preset="${key}"]`).classList.add('active');
+  // Recompute crops with new preset using existing landmarks
+  // Re-run detection to get fresh crops for new preset
+  if (S.beforeImg && S.afterImg) {
+    recomputeCrops();
+  }
+}
+
+async function recomputeCrops() {
+  for (const w of ['before','after']) {
+    try {
+      const lm = await detect(S[w+'Img']);
+      S[w+'Crop'] = lmToCrop(lm, S.preset);
+    } catch {
+      S[w+'Crop'] = fallbackCrop(S.preset);
+    }
+  }
   renderPreviews();
 }
 
-// ── Render previews ───────────────────────────────────────
-// Both panels use IDENTICAL crop fractions → always same size
-function cropToCanvas(img, crop, targetW, targetH) {
-  const c = document.createElement('canvas');
-  c.width = targetW; c.height = targetH;
-  const iw = img.naturalWidth, ih = img.naturalHeight;
-  const sx = crop.l*iw, sy = crop.t*ih;
-  const sw = (crop.r-crop.l)*iw, sh = (crop.b-crop.t)*ih;
-  c.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, targetW, targetH);
-  return c;
-}
-
+// ── Render preview canvases ────────────────────────────────────
+// Key: both panels rendered at IDENTICAL pixel dimensions
 function renderPreviews() {
-  if (!S.beforeImg || !S.afterImg) return;
-  const crop = PRESETS[S.preset];
-  const pH = 500, pW = Math.round(pH * (crop.r-crop.l) / (crop.b-crop.t));
+  const bCrop = S.beforeCrop || fallbackCrop(S.preset);
+  const aCrop = S.afterCrop  || fallbackCrop(S.preset);
 
-  ['before','after'].forEach(w => {
-    const cv = document.getElementById('cv'+w.charAt(0).toUpperCase()+w.slice(1));
-    const src = cropToCanvas(S[w+'Img'], crop, pW, pH);
-    cv.width = pW; cv.height = pH;
-    cv.getContext('2d').drawImage(src, 0, 0);
-  });
+  // Use before crop's aspect ratio for both panels to keep consistent framing
+  const pH = 480;
+  const pW = Math.round(pH * (bCrop.r - bCrop.l) / (bCrop.b - bCrop.t));
+
+  drawCropToCanvas(document.getElementById('cvBefore'), S.beforeImg, bCrop, pW, pH);
+  drawCropToCanvas(document.getElementById('cvAfter'),  S.afterImg,  aCrop, pW, pH);
 }
 
-// ── Brightness utils ──────────────────────────────────────
+function drawCropToCanvas(cv, img, crop, tw, th) {
+  cv.width = tw; cv.height = th;
+  const ctx = cv.getContext('2d');
+  const iw = img.naturalWidth, ih = img.naturalHeight;
+  ctx.drawImage(img,
+    crop.l*iw, crop.t*ih, (crop.r-crop.l)*iw, (crop.b-crop.t)*ih,
+    0, 0, tw, th
+  );
+}
+
+// ── Brightness utils ───────────────────────────────────────────
 function avgBright(ctx, w, h) {
-  const d = ctx.getImageData(0,0,w,h).data; let s=0;
+  const d=ctx.getImageData(0,0,w,h).data; let s=0;
   for(let i=0;i<d.length;i+=4) s+=.299*d[i]+.587*d[i+1]+.114*d[i+2];
   return s/(d.length/4);
 }
 function adjustBright(ctx, w, h, f) {
   const id=ctx.getImageData(0,0,w,h);
-  for(let i=0;i<id.data.length;i+=4){id.data[i]=Math.min(255,id.data[i]*f);id.data[i+1]=Math.min(255,id.data[i+1]*f);id.data[i+2]=Math.min(255,id.data[i+2]*f);}
+  for(let i=0;i<id.data.length;i+=4){
+    id.data[i]=Math.min(255,id.data[i]*f);
+    id.data[i+1]=Math.min(255,id.data[i+1]*f);
+    id.data[i+2]=Math.min(255,id.data[i+2]*f);
+  }
   ctx.putImageData(id,0,0);
 }
 
-// ── Watermark ─────────────────────────────────────────────
-function drawWatermark(ctx, canvasW, canvasH, clinic, injector) {
+// ── Watermark ──────────────────────────────────────────────────
+function drawWatermark(ctx, cW, cH, clinic, injector) {
   const lines = [clinic, injector].filter(Boolean);
   if (!lines.length) return;
-  const fs = Math.max(20, Math.round(canvasH * 0.022));
-  const lh = fs * 1.5;
+  const fs = Math.max(20, Math.round(cH * 0.022));
+  const lh = fs * 1.5, px=20, py=14;
   ctx.font = `500 ${fs}px 'DM Sans',sans-serif`;
-  const maxW = lines.reduce((m,l) => Math.max(m, ctx.measureText(l).width), 0);
-  const px=20, py=14, bw=maxW+px*2, bh=lines.length*lh+py*2;
-  const bx=canvasW-bw-20, by=canvasH-bh-20;
-  ctx.fillStyle='rgba(28,23,20,0.55)';
+  const maxW = lines.reduce((m,l)=>Math.max(m,ctx.measureText(l).width),0);
+  const bw=maxW+px*2, bh=lines.length*lh+py*2;
+  const bx=cW-bw-20, by=cH-bh-20;
+  ctx.fillStyle='rgba(28,23,20,0.58)';
   if(ctx.roundRect) ctx.roundRect(bx,by,bw,bh,5); else ctx.rect(bx,by,bw,bh);
   ctx.fill();
   ctx.textBaseline='top';
@@ -472,66 +590,74 @@ function drawWatermark(ctx, canvasW, canvasH, clinic, injector) {
   });
 }
 
-// ── Generate ──────────────────────────────────────────────
+// ── Generate ───────────────────────────────────────────────────
 function generate() {
-  const crop      = PRESETS[S.preset];
+  const bCrop    = S.beforeCrop || fallbackCrop(S.preset);
+  const aCrop    = S.afterCrop  || fallbackCrop(S.preset);
   const normalize = document.getElementById('normalizeExp').value === 'yes';
   const layout    = document.getElementById('layout').value;
   const clinic    = document.getElementById('clinicName').value.trim();
   const injector  = document.getElementById('injectorName').value.trim();
 
-  // Both panels use identical dimensions — guaranteed alignment
   const pH = 1080;
-  const pW = Math.round(pH * (crop.r-crop.l) / (crop.b-crop.t));
+  // Both panels same height; width derived from BEFORE crop aspect ratio
+  // then AFTER is cropped to same width/height for perfect alignment
+  const pW = Math.round(pH * (bCrop.r-bCrop.l) / (bCrop.b-bCrop.t));
 
-  const cB = cropToCanvas(S.beforeImg, crop, pW, pH);
-  const cA = cropToCanvas(S.afterImg,  crop, pW, pH);
+  const cB = document.createElement('canvas'); cB.width=pW; cB.height=pH;
+  const cA = document.createElement('canvas'); cA.width=pW; cA.height=pH;
+
+  const biw=S.beforeImg.naturalWidth, bih=S.beforeImg.naturalHeight;
+  const aiw=S.afterImg.naturalWidth,  aih=S.afterImg.naturalHeight;
+
+  cB.getContext('2d').drawImage(S.beforeImg, bCrop.l*biw, bCrop.t*bih, (bCrop.r-bCrop.l)*biw, (bCrop.b-bCrop.t)*bih, 0, 0, pW, pH);
+  cA.getContext('2d').drawImage(S.afterImg,  aCrop.l*aiw, aCrop.t*aih, (aCrop.r-aCrop.l)*aiw, (aCrop.b-aCrop.t)*aih, 0, 0, pW, pH);
 
   if (normalize) {
-    const ab = avgBright(cB.getContext('2d'), pW, pH);
-    const aa = avgBright(cA.getContext('2d'), pW, pH);
-    const f  = Math.max(.72, Math.min(1.38, ab/aa));
-    adjustBright(cA.getContext('2d'), pW, pH, f);
+    const ab=avgBright(cB.getContext('2d'),pW,pH);
+    const aa=avgBright(cA.getContext('2d'),pW,pH);
+    const f=Math.max(.72,Math.min(1.38,ab/aa));
+    adjustBright(cA.getContext('2d'),pW,pH,f);
   }
 
   const gap=5, oc=document.getElementById('outputCanvas');
-  const oW = layout==='sidebyside' ? pW*2+gap : pW;
-  const oH = layout==='sidebyside' ? pH       : pH*2+gap;
+  const oW=layout==='sidebyside'?pW*2+gap:pW;
+  const oH=layout==='sidebyside'?pH:pH*2+gap;
   oc.width=oW; oc.height=oH;
   const ctx=oc.getContext('2d');
   ctx.fillStyle='#1C1714'; ctx.fillRect(0,0,oW,oH);
 
   if (layout==='sidebyside') {
-    ctx.drawImage(cB, 0, 0, pW, pH);
-    ctx.drawImage(cA, pW+gap, 0, pW, pH);
-    [[0,'BEFORE'],[pW+gap,'AFTER']].forEach(([ox,lbl]) => {
+    ctx.drawImage(cB,0,0,pW,pH);
+    ctx.drawImage(cA,pW+gap,0,pW,pH);
+    [[0,'BEFORE'],[pW+gap,'AFTER']].forEach(([ox,lbl])=>{
       const g=ctx.createLinearGradient(ox,pH-80,ox,pH);
-      g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,'rgba(0,0,0,.8)');
+      g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,'rgba(0,0,0,.82)');
       ctx.fillStyle=g; ctx.fillRect(ox,pH-80,pW,80);
       ctx.fillStyle='rgba(250,247,242,.88)'; ctx.font='400 13px "DM Sans",sans-serif';
-      ctx.fillText(lbl, ox+18, pH-20);
+      ctx.fillText(lbl,ox+18,pH-20);
     });
-    drawWatermark(ctx, oW, oH, clinic, injector);
+    drawWatermark(ctx,oW,oH,clinic,injector);
   } else {
-    ctx.drawImage(cB, 0, 0, pW, pH);
-    ctx.drawImage(cA, 0, pH+gap, pW, pH);
-    [[0,'BEFORE'],[pH+gap,'AFTER']].forEach(([yo,lbl]) => {
+    ctx.drawImage(cB,0,0,pW,pH);
+    ctx.drawImage(cA,0,pH+gap,pW,pH);
+    [[0,'BEFORE'],[pH+gap,'AFTER']].forEach(([yo,lbl])=>{
       const g=ctx.createLinearGradient(0,yo+pH-80,0,yo+pH);
-      g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,'rgba(0,0,0,.8)');
+      g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,'rgba(0,0,0,.82)');
       ctx.fillStyle=g; ctx.fillRect(0,yo+pH-80,pW,80);
       ctx.fillStyle='rgba(250,247,242,.88)'; ctx.font='400 13px "DM Sans",sans-serif';
-      ctx.fillText(lbl, 18, yo+pH-20);
+      ctx.fillText(lbl,18,yo+pH-20);
     });
-    drawWatermark(ctx, oW, oH, clinic, injector);
+    drawWatermark(ctx,oW,oH,clinic,injector);
   }
 
   document.getElementById('outputSection').classList.add('visible');
-  document.getElementById('outputSection').scrollIntoView({ behavior:'smooth' });
-  setStatus('Done — your image is ready to download.', 'ok');
+  document.getElementById('outputSection').scrollIntoView({behavior:'smooth'});
+  setStatus('Done — your image is ready to download.','ok');
 }
 
-// ── Download ──────────────────────────────────────────────
-document.getElementById('downloadBtn').addEventListener('click', () => {
+// ── Download ───────────────────────────────────────────────────
+document.getElementById('downloadBtn').addEventListener('click',()=>{
   const a=document.createElement('a');
   a.download='before-after.jpg';
   a.href=document.getElementById('outputCanvas').toDataURL('image/jpeg',.95);
