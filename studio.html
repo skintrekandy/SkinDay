@@ -270,7 +270,7 @@
 </footer>
 
 <script>
-const S = { bImg:null, aImg:null, fm:null, preset:'lower', bLm:null, aLm:null };
+const S = { beforeImg:null, afterImg:null, fm:null, preset:'lower', bLm:null, aLm:null };
 const NOSE=1, CHIN=152, LEYE=33, REYE=263, BROWL=70, BROWR=300, JAWL=172, JAWR=397;
 
 document.getElementById('hamburger').addEventListener('click', function() {
@@ -296,14 +296,14 @@ function loadFile(file, which) {
     const img = new Image();
     img.onload = () => {
       S[which+'Img'] = img;
-      S[which+'Lm'] = null;
+      S[which==='before'?'bLm':'aLm'] = null;
       const zone = document.getElementById('zone-'+which);
       zone.classList.add('filled');
       let old = zone.querySelector('img.thumb'); if(old) old.remove();
       const th = document.createElement('img'); th.className='thumb'; th.src=ev.target.result;
       zone.insertBefore(th, zone.querySelector('.zone-tag'));
-      if(S.bImg && S.aImg) runDetect();
-      else setSt(which==='before'?'Before loaded — now upload the after photo.':'After loaded — now upload the before photo.','warn');
+      if(S.beforeImg && S.afterImg) runDetect();
+      else setSt(which==='before' ? 'Before loaded — now upload the after photo.' : 'After loaded — now upload the before photo.', 'warn');
     };
     img.src = ev.target.result;
   };
@@ -341,7 +341,8 @@ async function runDetect() {
   for(const w of ['before','after']) {
     try {
       setProg(w==='before' ? 35 : 65);
-      S[w.charAt(0)+'Lm'] = await detect(S[w+'Img']);
+      if(w==='before') S.bLm = await detect(S.beforeImg);
+      else S.aLm = await detect(S.afterImg);
     } catch { warns.push(w); }
   }
   setProg(100);
@@ -349,7 +350,7 @@ async function runDetect() {
   document.getElementById('cropSection').scrollIntoView({ behavior:'smooth', block:'start' });
   renderPreviews();
   if(warns.length===0) setSt('Face detected — choose your crop area.', 'ok');
-  else if(warns.length===2) setSt('Profile or angled photos — centre crop applied. Switch presets to adjust.', 'warn');
+  else if(warns.length===2) setSt('Profile or angled photos — centre crop applied.', 'warn');
   else setSt(`Could not detect face in ${warns[0]} photo — centre crop applied.`, 'warn');
   setProg(0);
 }
@@ -361,10 +362,13 @@ function selPreset(k) {
   renderPreviews();
 }
 
-// ── KEY FIX: work in pixel coordinates, not fractions ──────────
-// This ensures both panels crop the face at the same physical size
-// regardless of how zoomed-in each source photo is
-function lmToPixelBox(lm, iw, ih, preset) {
+// ── Eye distance in pixels (absolute, not normalized) ──────────
+function eyeDistPx(lm, imgW) {
+  return Math.abs(lm[REYE].x - lm[LEYE].x) * imgW;
+}
+
+// ── Base crop box from landmarks (no scale normalization yet) ───
+function lmToBaseBox(lm, iw, ih, preset) {
   const px = i => ({ x: lm[i].x * iw, y: lm[i].y * ih });
   const nose=px(NOSE), chin=px(CHIN), le=px(LEYE), re=px(REYE);
   const browL=px(BROWL), browR=px(BROWR), jawL=px(JAWL), jawR=px(JAWR);
@@ -383,35 +387,83 @@ function lmToPixelBox(lm, iw, ih, preset) {
   if(preset==='upper') { top=foreY-faceH*.15; bot=nose.y-faceH*.05; }
   if(preset==='eyes')  { top=browY-faceH*.20; bot=nose.y+faceH*.08; }
   return {
-    x: Math.max(0, cx - halfW),
-    y: Math.max(0, top),
-    w: Math.min(halfW * 2, iw),
-    h: Math.min(bot - top, ih - Math.max(0, top))
+    x: cx - halfW,
+    y: top,
+    w: halfW * 2,
+    h: bot - top,
+    cx, // store center for clamping
+    cy: (top + bot) / 2
   };
 }
 
 function fallbackBox(iw, ih, preset) {
   const p = { full:[.03,.96,.08,.92], lower:[.40,.90,.08,.92], upper:[.03,.40,.08,.92], eyes:[.25,.56,.08,.92] };
   const [t,b,l,r] = p[preset];
-  return { x:l*iw, y:t*ih, w:(r-l)*iw, h:(b-t)*ih };
+  return { x:l*iw, y:t*ih, w:(r-l)*iw, h:(b-t)*ih, cx:(l+r)/2*iw, cy:(t+b)/2*ih };
 }
 
-function getBox(which) {
-  const img = S[which+'Img'];
-  const lm = which==='before' ? S.bLm : S.aLm;
-  if(lm) return lmToPixelBox(lm, img.naturalWidth, img.naturalHeight, S.preset);
-  return fallbackBox(img.naturalWidth, img.naturalHeight, S.preset);
+// ── Scale-normalized crop box ──────────────────────────────────
+// Uses inter-eye distance as anchor so both faces appear same size
+function getScaledBox(which, targetEyePx) {
+  const img = which==='before' ? S.beforeImg : S.afterImg;
+  const lm  = which==='before' ? S.bLm : S.aLm;
+  const iw = img.naturalWidth, ih = img.naturalHeight;
+
+  if(!lm) return fallbackBox(iw, ih, S.preset);
+
+  const base = lmToBaseBox(lm, iw, ih, S.preset);
+  const thisEyePx = eyeDistPx(lm, iw);
+  const scale = targetEyePx / thisEyePx;
+
+  // Scale crop box around its center point
+  const newW = base.w * scale;
+  const newH = base.h * scale;
+  const newX = base.cx - newW / 2;
+  const newY = base.cy - newH / 2;
+
+  // Clamp within image bounds
+  return {
+    x: Math.max(0, Math.min(newX, iw - newW)),
+    y: Math.max(0, Math.min(newY, ih - newH)),
+    w: Math.min(newW, iw),
+    h: Math.min(newH, ih)
+  };
 }
 
-// Both panels rendered at IDENTICAL pixel dimensions
-// Width derived from before crop aspect ratio, applied to both
+// ── Get both boxes with shared target scale ────────────────────
+function getBothBoxes() {
+  const bHasLm = !!S.bLm, aHasLm = !!S.aLm;
+
+  if(bHasLm && aHasLm) {
+    // Both detected — normalize to larger eye distance so no upscaling artifacts
+    const bEye = eyeDistPx(S.bLm, S.beforeImg.naturalWidth);
+    const aEye = eyeDistPx(S.aLm, S.afterImg.naturalWidth);
+    const target = Math.max(bEye, aEye);
+    return {
+      bBox: getScaledBox('before', target),
+      aBox: getScaledBox('after',  target)
+    };
+  }
+  // Fallback for one or both missing
+  return {
+    bBox: bHasLm ? getScaledBox('before', eyeDistPx(S.bLm, S.beforeImg.naturalWidth))
+                 : fallbackBox(S.beforeImg.naturalWidth, S.beforeImg.naturalHeight, S.preset),
+    aBox: aHasLm ? getScaledBox('after',  eyeDistPx(S.aLm, S.afterImg.naturalWidth))
+                 : fallbackBox(S.afterImg.naturalWidth,  S.afterImg.naturalHeight,  S.preset)
+  };
+}
+
+// ── Render previews ────────────────────────────────────────────
 function renderPreviews() {
-  if(!S.bImg || !S.aImg) return;
-  const bBox = getBox('before'), aBox = getBox('after');
+  if(!S.beforeImg || !S.afterImg) return;
+  const { bBox, aBox } = getBothBoxes();
   const pH = 460;
-  const pW = Math.round(pH * (bBox.w / bBox.h));
-  drawToCanvas(document.getElementById('cvBefore'), S.bImg, bBox, pW, pH, 1);
-  drawToCanvas(document.getElementById('cvAfter'),  S.aImg, aBox, pW, pH, 1);
+  // Use averaged aspect ratio to prevent distortion
+  const bAspect = bBox.w / bBox.h;
+  const aAspect = aBox.w / aBox.h;
+  const pW = Math.round(pH * (bAspect + aAspect) / 2);
+  drawToCanvas(document.getElementById('cvBefore'), S.beforeImg, bBox, pW, pH, 1);
+  drawToCanvas(document.getElementById('cvAfter'),  S.afterImg,  aBox, pW, pH, 1);
 }
 
 function drawToCanvas(cv, img, box, tw, th, bf) {
@@ -454,27 +506,34 @@ function drawWatermark(ctx, cW, cH, clinic, inj) {
 }
 
 function generate() {
-  const bBox = getBox('before'), aBox = getBox('after');
+  const { bBox, aBox } = getBothBoxes();
   const norm = document.getElementById('norm').value === '1';
   const layout = document.getElementById('layout').value;
   const clinic = document.getElementById('clinicName').value.trim();
   const inj = document.getElementById('injectorName').value.trim();
+
   const pH = 1080;
-  const pW = Math.round(pH * (bBox.w / bBox.h));
+  const bAspect = bBox.w / bBox.h;
+  const aAspect = aBox.w / aBox.h;
+  const pW = Math.round(pH * (bAspect + aAspect) / 2);
+
   const cB = document.createElement('canvas'); cB.width=pW; cB.height=pH;
   const cA = document.createElement('canvas'); cA.width=pW; cA.height=pH;
-  cB.getContext('2d').drawImage(S.bImg, bBox.x, bBox.y, bBox.w, bBox.h, 0, 0, pW, pH);
-  cA.getContext('2d').drawImage(S.aImg, aBox.x, aBox.y, aBox.w, aBox.h, 0, 0, pW, pH);
+  cB.getContext('2d').drawImage(S.beforeImg, bBox.x, bBox.y, bBox.w, bBox.h, 0, 0, pW, pH);
+  cA.getContext('2d').drawImage(S.afterImg,  aBox.x, aBox.y, aBox.w, aBox.h, 0, 0, pW, pH);
+
   if(norm) {
     const ab=avgBright(cB.getContext('2d'),pW,pH), aa=avgBright(cA.getContext('2d'),pW,pH);
     const f=Math.max(.72,Math.min(1.38,ab/aa));
-    drawToCanvas(cA, S.aImg, aBox, pW, pH, f);
+    drawToCanvas(cA, S.afterImg, aBox, pW, pH, f);
   }
+
   const gap=4, oc=document.getElementById('outputCanvas');
   const oW=layout==='side'?pW*2+gap:pW, oH=layout==='side'?pH:pH*2+gap;
   oc.width=oW; oc.height=oH;
   const ctx=oc.getContext('2d');
   ctx.fillStyle='#1C1714'; ctx.fillRect(0,0,oW,oH);
+
   if(layout==='side') {
     ctx.drawImage(cB,0,0,pW,pH); ctx.drawImage(cA,pW+gap,0,pW,pH);
     [[0,'BEFORE'],[pW+gap,'AFTER']].forEach(([ox,lbl])=>{
@@ -496,6 +555,7 @@ function generate() {
     });
     drawWatermark(ctx,oW,oH,clinic,inj);
   }
+
   document.getElementById('outputSection').classList.add('visible');
   document.getElementById('outputSection').scrollIntoView({behavior:'smooth'});
   setSt('Done — your image is ready to download.','ok');
