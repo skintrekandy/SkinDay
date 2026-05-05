@@ -20,8 +20,6 @@
     }
     html { scroll-behavior: smooth; overflow-x: hidden; }
     body { font-family: 'DM Sans', sans-serif; background: var(--cream); color: var(--deep); -webkit-font-smoothing: antialiased; }
-
-    /* NAV */
     nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: rgba(28,23,20,0.95); backdrop-filter: blur(12px); border-bottom: 1px solid var(--hero-border); padding: 0 5%; display: flex; align-items: center; justify-content: space-between; height: 64px; }
     .nav-logo { font-family: 'Cormorant Garamond', serif; font-size: 1.6rem; font-weight: 400; color: var(--cream); letter-spacing: 0.04em; text-decoration: none; }
     .nav-logo span { color: var(--gold); }
@@ -52,22 +50,14 @@
     .nav-overlay-bottom { position: absolute; bottom: 2rem; font-size: 0.72rem; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
     @media (max-width: 640px) { .hamburger { display: flex; } .nav-signin-btn { display: none; } }
     @media (max-width: 480px) { nav { padding: 0 4%; } .nav-cta { padding: 0.28rem 0.55rem; font-size: 0.72rem; } }
-
-    /* PAGE */
     .page { max-width: 860px; margin: 0 auto; padding: 88px 20px 80px; }
-
-    /* HERO */
     .hero { text-align: center; padding: 44px 0 48px; border-bottom: 1px solid var(--border); margin-bottom: 48px; }
     .eyebrow { font-size: 0.7rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); margin-bottom: 14px; }
     .hero h1 { font-family: 'Cormorant Garamond', serif; font-size: clamp(2rem,5vw,3rem); font-weight: 300; line-height: 1.15; margin-bottom: 14px; }
     .hero h1 em { font-style: italic; color: var(--rose); }
     .hero p { font-size: 0.92rem; color: var(--muted); max-width: 420px; margin: 0 auto; line-height: 1.7; }
-
-    /* STEPS */
     .step { margin-bottom: 40px; }
     .step-num { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: var(--dim); margin-bottom: 14px; }
-
-    /* UPLOAD */
     .upload-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
     .upload-zone { border: 1.5px dashed var(--border); border-radius: 8px; aspect-ratio: 3/4; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; position: relative; overflow: hidden; background: var(--warm); transition: border-color 0.2s; cursor: pointer; }
     .upload-zone:hover { border-color: var(--gold); }
@@ -82,53 +72,38 @@
     .upload-zone.filled .change-btn { display: block; }
     .change-input { position: absolute; top: 8px; right: 8px; z-index: 4; opacity: 0; width: 60px; height: 24px; cursor: pointer; display: none; }
     .upload-zone.filled .change-input { display: block; }
-
-    /* STATUS */
     .status { display: flex; align-items: center; gap: 10px; padding: 11px 15px; background: #fff; border: 1px solid var(--border); border-radius: 6px; font-size: 0.83rem; color: var(--muted); margin-top: 14px; }
     .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border); flex-shrink: 0; transition: background 0.3s; }
     .dot.spin { background: var(--gold); animation: blink 1s infinite; }
     .dot.ok { background: #3D7A55; }
     .dot.warn { background: var(--gold); }
-    .dot.err { background: var(--rose); }
     @keyframes blink { 0%,100%{opacity:1}50%{opacity:.3} }
     .progress { height: 2px; background: var(--border); border-radius: 1px; overflow: hidden; margin-top: 8px; display: none; }
     .progress.on { display: block; }
     .progress-fill { height: 100%; background: var(--gold); width: 0%; transition: width 0.4s; }
-
-    /* CROP SECTION */
-    .crop-section { display: none; }
+    .crop-section { display: none; margin-top: 8px; }
     .crop-section.visible { display: block; }
-    .divider { border: none; border-top: 1px solid var(--border); margin: 36px 0; }
-
-    /* PRESETS */
-    .preset-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 28px; }
+    .divider { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+    .preset-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 24px; }
     .preset-btn { border: 1.5px solid var(--border); border-radius: 8px; padding: 14px 8px 12px; background: #fff; cursor: pointer; text-align: center; transition: all 0.2s; display: flex; flex-direction: column; align-items: center; gap: 6px; }
     .preset-btn:hover { border-color: var(--gold); background: var(--warm); }
     .preset-btn.active { border-color: var(--rose); background: #fdf1ee; }
-    .preset-icon { font-size: 20px; line-height: 1; }
+    .preset-icon { font-size: 18px; line-height: 1; }
     .preset-name { font-size: 0.78rem; font-weight: 500; color: var(--deep); }
     .preset-desc { font-size: 0.67rem; color: var(--muted); line-height: 1.4; }
-
-    /* PREVIEWS */
-    .preview-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 28px; }
+    .preview-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 24px; }
     .preview-box { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: var(--deep); position: relative; }
     .preview-box canvas { display: block; width: 100%; }
     .preview-tag { position: absolute; bottom: 0; left: 0; right: 0; padding: 8px 12px; background: linear-gradient(transparent,rgba(28,23,20,0.75)); font-size: 0.68rem; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(250,247,242,0.8); pointer-events: none; }
-
-    /* BRANDING */
-    .brand-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; margin-bottom: 28px; }
+    .brand-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; margin-bottom: 24px; }
     .field { display: flex; flex-direction: column; gap: 5px; }
     .field label { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim); }
     .field input, .field select { background: #fff; border: 1px solid var(--border); color: var(--deep); padding: 10px 12px; font-size: 0.88rem; font-family: 'DM Sans', sans-serif; border-radius: 6px; outline: none; transition: border-color 0.2s; }
     .field input:focus, .field select:focus { border-color: var(--rose); }
     .field input::placeholder { color: var(--dim); }
-
-    /* GENERATE */
-    .gen-wrap { display: flex; justify-content: center; margin: 8px 0 32px; }
+    .gen-wrap { display: flex; justify-content: center; margin: 8px 0 28px; }
     .btn-gen { background: var(--rose); color: #fff; border: none; padding: 14px 52px; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; font-weight: 500; letter-spacing: 0.06em; border-radius: 6px; cursor: pointer; transition: background 0.2s; }
     .btn-gen:hover { background: var(--rose-m); }
-
-    /* OUTPUT */
     .output { display: none; }
     .output.visible { display: block; }
     .output-wrap { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--deep); }
@@ -138,8 +113,6 @@
     .btn-dl:hover { background: var(--deep2); }
     .btn-reset { background: transparent; color: var(--muted); border: 1px solid var(--border); padding: 12px 24px; font-family: 'DM Sans', sans-serif; font-size: 0.85rem; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
     .btn-reset:hover { border-color: var(--muted); color: var(--deep); }
-
-    /* FOOTER */
     footer { background: var(--deep); padding: 48px 5% 32px; border-top: 1px solid rgba(201,169,110,0.15); margin-top: 80px; }
     .footer-top { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 2.5rem; max-width: 1280px; margin: 0 auto 3rem; }
     .footer-brand { font-family: 'Cormorant Garamond', serif; font-size: 1.5rem; font-weight: 400; color: var(--cream); margin-bottom: 0.6rem; }
@@ -153,11 +126,7 @@
     .footer-bottom { max-width: 1280px; margin: 0 auto; border-top: 1px solid rgba(181,168,159,0.1); padding-top: 1.5rem; display: flex; flex-direction: column; align-items: center; gap: 0.5rem; text-align: center; }
     .footer-copy { font-size: 0.82rem; color: var(--muted); }
     .footer-disclaimer { font-size: 0.78rem; color: var(--muted); opacity: 0.7; line-height: 1.5; }
-
-    @media (max-width: 580px) {
-      .preset-grid { grid-template-columns: repeat(2,1fr); }
-      .brand-grid { grid-template-columns: 1fr; }
-    }
+    @media (max-width: 580px) { .preset-grid { grid-template-columns: repeat(2,1fr); } .brand-grid { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
@@ -168,9 +137,7 @@
     <button class="nav-signin-btn">Client Sign In</button>
     <a href="/editor.html" class="nav-cta">Clinic Portal</a>
   </div>
-  <button class="hamburger" id="hamburger" aria-label="Menu">
-    <span></span><span></span><span></span>
-  </button>
+  <button class="hamburger" id="hamburger" aria-label="Menu"><span></span><span></span><span></span></button>
 </nav>
 
 <div class="nav-overlay" id="navOverlay">
@@ -186,14 +153,12 @@
 </div>
 
 <div class="page">
-
   <div class="hero">
     <div class="eyebrow">SkinDay Studio</div>
     <h1>Before & after photos.<br><em>Ready in seconds.</em></h1>
     <p>Upload two photos, pick your crop, add your clinic name — download a polished image ready to post.</p>
   </div>
 
-  <!-- STEP 1 -->
   <div class="step">
     <div class="step-num">Step 1 — Upload your photos</div>
     <div class="upload-row">
@@ -214,101 +179,56 @@
         <input type="file" accept="image/*" class="change-input" id="change-after"/>
       </div>
     </div>
-    <div class="status">
-      <div class="dot" id="dot"></div>
-      <span id="statusText">Upload a before and after photo to begin</span>
-    </div>
+    <div class="status"><div class="dot" id="dot"></div><span id="statusText">Upload a before and after photo to begin</span></div>
     <div class="progress" id="progressBar"><div class="progress-fill" id="progressFill"></div></div>
   </div>
 
-  <!-- STEP 2 + 3 (shown after upload) -->
   <div class="crop-section" id="cropSection">
     <hr class="divider" style="margin-top:0">
-
     <div class="step">
       <div class="step-num">Step 2 — Choose crop area</div>
       <div class="preset-grid">
-        <button class="preset-btn" data-preset="full" onclick="selectPreset('full')">
-          <div class="preset-icon">🧍</div>
-          <div class="preset-name">Full Face</div>
-          <div class="preset-desc">Top of head to chin</div>
+        <button class="preset-btn" data-preset="full" onclick="selPreset('full')">
+          <div class="preset-icon">🧍</div><div class="preset-name">Full Face</div><div class="preset-desc">Head to chin</div>
         </button>
-        <button class="preset-btn active" data-preset="lower" onclick="selectPreset('lower')">
-          <div class="preset-icon">💉</div>
-          <div class="preset-name">Lower Face</div>
-          <div class="preset-desc">Cheeks to jawline</div>
+        <button class="preset-btn active" data-preset="lower" onclick="selPreset('lower')">
+          <div class="preset-icon">💉</div><div class="preset-name">Lower Face</div><div class="preset-desc">Cheeks to jaw</div>
         </button>
-        <button class="preset-btn" data-preset="upper" onclick="selectPreset('upper')">
-          <div class="preset-icon">👁</div>
-          <div class="preset-name">Upper Face</div>
-          <div class="preset-desc">Forehead to eyebrows</div>
+        <button class="preset-btn" data-preset="upper" onclick="selPreset('upper')">
+          <div class="preset-icon">👁</div><div class="preset-name">Upper Face</div><div class="preset-desc">Forehead to brows</div>
         </button>
-        <button class="preset-btn" data-preset="eyes" onclick="selectPreset('eyes')">
-          <div class="preset-icon">✨</div>
-          <div class="preset-name">Eye Area</div>
-          <div class="preset-desc">Brows to mid-nose</div>
+        <button class="preset-btn" data-preset="eyes" onclick="selPreset('eyes')">
+          <div class="preset-icon">✨</div><div class="preset-name">Eye Area</div><div class="preset-desc">Brows to nose</div>
         </button>
       </div>
-
       <div class="preview-row">
-        <div class="preview-box">
-          <canvas id="cvBefore"></canvas>
-          <div class="preview-tag">Before</div>
-        </div>
-        <div class="preview-box">
-          <canvas id="cvAfter"></canvas>
-          <div class="preview-tag">After</div>
-        </div>
+        <div class="preview-box"><canvas id="cvBefore"></canvas><div class="preview-tag">Before</div></div>
+        <div class="preview-box"><canvas id="cvAfter"></canvas><div class="preview-tag">After</div></div>
       </div>
     </div>
 
     <hr class="divider">
-
     <div class="step">
       <div class="step-num">Step 3 — Add your branding (optional)</div>
       <div class="brand-grid">
-        <div class="field">
-          <label>Clinic name</label>
-          <input type="text" id="clinicName" placeholder="Your clinic name" maxlength="60"/>
-        </div>
-        <div class="field">
-          <label>Injector name</label>
-          <input type="text" id="injectorName" placeholder="Injector name" maxlength="60"/>
-        </div>
-        <div class="field">
-          <label>Layout</label>
-          <select id="layout">
-            <option value="sidebyside">Side by side</option>
-            <option value="split">Top & bottom</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>Normalize exposure</label>
-          <select id="normalizeExp">
-            <option value="yes">Yes — match brightness</option>
-            <option value="no">No — keep original</option>
-          </select>
-        </div>
+        <div class="field"><label>Clinic name</label><input type="text" id="clinicName" placeholder="Your clinic name" maxlength="60"/></div>
+        <div class="field"><label>Injector name</label><input type="text" id="injectorName" placeholder="Injector name" maxlength="60"/></div>
+        <div class="field"><label>Layout</label><select id="layout"><option value="side">Side by side</option><option value="stack">Top & bottom</option></select></div>
+        <div class="field"><label>Normalize exposure</label><select id="norm"><option value="1">Yes — match brightness</option><option value="0">No — keep original</option></select></div>
       </div>
-      <div class="gen-wrap">
-        <button class="btn-gen" onclick="generate()">Generate image</button>
-      </div>
+      <div class="gen-wrap"><button class="btn-gen" onclick="generate()">Generate image</button></div>
     </div>
   </div>
 
-  <!-- OUTPUT -->
   <div class="output" id="outputSection">
     <hr class="divider" style="margin-top:0">
     <div class="step-num" style="margin-bottom:16px;">Your image</div>
-    <div class="output-wrap">
-      <canvas id="outputCanvas"></canvas>
-    </div>
+    <div class="output-wrap"><canvas id="outputCanvas"></canvas></div>
     <div class="output-actions">
       <button class="btn-dl" id="downloadBtn">Download</button>
       <button class="btn-reset" onclick="location.reload()">Start over</button>
     </div>
   </div>
-
 </div>
 
 <footer>
@@ -350,313 +270,237 @@
 </footer>
 
 <script>
-// ── State ──────────────────────────────────────────────────────
-const S = {
-  beforeImg: null, afterImg: null,
-  faceMesh: null,
-  preset: 'lower',
-  // Detected landmark-based crop boxes (fractions 0-1)
-  beforeCrop: null, afterCrop: null,
-};
+const S = { bImg:null, aImg:null, fm:null, preset:'lower', bLm:null, aLm:null };
+const NOSE=1, CHIN=152, LEYE=33, REYE=263, BROWL=70, BROWR=300, JAWL=172, JAWR=397;
 
-// Landmark indices for MediaPipe FaceMesh (468 points)
-const NOSE=1, CHIN=152, LEYE=33, REYE=263, BROW_L=70, BROW_R=300;
-
-// ── Nav ────────────────────────────────────────────────────────
 document.getElementById('hamburger').addEventListener('click', function() {
   this.classList.toggle('open');
   document.getElementById('navOverlay').classList.toggle('open');
 });
 
-// ── Status ─────────────────────────────────────────────────────
-function setStatus(msg, type='idle') {
+function setSt(msg, t='idle') {
   document.getElementById('statusText').textContent = msg;
   const d = document.getElementById('dot');
-  d.className = 'dot' + (type !== 'idle' ? ' '+type : '');
+  d.className = 'dot' + (t !== 'idle' ? ' '+t : '');
 }
-function setProgress(p) {
-  const bar=document.getElementById('progressBar'), fill=document.getElementById('progressFill');
-  if(p>0&&p<100){bar.classList.add('on');fill.style.width=p+'%';}
-  else{bar.classList.remove('on');fill.style.width='0%';}
+function setProg(p) {
+  const b=document.getElementById('progressBar'), f=document.getElementById('progressFill');
+  if(p>0&&p<100){b.classList.add('on');f.style.width=p+'%';}
+  else{b.classList.remove('on');f.style.width='0%';}
 }
 
-// ── Upload ──────────────────────────────────────────────────────
 function loadFile(file, which) {
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = ev => {
+  if(!file) return;
+  const r = new FileReader();
+  r.onload = ev => {
     const img = new Image();
     img.onload = () => {
       S[which+'Img'] = img;
-      S[which+'Crop'] = null; // reset crop on new upload
+      S[which+'Lm'] = null;
       const zone = document.getElementById('zone-'+which);
       zone.classList.add('filled');
       let old = zone.querySelector('img.thumb'); if(old) old.remove();
       const th = document.createElement('img'); th.className='thumb'; th.src=ev.target.result;
       zone.insertBefore(th, zone.querySelector('.zone-tag'));
-      if (S.beforeImg && S.afterImg) runDetection();
-      else setStatus(which==='before' ? 'Before loaded — now upload the after photo.' : 'After loaded — now upload the before photo.', 'warn');
+      if(S.bImg && S.aImg) runDetect();
+      else setSt(which==='before'?'Before loaded — now upload the after photo.':'After loaded — now upload the before photo.','warn');
     };
     img.src = ev.target.result;
   };
-  reader.readAsDataURL(file);
+  r.readAsDataURL(file);
 }
 ['before','after'].forEach(w => {
   document.getElementById('input-'+w).addEventListener('change', e => loadFile(e.target.files[0], w));
   document.getElementById('change-'+w).addEventListener('change', e => loadFile(e.target.files[0], w));
 });
 
-// ── MediaPipe FaceMesh ──────────────────────────────────────────
 function initFM() {
   return new Promise(res => {
     const fm = new FaceMesh({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}` });
     fm.setOptions({ maxNumFaces:1, refineLandmarks:true, minDetectionConfidence:0.4, minTrackingConfidence:0.4 });
-    fm.initialize().then(() => { S.faceMesh = fm; res(fm); });
+    fm.initialize().then(() => { S.fm = fm; res(fm); });
   });
 }
-
 function detect(img) {
   return new Promise(async (res, rej) => {
-    S.faceMesh.onResults(r => {
-      if (r.multiFaceLandmarks?.length > 0) res(r.multiFaceLandmarks[0]);
+    S.fm.onResults(r => {
+      if(r.multiFaceLandmarks?.length > 0) res(r.multiFaceLandmarks[0]);
       else rej(new Error('no face'));
     });
     const c = document.createElement('canvas');
     c.width = img.naturalWidth; c.height = img.naturalHeight;
     c.getContext('2d').drawImage(img, 0, 0);
-    await S.faceMesh.send({ image: c });
+    await S.fm.send({ image: c });
   });
 }
 
-// Convert landmarks to crop fractions for a given preset
-function lmToCrop(lm, preset) {
-  const nose  = lm[NOSE],  chin  = lm[CHIN];
-  const leye  = lm[LEYE],  reye  = lm[REYE];
-  const browL = lm[BROW_L],browR = lm[BROW_R];
-  // Forehead estimate: above brows by ~same distance as brow-to-nose
-  const browY = (browL.y + browR.y) / 2;
-  const foreheadY = browY - (lm[NOSE].y - browY) * 0.9;
-  const faceH = chin.y - browY;
-  const cx    = (leye.x + reye.x) / 2;
-  // Width: use jaw landmarks for frontal, fall back to eye-based for profiles
-  const eyeDist = Math.abs(reye.x - leye.x);
-  const isProfile = eyeDist < 0.12; // normalized coords
-  const halfW = isProfile
-    ? Math.max(Math.abs(reye.x - leye.x) * 2.5, 0.3)
-    : Math.abs(reye.x - leye.x) * 1.8;
-
-  let t, b;
-  if (preset === 'full')  { t = foreheadY - faceH*0.15; b = chin.y + faceH*0.18; }
-  if (preset === 'lower') { t = nose.y    - faceH*0.08; b = chin.y + faceH*0.30; }
-  if (preset === 'upper') { t = foreheadY - faceH*0.12; b = nose.y - faceH*0.05; }
-  if (preset === 'eyes')  { t = browY     - faceH*0.18; b = nose.y + faceH*0.05; }
-
-  // For profile shots, center on detected face box rather than eye midpoint
-  const cx2 = isProfile ? (leye.x + reye.x) / 2 : cx;
-
-  const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
-  return {
-    t: clamp(t, 0, 0.85),
-    b: clamp(b, 0.1, 1.0),
-    l: clamp(cx2 - halfW, 0, 0.5),
-    r: clamp(cx2 + halfW, 0.5, 1.0),
-  };
-}
-
-// Fallback crop when face not detected (centre-weighted)
-function fallbackCrop(preset) {
-  const crops = {
-    full:  { t:0.02, b:0.96, l:0.08, r:0.92 },
-    lower: { t:0.42, b:0.90, l:0.10, r:0.90 },
-    upper: { t:0.02, b:0.40, l:0.10, r:0.90 },
-    eyes:  { t:0.25, b:0.55, l:0.10, r:0.90 },
-  };
-  return crops[preset];
-}
-
-async function runDetection() {
-  setStatus('Analysing photos…', 'spin'); setProgress(15);
-  if (!S.faceMesh) await initFM();
-
+async function runDetect() {
+  setSt('Analysing photos…', 'spin'); setProg(15);
+  if(!S.fm) await initFM();
   let warns = [];
-  for (const w of ['before','after']) {
+  for(const w of ['before','after']) {
     try {
-      setProgress(w==='before' ? 35 : 65);
-      const lm = await detect(S[w+'Img']);
-      S[w+'Crop'] = lmToCrop(lm, S.preset);
-    } catch {
-      S[w+'Crop'] = fallbackCrop(S.preset);
-      warns.push(w);
-    }
+      setProg(w==='before' ? 35 : 65);
+      S[w.charAt(0)+'Lm'] = await detect(S[w+'Img']);
+    } catch { warns.push(w); }
   }
-
-  setProgress(100);
+  setProg(100);
   document.getElementById('cropSection').classList.add('visible');
   document.getElementById('cropSection').scrollIntoView({ behavior:'smooth', block:'start' });
   renderPreviews();
-
-  if (warns.length === 0) {
-    setStatus('Face detected — crop preview ready. Adjust preset if needed.', 'ok');
-  } else if (warns.length === 2) {
-    setStatus('Profile or angled shots — centre crop applied. Try different preset if needed.', 'warn');
-  } else {
-    setStatus(`Could not detect face in ${warns[0]} photo — centre crop applied.`, 'warn');
-  }
-  setProgress(0);
+  if(warns.length===0) setSt('Face detected — choose your crop area.', 'ok');
+  else if(warns.length===2) setSt('Profile or angled photos — centre crop applied. Switch presets to adjust.', 'warn');
+  else setSt(`Could not detect face in ${warns[0]} photo — centre crop applied.`, 'warn');
+  setProg(0);
 }
 
-// ── Presets ────────────────────────────────────────────────────
-function selectPreset(key) {
-  S.preset = key;
+function selPreset(k) {
+  S.preset = k;
   document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
-  document.querySelector(`[data-preset="${key}"]`).classList.add('active');
-  // Recompute crops with new preset using existing landmarks
-  // Re-run detection to get fresh crops for new preset
-  if (S.beforeImg && S.afterImg) {
-    recomputeCrops();
-  }
-}
-
-async function recomputeCrops() {
-  for (const w of ['before','after']) {
-    try {
-      const lm = await detect(S[w+'Img']);
-      S[w+'Crop'] = lmToCrop(lm, S.preset);
-    } catch {
-      S[w+'Crop'] = fallbackCrop(S.preset);
-    }
-  }
+  document.querySelector(`[data-preset="${k}"]`).classList.add('active');
   renderPreviews();
 }
 
-// ── Render preview canvases ────────────────────────────────────
-// Key: both panels rendered at IDENTICAL pixel dimensions
-function renderPreviews() {
-  const bCrop = S.beforeCrop || fallbackCrop(S.preset);
-  const aCrop = S.afterCrop  || fallbackCrop(S.preset);
-
-  // Use before crop's aspect ratio for both panels to keep consistent framing
-  const pH = 480;
-  const pW = Math.round(pH * (bCrop.r - bCrop.l) / (bCrop.b - bCrop.t));
-
-  drawCropToCanvas(document.getElementById('cvBefore'), S.beforeImg, bCrop, pW, pH);
-  drawCropToCanvas(document.getElementById('cvAfter'),  S.afterImg,  aCrop, pW, pH);
+// ── KEY FIX: work in pixel coordinates, not fractions ──────────
+// This ensures both panels crop the face at the same physical size
+// regardless of how zoomed-in each source photo is
+function lmToPixelBox(lm, iw, ih, preset) {
+  const px = i => ({ x: lm[i].x * iw, y: lm[i].y * ih });
+  const nose=px(NOSE), chin=px(CHIN), le=px(LEYE), re=px(REYE);
+  const browL=px(BROWL), browR=px(BROWR), jawL=px(JAWL), jawR=px(JAWR);
+  const browY = (browL.y + browR.y) / 2;
+  const foreY = browY - (nose.y - browY) * 0.85;
+  const faceH = chin.y - browY;
+  const eyeDist = Math.abs(re.x - le.x);
+  const isProfile = eyeDist < iw * 0.10;
+  const cx = (le.x + re.x) / 2;
+  const halfW = isProfile
+    ? Math.max(eyeDist * 3.5, iw * 0.28)
+    : (jawR.x - jawL.x) * 0.65;
+  let top, bot;
+  if(preset==='full')  { top=foreY-faceH*.18; bot=chin.y+faceH*.22; }
+  if(preset==='lower') { top=nose.y-faceH*.10; bot=chin.y+faceH*.32; }
+  if(preset==='upper') { top=foreY-faceH*.15; bot=nose.y-faceH*.05; }
+  if(preset==='eyes')  { top=browY-faceH*.20; bot=nose.y+faceH*.08; }
+  return {
+    x: Math.max(0, cx - halfW),
+    y: Math.max(0, top),
+    w: Math.min(halfW * 2, iw),
+    h: Math.min(bot - top, ih - Math.max(0, top))
+  };
 }
 
-function drawCropToCanvas(cv, img, crop, tw, th) {
+function fallbackBox(iw, ih, preset) {
+  const p = { full:[.03,.96,.08,.92], lower:[.40,.90,.08,.92], upper:[.03,.40,.08,.92], eyes:[.25,.56,.08,.92] };
+  const [t,b,l,r] = p[preset];
+  return { x:l*iw, y:t*ih, w:(r-l)*iw, h:(b-t)*ih };
+}
+
+function getBox(which) {
+  const img = S[which+'Img'];
+  const lm = which==='before' ? S.bLm : S.aLm;
+  if(lm) return lmToPixelBox(lm, img.naturalWidth, img.naturalHeight, S.preset);
+  return fallbackBox(img.naturalWidth, img.naturalHeight, S.preset);
+}
+
+// Both panels rendered at IDENTICAL pixel dimensions
+// Width derived from before crop aspect ratio, applied to both
+function renderPreviews() {
+  if(!S.bImg || !S.aImg) return;
+  const bBox = getBox('before'), aBox = getBox('after');
+  const pH = 460;
+  const pW = Math.round(pH * (bBox.w / bBox.h));
+  drawToCanvas(document.getElementById('cvBefore'), S.bImg, bBox, pW, pH, 1);
+  drawToCanvas(document.getElementById('cvAfter'),  S.aImg, aBox, pW, pH, 1);
+}
+
+function drawToCanvas(cv, img, box, tw, th, bf) {
   cv.width = tw; cv.height = th;
   const ctx = cv.getContext('2d');
-  const iw = img.naturalWidth, ih = img.naturalHeight;
-  ctx.drawImage(img,
-    crop.l*iw, crop.t*ih, (crop.r-crop.l)*iw, (crop.b-crop.t)*ih,
-    0, 0, tw, th
-  );
+  ctx.drawImage(img, box.x, box.y, box.w, box.h, 0, 0, tw, th);
+  if(bf && bf !== 1) {
+    const id = ctx.getImageData(0,0,tw,th);
+    for(let i=0;i<id.data.length;i+=4){
+      id.data[i]=Math.min(255,id.data[i]*bf);
+      id.data[i+1]=Math.min(255,id.data[i+1]*bf);
+      id.data[i+2]=Math.min(255,id.data[i+2]*bf);
+    }
+    ctx.putImageData(id,0,0);
+  }
 }
 
-// ── Brightness utils ───────────────────────────────────────────
-function avgBright(ctx, w, h) {
+function avgBright(ctx,w,h) {
   const d=ctx.getImageData(0,0,w,h).data; let s=0;
   for(let i=0;i<d.length;i+=4) s+=.299*d[i]+.587*d[i+1]+.114*d[i+2];
   return s/(d.length/4);
 }
-function adjustBright(ctx, w, h, f) {
-  const id=ctx.getImageData(0,0,w,h);
-  for(let i=0;i<id.data.length;i+=4){
-    id.data[i]=Math.min(255,id.data[i]*f);
-    id.data[i+1]=Math.min(255,id.data[i+1]*f);
-    id.data[i+2]=Math.min(255,id.data[i+2]*f);
-  }
-  ctx.putImageData(id,0,0);
-}
 
-// ── Watermark ──────────────────────────────────────────────────
-function drawWatermark(ctx, cW, cH, clinic, injector) {
-  const lines = [clinic, injector].filter(Boolean);
-  if (!lines.length) return;
-  const fs = Math.max(20, Math.round(cH * 0.022));
-  const lh = fs * 1.5, px=20, py=14;
+function drawWatermark(ctx, cW, cH, clinic, inj) {
+  const lines = [clinic, inj].filter(Boolean); if(!lines.length) return;
+  const fs = Math.max(20, Math.round(cH*.022));
+  const lh=fs*1.5, px=16, py=12;
   ctx.font = `500 ${fs}px 'DM Sans',sans-serif`;
-  const maxW = lines.reduce((m,l)=>Math.max(m,ctx.measureText(l).width),0);
-  const bw=maxW+px*2, bh=lines.length*lh+py*2;
-  const bx=cW-bw-20, by=cH-bh-20;
-  ctx.fillStyle='rgba(28,23,20,0.58)';
+  const mw = lines.reduce((m,l)=>Math.max(m,ctx.measureText(l).width),0);
+  const bw=mw+px*2, bh=lines.length*lh+py*2, bx=cW-bw-18, by=cH-bh-18;
+  ctx.fillStyle = 'rgba(28,23,20,0.58)';
   if(ctx.roundRect) ctx.roundRect(bx,by,bw,bh,5); else ctx.rect(bx,by,bw,bh);
   ctx.fill();
-  ctx.textBaseline='top';
+  ctx.textBaseline = 'top';
   lines.forEach((line,i) => {
-    ctx.font = i===0 ? `500 ${fs}px 'DM Sans',sans-serif` : `300 ${Math.round(fs*.88)}px 'DM Sans',sans-serif`;
-    ctx.fillStyle='rgba(250,247,242,0.92)';
+    ctx.font = i===0 ? `500 ${fs}px 'DM Sans',sans-serif` : `300 ${Math.round(fs*.85)}px 'DM Sans',sans-serif`;
+    ctx.fillStyle = 'rgba(250,247,242,0.92)';
     ctx.fillText(line, bx+px, by+py+i*lh);
   });
 }
 
-// ── Generate ───────────────────────────────────────────────────
 function generate() {
-  const bCrop    = S.beforeCrop || fallbackCrop(S.preset);
-  const aCrop    = S.afterCrop  || fallbackCrop(S.preset);
-  const normalize = document.getElementById('normalizeExp').value === 'yes';
-  const layout    = document.getElementById('layout').value;
-  const clinic    = document.getElementById('clinicName').value.trim();
-  const injector  = document.getElementById('injectorName').value.trim();
-
+  const bBox = getBox('before'), aBox = getBox('after');
+  const norm = document.getElementById('norm').value === '1';
+  const layout = document.getElementById('layout').value;
+  const clinic = document.getElementById('clinicName').value.trim();
+  const inj = document.getElementById('injectorName').value.trim();
   const pH = 1080;
-  // Both panels same height; width derived from BEFORE crop aspect ratio
-  // then AFTER is cropped to same width/height for perfect alignment
-  const pW = Math.round(pH * (bCrop.r-bCrop.l) / (bCrop.b-bCrop.t));
-
+  const pW = Math.round(pH * (bBox.w / bBox.h));
   const cB = document.createElement('canvas'); cB.width=pW; cB.height=pH;
   const cA = document.createElement('canvas'); cA.width=pW; cA.height=pH;
-
-  const biw=S.beforeImg.naturalWidth, bih=S.beforeImg.naturalHeight;
-  const aiw=S.afterImg.naturalWidth,  aih=S.afterImg.naturalHeight;
-
-  cB.getContext('2d').drawImage(S.beforeImg, bCrop.l*biw, bCrop.t*bih, (bCrop.r-bCrop.l)*biw, (bCrop.b-bCrop.t)*bih, 0, 0, pW, pH);
-  cA.getContext('2d').drawImage(S.afterImg,  aCrop.l*aiw, aCrop.t*aih, (aCrop.r-aCrop.l)*aiw, (aCrop.b-aCrop.t)*aih, 0, 0, pW, pH);
-
-  if (normalize) {
-    const ab=avgBright(cB.getContext('2d'),pW,pH);
-    const aa=avgBright(cA.getContext('2d'),pW,pH);
+  cB.getContext('2d').drawImage(S.bImg, bBox.x, bBox.y, bBox.w, bBox.h, 0, 0, pW, pH);
+  cA.getContext('2d').drawImage(S.aImg, aBox.x, aBox.y, aBox.w, aBox.h, 0, 0, pW, pH);
+  if(norm) {
+    const ab=avgBright(cB.getContext('2d'),pW,pH), aa=avgBright(cA.getContext('2d'),pW,pH);
     const f=Math.max(.72,Math.min(1.38,ab/aa));
-    adjustBright(cA.getContext('2d'),pW,pH,f);
+    drawToCanvas(cA, S.aImg, aBox, pW, pH, f);
   }
-
-  const gap=5, oc=document.getElementById('outputCanvas');
-  const oW=layout==='sidebyside'?pW*2+gap:pW;
-  const oH=layout==='sidebyside'?pH:pH*2+gap;
+  const gap=4, oc=document.getElementById('outputCanvas');
+  const oW=layout==='side'?pW*2+gap:pW, oH=layout==='side'?pH:pH*2+gap;
   oc.width=oW; oc.height=oH;
   const ctx=oc.getContext('2d');
   ctx.fillStyle='#1C1714'; ctx.fillRect(0,0,oW,oH);
-
-  if (layout==='sidebyside') {
-    ctx.drawImage(cB,0,0,pW,pH);
-    ctx.drawImage(cA,pW+gap,0,pW,pH);
+  if(layout==='side') {
+    ctx.drawImage(cB,0,0,pW,pH); ctx.drawImage(cA,pW+gap,0,pW,pH);
     [[0,'BEFORE'],[pW+gap,'AFTER']].forEach(([ox,lbl])=>{
-      const g=ctx.createLinearGradient(ox,pH-80,ox,pH);
+      const g=ctx.createLinearGradient(ox,pH-70,ox,pH);
       g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,'rgba(0,0,0,.82)');
-      ctx.fillStyle=g; ctx.fillRect(ox,pH-80,pW,80);
+      ctx.fillStyle=g; ctx.fillRect(ox,pH-70,pW,70);
       ctx.fillStyle='rgba(250,247,242,.88)'; ctx.font='400 13px "DM Sans",sans-serif';
       ctx.fillText(lbl,ox+18,pH-20);
     });
-    drawWatermark(ctx,oW,oH,clinic,injector);
+    drawWatermark(ctx,oW,oH,clinic,inj);
   } else {
-    ctx.drawImage(cB,0,0,pW,pH);
-    ctx.drawImage(cA,0,pH+gap,pW,pH);
+    ctx.drawImage(cB,0,0,pW,pH); ctx.drawImage(cA,0,pH+gap,pW,pH);
     [[0,'BEFORE'],[pH+gap,'AFTER']].forEach(([yo,lbl])=>{
-      const g=ctx.createLinearGradient(0,yo+pH-80,0,yo+pH);
+      const g=ctx.createLinearGradient(0,yo+pH-70,0,yo+pH);
       g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,'rgba(0,0,0,.82)');
-      ctx.fillStyle=g; ctx.fillRect(0,yo+pH-80,pW,80);
+      ctx.fillStyle=g; ctx.fillRect(0,yo+pH-70,pW,70);
       ctx.fillStyle='rgba(250,247,242,.88)'; ctx.font='400 13px "DM Sans",sans-serif';
       ctx.fillText(lbl,18,yo+pH-20);
     });
-    drawWatermark(ctx,oW,oH,clinic,injector);
+    drawWatermark(ctx,oW,oH,clinic,inj);
   }
-
   document.getElementById('outputSection').classList.add('visible');
   document.getElementById('outputSection').scrollIntoView({behavior:'smooth'});
-  setStatus('Done — your image is ready to download.','ok');
+  setSt('Done — your image is ready to download.','ok');
 }
 
-// ── Download ───────────────────────────────────────────────────
 document.getElementById('downloadBtn').addEventListener('click',()=>{
   const a=document.createElement('a');
   a.download='before-after.jpg';
