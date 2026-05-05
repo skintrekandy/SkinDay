@@ -243,8 +243,20 @@
       <div class="brand-grid">
         <div class="field"><label>Clinic name</label><input type="text" id="clinicName" placeholder="Your clinic name" maxlength="60"/></div>
         <div class="field"><label>Injector name</label><input type="text" id="injectorName" placeholder="Injector name" maxlength="60"/></div>
-        <div class="field"><label>Before date</label><input type="text" id="beforeDate" placeholder="e.g. Jan 2024" maxlength="20"/></div>
-        <div class="field"><label>After date</label><input type="text" id="afterDate" placeholder="e.g. Apr 2025" maxlength="20"/></div>
+        <div class="field">
+          <label>Before date</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+            <select id="beforeMonth"><option value="">Month</option><option value="Jan">Jan</option><option value="Feb">Feb</option><option value="Mar">Mar</option><option value="Apr">Apr</option><option value="May">May</option><option value="Jun">Jun</option><option value="Jul">Jul</option><option value="Aug">Aug</option><option value="Sep">Sep</option><option value="Oct">Oct</option><option value="Nov">Nov</option><option value="Dec">Dec</option></select>
+            <select id="beforeYear"><option value="">Year</option><option value="2020">2020</option><option value="2021">2021</option><option value="2022">2022</option><option value="2023">2023</option><option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option></select>
+          </div>
+        </div>
+        <div class="field">
+          <label>After date</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+            <select id="afterMonth"><option value="">Month</option><option value="Jan">Jan</option><option value="Feb">Feb</option><option value="Mar">Mar</option><option value="Apr">Apr</option><option value="May">May</option><option value="Jun">Jun</option><option value="Jul">Jul</option><option value="Aug">Aug</option><option value="Sep">Sep</option><option value="Oct">Oct</option><option value="Nov">Nov</option><option value="Dec">Dec</option></select>
+            <select id="afterYear"><option value="">Year</option><option value="2020">2020</option><option value="2021">2021</option><option value="2022">2022</option><option value="2023">2023</option><option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option></select>
+          </div>
+        </div>
         <div class="field"><label>Layout</label><select id="layout"><option value="side">Side by side</option><option value="stack">Top & bottom</option></select></div>
         <div class="field"><label>Normalize exposure</label><select id="norm"><option value="1">Yes — match brightness</option><option value="0">No — keep original</option></select></div>
         <div class="field"><label>Image clarity</label><select id="enhance"><option value="0">None</option><option value="1" selected>Subtle — reduce noise & sharpen</option><option value="2">Strong — reduce noise & sharpen</option></select></div>
@@ -717,20 +729,22 @@ function generate(){
   oc.width=oW; oc.height=oH;
   const ctx=oc.getContext('2d');
   ctx.fillStyle='#1C1714'; ctx.fillRect(0,0,oW,oH);
-  const beforeDate=document.getElementById('beforeDate').value.trim();
-  const afterDate=document.getElementById('afterDate').value.trim();
+  const bM=document.getElementById('beforeMonth').value, bY=document.getElementById('beforeYear').value;
+  const aM=document.getElementById('afterMonth').value,  aY=document.getElementById('afterYear').value;
+  const beforeDate=[bM,bY].filter(Boolean).join(' ');
+  const afterDate=[aM,aY].filter(Boolean).join(' ');
 
   function drawLabel(ox,oy,panelW,panelH,label,date){
     const g=ctx.createLinearGradient(ox,oy+panelH-80,ox,oy+panelH);
     g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.82)');
     ctx.fillStyle=g;ctx.fillRect(ox,oy+panelH-80,panelW,80);
-    ctx.fillStyle='rgba(250,247,242,.88)';
-    ctx.font='400 13px "DM Sans",sans-serif';
-    ctx.fillText(label,ox+18,oy+panelH-20);
+    ctx.fillStyle='rgba(250,247,242,.92)';
+    ctx.font='500 28px "DM Sans",sans-serif';
+    ctx.fillText(label,ox+24,oy+panelH-22);
     if(date){
-      ctx.font='300 12px "DM Sans",sans-serif';
-      ctx.fillStyle='rgba(250,247,242,.6)';
-      ctx.fillText(date,ox+18,oy+panelH-38);
+      ctx.font='300 20px "DM Sans",sans-serif';
+      ctx.fillStyle='rgba(250,247,242,.65)';
+      ctx.fillText(date,ox+24,oy+panelH-56);
     }
   }
 
