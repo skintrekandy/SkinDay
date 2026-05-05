@@ -234,6 +234,7 @@
         <div class="preview-box"><canvas id="cvBefore"></canvas><div class="preview-tag">Before</div></div>
         <div class="preview-box"><canvas id="cvAfter"></canvas><div class="preview-tag">After</div></div>
       </div>
+      <div style="font-size:0.72rem;color:var(--muted);text-align:center;margin-top:-10px;margin-bottom:8px;">Drag each photo to reposition</div>
     </div>
 
     <hr class="divider">
@@ -346,6 +347,7 @@ function loadFile(file,which){
       S[which+'Img']=img;
       S[which==='before'?'bLm':'aLm']=null;
       S[which==='before'?'bZoom':'aZoom']=1.0;
+      if(which==='before') S.bPan={x:0,y:0}; else S.aPan={x:0,y:0};
       if(which==='before') document.getElementById('zoomB').value=100;
       else document.getElementById('zoomA').value=100;
       const zone=document.getElementById('zone-'+which);
@@ -399,7 +401,10 @@ async function runDetect(){
   setProg(100);
   document.getElementById('cropSection').classList.add('visible');
   document.getElementById('cropSection').scrollIntoView({behavior:'smooth',block:'start'});
+  S.bPan={x:0,y:0}; S.aPan={x:0,y:0};
   renderPreviews();
+  setupDrag('cvBefore','b');
+  setupDrag('cvAfter','a');
   if(warns.length===0) setSt('Face detected — choose your crop area.','ok');
   else if(warns.length===2) setSt('Profile or angled photos — centre crop applied.','warn');
   else setSt(`Could not detect face in ${warns[0]} photo — centre crop applied.`,'warn');
@@ -445,15 +450,30 @@ function lmToBaseBox(lm,iw,ih,preset){
   const foreY=browY-(nose.y-browY)*0.85;
   const faceH=chin.y-browY;
   const eyeDist=Math.abs(re.x-le.x);
-  const isProfile=eyeDist<iw*0.10;
+  const eyeRatio=eyeDist/iw;
+  const isProfile=eyeRatio<0.07;
+  const isAngled=eyeRatio>=0.07&&eyeRatio<0.14;
   const cx=(le.x+re.x)/2;
-  const halfW=isProfile?Math.max(eyeDist*3.5,iw*0.28):(jawR.x-jawL.x)*0.65;
+  const jawW=jawR.x-jawL.x;
+  const facingLeft=nose.x<cx;
+  let halfW,cxAdjusted;
+  if(isProfile){
+    halfW=Math.max(eyeDist*4.2,iw*0.35);
+    cxAdjusted=cx+(facingLeft?halfW*0.18:-halfW*0.18);
+  } else if(isAngled){
+    halfW=Math.max(jawW*0.88,eyeDist*2.2);
+    const earShift=halfW*0.14;
+    cxAdjusted=cx+(facingLeft?earShift:-earShift);
+  } else {
+    halfW=jawW*0.65;
+    cxAdjusted=cx;
+  }
   let top,bot;
   if(preset==='full') {top=foreY-faceH*.18;bot=chin.y+faceH*.22;}
-  if(preset==='lower'){top=nose.y-faceH*.10;bot=chin.y+faceH*.32;}
+  if(preset==='lower'){top=nose.y-faceH*.10;bot=chin.y+faceH*.38;}
   if(preset==='upper'){top=foreY-faceH*.15;bot=nose.y-faceH*.05;}
   if(preset==='eyes') {top=browY-faceH*.20;bot=nose.y+faceH*.08;}
-  return{x:cx-halfW,y:top,w:halfW*2,h:bot-top,cx,cy:(top+bot)/2};
+  return{x:cxAdjusted-halfW,y:top,w:halfW*2,h:bot-top,cx:cxAdjusted,cy:(top+bot)/2};
 }
 
 function fallbackBox(iw,ih,preset){
@@ -507,14 +527,49 @@ function getBothBoxes(){
   };
 }
 
+// Pan offsets (in image pixels) applied after auto-alignment
+// Positive panX = shift crop right (show more left side of image)
+S.bPan={x:0,y:0};
+S.aPan={x:0,y:0};
+
 function renderPreviews(){
   if(!S.beforeImg||!S.afterImg)return;
   const{bBox,aBox}=getBothBoxes();
   const pH=460;
-  const aspect=(bBox.w/bBox.h+aBox.w/aBox.h)/2;
+  const aspect=(bBoxF.w/bBoxF.h+aBoxF.w/aBoxF.h)/2;
   const pW=Math.round(pH*aspect);
-  drawToCanvas(document.getElementById('cvBefore'),S.beforeImg,bBox,pW,pH,1);
-  drawToCanvas(document.getElementById('cvAfter'), S.afterImg, aBox,pW,pH,1);
+  // Apply pan offsets
+  const bBoxP={...bBox,x:bBox.x+S.bPan.x,y:bBox.y+S.bPan.y};
+  const aBoxP={...aBox,x:aBox.x+S.aPan.x,y:aBox.y+S.aPan.y};
+  drawToCanvas(document.getElementById('cvBefore'),S.beforeImg,bBoxP,pW,pH,1);
+  drawToCanvas(document.getElementById('cvAfter'), S.afterImg, aBoxP,pW,pH,1);
+}
+
+// Setup drag-to-pan on a preview canvas
+function setupDrag(canvasId, which){
+  const cv=document.getElementById(canvasId);
+  let drag=null;
+  const start=e=>{
+    e.preventDefault();
+    const pt=e.touches?e.touches[0]:e;
+    drag={sx:pt.clientX,sy:pt.clientY,ox:S[which+'Pan'].x,oy:S[which+'Pan'].y};
+  };
+  const move=e=>{
+    if(!drag)return; e.preventDefault();
+    const pt=e.touches?e.touches[0]:e;
+    // Scale screen pixels to image pixels
+    const img=which==='b'?S.beforeImg:S.afterImg;
+    const{bBox,aBox}=getBothBoxes();
+    const box=which==='b'?bBox:aBox;
+    const scale=box.w/cv.offsetWidth;
+    S[which+'Pan'].x=drag.ox-(pt.clientX-drag.sx)*scale;
+    S[which+'Pan'].y=drag.oy-(pt.clientY-drag.sy)*scale;
+    renderPreviews();
+  };
+  const end=()=>{drag=null;};
+  cv.addEventListener('mousedown',start); cv.addEventListener('mousemove',move); cv.addEventListener('mouseup',end); cv.addEventListener('mouseleave',end);
+  cv.addEventListener('touchstart',start,{passive:false}); cv.addEventListener('touchmove',move,{passive:false}); cv.addEventListener('touchend',end);
+  cv.style.cursor='grab';
 }
 
 function drawToCanvas(cv,img,box,tw,th,bf){
@@ -587,6 +642,9 @@ function drawWatermark(ctx,cW,cH,clinic,inj,pos){
 
 function generate(){
   const{bBox,aBox}=getBothBoxes();
+  // Apply pan offsets to final render
+  const bBoxF={...bBox,x:bBox.x+S.bPan.x,y:bBox.y+S.bPan.y};
+  const aBoxF={...aBox,x:aBox.x+S.aPan.x,y:aBox.y+S.aPan.y};
   const norm=document.getElementById('norm').value==='1';
   const layout=document.getElementById('layout').value;
   const clinic=document.getElementById('clinicName').value.trim();
@@ -596,12 +654,12 @@ function generate(){
   const pW=Math.round(pH*aspect);
   const cB=document.createElement('canvas'); cB.width=pW; cB.height=pH;
   const cA=document.createElement('canvas'); cA.width=pW; cA.height=pH;
-  cB.getContext('2d').drawImage(S.beforeImg,bBox.x,bBox.y,bBox.w,bBox.h,0,0,pW,pH);
-  cA.getContext('2d').drawImage(S.afterImg, aBox.x,aBox.y,aBox.w,aBox.h,0,0,pW,pH);
+  cB.getContext('2d').drawImage(S.beforeImg,bBoxF.x,bBoxF.y,bBoxF.w,bBoxF.h,0,0,pW,pH);
+  cA.getContext('2d').drawImage(S.afterImg, aBoxF.x,aBoxF.y,aBoxF.w,aBoxF.h,0,0,pW,pH);
   if(norm){
     const ab=avgBright(cB.getContext('2d'),pW,pH),aa=avgBright(cA.getContext('2d'),pW,pH);
     const f=Math.max(.72,Math.min(1.38,ab/aa));
-    drawToCanvas(cA,S.afterImg,aBox,pW,pH,f);
+    drawToCanvas(cA,S.afterImg,aBoxF,pW,pH,f);
   }
   const gap=4,oc=document.getElementById('outputCanvas');
   const oW=layout==='side'?pW*2+gap:pW,oH=layout==='side'?pH:pH*2+gap;
