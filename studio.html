@@ -515,8 +515,8 @@ function getBothBoxes(){
   if(bHasLm&&aHasLm){
     const bEye=eyeDistPx(S.bLm,S.beforeImg.naturalWidth);
     const aEye=eyeDistPx(S.aLm,S.afterImg.naturalWidth);
-    // Use MIN so both scale to the more distant (wider) shot — no upscaling
-    target=Math.min(bEye,aEye);
+    // Use MAX so both normalize to the larger face scale for consistent alignment
+    target=Math.max(bEye,aEye);
   } else if(bHasLm){
     target=eyeDistPx(S.bLm,S.beforeImg.naturalWidth);
   } else if(aHasLm){
@@ -528,15 +528,23 @@ function getBothBoxes(){
   };
 }
 
+function clampBox(box, img){
+  return{
+    x:Math.max(0,Math.min(box.x,img.naturalWidth-box.w)),
+    y:Math.max(0,Math.min(box.y,img.naturalHeight-box.h)),
+    w:box.w, h:box.h
+  };
+}
+
 function renderPreviews(){
   if(!S.beforeImg||!S.afterImg)return;
   const{bBox,aBox}=getBothBoxes();
   const pH=460;
-  const aspect=(bBoxF.w/bBoxF.h+aBoxF.w/aBoxF.h)/2;
+  const aspect=(bBox.w/bBox.h+aBox.w/aBox.h)/2;
   const pW=Math.round(pH*aspect);
-  // Apply pan offsets
-  const bBoxP={...bBox,x:bBox.x+S.bPan.x,y:bBox.y+S.bPan.y};
-  const aBoxP={...aBox,x:aBox.x+S.aPan.x,y:aBox.y+S.aPan.y};
+  // Apply pan offsets with clamping
+  const bBoxP=clampBox({...bBox,x:bBox.x+S.bPan.x,y:bBox.y+S.bPan.y},S.beforeImg);
+  const aBoxP=clampBox({...aBox,x:aBox.x+S.aPan.x,y:aBox.y+S.aPan.y},S.afterImg);
   drawToCanvas(document.getElementById('cvBefore'),S.beforeImg,bBoxP,pW,pH,1);
   drawToCanvas(document.getElementById('cvAfter'), S.afterImg, aBoxP,pW,pH,1);
 }
@@ -639,8 +647,8 @@ function drawWatermark(ctx,cW,cH,clinic,inj,pos){
 function generate(){
   const{bBox,aBox}=getBothBoxes();
   // Apply pan offsets to final render
-  const bBoxF={...bBox,x:bBox.x+S.bPan.x,y:bBox.y+S.bPan.y};
-  const aBoxF={...aBox,x:aBox.x+S.aPan.x,y:aBox.y+S.aPan.y};
+  const bBoxF=clampBox({...bBox,x:bBox.x+S.bPan.x,y:bBox.y+S.bPan.y},S.beforeImg);
+  const aBoxF=clampBox({...aBox,x:aBox.x+S.aPan.x,y:aBox.y+S.aPan.y},S.afterImg);
   const norm=document.getElementById('norm').value==='1';
   const layout=document.getElementById('layout').value;
   const clinic=document.getElementById('clinicName').value.trim();
