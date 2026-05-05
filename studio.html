@@ -318,7 +318,8 @@ const S = {
   beforeImg:null, afterImg:null, fm:null,
   preset:'lower', wmPos:'br',
   bLm:null, aLm:null,
-  bZoom:1.0, aZoom:1.0  // zoom multipliers
+  bZoom:1.0, aZoom:1.0,
+  bPan:{x:0,y:0}, aPan:{x:0,y:0}
 };
 const NOSE=1,CHIN=152,LEYE=33,REYE=263,BROWL=70,BROWR=300,JAWL=172,JAWR=397;
 
@@ -526,11 +527,6 @@ function getBothBoxes(){
     aBox:aHasLm||target?getScaledBox('after', target||100):fallbackBox(S.afterImg.naturalWidth, S.afterImg.naturalHeight, S.preset)
   };
 }
-
-// Pan offsets (in image pixels) applied after auto-alignment
-// Positive panX = shift crop right (show more left side of image)
-S.bPan={x:0,y:0};
-S.aPan={x:0,y:0};
 
 function renderPreviews(){
   if(!S.beforeImg||!S.afterImg)return;
