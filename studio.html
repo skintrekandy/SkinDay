@@ -243,8 +243,11 @@
       <div class="brand-grid">
         <div class="field"><label>Clinic name</label><input type="text" id="clinicName" placeholder="Your clinic name" maxlength="60"/></div>
         <div class="field"><label>Injector name</label><input type="text" id="injectorName" placeholder="Injector name" maxlength="60"/></div>
+        <div class="field"><label>Before date</label><input type="text" id="beforeDate" placeholder="e.g. Jan 2024" maxlength="20"/></div>
+        <div class="field"><label>After date</label><input type="text" id="afterDate" placeholder="e.g. Apr 2025" maxlength="20"/></div>
         <div class="field"><label>Layout</label><select id="layout"><option value="side">Side by side</option><option value="stack">Top & bottom</option></select></div>
         <div class="field"><label>Normalize exposure</label><select id="norm"><option value="1">Yes — match brightness</option><option value="0">No — keep original</option></select></div>
+        <div class="field"><label>Image clarity</label><select id="enhance"><option value="0">None</option><option value="1" selected>Subtle — reduce noise & sharpen</option><option value="2">Strong — reduce noise & sharpen</option></select></div>
       </div>
 
       <!-- Watermark position -->
@@ -522,9 +525,11 @@ function getBothBoxes(){
   } else if(aHasLm){
     target=eyeDistPx(S.aLm,S.afterImg.naturalWidth);
   }
+  // Always go through getScaledBox so zoom applies even for fallback (no landmarks)
+  // Use a dummy target of 100 when no landmarks at all
   return{
-    bBox:bHasLm||target?getScaledBox('before',target||100):fallbackBox(S.beforeImg.naturalWidth,S.beforeImg.naturalHeight,S.preset),
-    aBox:aHasLm||target?getScaledBox('after', target||100):fallbackBox(S.afterImg.naturalWidth, S.afterImg.naturalHeight, S.preset)
+    bBox:getScaledBox('before', target||100),
+    aBox:getScaledBox('after',  target||100)
   };
 }
 
@@ -644,6 +649,44 @@ function drawWatermark(ctx,cW,cH,clinic,inj,pos){
   });
 }
 
+// ── Image enhancement ─────────────────────────────────────────
+function denoise(ctx, w, h) {
+  const id = ctx.getImageData(0,0,w,h);
+  const d = id.data;
+  for(let i=0;i<d.length;i+=4){
+    d[i]*=0.97; d[i+1]*=0.97; d[i+2]*=0.97;
+  }
+  ctx.putImageData(id,0,0);
+}
+
+function sharpen(ctx, w, h) {
+  const src = ctx.getImageData(0,0,w,h);
+  const dst = ctx.createImageData(w,h);
+  const sd = src.data, dd = dst.data;
+  for(let y=1;y<h-1;y++){
+    for(let x=1;x<w-1;x++){
+      for(let c=0;c<3;c++){
+        const val =
+          sd[((y-1)*w+x)*4+c] * -1 +
+          sd[(y*w+(x-1))*4+c] * -1 +
+          sd[(y*w+x)*4+c]     *  5 +
+          sd[(y*w+(x+1))*4+c] * -1 +
+          sd[((y+1)*w+x)*4+c] * -1;
+        dd[(y*w+x)*4+c] = Math.min(255,Math.max(0,val));
+      }
+      dd[(y*w+x)*4+3] = 255;
+    }
+  }
+  ctx.putImageData(dst,0,0);
+}
+
+function applyEnhancement(ctx, w, h, level) {
+  if(level === 0) return;
+  denoise(ctx, w, h);
+  sharpen(ctx, w, h);
+  if(level === 2) sharpen(ctx, w, h); // second pass for strong
+}
+
 function generate(){
   const{bBox,aBox}=getBothBoxes();
   // Apply pan offsets to final render
@@ -660,6 +703,10 @@ function generate(){
   const cA=document.createElement('canvas'); cA.width=pW; cA.height=pH;
   cB.getContext('2d').drawImage(S.beforeImg,bBoxF.x,bBoxF.y,bBoxF.w,bBoxF.h,0,0,pW,pH);
   cA.getContext('2d').drawImage(S.afterImg, aBoxF.x,aBoxF.y,aBoxF.w,aBoxF.h,0,0,pW,pH);
+  const enhance=parseInt(document.getElementById('enhance').value);
+  applyEnhancement(cB.getContext('2d'),pW,pH,enhance);
+  applyEnhancement(cA.getContext('2d'),pW,pH,enhance);
+
   if(norm){
     const ab=avgBright(cB.getContext('2d'),pW,pH),aa=avgBright(cA.getContext('2d'),pW,pH);
     const f=Math.max(.72,Math.min(1.38,ab/aa));
@@ -670,26 +717,32 @@ function generate(){
   oc.width=oW; oc.height=oH;
   const ctx=oc.getContext('2d');
   ctx.fillStyle='#1C1714'; ctx.fillRect(0,0,oW,oH);
+  const beforeDate=document.getElementById('beforeDate').value.trim();
+  const afterDate=document.getElementById('afterDate').value.trim();
+
+  function drawLabel(ox,oy,panelW,panelH,label,date){
+    const g=ctx.createLinearGradient(ox,oy+panelH-80,ox,oy+panelH);
+    g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.82)');
+    ctx.fillStyle=g;ctx.fillRect(ox,oy+panelH-80,panelW,80);
+    ctx.fillStyle='rgba(250,247,242,.88)';
+    ctx.font='400 13px "DM Sans",sans-serif';
+    ctx.fillText(label,ox+18,oy+panelH-20);
+    if(date){
+      ctx.font='300 12px "DM Sans",sans-serif';
+      ctx.fillStyle='rgba(250,247,242,.6)';
+      ctx.fillText(date,ox+18,oy+panelH-38);
+    }
+  }
+
   if(layout==='side'){
     ctx.drawImage(cB,0,0,pW,pH); ctx.drawImage(cA,pW+gap,0,pW,pH);
-    [[0,'BEFORE'],[pW+gap,'AFTER']].forEach(([ox,lbl])=>{
-      const g=ctx.createLinearGradient(ox,pH-70,ox,pH);
-      g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.82)');
-      ctx.fillStyle=g;ctx.fillRect(ox,pH-70,pW,70);
-      ctx.fillStyle='rgba(250,247,242,.88)';ctx.font='400 13px "DM Sans",sans-serif';
-      ctx.fillText(lbl,ox+18,pH-20);
-    });
-    // Watermark on after panel only
+    drawLabel(0,0,pW,pH,'BEFORE',beforeDate);
+    drawLabel(pW+gap,0,pW,pH,'AFTER',afterDate);
     drawWatermark(ctx,pW+gap+pW,pH,clinic,inj,S.wmPos);
   }else{
     ctx.drawImage(cB,0,0,pW,pH); ctx.drawImage(cA,0,pH+gap,pW,pH);
-    [[0,'BEFORE'],[pH+gap,'AFTER']].forEach(([yo,lbl])=>{
-      const g=ctx.createLinearGradient(0,yo+pH-70,0,yo+pH);
-      g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.82)');
-      ctx.fillStyle=g;ctx.fillRect(0,yo+pH-70,pW,70);
-      ctx.fillStyle='rgba(250,247,242,.88)';ctx.font='400 13px "DM Sans",sans-serif';
-      ctx.fillText(lbl,18,yo+pH-20);
-    });
+    drawLabel(0,0,pW,pH,'BEFORE',beforeDate);
+    drawLabel(0,pH+gap,pW,pH,'AFTER',afterDate);
     drawWatermark(ctx,oW,oH,clinic,inj,S.wmPos);
   }
   document.getElementById('outputSection').classList.add('visible');
