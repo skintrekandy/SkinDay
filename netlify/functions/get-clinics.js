@@ -91,7 +91,27 @@ exports.handler = async (event) => {
 
       if (search)        q = q.ilike('name', `%${search}%`);
       if (province)      q = q.eq('province', province);
-      if (neighbourhood) q = q.ilike('neighbourhood', neighbourhood.replace(/-/g, ' '));
+      if (neighbourhood) {
+        // Slug-to-exact-name map for cities where accent stripping breaks fuzzy match
+        const SLUG_EXACT = {
+          'trois-rivieres':       'Trois-Rivières',
+          'trois-rivires':        'Trois-Rivières',
+          'cote-saint-luc':       'Côte Saint-Luc',
+          'cte-saint-luc':        'Côte Saint-Luc',
+          'levis':                'Levis',
+          'lvis':                 'Levis',
+          'chateauguay':          'Châteauguay',
+          'chteauguay':           'Châteauguay',
+        };
+        if (SLUG_EXACT[neighbourhood]) {
+          q = q.eq('neighbourhood', SLUG_EXACT[neighbourhood]);
+        } else {
+          // Fuzzy match — handles periods/abbreviations e.g. "st-catharines" → "St. Catharines"
+          const words = neighbourhood.split('-').filter(Boolean);
+          const pattern = '%' + words.join('%') + '%';
+          q = q.ilike('neighbourhood', pattern);
+        }
+      }
       if (injector)      q = q.ilike('injector_credentials', `%${injector}%`);
       if (promo)         q = q.eq('promo', true).not('promo_text', 'is', null);
 
