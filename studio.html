@@ -24,7 +24,7 @@
     .nav-logo { font-family: 'Cormorant Garamond', serif; font-size: 1.6rem; font-weight: 400; color: var(--cream); letter-spacing: 0.04em; text-decoration: none; }
     .nav-logo span { color: var(--gold); }
     .nav-ctas { display: flex; align-items: center; gap: 0.6rem; }
-    .nav-signin-btn { background: transparent; border: 1px solid rgba(201,169,110,0.4); color: var(--dim); padding: 0.3rem 0.75rem; border-radius: 4px; font-size: 0.78rem; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all 0.2s; }
+    .nav-signin-btn { background: transparent; border: 1px solid rgba(201,169,110,0.4); color: var(--dim); padding: 0.3rem 0.75rem; border-radius: 4px; font-size: 0.78rem; font-family: 'DM Sans', sans-serif; cursor: pointer; }
     .nav-signin-btn:hover { border-color: var(--gold); color: var(--cream); }
     .nav-cta { background: var(--rose); color: #fff !important; padding: 0.3rem 0.75rem; border-radius: 4px; font-size: 0.78rem; font-weight: 500; text-decoration: none; transition: background 0.2s; display: inline-block; white-space: nowrap; }
     .nav-cta:hover { background: var(--rose-m); }
@@ -56,7 +56,7 @@
     .hero h1 { font-family: 'Cormorant Garamond', serif; font-size: clamp(2rem,5vw,3rem); font-weight: 300; line-height: 1.15; margin-bottom: 14px; }
     .hero h1 em { font-style: italic; color: var(--rose); }
     .hero p { font-size: 0.92rem; color: var(--muted); max-width: 420px; margin: 0 auto; line-height: 1.7; }
-    .step { margin-bottom: 40px; }
+    .step { margin-bottom: 36px; }
     .step-num { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: var(--dim); margin-bottom: 14px; }
     .upload-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
     .upload-zone { border: 1.5px dashed var(--border); border-radius: 8px; aspect-ratio: 3/4; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; position: relative; overflow: hidden; background: var(--warm); transition: border-color 0.2s; cursor: pointer; }
@@ -84,13 +84,21 @@
     .crop-section { display: none; margin-top: 8px; }
     .crop-section.visible { display: block; }
     .divider { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
-    .preset-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 24px; }
+    .preset-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 20px; }
     .preset-btn { border: 1.5px solid var(--border); border-radius: 8px; padding: 14px 8px 12px; background: #fff; cursor: pointer; text-align: center; transition: all 0.2s; display: flex; flex-direction: column; align-items: center; gap: 6px; }
     .preset-btn:hover { border-color: var(--gold); background: var(--warm); }
     .preset-btn.active { border-color: var(--rose); background: #fdf1ee; }
     .preset-icon { font-size: 18px; line-height: 1; }
     .preset-name { font-size: 0.78rem; font-weight: 500; color: var(--deep); }
     .preset-desc { font-size: 0.67rem; color: var(--muted); line-height: 1.4; }
+
+    /* Zoom controls */
+    .zoom-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+    .zoom-box { display: flex; flex-direction: column; gap: 6px; }
+    .zoom-label { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim); display: flex; justify-content: space-between; }
+    .zoom-label span { color: var(--deep); font-weight: 400; }
+    input[type=range].zoom-slider { width: 100%; accent-color: var(--rose); cursor: pointer; }
+
     .preview-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 24px; }
     .preview-box { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: var(--deep); position: relative; }
     .preview-box canvas { display: block; width: 100%; }
@@ -101,6 +109,14 @@
     .field input, .field select { background: #fff; border: 1px solid var(--border); color: var(--deep); padding: 10px 12px; font-size: 0.88rem; font-family: 'DM Sans', sans-serif; border-radius: 6px; outline: none; transition: border-color 0.2s; }
     .field input:focus, .field select:focus { border-color: var(--rose); }
     .field input::placeholder { color: var(--dim); }
+
+    /* Watermark position picker */
+    .wm-pos-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-top: 6px; }
+    .wm-pos-btn { border: 1.5px solid var(--border); border-radius: 6px; padding: 8px 4px; background: #fff; cursor: pointer; font-size: 0.72rem; color: var(--muted); text-align: center; transition: all 0.2s; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .wm-pos-btn:hover { border-color: var(--gold); }
+    .wm-pos-btn.active { border-color: var(--rose); background: #fdf1ee; color: var(--deep); }
+    .wm-pos-icon { font-size: 14px; }
+
     .gen-wrap { display: flex; justify-content: center; margin: 8px 0 28px; }
     .btn-gen { background: var(--rose); color: #fff; border: none; padding: 14px 52px; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; font-weight: 500; letter-spacing: 0.06em; border-radius: 6px; cursor: pointer; transition: background 0.2s; }
     .btn-gen:hover { background: var(--rose-m); }
@@ -126,7 +142,7 @@
     .footer-bottom { max-width: 1280px; margin: 0 auto; border-top: 1px solid rgba(181,168,159,0.1); padding-top: 1.5rem; display: flex; flex-direction: column; align-items: center; gap: 0.5rem; text-align: center; }
     .footer-copy { font-size: 0.82rem; color: var(--muted); }
     .footer-disclaimer { font-size: 0.78rem; color: var(--muted); opacity: 0.7; line-height: 1.5; }
-    @media (max-width: 580px) { .preset-grid { grid-template-columns: repeat(2,1fr); } .brand-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 580px) { .preset-grid { grid-template-columns: repeat(2,1fr); } .brand-grid { grid-template-columns: 1fr; } .wm-pos-grid { grid-template-columns: repeat(2,1fr); } }
   </style>
 </head>
 <body>
@@ -201,6 +217,19 @@
           <div class="preset-icon">✨</div><div class="preset-name">Eye Area</div><div class="preset-desc">Brows to nose</div>
         </button>
       </div>
+
+      <!-- Zoom sliders -->
+      <div class="zoom-row">
+        <div class="zoom-box">
+          <div class="zoom-label">Before zoom <span id="zoomBVal">100%</span></div>
+          <input type="range" class="zoom-slider" id="zoomB" min="60" max="160" value="100" step="5" oninput="onZoom('before',this.value)"/>
+        </div>
+        <div class="zoom-box">
+          <div class="zoom-label">After zoom <span id="zoomAVal">100%</span></div>
+          <input type="range" class="zoom-slider" id="zoomA" min="60" max="160" value="100" step="5" oninput="onZoom('after',this.value)"/>
+        </div>
+      </div>
+
       <div class="preview-row">
         <div class="preview-box"><canvas id="cvBefore"></canvas><div class="preview-tag">Before</div></div>
         <div class="preview-box"><canvas id="cvAfter"></canvas><div class="preview-tag">After</div></div>
@@ -216,6 +245,20 @@
         <div class="field"><label>Layout</label><select id="layout"><option value="side">Side by side</option><option value="stack">Top & bottom</option></select></div>
         <div class="field"><label>Normalize exposure</label><select id="norm"><option value="1">Yes — match brightness</option><option value="0">No — keep original</option></select></div>
       </div>
+
+      <!-- Watermark position -->
+      <div class="field" style="margin-bottom:24px;">
+        <label>Watermark position</label>
+        <div class="wm-pos-grid" id="wmPosGrid">
+          <button class="wm-pos-btn" data-pos="tl" onclick="selWmPos('tl')"><span class="wm-pos-icon">↖</span>Top left</button>
+          <button class="wm-pos-btn" data-pos="tr" onclick="selWmPos('tr')"><span class="wm-pos-icon">↗</span>Top right</button>
+          <button class="wm-pos-btn active" data-pos="br" onclick="selWmPos('br')"><span class="wm-pos-icon">↘</span>Bottom right</button>
+          <button class="wm-pos-btn" data-pos="bl" onclick="selWmPos('bl')"><span class="wm-pos-icon">↙</span>Bottom left</button>
+          <button class="wm-pos-btn" data-pos="center" onclick="selWmPos('center')"><span class="wm-pos-icon">⊙</span>Centre</button>
+          <button class="wm-pos-btn" data-pos="tile" onclick="selWmPos('tile')"><span class="wm-pos-icon">⊞</span>Tiled</button>
+        </div>
+      </div>
+
       <div class="gen-wrap"><button class="btn-gen" onclick="generate()">Generate image</button></div>
     </div>
   </div>
@@ -270,292 +313,323 @@
 </footer>
 
 <script>
-const S = { beforeImg:null, afterImg:null, fm:null, preset:'lower', bLm:null, aLm:null };
-const NOSE=1, CHIN=152, LEYE=33, REYE=263, BROWL=70, BROWR=300, JAWL=172, JAWR=397;
+const S = {
+  beforeImg:null, afterImg:null, fm:null,
+  preset:'lower', wmPos:'br',
+  bLm:null, aLm:null,
+  bZoom:1.0, aZoom:1.0  // zoom multipliers
+};
+const NOSE=1,CHIN=152,LEYE=33,REYE=263,BROWL=70,BROWR=300,JAWL=172,JAWR=397;
 
-document.getElementById('hamburger').addEventListener('click', function() {
+document.getElementById('hamburger').addEventListener('click',function(){
   this.classList.toggle('open');
   document.getElementById('navOverlay').classList.toggle('open');
 });
 
-function setSt(msg, t='idle') {
-  document.getElementById('statusText').textContent = msg;
-  const d = document.getElementById('dot');
-  d.className = 'dot' + (t !== 'idle' ? ' '+t : '');
+function setSt(msg,t='idle'){
+  document.getElementById('statusText').textContent=msg;
+  const d=document.getElementById('dot');
+  d.className='dot'+(t!=='idle'?' '+t:'');
 }
-function setProg(p) {
-  const b=document.getElementById('progressBar'), f=document.getElementById('progressFill');
+function setProg(p){
+  const b=document.getElementById('progressBar'),f=document.getElementById('progressFill');
   if(p>0&&p<100){b.classList.add('on');f.style.width=p+'%';}
   else{b.classList.remove('on');f.style.width='0%';}
 }
 
-function loadFile(file, which) {
-  if(!file) return;
-  const r = new FileReader();
-  r.onload = ev => {
-    const img = new Image();
-    img.onload = () => {
-      S[which+'Img'] = img;
-      S[which==='before'?'bLm':'aLm'] = null;
-      const zone = document.getElementById('zone-'+which);
+function loadFile(file,which){
+  if(!file)return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    const img=new Image();
+    img.onload=()=>{
+      S[which+'Img']=img;
+      S[which==='before'?'bLm':'aLm']=null;
+      S[which==='before'?'bZoom':'aZoom']=1.0;
+      if(which==='before') document.getElementById('zoomB').value=100;
+      else document.getElementById('zoomA').value=100;
+      const zone=document.getElementById('zone-'+which);
       zone.classList.add('filled');
-      let old = zone.querySelector('img.thumb'); if(old) old.remove();
-      const th = document.createElement('img'); th.className='thumb'; th.src=ev.target.result;
-      zone.insertBefore(th, zone.querySelector('.zone-tag'));
-      if(S.beforeImg && S.afterImg) runDetect();
-      else setSt(which==='before' ? 'Before loaded — now upload the after photo.' : 'After loaded — now upload the before photo.', 'warn');
+      let old=zone.querySelector('img.thumb'); if(old)old.remove();
+      const th=document.createElement('img'); th.className='thumb'; th.src=ev.target.result;
+      zone.insertBefore(th,zone.querySelector('.zone-tag'));
+      if(S.beforeImg&&S.afterImg) runDetect();
+      else setSt(which==='before'?'Before loaded — now upload the after photo.':'After loaded — now upload the before photo.','warn');
     };
-    img.src = ev.target.result;
+    img.src=ev.target.result;
   };
   r.readAsDataURL(file);
 }
-['before','after'].forEach(w => {
-  document.getElementById('input-'+w).addEventListener('change', e => loadFile(e.target.files[0], w));
-  document.getElementById('change-'+w).addEventListener('change', e => loadFile(e.target.files[0], w));
+['before','after'].forEach(w=>{
+  document.getElementById('input-'+w).addEventListener('change',e=>loadFile(e.target.files[0],w));
+  document.getElementById('change-'+w).addEventListener('change',e=>loadFile(e.target.files[0],w));
 });
 
-function initFM() {
-  return new Promise(res => {
-    const fm = new FaceMesh({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}` });
-    fm.setOptions({ maxNumFaces:1, refineLandmarks:true, minDetectionConfidence:0.4, minTrackingConfidence:0.4 });
-    fm.initialize().then(() => { S.fm = fm; res(fm); });
+function initFM(){
+  return new Promise(res=>{
+    const fm=new FaceMesh({locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}`});
+    fm.setOptions({maxNumFaces:1,refineLandmarks:true,minDetectionConfidence:0.4,minTrackingConfidence:0.4});
+    fm.initialize().then(()=>{S.fm=fm;res(fm);});
   });
 }
-function detect(img) {
-  return new Promise(async (res, rej) => {
-    S.fm.onResults(r => {
-      if(r.multiFaceLandmarks?.length > 0) res(r.multiFaceLandmarks[0]);
+function detect(img){
+  return new Promise(async(res,rej)=>{
+    S.fm.onResults(r=>{
+      if(r.multiFaceLandmarks?.length>0)res(r.multiFaceLandmarks[0]);
       else rej(new Error('no face'));
     });
-    const c = document.createElement('canvas');
-    c.width = img.naturalWidth; c.height = img.naturalHeight;
-    c.getContext('2d').drawImage(img, 0, 0);
-    await S.fm.send({ image: c });
+    const c=document.createElement('canvas');
+    c.width=img.naturalWidth; c.height=img.naturalHeight;
+    c.getContext('2d').drawImage(img,0,0);
+    await S.fm.send({image:c});
   });
 }
 
-async function runDetect() {
-  setSt('Analysing photos…', 'spin'); setProg(15);
+async function runDetect(){
+  setSt('Analysing photos…','spin'); setProg(15);
   if(!S.fm) await initFM();
-  let warns = [];
-  for(const w of ['before','after']) {
-    try {
-      setProg(w==='before' ? 35 : 65);
-      if(w==='before') S.bLm = await detect(S.beforeImg);
-      else S.aLm = await detect(S.afterImg);
-    } catch { warns.push(w); }
+  let warns=[];
+  for(const w of['before','after']){
+    try{
+      setProg(w==='before'?35:65);
+      if(w==='before') S.bLm=await detect(S.beforeImg);
+      else S.aLm=await detect(S.afterImg);
+    }catch{warns.push(w);}
   }
   setProg(100);
   document.getElementById('cropSection').classList.add('visible');
-  document.getElementById('cropSection').scrollIntoView({ behavior:'smooth', block:'start' });
+  document.getElementById('cropSection').scrollIntoView({behavior:'smooth',block:'start'});
   renderPreviews();
-  if(warns.length===0) setSt('Face detected — choose your crop area.', 'ok');
-  else if(warns.length===2) setSt('Profile or angled photos — centre crop applied.', 'warn');
-  else setSt(`Could not detect face in ${warns[0]} photo — centre crop applied.`, 'warn');
+  if(warns.length===0) setSt('Face detected — choose your crop area.','ok');
+  else if(warns.length===2) setSt('Profile or angled photos — centre crop applied.','warn');
+  else setSt(`Could not detect face in ${warns[0]} photo — centre crop applied.`,'warn');
   setProg(0);
 }
 
-function selPreset(k) {
-  S.preset = k;
-  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+function selPreset(k){
+  S.preset=k;
+  document.querySelectorAll('.preset-btn').forEach(b=>b.classList.remove('active'));
   document.querySelector(`[data-preset="${k}"]`).classList.add('active');
   renderPreviews();
 }
 
-// ── Eye distance in pixels (absolute, not normalized) ──────────
-function eyeDistPx(lm, imgW) {
-  return Math.abs(lm[REYE].x - lm[LEYE].x) * imgW;
+function selWmPos(pos){
+  S.wmPos=pos;
+  document.querySelectorAll('.wm-pos-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelector(`[data-pos="${pos}"]`).classList.add('active');
 }
 
-// ── Base crop box from landmarks (no scale normalization yet) ───
-function lmToBaseBox(lm, iw, ih, preset) {
-  const px = i => ({ x: lm[i].x * iw, y: lm[i].y * ih });
-  const nose=px(NOSE), chin=px(CHIN), le=px(LEYE), re=px(REYE);
-  const browL=px(BROWL), browR=px(BROWR), jawL=px(JAWL), jawR=px(JAWR);
-  const browY = (browL.y + browR.y) / 2;
-  const foreY = browY - (nose.y - browY) * 0.85;
-  const faceH = chin.y - browY;
-  const eyeDist = Math.abs(re.x - le.x);
-  const isProfile = eyeDist < iw * 0.10;
-  const cx = (le.x + re.x) / 2;
-  const halfW = isProfile
-    ? Math.max(eyeDist * 3.5, iw * 0.28)
-    : (jawR.x - jawL.x) * 0.65;
-  let top, bot;
-  if(preset==='full')  { top=foreY-faceH*.18; bot=chin.y+faceH*.22; }
-  if(preset==='lower') { top=nose.y-faceH*.10; bot=chin.y+faceH*.32; }
-  if(preset==='upper') { top=foreY-faceH*.15; bot=nose.y-faceH*.05; }
-  if(preset==='eyes')  { top=browY-faceH*.20; bot=nose.y+faceH*.08; }
-  return {
-    x: cx - halfW,
-    y: top,
-    w: halfW * 2,
-    h: bot - top,
-    cx, // store center for clamping
-    cy: (top + bot) / 2
-  };
-}
-
-function fallbackBox(iw, ih, preset) {
-  const p = { full:[.03,.96,.08,.92], lower:[.40,.90,.08,.92], upper:[.03,.40,.08,.92], eyes:[.25,.56,.08,.92] };
-  const [t,b,l,r] = p[preset];
-  return { x:l*iw, y:t*ih, w:(r-l)*iw, h:(b-t)*ih, cx:(l+r)/2*iw, cy:(t+b)/2*ih };
-}
-
-// ── Scale-normalized crop box ──────────────────────────────────
-// Uses inter-eye distance as anchor so both faces appear same size
-function getScaledBox(which, targetEyePx) {
-  const img = which==='before' ? S.beforeImg : S.afterImg;
-  const lm  = which==='before' ? S.bLm : S.aLm;
-  const iw = img.naturalWidth, ih = img.naturalHeight;
-
-  if(!lm) return fallbackBox(iw, ih, S.preset);
-
-  const base = lmToBaseBox(lm, iw, ih, S.preset);
-  const thisEyePx = eyeDistPx(lm, iw);
-  const scale = targetEyePx / thisEyePx;
-
-  // Scale crop box around its center point
-  const newW = base.w * scale;
-  const newH = base.h * scale;
-  const newX = base.cx - newW / 2;
-  const newY = base.cy - newH / 2;
-
-  // Clamp within image bounds
-  return {
-    x: Math.max(0, Math.min(newX, iw - newW)),
-    y: Math.max(0, Math.min(newY, ih - newH)),
-    w: Math.min(newW, iw),
-    h: Math.min(newH, ih)
-  };
-}
-
-// ── Get both boxes with shared target scale ────────────────────
-function getBothBoxes() {
-  const bHasLm = !!S.bLm, aHasLm = !!S.aLm;
-
-  if(bHasLm && aHasLm) {
-    // Both detected — normalize to larger eye distance so no upscaling artifacts
-    const bEye = eyeDistPx(S.bLm, S.beforeImg.naturalWidth);
-    const aEye = eyeDistPx(S.aLm, S.afterImg.naturalWidth);
-    const target = Math.max(bEye, aEye);
-    return {
-      bBox: getScaledBox('before', target),
-      aBox: getScaledBox('after',  target)
-    };
+function onZoom(which,val){
+  const pct=parseInt(val);
+  if(which==='before'){
+    S.bZoom=pct/100;
+    document.getElementById('zoomBVal').textContent=pct+'%';
+  } else {
+    S.aZoom=pct/100;
+    document.getElementById('zoomAVal').textContent=pct+'%';
   }
-  // Fallback for one or both missing
-  return {
-    bBox: bHasLm ? getScaledBox('before', eyeDistPx(S.bLm, S.beforeImg.naturalWidth))
-                 : fallbackBox(S.beforeImg.naturalWidth, S.beforeImg.naturalHeight, S.preset),
-    aBox: aHasLm ? getScaledBox('after',  eyeDistPx(S.aLm, S.afterImg.naturalWidth))
-                 : fallbackBox(S.afterImg.naturalWidth,  S.afterImg.naturalHeight,  S.preset)
+  renderPreviews();
+}
+
+// Eye distance in pixels
+function eyeDistPx(lm,imgW){
+  return Math.abs(lm[REYE].x-lm[LEYE].x)*imgW;
+}
+
+// Base crop box from landmarks
+function lmToBaseBox(lm,iw,ih,preset){
+  const px=i=>({x:lm[i].x*iw,y:lm[i].y*ih});
+  const nose=px(NOSE),chin=px(CHIN),le=px(LEYE),re=px(REYE);
+  const browL=px(BROWL),browR=px(BROWR),jawL=px(JAWL),jawR=px(JAWR);
+  const browY=(browL.y+browR.y)/2;
+  const foreY=browY-(nose.y-browY)*0.85;
+  const faceH=chin.y-browY;
+  const eyeDist=Math.abs(re.x-le.x);
+  const isProfile=eyeDist<iw*0.10;
+  const cx=(le.x+re.x)/2;
+  const halfW=isProfile?Math.max(eyeDist*3.5,iw*0.28):(jawR.x-jawL.x)*0.65;
+  let top,bot;
+  if(preset==='full') {top=foreY-faceH*.18;bot=chin.y+faceH*.22;}
+  if(preset==='lower'){top=nose.y-faceH*.10;bot=chin.y+faceH*.32;}
+  if(preset==='upper'){top=foreY-faceH*.15;bot=nose.y-faceH*.05;}
+  if(preset==='eyes') {top=browY-faceH*.20;bot=nose.y+faceH*.08;}
+  return{x:cx-halfW,y:top,w:halfW*2,h:bot-top,cx,cy:(top+bot)/2};
+}
+
+function fallbackBox(iw,ih,preset){
+  const p={full:[.03,.96,.08,.92],lower:[.40,.90,.08,.92],upper:[.03,.40,.08,.92],eyes:[.25,.56,.08,.92]};
+  const[t,b,l,r]=p[preset];
+  return{x:l*iw,y:t*ih,w:(r-l)*iw,h:(b-t)*ih,cx:(l+r)/2*iw,cy:(t+b)/2*ih};
+}
+
+// Scale-normalized box + zoom applied
+function getScaledBox(which,targetEyePx){
+  const img=which==='before'?S.beforeImg:S.afterImg;
+  const lm=which==='before'?S.bLm:S.aLm;
+  const zoom=which==='before'?S.bZoom:S.aZoom;
+  const iw=img.naturalWidth,ih=img.naturalHeight;
+  if(!lm) {
+    const fb=fallbackBox(iw,ih,S.preset);
+    // Apply zoom to fallback
+    const nw=fb.w/zoom, nh=fb.h/zoom;
+    return{x:Math.max(0,fb.cx-nw/2),y:Math.max(0,fb.cy-nh/2),w:Math.min(nw,iw),h:Math.min(nh,ih)};
+  }
+  const base=lmToBaseBox(lm,iw,ih,S.preset);
+  const thisEyePx=eyeDistPx(lm,iw);
+  // Scale for alignment, then divide by zoom (zoom in = smaller crop box = closer)
+  const scale=(targetEyePx/thisEyePx)/zoom;
+  const newW=base.w*scale, newH=base.h*scale;
+  const newX=base.cx-newW/2, newY=base.cy-newH/2;
+  return{
+    x:Math.max(0,Math.min(newX,iw-newW)),
+    y:Math.max(0,Math.min(newY,ih-newH)),
+    w:Math.min(newW,iw),
+    h:Math.min(newH,ih)
   };
 }
 
-// ── Render previews ────────────────────────────────────────────
-function renderPreviews() {
-  if(!S.beforeImg || !S.afterImg) return;
-  const { bBox, aBox } = getBothBoxes();
-  const pH = 460;
-  // Use averaged aspect ratio to prevent distortion
-  const bAspect = bBox.w / bBox.h;
-  const aAspect = aBox.w / aBox.h;
-  const pW = Math.round(pH * (bAspect + aAspect) / 2);
-  drawToCanvas(document.getElementById('cvBefore'), S.beforeImg, bBox, pW, pH, 1);
-  drawToCanvas(document.getElementById('cvAfter'),  S.afterImg,  aBox, pW, pH, 1);
+function getBothBoxes(){
+  const bHasLm=!!S.bLm, aHasLm=!!S.aLm;
+  let target;
+  if(bHasLm&&aHasLm){
+    const bEye=eyeDistPx(S.bLm,S.beforeImg.naturalWidth);
+    const aEye=eyeDistPx(S.aLm,S.afterImg.naturalWidth);
+    // Use MIN so both scale to the more distant (wider) shot — no upscaling
+    target=Math.min(bEye,aEye);
+  } else if(bHasLm){
+    target=eyeDistPx(S.bLm,S.beforeImg.naturalWidth);
+  } else if(aHasLm){
+    target=eyeDistPx(S.aLm,S.afterImg.naturalWidth);
+  }
+  return{
+    bBox:bHasLm||target?getScaledBox('before',target||100):fallbackBox(S.beforeImg.naturalWidth,S.beforeImg.naturalHeight,S.preset),
+    aBox:aHasLm||target?getScaledBox('after', target||100):fallbackBox(S.afterImg.naturalWidth, S.afterImg.naturalHeight, S.preset)
+  };
 }
 
-function drawToCanvas(cv, img, box, tw, th, bf) {
-  cv.width = tw; cv.height = th;
-  const ctx = cv.getContext('2d');
-  ctx.drawImage(img, box.x, box.y, box.w, box.h, 0, 0, tw, th);
-  if(bf && bf !== 1) {
-    const id = ctx.getImageData(0,0,tw,th);
-    for(let i=0;i<id.data.length;i+=4){
-      id.data[i]=Math.min(255,id.data[i]*bf);
-      id.data[i+1]=Math.min(255,id.data[i+1]*bf);
-      id.data[i+2]=Math.min(255,id.data[i+2]*bf);
-    }
+function renderPreviews(){
+  if(!S.beforeImg||!S.afterImg)return;
+  const{bBox,aBox}=getBothBoxes();
+  const pH=460;
+  const aspect=(bBox.w/bBox.h+aBox.w/aBox.h)/2;
+  const pW=Math.round(pH*aspect);
+  drawToCanvas(document.getElementById('cvBefore'),S.beforeImg,bBox,pW,pH,1);
+  drawToCanvas(document.getElementById('cvAfter'), S.afterImg, aBox,pW,pH,1);
+}
+
+function drawToCanvas(cv,img,box,tw,th,bf){
+  cv.width=tw; cv.height=th;
+  const ctx=cv.getContext('2d');
+  ctx.drawImage(img,box.x,box.y,box.w,box.h,0,0,tw,th);
+  if(bf&&bf!==1){
+    const id=ctx.getImageData(0,0,tw,th);
+    for(let i=0;i<id.data.length;i+=4){id.data[i]=Math.min(255,id.data[i]*bf);id.data[i+1]=Math.min(255,id.data[i+1]*bf);id.data[i+2]=Math.min(255,id.data[i+2]*bf);}
     ctx.putImageData(id,0,0);
   }
 }
 
-function avgBright(ctx,w,h) {
+function avgBright(ctx,w,h){
   const d=ctx.getImageData(0,0,w,h).data; let s=0;
-  for(let i=0;i<d.length;i+=4) s+=.299*d[i]+.587*d[i+1]+.114*d[i+2];
+  for(let i=0;i<d.length;i+=4)s+=.299*d[i]+.587*d[i+1]+.114*d[i+2];
   return s/(d.length/4);
 }
 
-function drawWatermark(ctx, cW, cH, clinic, inj) {
-  const lines = [clinic, inj].filter(Boolean); if(!lines.length) return;
-  const fs = Math.max(20, Math.round(cH*.022));
-  const lh=fs*1.5, px=16, py=12;
-  ctx.font = `500 ${fs}px 'DM Sans',sans-serif`;
-  const mw = lines.reduce((m,l)=>Math.max(m,ctx.measureText(l).width),0);
-  const bw=mw+px*2, bh=lines.length*lh+py*2, bx=cW-bw-18, by=cH-bh-18;
-  ctx.fillStyle = 'rgba(28,23,20,0.58)';
-  if(ctx.roundRect) ctx.roundRect(bx,by,bw,bh,5); else ctx.rect(bx,by,bw,bh);
+function drawWatermark(ctx,cW,cH,clinic,inj,pos){
+  const lines=[clinic,inj].filter(Boolean); if(!lines.length)return;
+
+  // Tiled mode — repeating diagonal watermark across full canvas
+  if(pos==='tile'){
+    const fs=Math.max(18,Math.round(cH*.018));
+    const text=lines.join('  ·  ');
+    ctx.save();
+    ctx.font=`400 ${fs}px 'DM Sans',sans-serif`;
+    const tw=ctx.measureText(text).width;
+    const spacing=tw+fs*3;
+    const rowH=fs*3.5;
+    ctx.globalAlpha=0.18;
+    ctx.fillStyle='#ffffff';
+    ctx.translate(cW/2,cH/2);
+    ctx.rotate(-Math.PI/6);
+    const cols=Math.ceil((cW+cH)/spacing)+2;
+    const rows=Math.ceil((cW+cH)/rowH)+2;
+    for(let row=-rows;row<=rows;row++){
+      for(let col=-cols;col<=cols;col++){
+        ctx.fillText(text, col*spacing, row*rowH);
+      }
+    }
+    ctx.restore();
+    return;
+  }
+
+  // Single block modes
+  const fs=Math.max(20,Math.round(cH*.022));
+  const lh=fs*1.5,px=18,py=14;
+  ctx.font=`500 ${fs}px 'DM Sans',sans-serif`;
+  const mw=lines.reduce((m,l)=>Math.max(m,ctx.measureText(l).width),0);
+  const bw=mw+px*2, bh=lines.length*lh+py*2;
+  const margin=20;
+  let bx,by;
+  if(pos==='tl')     {bx=margin;by=margin;}
+  else if(pos==='tr'){bx=cW-bw-margin;by=margin;}
+  else if(pos==='bl'){bx=margin;by=cH-bh-margin;}
+  else if(pos==='center'){bx=cW/2-bw/2;by=cH/2-bh/2;}
+  else               {bx=cW-bw-margin;by=cH-bh-margin;} // br
+  ctx.fillStyle='rgba(28,23,20,0.58)';
+  if(ctx.roundRect)ctx.roundRect(bx,by,bw,bh,5); else ctx.rect(bx,by,bw,bh);
   ctx.fill();
-  ctx.textBaseline = 'top';
-  lines.forEach((line,i) => {
-    ctx.font = i===0 ? `500 ${fs}px 'DM Sans',sans-serif` : `300 ${Math.round(fs*.85)}px 'DM Sans',sans-serif`;
-    ctx.fillStyle = 'rgba(250,247,242,0.92)';
-    ctx.fillText(line, bx+px, by+py+i*lh);
+  ctx.textBaseline='top';
+  lines.forEach((line,i)=>{
+    ctx.font=i===0?`500 ${fs}px 'DM Sans',sans-serif`:`300 ${Math.round(fs*.85)}px 'DM Sans',sans-serif`;
+    ctx.fillStyle='rgba(250,247,242,0.92)';
+    ctx.fillText(line,bx+px,by+py+i*lh);
   });
 }
 
-function generate() {
-  const { bBox, aBox } = getBothBoxes();
-  const norm = document.getElementById('norm').value === '1';
-  const layout = document.getElementById('layout').value;
-  const clinic = document.getElementById('clinicName').value.trim();
-  const inj = document.getElementById('injectorName').value.trim();
-
-  const pH = 1080;
-  const bAspect = bBox.w / bBox.h;
-  const aAspect = aBox.w / aBox.h;
-  const pW = Math.round(pH * (bAspect + aAspect) / 2);
-
-  const cB = document.createElement('canvas'); cB.width=pW; cB.height=pH;
-  const cA = document.createElement('canvas'); cA.width=pW; cA.height=pH;
-  cB.getContext('2d').drawImage(S.beforeImg, bBox.x, bBox.y, bBox.w, bBox.h, 0, 0, pW, pH);
-  cA.getContext('2d').drawImage(S.afterImg,  aBox.x, aBox.y, aBox.w, aBox.h, 0, 0, pW, pH);
-
-  if(norm) {
-    const ab=avgBright(cB.getContext('2d'),pW,pH), aa=avgBright(cA.getContext('2d'),pW,pH);
+function generate(){
+  const{bBox,aBox}=getBothBoxes();
+  const norm=document.getElementById('norm').value==='1';
+  const layout=document.getElementById('layout').value;
+  const clinic=document.getElementById('clinicName').value.trim();
+  const inj=document.getElementById('injectorName').value.trim();
+  const pH=1080;
+  const aspect=(bBox.w/bBox.h+aBox.w/aBox.h)/2;
+  const pW=Math.round(pH*aspect);
+  const cB=document.createElement('canvas'); cB.width=pW; cB.height=pH;
+  const cA=document.createElement('canvas'); cA.width=pW; cA.height=pH;
+  cB.getContext('2d').drawImage(S.beforeImg,bBox.x,bBox.y,bBox.w,bBox.h,0,0,pW,pH);
+  cA.getContext('2d').drawImage(S.afterImg, aBox.x,aBox.y,aBox.w,aBox.h,0,0,pW,pH);
+  if(norm){
+    const ab=avgBright(cB.getContext('2d'),pW,pH),aa=avgBright(cA.getContext('2d'),pW,pH);
     const f=Math.max(.72,Math.min(1.38,ab/aa));
-    drawToCanvas(cA, S.afterImg, aBox, pW, pH, f);
+    drawToCanvas(cA,S.afterImg,aBox,pW,pH,f);
   }
-
-  const gap=4, oc=document.getElementById('outputCanvas');
-  const oW=layout==='side'?pW*2+gap:pW, oH=layout==='side'?pH:pH*2+gap;
+  const gap=4,oc=document.getElementById('outputCanvas');
+  const oW=layout==='side'?pW*2+gap:pW,oH=layout==='side'?pH:pH*2+gap;
   oc.width=oW; oc.height=oH;
   const ctx=oc.getContext('2d');
   ctx.fillStyle='#1C1714'; ctx.fillRect(0,0,oW,oH);
-
-  if(layout==='side') {
+  if(layout==='side'){
     ctx.drawImage(cB,0,0,pW,pH); ctx.drawImage(cA,pW+gap,0,pW,pH);
     [[0,'BEFORE'],[pW+gap,'AFTER']].forEach(([ox,lbl])=>{
       const g=ctx.createLinearGradient(ox,pH-70,ox,pH);
-      g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,'rgba(0,0,0,.82)');
-      ctx.fillStyle=g; ctx.fillRect(ox,pH-70,pW,70);
-      ctx.fillStyle='rgba(250,247,242,.88)'; ctx.font='400 13px "DM Sans",sans-serif';
+      g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.82)');
+      ctx.fillStyle=g;ctx.fillRect(ox,pH-70,pW,70);
+      ctx.fillStyle='rgba(250,247,242,.88)';ctx.font='400 13px "DM Sans",sans-serif';
       ctx.fillText(lbl,ox+18,pH-20);
     });
-    drawWatermark(ctx,oW,oH,clinic,inj);
-  } else {
+    // Watermark on after panel only
+    drawWatermark(ctx,pW+gap+pW,pH,clinic,inj,S.wmPos);
+  }else{
     ctx.drawImage(cB,0,0,pW,pH); ctx.drawImage(cA,0,pH+gap,pW,pH);
     [[0,'BEFORE'],[pH+gap,'AFTER']].forEach(([yo,lbl])=>{
       const g=ctx.createLinearGradient(0,yo+pH-70,0,yo+pH);
-      g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,'rgba(0,0,0,.82)');
-      ctx.fillStyle=g; ctx.fillRect(0,yo+pH-70,pW,70);
-      ctx.fillStyle='rgba(250,247,242,.88)'; ctx.font='400 13px "DM Sans",sans-serif';
+      g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.82)');
+      ctx.fillStyle=g;ctx.fillRect(0,yo+pH-70,pW,70);
+      ctx.fillStyle='rgba(250,247,242,.88)';ctx.font='400 13px "DM Sans",sans-serif';
       ctx.fillText(lbl,18,yo+pH-20);
     });
-    drawWatermark(ctx,oW,oH,clinic,inj);
+    drawWatermark(ctx,oW,oH,clinic,inj,S.wmPos);
   }
-
   document.getElementById('outputSection').classList.add('visible');
   document.getElementById('outputSection').scrollIntoView({behavior:'smooth'});
   setSt('Done — your image is ready to download.','ok');
