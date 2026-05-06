@@ -240,9 +240,32 @@
     <hr class="divider">
     <div class="step">
       <div class="step-num">Step 3 — Add your branding (optional)</div>
-      <div class="brand-grid">
+
+      <!-- Row 1: Clinic + Injector -->
+      <div class="brand-grid" style="margin-top:14px;">
         <div class="field"><label>Clinic name</label><input type="text" id="clinicName" placeholder="Your clinic name" maxlength="60"/></div>
         <div class="field"><label>Injector name</label><input type="text" id="injectorName" placeholder="Injector name" maxlength="60"/></div>
+      </div>
+
+      <!-- Row 2: Treatment + Logo -->
+      <div class="brand-grid">
+        <div class="field">
+          <label>Treatment label</label>
+          <input type="text" id="treatmentLabel" placeholder="e.g. Sculptra · 3 sessions" maxlength="60"/>
+        </div>
+        <div class="field">
+          <label>Clinic logo <span style="font-weight:300;font-size:0.65rem;color:var(--dim);">PNG transparent bg best</span></label>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <label for="logoUpload" style="background:#fff;border:1px solid var(--border);border-radius:6px;padding:9px 14px;font-size:0.83rem;color:var(--muted);cursor:pointer;white-space:nowrap;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border)'">Upload logo</label>
+            <input type="file" id="logoUpload" accept="image/*" style="display:none;"/>
+            <span id="logoFileName" style="font-size:0.75rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:120px;">No logo</span>
+            <button id="logoClearBtn" onclick="clearLogo()" style="display:none;background:transparent;border:none;color:var(--muted);font-size:0.75rem;cursor:pointer;flex-shrink:0;">✕</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 3: Dates -->
+      <div class="brand-grid">
         <div class="field">
           <label>Before date</label>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
@@ -257,6 +280,16 @@
             <select id="afterYear"><option value="">Year</option><option value="2020">2020</option><option value="2021">2021</option><option value="2022">2022</option><option value="2023">2023</option><option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option></select>
           </div>
         </div>
+      </div>
+
+      <!-- Row 4: Layout + Format -->
+      <div class="brand-grid">
+        <div class="field"><label>Layout</label><select id="layout"><option value="side">Side by side</option><option value="stack">Top & bottom</option></select></div>
+        <div class="field"><label>Export format</label><select id="exportFormat"><option value="square">Square 1:1 (Instagram post)</option><option value="portrait" selected>Portrait 4:5 (Instagram feed)</option><option value="story">Story 9:16 (Instagram story)</option><option value="free">Original — match crop</option></select></div>
+      </div>
+
+      <!-- Row 5: Logo position (hidden until logo uploaded) + Exposure -->
+      <div class="brand-grid">
         <div class="field" id="logoPosField" style="display:none;">
           <label>Logo position</label>
           <select id="logoPos">
@@ -266,27 +299,14 @@
             <option value="bl">Bottom left</option>
           </select>
         </div>
-        <div class="field"><label>Layout</label><select id="layout"><option value="side">Side by side</option><option value="stack">Top & bottom</option></select></div>
-        <div class="field"><label>Export format</label><select id="exportFormat"><option value="square">Square 1:1 (Instagram post)</option><option value="portrait" selected>Portrait 4:5 (Instagram feed)</option><option value="story">Story 9:16 (Instagram story)</option><option value="free">Original — match crop</option></select></div>
-        <div class="field"><label>Treatment</label><input type="text" id="treatmentLabel" placeholder="e.g. Kybella · 2 sessions" maxlength="60"/></div>
-        <div class="field">
-          <label>Clinic logo</label>
-          <div style="display:flex;align-items:center;gap:10px;">
-            <label for="logoUpload" style="background:#fff;border:1px solid var(--border);border-radius:6px;padding:9px 14px;font-size:0.83rem;color:var(--muted);cursor:pointer;transition:border-color .2s;white-space:nowrap;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border)'">Upload logo</label>
-            <input type="file" id="logoUpload" accept="image/*" style="display:none;"/>
-            <span id="logoFileName" style="font-size:0.78rem;color:var(--muted);">No logo</span>
-            <button id="logoClearBtn" onclick="clearLogo()" style="display:none;background:transparent;border:none;color:var(--muted);font-size:0.78rem;cursor:pointer;padding:0;">✕ Remove</button>
-          </div>
-          <div style="font-size:0.68rem;color:var(--dim);margin-top:4px;">PNG with transparent background works best</div>
-        </div>
         <div class="field"><label>Normalize exposure</label><select id="norm"><option value="1">Yes — match brightness</option><option value="0">No — keep original</option></select></div>
         <div class="field"><label>Image clarity</label><select id="enhance"><option value="0">None</option><option value="1" selected>Subtle — reduce noise & sharpen</option><option value="2">Strong — reduce noise & sharpen</option></select></div>
       </div>
 
-      <!-- Watermark position -->
-      <div class="field" style="margin-bottom:24px;">
-        <label>Watermark position</label>
-        <div class="wm-pos-grid" id="wmPosGrid">
+      <!-- Watermark text position -->
+      <div class="field" style="margin-bottom:20px;">
+        <label>Watermark text position</label>
+        <div class="wm-pos-grid" id="wmPosGrid" style="margin-top:8px;">
           <button class="wm-pos-btn" data-pos="tl" onclick="selWmPos('tl')"><span class="wm-pos-icon">↖</span>Top left</button>
           <button class="wm-pos-btn" data-pos="tr" onclick="selWmPos('tr')"><span class="wm-pos-icon">↗</span>Top right</button>
           <button class="wm-pos-btn active" data-pos="br" onclick="selWmPos('br')"><span class="wm-pos-icon">↘</span>Bottom right</button>
@@ -296,9 +316,9 @@
         </div>
       </div>
 
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-        <span id="saveMsg" style="font-size:0.72rem;color:var(--muted);"></span>
-        <button onclick="saveSettings()" style="background:transparent;border:1px solid var(--border);color:var(--muted);padding:7px 16px;font-family:'DM Sans',sans-serif;font-size:0.72rem;letter-spacing:.1em;text-transform:uppercase;border-radius:4px;cursor:pointer;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border)'">Save settings</button>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <span id="saveMsg" style="font-size:0.75rem;color:#3D7A55;"></span>
+        <button onclick="saveSettings()" style="background:transparent;border:1px solid var(--border);color:var(--muted);padding:8px 18px;font-family:'DM Sans',sans-serif;font-size:0.72rem;letter-spacing:.1em;text-transform:uppercase;border-radius:4px;cursor:pointer;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--deep)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">Save settings</button>
       </div>
       <div class="gen-wrap"><button class="btn-gen" onclick="generate()">Generate image</button></div>
     </div>
@@ -750,26 +770,44 @@ function generate(){
   const inj=document.getElementById('injectorName').value.trim();
   const treatment=document.getElementById('treatmentLabel').value.trim();
   const fmt=document.getElementById('exportFormat').value;
-  let pW,pH;
-  if(fmt==='square')  {pH=1080;pW=1080;}
-  else if(fmt==='story'){pH=1920;pW=1080;}
-  else if(fmt==='portrait'){pH=1350;pW=1080;}
-  else{pH=1080;const aspect=(bBox.w/bBox.h+aBox.w/aBox.h)/2;pW=Math.round(pH*aspect);}
-  const cB=document.createElement('canvas'); cB.width=pW; cB.height=pH;
-  const cA=document.createElement('canvas'); cA.width=pW; cA.height=pH;
-  cB.getContext('2d').drawImage(S.beforeImg,bBoxF.x,bBoxF.y,bBoxF.w,bBoxF.h,0,0,pW,pH);
-  cA.getContext('2d').drawImage(S.afterImg, aBoxF.x,aBoxF.y,aBoxF.w,aBoxF.h,0,0,pW,pH);
+
+  // Panel dimensions: always use natural crop aspect ratio — NO stretching
+  // Both panels use averaged aspect ratio so they match each other
+  const cropAspect=(bBoxF.w/bBoxF.h+aBoxF.w/aBoxF.h)/2;
+  const panelH=1080;
+  const panelW=Math.round(panelH*cropAspect);
+
+  // Canvas panels — draw at natural aspect, no distortion
+  const cB=document.createElement('canvas'); cB.width=panelW; cB.height=panelH;
+  const cA=document.createElement('canvas'); cA.width=panelW; cA.height=panelH;
+  cB.getContext('2d').drawImage(S.beforeImg,bBoxF.x,bBoxF.y,bBoxF.w,bBoxF.h,0,0,panelW,panelH);
+  cA.getContext('2d').drawImage(S.afterImg, aBoxF.x,aBoxF.y,aBoxF.w,aBoxF.h,0,0,panelW,panelH);
   const enhance=parseInt(document.getElementById('enhance').value);
-  applyEnhancement(cB.getContext('2d'),pW,pH,enhance);
-  applyEnhancement(cA.getContext('2d'),pW,pH,enhance);
+  applyEnhancement(cB.getContext('2d'),panelW,panelH,enhance);
+  applyEnhancement(cA.getContext('2d'),panelW,panelH,enhance);
 
   if(norm){
-    const ab=avgBright(cB.getContext('2d'),pW,pH),aa=avgBright(cA.getContext('2d'),pW,pH);
+    const ab=avgBright(cB.getContext('2d'),panelW,panelH),aa=avgBright(cA.getContext('2d'),panelW,panelH);
     const f=Math.max(.72,Math.min(1.38,ab/aa));
-    drawToCanvas(cA,S.afterImg,aBoxF,pW,pH,f);
+    drawToCanvas(cA,S.afterImg,aBoxF,panelW,panelH,f);
   }
   const gap=4,oc=document.getElementById('outputCanvas');
-  const oW=layout==='side'?pW*2+gap:pW,oH=layout==='side'?pH:pH*2+gap;
+  // Composite dimensions
+  const compW=layout==='side'?panelW*2+gap:panelW;
+  const compH=layout==='side'?panelH:panelH*2+gap;
+
+  // Format letterboxing — fit composite into target format with black bars
+  let oW=compW, oH=compH, offX=0, offY=0;
+  if(fmt==='square')  { oW=1080; oH=1080; }
+  else if(fmt==='story'){ oW=1080; oH=1920; }
+  else if(fmt==='portrait'){ oW=1080; oH=1350; }
+  // else 'free' — use composite dimensions as-is
+
+  if(fmt!=='free'){
+    const scale=Math.min(oW/compW, oH/compH);
+    const sw=Math.round(compW*scale), sh=Math.round(compH*scale);
+    offX=Math.round((oW-sw)/2); offY=Math.round((oH-sh)/2);
+  }
   oc.width=oW; oc.height=oH;
   const ctx=oc.getContext('2d');
   ctx.fillStyle='#1C1714'; ctx.fillRect(0,0,oW,oH);
@@ -806,20 +844,99 @@ function generate(){
     }
   }
 
+  // Draw composite onto output canvas (with letterbox offset if formatted)
+  const compCanvas=document.createElement('canvas');
+  compCanvas.width=compW; compCanvas.height=compH;
+  const cctx=compCanvas.getContext('2d');
+  cctx.fillStyle='#1C1714'; cctx.fillRect(0,0,compW,compH);
+
   if(layout==='side'){
-    ctx.drawImage(cB,0,0,pW,pH); ctx.drawImage(cA,pW+gap,0,pW,pH);
-    drawLabel(0,0,pW,pH,'BEFORE',beforeDate);
-    drawLabel(pW+gap,0,pW,pH,'AFTER',afterDate);
-    drawWatermark(ctx,pW+gap+pW,pH,clinic,inj,S.wmPos);
-    drawLogo(ctx,oW,oH,S.logoImg,document.getElementById('logoPos').value);
-    drawTreatmentLabel(ctx,oW,pH,treatment);
+    cctx.drawImage(cB,0,0,panelW,panelH);
+    cctx.drawImage(cA,panelW+gap,0,panelW,panelH);
+
+    // BEFORE/AFTER labels + dates
+    function drawCompLabel(ox,oy,pw,ph,label,date){
+      const gradH=date?100:70;
+      const g=cctx.createLinearGradient(ox,oy+ph-gradH,ox,oy+ph);
+      g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.85)');
+      cctx.fillStyle=g;cctx.fillRect(ox,oy+ph-gradH,pw,gradH);
+      cctx.fillStyle='rgba(250,247,242,.92)';
+      cctx.font='600 32px "DM Sans",sans-serif';
+      cctx.letterSpacing='2px';
+      cctx.fillText(label,ox+24,oy+ph-22);
+      cctx.letterSpacing='0px';
+      if(date){cctx.font='300 22px "DM Sans",sans-serif';cctx.fillStyle='rgba(250,247,242,.65)';cctx.fillText(date,ox+24,oy+ph-60);}
+    }
+    drawCompLabel(0,0,panelW,panelH,'BEFORE',beforeDate);
+    drawCompLabel(panelW+gap,0,panelW,panelH,'AFTER',afterDate);
+
+    // Treatment label — centred, top, spanning full width, gold pill
+    if(treatment){
+      cctx.font='500 26px "DM Sans",sans-serif';
+      const tw=cctx.measureText(treatment).width;
+      const tpad=18,th=46,tx=(compW-tw-tpad*2)/2,ty=20;
+      cctx.fillStyle='rgba(201,169,110,0.88)';
+      if(cctx.roundRect)cctx.roundRect(tx,ty,tw+tpad*2,th,23);
+      else cctx.rect(tx,ty,tw+tpad*2,th);
+      cctx.fill();
+      cctx.fillStyle='rgba(28,23,20,0.92)';
+      cctx.textBaseline='top';
+      cctx.fillText(treatment,tx+tpad,ty+10);
+      cctx.textBaseline='alphabetic';
+    }
+
+    drawWatermark(cctx,compW,compH,clinic,inj,S.wmPos);
+    drawLogo(cctx,compW,compH,S.logoImg,document.getElementById('logoPos').value);
   }else{
-    ctx.drawImage(cB,0,0,pW,pH); ctx.drawImage(cA,0,pH+gap,pW,pH);
-    drawLabel(0,0,pW,pH,'BEFORE',beforeDate);
-    drawLabel(0,pH+gap,pW,pH,'AFTER',afterDate);
-    drawWatermark(ctx,oW,oH,clinic,inj,S.wmPos);
-    drawTreatmentLabel(ctx,oW,oH,treatment);
+    cctx.drawImage(cB,0,0,panelW,panelH);
+    cctx.drawImage(cA,0,panelH+gap,panelW,panelH);
+
+    function drawCompLabel(ox,oy,pw,ph,label,date){
+      const gradH=date?100:70;
+      const g=cctx.createLinearGradient(ox,oy+ph-gradH,ox,oy+ph);
+      g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.85)');
+      cctx.fillStyle=g;cctx.fillRect(ox,oy+ph-gradH,pw,gradH);
+      cctx.fillStyle='rgba(250,247,242,.92)';
+      cctx.font='600 32px "DM Sans",sans-serif';
+      cctx.letterSpacing='2px';
+      cctx.fillText(label,ox+24,oy+ph-22);
+      cctx.letterSpacing='0px';
+      if(date){cctx.font='300 22px "DM Sans",sans-serif';cctx.fillStyle='rgba(250,247,242,.65)';cctx.fillText(date,ox+24,oy+ph-60);}
+    }
+    drawCompLabel(0,0,panelW,panelH,'BEFORE',beforeDate);
+    drawCompLabel(0,panelH+gap,panelW,panelH,'AFTER',afterDate);
+
+    // Treatment label centred top
+    if(treatment){
+      cctx.font='500 26px "DM Sans",sans-serif';
+      const tw=cctx.measureText(treatment).width;
+      const tpad=18,th=46,tx=(compW-tw-tpad*2)/2,ty=20;
+      cctx.fillStyle='rgba(201,169,110,0.88)';
+      if(cctx.roundRect)cctx.roundRect(tx,ty,tw+tpad*2,th,23);
+      else cctx.rect(tx,ty,tw+tpad*2,th);
+      cctx.fill();
+      cctx.fillStyle='rgba(28,23,20,0.92)';
+      cctx.textBaseline='top';
+      cctx.fillText(treatment,tx+tpad,ty+10);
+      cctx.textBaseline='alphabetic';
+    }
+
+    drawWatermark(cctx,compW,compH,clinic,inj,S.wmPos);
+    drawLogo(cctx,compW,compH,S.logoImg,document.getElementById('logoPos').value);
   }
+
+  // Stamp composite onto output canvas (letterboxed into chosen format)
+  if(fmt==='free'){
+    oc.width=compW; oc.height=compH;
+    ctx.fillStyle='#1C1714'; ctx.fillRect(0,0,compW,compH);
+    ctx.drawImage(compCanvas,0,0);
+  } else {
+    const scale=Math.min(oW/compW,oH/compH);
+    const sw=Math.round(compW*scale),sh=Math.round(compH*scale);
+    const ox2=Math.round((oW-sw)/2),oy2=Math.round((oH-sh)/2);
+    ctx.drawImage(compCanvas,ox2,oy2,sw,sh);
+  }
+
   document.getElementById('outputSection').classList.add('visible');
   document.getElementById('outputSection').scrollIntoView({behavior:'smooth'});
   setSt('Done — your image is ready to download.','ok');
