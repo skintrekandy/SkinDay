@@ -257,7 +257,28 @@
             <select id="afterYear"><option value="">Year</option><option value="2020">2020</option><option value="2021">2021</option><option value="2022">2022</option><option value="2023">2023</option><option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option></select>
           </div>
         </div>
+        <div class="field" id="logoPosField" style="display:none;">
+          <label>Logo position</label>
+          <select id="logoPos">
+            <option value="tr">Top right</option>
+            <option value="tl">Top left</option>
+            <option value="br">Bottom right</option>
+            <option value="bl">Bottom left</option>
+          </select>
+        </div>
         <div class="field"><label>Layout</label><select id="layout"><option value="side">Side by side</option><option value="stack">Top & bottom</option></select></div>
+        <div class="field"><label>Export format</label><select id="exportFormat"><option value="square">Square 1:1 (Instagram post)</option><option value="portrait" selected>Portrait 4:5 (Instagram feed)</option><option value="story">Story 9:16 (Instagram story)</option><option value="free">Original — match crop</option></select></div>
+        <div class="field"><label>Treatment</label><input type="text" id="treatmentLabel" placeholder="e.g. Kybella · 2 sessions" maxlength="60"/></div>
+        <div class="field">
+          <label>Clinic logo</label>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <label for="logoUpload" style="background:#fff;border:1px solid var(--border);border-radius:6px;padding:9px 14px;font-size:0.83rem;color:var(--muted);cursor:pointer;transition:border-color .2s;white-space:nowrap;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border)'">Upload logo</label>
+            <input type="file" id="logoUpload" accept="image/*" style="display:none;"/>
+            <span id="logoFileName" style="font-size:0.78rem;color:var(--muted);">No logo</span>
+            <button id="logoClearBtn" onclick="clearLogo()" style="display:none;background:transparent;border:none;color:var(--muted);font-size:0.78rem;cursor:pointer;padding:0;">✕ Remove</button>
+          </div>
+          <div style="font-size:0.68rem;color:var(--dim);margin-top:4px;">PNG with transparent background works best</div>
+        </div>
         <div class="field"><label>Normalize exposure</label><select id="norm"><option value="1">Yes — match brightness</option><option value="0">No — keep original</option></select></div>
         <div class="field"><label>Image clarity</label><select id="enhance"><option value="0">None</option><option value="1" selected>Subtle — reduce noise & sharpen</option><option value="2">Strong — reduce noise & sharpen</option></select></div>
       </div>
@@ -275,6 +296,10 @@
         </div>
       </div>
 
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <span id="saveMsg" style="font-size:0.72rem;color:var(--muted);"></span>
+        <button onclick="saveSettings()" style="background:transparent;border:1px solid var(--border);color:var(--muted);padding:7px 16px;font-family:'DM Sans',sans-serif;font-size:0.72rem;letter-spacing:.1em;text-transform:uppercase;border-radius:4px;cursor:pointer;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border)'">Save settings</button>
+      </div>
       <div class="gen-wrap"><button class="btn-gen" onclick="generate()">Generate image</button></div>
     </div>
   </div>
@@ -283,9 +308,24 @@
     <hr class="divider" style="margin-top:0">
     <div class="step-num" style="margin-bottom:16px;">Your image</div>
     <div class="output-wrap"><canvas id="outputCanvas"></canvas></div>
-    <div class="output-actions">
-      <button class="btn-dl" id="downloadBtn">Download</button>
+    <div style="margin-bottom:12px;">
+      <div class="step-num" style="margin-bottom:10px;">Export format</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+        <button class="btn-dl" onclick="downloadFormat('original')" style="font-size:0.75rem;padding:10px 8px;">
+          Original<br><span style="font-size:0.65rem;opacity:0.6;font-weight:300;">As generated</span>
+        </button>
+        <button class="btn-dl" onclick="downloadFormat('square')" style="font-size:0.75rem;padding:10px 8px;">
+          Square 1:1<br><span style="font-size:0.65rem;opacity:0.6;font-weight:300;">Instagram post</span>
+        </button>
+        <button class="btn-dl" onclick="downloadFormat('story')" style="font-size:0.75rem;padding:10px 8px;">
+          Story 9:16<br><span style="font-size:0.65rem;opacity:0.6;font-weight:300;">Instagram story</span>
+        </button>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
       <button class="btn-reset" onclick="location.reload()">Start over</button>
+      <button class="btn-reset" onclick="saveBrand()" style="border-color:var(--gold);color:var(--gold);">Save brand profile</button>
+      <span id="brandSaved" style="font-size:0.75rem;color:#3D7A55;display:none;">✓ Saved</span>
     </div>
   </div>
 </div>
@@ -708,9 +748,13 @@ function generate(){
   const layout=document.getElementById('layout').value;
   const clinic=document.getElementById('clinicName').value.trim();
   const inj=document.getElementById('injectorName').value.trim();
-  const pH=1080;
-  const aspect=(bBox.w/bBox.h+aBox.w/aBox.h)/2;
-  const pW=Math.round(pH*aspect);
+  const treatment=document.getElementById('treatmentLabel').value.trim();
+  const fmt=document.getElementById('exportFormat').value;
+  let pW,pH;
+  if(fmt==='square')  {pH=1080;pW=1080;}
+  else if(fmt==='story'){pH=1920;pW=1080;}
+  else if(fmt==='portrait'){pH=1350;pW=1080;}
+  else{pH=1080;const aspect=(bBox.w/bBox.h+aBox.w/aBox.h)/2;pW=Math.round(pH*aspect);}
   const cB=document.createElement('canvas'); cB.width=pW; cB.height=pH;
   const cA=document.createElement('canvas'); cA.width=pW; cA.height=pH;
   cB.getContext('2d').drawImage(S.beforeImg,bBoxF.x,bBoxF.y,bBoxF.w,bBoxF.h,0,0,pW,pH);
@@ -735,9 +779,10 @@ function generate(){
   const afterDate=[aM,aY].filter(Boolean).join(' ');
 
   function drawLabel(ox,oy,panelW,panelH,label,date){
-    const g=ctx.createLinearGradient(ox,oy+panelH-80,ox,oy+panelH);
-    g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.82)');
-    ctx.fillStyle=g;ctx.fillRect(ox,oy+panelH-80,panelW,80);
+    const gradH = treatment ? 110 : 80;
+    const g=ctx.createLinearGradient(ox,oy+panelH-gradH,ox,oy+panelH);
+    g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.85)');
+    ctx.fillStyle=g;ctx.fillRect(ox,oy+panelH-gradH,panelW,gradH);
     ctx.fillStyle='rgba(250,247,242,.92)';
     ctx.font='500 28px "DM Sans",sans-serif';
     ctx.fillText(label,ox+24,oy+panelH-22);
@@ -746,6 +791,19 @@ function generate(){
       ctx.fillStyle='rgba(250,247,242,.65)';
       ctx.fillText(date,ox+24,oy+panelH-56);
     }
+    // Treatment label — top left of panel
+    if(treatment && label==='BEFORE'){
+      ctx.fillStyle='rgba(28,23,20,0.62)';
+      ctx.font='400 22px "DM Sans",sans-serif';
+      const tw=ctx.measureText(treatment).width;
+      const tx=ox+20, ty=oy+20, tpad=12;
+      if(ctx.roundRect) ctx.roundRect(tx,ty,tw+tpad*2,38,5); else ctx.rect(tx,ty,tw+tpad*2,38);
+      ctx.fill();
+      ctx.fillStyle='rgba(250,247,242,.9)';
+      ctx.textBaseline='top';
+      ctx.fillText(treatment,tx+tpad,ty+8);
+      ctx.textBaseline='alphabetic';
+    }
   }
 
   if(layout==='side'){
@@ -753,22 +811,177 @@ function generate(){
     drawLabel(0,0,pW,pH,'BEFORE',beforeDate);
     drawLabel(pW+gap,0,pW,pH,'AFTER',afterDate);
     drawWatermark(ctx,pW+gap+pW,pH,clinic,inj,S.wmPos);
+    drawLogo(ctx,oW,oH,S.logoImg,document.getElementById('logoPos').value);
+    drawTreatmentLabel(ctx,oW,pH,treatment);
   }else{
     ctx.drawImage(cB,0,0,pW,pH); ctx.drawImage(cA,0,pH+gap,pW,pH);
     drawLabel(0,0,pW,pH,'BEFORE',beforeDate);
     drawLabel(0,pH+gap,pW,pH,'AFTER',afterDate);
     drawWatermark(ctx,oW,oH,clinic,inj,S.wmPos);
+    drawTreatmentLabel(ctx,oW,oH,treatment);
   }
   document.getElementById('outputSection').classList.add('visible');
   document.getElementById('outputSection').scrollIntoView({behavior:'smooth'});
   setSt('Done — your image is ready to download.','ok');
 }
 
-document.getElementById('downloadBtn').addEventListener('click',()=>{
-  const a=document.createElement('a');
-  a.download='before-after.jpg';
-  a.href=document.getElementById('outputCanvas').toDataURL('image/jpeg',.95);
+// ── Treatment label ──────────────────────────────────────────
+function drawTreatmentLabel(ctx, cW, cH, label) {
+  if(!label) return;
+  const fs = Math.max(18, Math.round(cH * 0.018));
+  ctx.font = `500 ${fs}px 'DM Sans',sans-serif`;
+  const tw = ctx.measureText(label).width;
+  const px = 20, py = 10;
+  const bw = tw + px*2, bh = fs + py*2;
+  const bx = cW/2 - bw/2, by = 28;
+  ctx.fillStyle = 'rgba(201,169,110,0.92)';
+  if(ctx.roundRect) ctx.roundRect(bx, by, bw, bh, 20);
+  else ctx.rect(bx, by, bw, bh);
+  ctx.fill();
+  ctx.fillStyle = '#1C1714';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(label, bx+px, by+bh/2);
+  ctx.textBaseline = 'alphabetic';
+}
+
+// ── Multi-format export ───────────────────────────────────────
+function downloadFormat(format) {
+  const src = document.getElementById('outputCanvas');
+  const sw = src.width, sh = src.height;
+  let tw, th;
+
+  if(format === 'square') {
+    const size = 1080;
+    tw = size; th = size;
+  } else if(format === 'story') {
+    tw = 1080; th = 1920;
+  } else {
+    // original — direct download
+    const a = document.createElement('a');
+    a.download = 'before-after.jpg';
+    a.href = src.toDataURL('image/jpeg', .95);
+    a.click();
+    return;
+  }
+
+  // Create export canvas with black background, image centered
+  const ec = document.createElement('canvas');
+  ec.width = tw; ec.height = th;
+  const ectx = ec.getContext('2d');
+  ectx.fillStyle = '#1C1714';
+  ectx.fillRect(0, 0, tw, th);
+
+  // Fit image within target, centered
+  const scale = Math.min(tw/sw, th/sh);
+  const dw = Math.round(sw*scale), dh = Math.round(sh*scale);
+  const dx = Math.round((tw-dw)/2), dy = Math.round((th-dh)/2);
+  ectx.drawImage(src, dx, dy, dw, dh);
+
+  const a = document.createElement('a');
+  a.download = `before-after-${format}.jpg`;
+  a.href = ec.toDataURL('image/jpeg', .95);
   a.click();
+}
+
+// ── Brand profile (localStorage) ─────────────────────────────
+// ── Logo upload ───────────────────────────────────────────────
+S.logoImg = null;
+S.logoDataUrl = null;
+
+document.getElementById('logoUpload').addEventListener('change', function(e) {
+  const file = e.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = new Image();
+    img.onload = () => {
+      S.logoImg = img; S.logoDataUrl = ev.target.result;
+      document.getElementById('logoFileName').textContent = file.name;
+      document.getElementById('logoClearBtn').style.display = 'inline';
+      document.getElementById('logoPosField').style.display = 'block';
+      try { localStorage.setItem('skinday_logo', ev.target.result); } catch(e) {}
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+});
+
+function clearLogo() {
+  S.logoImg = null; S.logoDataUrl = null;
+  document.getElementById('logoFileName').textContent = 'No logo';
+  document.getElementById('logoClearBtn').style.display = 'none';
+  document.getElementById('logoPosField').style.display = 'none';
+  document.getElementById('logoUpload').value = '';
+  try { localStorage.removeItem('skinday_logo'); } catch(e) {}
+}
+
+function drawLogo(ctx, canvasW, canvasH, logo, pos) {
+  if(!logo) return;
+  const maxH = Math.round(canvasH * 0.08);
+  const scale = maxH / logo.naturalHeight;
+  const lw = Math.round(logo.naturalWidth * scale);
+  const lh = maxH;
+  const margin = 24;
+  let lx, ly;
+  if(pos==='tl')      { lx=margin;           ly=margin; }
+  else if(pos==='tr') { lx=canvasW-lw-margin; ly=margin; }
+  else if(pos==='bl') { lx=margin;           ly=canvasH-lh-margin; }
+  else                { lx=canvasW-lw-margin; ly=canvasH-lh-margin; }
+  ctx.drawImage(logo, lx, ly, lw, lh);
+}
+
+function saveSettings(){
+  const s={
+    clinic:    document.getElementById('clinicName').value.trim(),
+    injector:  document.getElementById('injectorName').value.trim(),
+    treatment: document.getElementById('treatmentLabel').value.trim(),
+    wmPos:     S.wmPos,
+    layout:    document.getElementById('layout').value,
+    format:    document.getElementById('exportFormat').value,
+    norm:      document.getElementById('norm').value,
+    enhance:   document.getElementById('enhance').value,
+  };
+  localStorage.setItem('skinday_studio', JSON.stringify(s));
+  // Update both save buttons
+  const msg=document.getElementById('saveMsg');
+  if(msg){msg.textContent='Settings saved ✓';setTimeout(()=>{msg.textContent='';},2500);}
+  const bs=document.getElementById('brandSaved');
+  if(bs){bs.style.display='inline';setTimeout(()=>{bs.style.display='none';},2500);}
+}
+
+// Keep saveBrand as alias
+const saveBrand = saveSettings;
+
+function loadSettings(){
+  try{
+    const raw=localStorage.getItem('skinday_studio'); if(!raw)return;
+    const s=JSON.parse(raw);
+    if(s.clinic)    document.getElementById('clinicName').value=s.clinic;
+    if(s.injector)  document.getElementById('injectorName').value=s.injector;
+    if(s.treatment) document.getElementById('treatmentLabel').value=s.treatment;
+    if(s.layout)    document.getElementById('layout').value=s.layout;
+    if(s.format)    document.getElementById('exportFormat').value=s.format;
+    if(s.norm)      document.getElementById('norm').value=s.norm;
+    if(s.enhance)   document.getElementById('enhance').value=s.enhance;
+    if(s.wmPos)     selWmPos(s.wmPos);
+  }catch(e){}
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  loadSettings();
+  // Restore logo from localStorage
+  try {
+    const savedLogo = localStorage.getItem('skinday_logo');
+    if(savedLogo) {
+      const img = new Image();
+      img.onload = () => {
+        S.logoImg = img; S.logoDataUrl = savedLogo;
+        document.getElementById('logoFileName').textContent = 'Logo loaded';
+        document.getElementById('logoClearBtn').style.display = 'inline';
+        document.getElementById('logoPosField').style.display = 'block';
+      };
+      img.src = savedLogo;
+    }
+  } catch(e) {}
 });
 </script>
 </body>
