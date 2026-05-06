@@ -572,7 +572,7 @@ function getScaledBox(which,targetEyePx){
   }
   const base=lmToBaseBox(lm,iw,ih,S.preset);
   const thisEyePx=eyeDistPx(lm,iw);
-  // Scale for alignment, then divide by zoom (zoom in = smaller crop box = closer)
+  if(!thisEyePx||thisEyePx<1) return fallbackBox(iw,ih,S.preset);
   const scale=(targetEyePx/thisEyePx)/zoom;
   const newW=base.w*scale, newH=base.h*scale;
   const newX=base.cx-newW/2, newY=base.cy-newH/2;
@@ -643,8 +643,12 @@ function setupDrag(canvasId, which){
     const{bBox,aBox}=getBothBoxes();
     const box=which==='b'?bBox:aBox;
     const scale=box.w/cv.offsetWidth;
-    S[which+'Pan'].x=drag.ox-(pt.clientX-drag.sx)*scale;
-    S[which+'Pan'].y=drag.oy-(pt.clientY-drag.sy)*scale;
+    const newPx=drag.ox-(pt.clientX-drag.sx)*scale;
+    const newPy=drag.oy-(pt.clientY-drag.sy)*scale;
+    const{bBox:bb,aBox:ab2}=getBothBoxes();
+    const box=which==='b'?bb:ab2;
+    S[which+'Pan'].x=Math.max(-box.w*.3,Math.min(newPx,box.w*.3));
+    S[which+'Pan'].y=Math.max(-box.h*.3,Math.min(newPy,box.h*.3));
     renderPreviews();
   };
   const end=()=>{drag=null;};
@@ -723,12 +727,15 @@ function drawWatermark(ctx,cW,cH,clinic,inj,pos){
 
 // ── Image enhancement ─────────────────────────────────────────
 function denoise(ctx, w, h) {
-  const id = ctx.getImageData(0,0,w,h);
-  const d = id.data;
-  for(let i=0;i<d.length;i+=4){
-    d[i]*=0.97; d[i+1]*=0.97; d[i+2]*=0.97;
-  }
-  ctx.putImageData(id,0,0);
+  // Use canvas blur for natural noise reduction (better than channel scaling)
+  const tmp = document.createElement('canvas');
+  tmp.width=w; tmp.height=h;
+  const tctx=tmp.getContext('2d');
+  tctx.filter='blur(0.7px)';
+  tctx.drawImage(ctx.canvas,0,0);
+  tctx.filter='none';
+  ctx.clearRect(0,0,w,h);
+  ctx.drawImage(tmp,0,0);
 }
 
 function sharpen(ctx, w, h) {
@@ -773,7 +780,7 @@ function generate(){
 
   // Panel dimensions: always use natural crop aspect ratio — NO stretching
   // Both panels use averaged aspect ratio so they match each other
-  const cropAspect=(bBoxF.w/bBoxF.h+aBoxF.w/aBoxF.h)/2;
+  const cropAspect=bBoxF.w/bBoxF.h; // use before as reference — more stable
   const panelH=1080;
   const panelW=Math.round(panelH*cropAspect);
 
@@ -783,13 +790,21 @@ function generate(){
   cB.getContext('2d').drawImage(S.beforeImg,bBoxF.x,bBoxF.y,bBoxF.w,bBoxF.h,0,0,panelW,panelH);
   cA.getContext('2d').drawImage(S.afterImg, aBoxF.x,aBoxF.y,aBoxF.w,aBoxF.h,0,0,panelW,panelH);
   const enhance=parseInt(document.getElementById('enhance').value);
-  applyEnhancement(cB.getContext('2d'),panelW,panelH,enhance);
+  // Enhancement applied to after only — keeps before raw, halves compute time
   applyEnhancement(cA.getContext('2d'),panelW,panelH,enhance);
 
   if(norm){
     const ab=avgBright(cB.getContext('2d'),panelW,panelH),aa=avgBright(cA.getContext('2d'),panelW,panelH);
     const f=Math.max(.72,Math.min(1.38,ab/aa));
-    drawToCanvas(cA,S.afterImg,aBoxF,panelW,panelH,f);
+    // Apply brightness directly — don't redraw from source (would wipe enhancement)
+    const ctxA=cA.getContext('2d');
+    const id=ctxA.getImageData(0,0,panelW,panelH);
+    for(let i=0;i<id.data.length;i+=4){
+      id.data[i]=Math.min(255,id.data[i]*f);
+      id.data[i+1]=Math.min(255,id.data[i+1]*f);
+      id.data[i+2]=Math.min(255,id.data[i+2]*f);
+    }
+    ctxA.putImageData(id,0,0);
   }
   const gap=4,oc=document.getElementById('outputCanvas');
   // Composite dimensions
@@ -886,7 +901,7 @@ function generate(){
     }
 
     drawWatermark(cctx,compW,compH,clinic,inj,S.wmPos);
-    drawLogo(cctx,compW,compH,S.logoImg,document.getElementById('logoPos').value);
+    if(S.logoImg) drawLogo(cctx,compW,compH,S.logoImg,document.getElementById('logoPos').value);
   }else{
     cctx.drawImage(cB,0,0,panelW,panelH);
     cctx.drawImage(cA,0,panelH+gap,panelW,panelH);
@@ -922,7 +937,7 @@ function generate(){
     }
 
     drawWatermark(cctx,compW,compH,clinic,inj,S.wmPos);
-    drawLogo(cctx,compW,compH,S.logoImg,document.getElementById('logoPos').value);
+    if(S.logoImg) drawLogo(cctx,compW,compH,S.logoImg,document.getElementById('logoPos').value);
   }
 
   // Stamp composite onto output canvas (letterboxed into chosen format)
