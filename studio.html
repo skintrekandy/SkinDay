@@ -638,15 +638,11 @@ function setupDrag(canvasId, which){
   const move=e=>{
     if(!drag)return; e.preventDefault();
     const pt=e.touches?e.touches[0]:e;
-    // Scale screen pixels to image pixels
-    const img=which==='b'?S.beforeImg:S.afterImg;
     const{bBox,aBox}=getBothBoxes();
     const box=which==='b'?bBox:aBox;
     const scale=box.w/cv.offsetWidth;
     const newPx=drag.ox-(pt.clientX-drag.sx)*scale;
     const newPy=drag.oy-(pt.clientY-drag.sy)*scale;
-    const{bBox:bb,aBox:ab2}=getBothBoxes();
-    const box=which==='b'?bb:ab2;
     S[which+'Pan'].x=Math.max(-box.w*.3,Math.min(newPx,box.w*.3));
     S[which+'Pan'].y=Math.max(-box.h*.3,Math.min(newPy,box.h*.3));
     renderPreviews();
