@@ -886,27 +886,20 @@ function generate(){
     drawCompLabel(0,0,panelW,panelH,'BEFORE',beforeDate);
     drawCompLabel(panelW+gap,0,panelW,panelH,'AFTER',afterDate);
 
-    // Treatment label — large centred pill, Cormorant serif italic
+    // Treatment label — editorial text, no pill, restrained
     if(treatment){
-      const tfs=Math.round(panelH*0.048); // ~52px at 1080
-      cctx.font=`600 ${tfs}px "DM Sans",sans-serif`;
-      const tw=cctx.measureText(treatment).width;
-      const tpadX=Math.round(tfs*1.1), tpadY=Math.round(tfs*0.55);
-      const pillW=tw+tpadX*2, pillH=tfs+tpadY*2;
-      const tx=(compW-pillW)/2, ty=Math.round(panelH*0.028);
-      // Shadow for depth
-      cctx.shadowColor='rgba(0,0,0,0.25)';
-      cctx.shadowBlur=12;
-      cctx.shadowOffsetY=3;
-      cctx.fillStyle='rgba(201,169,110,0.95)';
-      if(cctx.roundRect) cctx.roundRect(tx,ty,pillW,pillH,pillH/2);
-      else cctx.rect(tx,ty,pillW,pillH);
-      cctx.fill();
-      cctx.shadowColor='transparent'; cctx.shadowBlur=0; cctx.shadowOffsetY=0;
-      cctx.fillStyle='rgba(28,23,20,0.95)';
-      cctx.textBaseline='middle';
-      cctx.fillText(treatment,tx+tpadX,ty+pillH/2);
-      cctx.textBaseline='alphabetic';
+      const tfs=Math.round(panelH*0.022);
+      cctx.save();
+      cctx.font=`300 ${tfs}px "DM Sans",sans-serif`;
+      cctx.letterSpacing='2px';
+      cctx.textAlign='center';
+      cctx.textBaseline='top';
+      // Subtle shadow so text reads on any background
+      cctx.shadowColor='rgba(0,0,0,0.55)';
+      cctx.shadowBlur=8;
+      cctx.fillStyle='rgba(250,247,242,0.82)';
+      cctx.fillText(treatment.toUpperCase(), compW/2, Math.round(panelH*0.028));
+      cctx.restore();
     }
 
     drawWatermark(cctx,compW,compH,clinic,inj,S.wmPos);
@@ -930,24 +923,20 @@ function generate(){
     drawCompLabel(0,0,panelW,panelH,'BEFORE',beforeDate);
     drawCompLabel(0,panelH+gap,panelW,panelH,'AFTER',afterDate);
 
-    // Treatment label — large centred pill
+    // Treatment label — editorial text, no pill, restrained
     if(treatment){
-      const tfs=Math.round(panelH*0.048);
-      cctx.font=`600 ${tfs}px "DM Sans",sans-serif`;
-      const tw=cctx.measureText(treatment).width;
-      const tpadX=Math.round(tfs*1.1), tpadY=Math.round(tfs*0.55);
-      const pillW=tw+tpadX*2, pillH=tfs+tpadY*2;
-      const tx=(compW-pillW)/2, ty=Math.round(panelH*0.028);
-      cctx.shadowColor='rgba(0,0,0,0.25)'; cctx.shadowBlur=12; cctx.shadowOffsetY=3;
-      cctx.fillStyle='rgba(201,169,110,0.95)';
-      if(cctx.roundRect) cctx.roundRect(tx,ty,pillW,pillH,pillH/2);
-      else cctx.rect(tx,ty,pillW,pillH);
-      cctx.fill();
-      cctx.shadowColor='transparent'; cctx.shadowBlur=0; cctx.shadowOffsetY=0;
-      cctx.fillStyle='rgba(28,23,20,0.95)';
-      cctx.textBaseline='middle';
-      cctx.fillText(treatment,tx+tpadX,ty+pillH/2);
-      cctx.textBaseline='alphabetic';
+      const tfs=Math.round(panelH*0.022);
+      cctx.save();
+      cctx.font=`300 ${tfs}px "DM Sans",sans-serif`;
+      cctx.letterSpacing='2px';
+      cctx.textAlign='center';
+      cctx.textBaseline='top';
+      // Subtle shadow so text reads on any background
+      cctx.shadowColor='rgba(0,0,0,0.55)';
+      cctx.shadowBlur=8;
+      cctx.fillStyle='rgba(250,247,242,0.82)';
+      cctx.fillText(treatment.toUpperCase(), compW/2, Math.round(panelH*0.028));
+      cctx.restore();
     }
 
     drawWatermark(cctx,compW,compH,clinic,inj,S.wmPos);
