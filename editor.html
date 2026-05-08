@@ -417,6 +417,253 @@
     .tab-pane { display: none; animation: fadeIn 0.25s ease; }
     .tab-pane.active { display: block; }
 
+    /* ─── M25 CLINIC IDENTITY ─── */
+    .identity-intro {
+      font-family: 'Playfair Display', serif;
+      font-size: 16px;
+      line-height: 1.55;
+      color: var(--bark-mid);
+      font-style: italic;
+      margin-bottom: 28px;
+      padding: 18px 22px;
+      background: rgba(201, 169, 110, 0.06);
+      border-left: 2.5px solid var(--gold);
+      border-radius: 4px;
+    }
+
+    .identity-card {
+      background: var(--warm-white);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px 32px;
+      margin-bottom: 20px;
+    }
+
+    .identity-card.expertise-card {
+      padding: 36px 36px 32px;
+    }
+
+    .identity-card-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 19px;
+      font-weight: 600;
+      color: var(--bark);
+      margin-bottom: 6px;
+    }
+
+    .identity-card.expertise-card .identity-card-title {
+      font-size: 22px;
+    }
+
+    .identity-card-desc {
+      font-size: 13px;
+      color: var(--bark-light);
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    .identity-counter {
+      font-size: 12px;
+      color: var(--bark-light);
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .identity-counter .count-num {
+      color: var(--rose);
+      font-weight: 600;
+    }
+
+    .identity-counter.full .count-num {
+      color: var(--bark);
+    }
+
+    .chips-area {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-height: 0;
+      margin-bottom: 14px;
+    }
+
+    .chips-area:empty {
+      display: none;
+    }
+
+    .identity-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px 8px 14px;
+      background: rgba(201, 115, 106, 0.08);
+      border: 1px solid rgba(201, 115, 106, 0.25);
+      border-radius: 999px;
+      font-size: 13px;
+      color: var(--bark);
+      font-weight: 500;
+      animation: chipIn 0.2s ease;
+    }
+
+    .expertise-card .identity-chip {
+      font-size: 14px;
+      padding: 10px 14px 10px 16px;
+    }
+
+    .identity-chip .chip-remove {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: rgba(201, 115, 106, 0.18);
+      color: var(--rose-deep);
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+      border: none;
+      padding: 0;
+      transition: background 0.15s;
+    }
+
+    .identity-chip .chip-remove:hover {
+      background: rgba(201, 115, 106, 0.32);
+    }
+
+    .identity-chip .chip-other-label {
+      font-size: 11px;
+      color: var(--bark-light);
+      font-weight: 400;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-left: 4px;
+    }
+
+    @keyframes chipIn {
+      from { opacity: 0; transform: scale(0.92); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .identity-picker {
+      position: relative;
+    }
+
+    .identity-select {
+      width: 100%;
+      padding: 12px 14px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      color: var(--bark);
+      background: var(--warm-white);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: border-color 0.15s;
+      appearance: none;
+      background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%239e7a72' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      background-size: 10px;
+      padding-right: 36px;
+    }
+
+    .identity-select:hover:not(:disabled) {
+      border-color: var(--rose-light);
+    }
+
+    .identity-select:focus {
+      outline: none;
+      border-color: var(--rose);
+    }
+
+    .identity-select:disabled {
+      background-color: var(--cream);
+      color: var(--bark-light);
+      cursor: not-allowed;
+      opacity: 0.65;
+    }
+
+    .identity-other-input-wrap {
+      margin-top: 10px;
+      padding: 14px;
+      background: rgba(201, 169, 110, 0.05);
+      border: 1px dashed rgba(201, 169, 110, 0.35);
+      border-radius: 10px;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .identity-other-input-wrap label {
+      display: block;
+      font-size: 12px;
+      color: var(--bark-mid);
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+
+    .identity-other-input {
+      width: 100%;
+      padding: 9px 12px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      color: var(--bark);
+      background: var(--warm-white);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    .identity-other-input:focus {
+      outline: none;
+      border-color: var(--rose);
+    }
+
+    .identity-other-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .identity-other-btn {
+      padding: 7px 14px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      border-radius: 7px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.15s;
+    }
+
+    .identity-other-btn.add {
+      background: var(--rose);
+      color: white;
+    }
+
+    .identity-other-btn.add:hover {
+      background: var(--rose-deep);
+    }
+
+    .identity-other-btn.cancel {
+      background: transparent;
+      color: var(--bark-light);
+      border-color: var(--border);
+    }
+
+    .identity-other-btn.cancel:hover {
+      color: var(--bark);
+    }
+
+    .identity-helper {
+      font-size: 12px;
+      color: var(--bark-light);
+      margin-top: 8px;
+      line-height: 1.5;
+    }
+    /* ─── /M25 ─── */
+
     /* ─── CARDS ─── */
     .card {
       background: var(--warm-white);
@@ -1024,6 +1271,7 @@
     <!-- Tabs -->
     <nav class="tab-nav">
       <button class="tab-btn active" onclick="switchTab('pricing', this)">Pricing & Promos</button>
+      <button class="tab-btn" onclick="switchTab('identity', this)">Clinic Identity</button>
       <button class="tab-btn" onclick="switchTab('contact', this)">Contact & Links</button>
       <button class="tab-btn" onclick="switchTab('details', this)">Clinic Details</button>
       <button class="tab-btn" onclick="switchTab('hours', this)">Hours</button>
@@ -1099,6 +1347,55 @@
       </div>
     </div>
 
+    <!-- ─── TAB: CLINIC IDENTITY (M25) ─── -->
+    <div class="tab-pane" id="tab-identity">
+      <div class="identity-intro">
+        Tell patients what you're most known for, and what they come to you to solve. We use this to match patients to your clinic — not to rank or score you.
+      </div>
+
+      <!-- ─── EXPERTISE CARD ─── -->
+      <div class="identity-card expertise-card">
+        <div class="identity-card-title">What you're known for</div>
+        <div class="identity-card-desc">Choose up to 3 areas you want patients to recognize you for. Most clinics do many things — these should be your strongest signals.</div>
+
+        <div class="identity-counter" id="expertise-counter">
+          <span class="count-num">0</span> of 3 selected
+        </div>
+
+        <div class="chips-area" id="expertise-chips"></div>
+
+        <div class="identity-picker">
+          <select class="identity-select" id="expertise-select" onchange="identityHandleSelect('expertise', this)">
+            <option value="">Add an area of expertise…</option>
+          </select>
+          <div id="expertise-other-wrap" style="display:none;"></div>
+        </div>
+
+        <div class="identity-helper">Restraint is the point — clinics that try to be everything become invisible. If a real specialty isn't on the list, choose "Other" and tell us in your own words.</div>
+      </div>
+
+      <!-- ─── CONCERNS CARD ─── -->
+      <div class="identity-card">
+        <div class="identity-card-title">What patients come to you to solve</div>
+        <div class="identity-card-desc">Choose up to 3 concerns your clinic regularly addresses. These are how patients describe their goals — not treatment names.</div>
+
+        <div class="identity-counter" id="concerns-counter">
+          <span class="count-num">0</span> of 3 selected
+        </div>
+
+        <div class="chips-area" id="concerns-chips"></div>
+
+        <div class="identity-picker">
+          <select class="identity-select" id="concerns-select" onchange="identityHandleSelect('concerns', this)">
+            <option value="">Add a patient concern…</option>
+          </select>
+          <div id="concerns-other-wrap" style="display:none;"></div>
+        </div>
+
+        <div class="identity-helper">Patients search by problem, not by product. Pick the concerns you genuinely deliver results for.</div>
+      </div>
+    </div>
+
     <!-- ─── TAB: CONTACT ─── -->
     <div class="tab-pane" id="tab-contact">
       <div class="card">
@@ -1135,11 +1432,11 @@
         <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px;">
           <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:0.9rem;color:var(--bark);">
             <input type="checkbox" id="cred-physician" value="physician" onchange="markDirty()" style="width:16px;height:16px;accent-color:var(--rose);cursor:pointer;" />
-            <span><strong>Physician (MD)</strong> — licensed medical doctor</span>
+            <span><strong>Physician (MD)</strong> — Canadian licensed</span>
           </label>
           <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:0.9rem;color:var(--bark);">
             <input type="checkbox" id="cred-np" value="np" onchange="markDirty()" style="width:16px;height:16px;accent-color:var(--rose);cursor:pointer;" />
-            <span><strong>Nurse Practitioner (NP)</strong> — advanced practice nurse</span>
+            <span><strong>Nurse Practitioner (NP)</strong></span>
           </label>
           <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:0.9rem;color:var(--bark);">
             <input type="checkbox" id="cred-rn" value="rn" onchange="markDirty()" style="width:16px;height:16px;accent-color:var(--rose);cursor:pointer;" />
@@ -1499,6 +1796,14 @@
     const portal = document.getElementById('portal-screen');
     portal.style.display = 'flex';
 
+    // M25: load taxonomy in background; populateFields handles missing data gracefully
+    identityLoadTaxonomy().then(() => {
+      // Re-render identity once taxonomy lands, in case populateFields ran first
+      if (typeof currentClinic !== 'undefined' && currentClinic) {
+        identityPopulateFromClinic(currentClinic);
+      }
+    });
+
     buildLocationSwitcher();
     updatePortalForCurrentClinic();
   }
@@ -1587,6 +1892,9 @@
       if (el) el.checked = savedLangs.includes(v);
     });
 
+    // M25: populate Clinic Identity tab
+    identityPopulateFromClinic(c);
+
     // Store originals for discard
     originalData = {
       prices: portalGetPriceRows(),
@@ -1600,7 +1908,10 @@
       hours: JSON.parse(JSON.stringify(c.hours || {})),
       photos: [...photos],
       injector_credentials: [...savedCreds],
-      languages: [...savedLangs]
+      languages: [...savedLangs],
+      // M25: snapshot identity for discard-changes
+      expertise: JSON.parse(JSON.stringify(identityState.expertise)),
+      concerns:  JSON.parse(JSON.stringify(identityState.concerns))
     };
   }
 
@@ -1813,9 +2124,238 @@
     practitioners = practitionerOriginal.map(p => ({ ...p }));
     practitionerRender();
 
+    // M25: restore identity from snapshot
+    identityState.expertise = JSON.parse(JSON.stringify(identityOriginal.expertise));
+    identityState.concerns  = JSON.parse(JSON.stringify(identityOriginal.concerns));
+    // Close any open "Other" forms
+    const expOther = document.getElementById('expertise-other-wrap');
+    const conOther = document.getElementById('concerns-other-wrap');
+    if (expOther) { expOther.innerHTML = ''; expOther.style.display = 'none'; }
+    if (conOther) { conOther.innerHTML = ''; conOther.style.display = 'none'; }
+    identityRender('expertise');
+    identityRender('concerns');
+
     isDirty = false;
     document.getElementById('save-bar').classList.remove('visible');
   }
+
+  // ─── M25 CLINIC IDENTITY PICKER ───
+  // Loaded from /data/taxonomy/*.json on portal init.
+  let identityTaxonomy = { expertise: [], concerns: [] };
+  // Current selection state. Each entry: { value, is_other, other_text }
+  let identityState = { expertise: [], concerns: [] };
+  // Originals captured at load time, used by the discard-changes flow.
+  let identityOriginal = { expertise: [], concerns: [] };
+
+  async function identityLoadTaxonomy() {
+    if (identityTaxonomy.expertise.length > 0) return; // already loaded
+    try {
+      const [expRes, conRes] = await Promise.all([
+        fetch('/data/taxonomy/expertise.json'),
+        fetch('/data/taxonomy/concerns.json')
+      ]);
+      const expJson = await expRes.json();
+      const conJson = await conRes.json();
+      identityTaxonomy.expertise = expJson.items || [];
+      identityTaxonomy.concerns  = conJson.items || [];
+    } catch (e) {
+      console.error('Failed to load taxonomy', e);
+      identityTaxonomy.expertise = [];
+      identityTaxonomy.concerns  = [];
+    }
+  }
+
+  // Look up a display label for a given slug in a category
+  function identityDisplayFor(category, slug) {
+    const item = (identityTaxonomy[category] || []).find(i => i.slug === slug);
+    return item ? item.display : slug;
+  }
+
+  // Render the chips row + counter + dropdown options for one category
+  function identityRender(category) {
+    const state = identityState[category];
+    const chipsEl = document.getElementById(category + '-chips');
+    const counterEl = document.getElementById(category + '-counter');
+    const selectEl = document.getElementById(category + '-select');
+
+    // Chips
+    chipsEl.innerHTML = '';
+    state.forEach((entry, idx) => {
+      const chip = document.createElement('span');
+      chip.className = 'identity-chip';
+      const labelText = entry.is_other
+        ? entry.other_text
+        : identityDisplayFor(category, entry.value);
+      chip.innerHTML =
+        `<span>${escapeHtml(labelText)}</span>` +
+        (entry.is_other ? `<span class="chip-other-label">Other</span>` : '') +
+        `<button type="button" class="chip-remove" aria-label="Remove" onclick="identityRemoveChip('${category}', ${idx})">×</button>`;
+      chipsEl.appendChild(chip);
+    });
+
+    // Counter
+    const num = state.length;
+    counterEl.querySelector('.count-num').textContent = num;
+    if (num >= 3) {
+      counterEl.classList.add('full');
+    } else {
+      counterEl.classList.remove('full');
+    }
+
+    // Dropdown — rebuild options, excluding already-selected slugs (except 'other', which can be picked again only if not yet present)
+    const selectedSlugs = new Set(state.map(e => e.value));
+    const placeholder = category === 'expertise'
+      ? (num >= 3 ? 'Top 3 selected — remove one to add another' : 'Add an area of expertise…')
+      : (num >= 3 ? 'Top 3 selected — remove one to add another' : 'Add a patient concern…');
+
+    selectEl.innerHTML = '';
+    const placeholderOpt = document.createElement('option');
+    placeholderOpt.value = '';
+    placeholderOpt.textContent = placeholder;
+    selectEl.appendChild(placeholderOpt);
+
+    (identityTaxonomy[category] || []).forEach(item => {
+      if (selectedSlugs.has(item.slug)) return; // hide already-picked
+      const opt = document.createElement('option');
+      opt.value = item.slug;
+      opt.textContent = item.display;
+      selectEl.appendChild(opt);
+    });
+
+    selectEl.disabled = num >= 3;
+    // If "Other" form is open, dropdown stays disabled until that's resolved
+    const otherWrap = document.getElementById(category + '-other-wrap');
+    if (otherWrap && otherWrap.style.display !== 'none') {
+      selectEl.disabled = true;
+    }
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  // Dropdown change handler
+  function identityHandleSelect(category, selectEl) {
+    const slug = selectEl.value;
+    if (!slug) return;
+    if (identityState[category].length >= 3) {
+      selectEl.value = '';
+      return;
+    }
+
+    if (slug === 'other') {
+      // Reveal inline "Other" input, don't add chip yet
+      identityShowOtherForm(category);
+      selectEl.value = '';
+      return;
+    }
+
+    identityState[category].push({ value: slug, is_other: false, other_text: null });
+    identityRender(category);
+    markDirty();
+  }
+
+  function identityShowOtherForm(category) {
+    const wrap = document.getElementById(category + '-other-wrap');
+    const placeholderText = category === 'expertise'
+      ? 'e.g. Cosmetic acupuncture'
+      : 'e.g. Hair shedding postpartum';
+    wrap.innerHTML = `
+      <div class="identity-other-input-wrap">
+        <label>Tell us in a few words</label>
+        <input type="text" class="identity-other-input" id="${category}-other-input" maxlength="80" placeholder="${placeholderText}" />
+        <div class="identity-other-actions">
+          <button type="button" class="identity-other-btn add" onclick="identityConfirmOther('${category}')">Add</button>
+          <button type="button" class="identity-other-btn cancel" onclick="identityCancelOther('${category}')">Cancel</button>
+        </div>
+      </div>
+    `;
+    wrap.style.display = 'block';
+    document.getElementById(category + '-select').disabled = true;
+    setTimeout(() => {
+      const input = document.getElementById(category + '-other-input');
+      if (input) input.focus();
+    }, 50);
+  }
+
+  function identityConfirmOther(category) {
+    const input = document.getElementById(category + '-other-input');
+    const text = (input?.value || '').trim();
+    if (!text) {
+      input?.focus();
+      return;
+    }
+    if (identityState[category].length >= 3) {
+      identityCancelOther(category);
+      return;
+    }
+    identityState[category].push({ value: 'other', is_other: true, other_text: text });
+    identityCancelOther(category);
+    identityRender(category);
+    markDirty();
+  }
+
+  function identityCancelOther(category) {
+    const wrap = document.getElementById(category + '-other-wrap');
+    wrap.innerHTML = '';
+    wrap.style.display = 'none';
+    identityRender(category);
+  }
+
+  function identityRemoveChip(category, idx) {
+    identityState[category].splice(idx, 1);
+    identityRender(category);
+    markDirty();
+  }
+
+  // Populate from currentClinic.expertise / .concerns (called inside populateFields)
+  function identityPopulateFromClinic(c) {
+    const exp = Array.isArray(c.expertise) ? c.expertise : [];
+    const con = Array.isArray(c.concerns)  ? c.concerns  : [];
+
+    identityState.expertise = exp.map(r => ({
+      value: r.value,
+      is_other: !!r.is_other,
+      other_text: r.is_other ? (r.other_text || '') : null
+    }));
+    identityState.concerns = con.map(r => ({
+      value: r.value,
+      is_other: !!r.is_other,
+      other_text: r.is_other ? (r.other_text || '') : null
+    }));
+
+    // Snapshot for discard
+    identityOriginal.expertise = JSON.parse(JSON.stringify(identityState.expertise));
+    identityOriginal.concerns  = JSON.parse(JSON.stringify(identityState.concerns));
+
+    // Close any open "Other" forms (from a previous location)
+    const expOther = document.getElementById('expertise-other-wrap');
+    const conOther = document.getElementById('concerns-other-wrap');
+    if (expOther) { expOther.innerHTML = ''; expOther.style.display = 'none'; }
+    if (conOther) { conOther.innerHTML = ''; conOther.style.display = 'none'; }
+
+    identityRender('expertise');
+    identityRender('concerns');
+  }
+
+  // Build save payload — sent inside the existing saveChanges() payload
+  function identityGetPayload() {
+    return {
+      expertise: identityState.expertise.map(e => ({
+        value: e.value,
+        is_other: e.is_other,
+        other_text: e.is_other ? e.other_text : null
+      })),
+      concerns: identityState.concerns.map(e => ({
+        value: e.value,
+        is_other: e.is_other,
+        other_text: e.is_other ? e.other_text : null
+      }))
+    };
+  }
+  // ─── /M25 ───
 
   // ─── SAVE ───
   async function saveChanges() {
@@ -1847,7 +2387,9 @@
         photos: allPhotoUrls,
         logo_url: logoUrl,
         injector_credentials: ['physician','np','rn','img','nd'].filter(v => document.getElementById('cred-' + v)?.checked),
-        languages: ['english','mandarin','cantonese','farsi','french','korean','hindi','arabic','punjabi','portuguese'].filter(v => document.getElementById('lang-' + v)?.checked)
+        languages: ['english','mandarin','cantonese','farsi','french','korean','hindi','arabic','punjabi','portuguese'].filter(v => document.getElementById('lang-' + v)?.checked),
+        // M25: include identity arrays for the current clinic
+        ...identityGetPayload()
       };
 
       // Determine which clinic IDs to save to
@@ -1886,6 +2428,9 @@
       // Update local state
       Object.assign(currentClinic, payload);
       originalData = { ...payload, photos: photos.map(p => ({ url: p.url })), injector_credentials: [...payload.injector_credentials], languages: [...payload.languages] };
+      // M25: re-snapshot identity originals after save so future discards revert here
+      identityOriginal.expertise = JSON.parse(JSON.stringify(identityState.expertise));
+      identityOriginal.concerns  = JSON.parse(JSON.stringify(identityState.concerns));
       isDirty = false;
       document.getElementById('save-bar').classList.remove('visible');
       // Reset apply-all checkbox after save
