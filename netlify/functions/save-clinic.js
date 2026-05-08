@@ -1,5 +1,158 @@
 const { createClient } = require('@supabase/supabase-js');
 
+// ─────────────────────────────────────────────────────────────
+// M25 — Clinic Identity taxonomy slugs
+// These MUST match /data/taxonomy/expertise.json and concerns.json
+// in the repo. Server validates incoming values against these sets
+// to prevent slug spoofing or stale UI from writing bad data.
+// If you add/remove a taxonomy item, update this list AND the JSON.
+// ─────────────────────────────────────────────────────────────
+const EXPERTISE_SLUGS = new Set([
+  'natural-rejuvenation','acne-scar-revision','asian-skin-expertise',
+  'ethnic-melanin-skin','pigment-correction','hair-restoration',
+  'mature-skin-preventative','mens-aesthetics','skin-tightening-lifting',
+  'regenerative-aesthetics','rosacea-redness','body-contouring',
+  'post-acne-skin-repair','medical-acne','skin-health-medical-facials',
+  'medical-grade-laser','surgical-procedures','wellness-longevity',
+  'bridal-event-prep','conservative-minimal-filler','high-volume-injectable',
+  'korean-style-aesthetics','paramedical-camouflage','scar-stretch-mark-correction',
+  'collagen-first-biostim','lip-aesthetics','other'
+]);
+
+const CONCERN_SLUGS = new Set([
+  'acne-scars','active-acne','scarring','stretch-marks',
+  'melasma','pigmentation','uneven-skin-tone','sun-damage',
+  'redness-sensitivity','rosacea','enlarged-pores','skin-texture',
+  'dull-tired-skin','fine-lines-wrinkles','volume-loss','loose-skin',
+  'jowls','jawline-laxity','double-chin','undereye-hollowness',
+  'dark-circles','hair-thinning','cellulite','body-contouring',
+  'breast-chest','other'
+]);
+
+const MAX_PER_CATEGORY = 3;
+const MAX_OTHER_TEXT_LENGTH = 80;
+
+// Validate and normalize a list of {value, is_other, other_text} into rows
+// ready for insert. Throws on invalid input. Returns null if input is undefined
+// (signals "not provided, skip"). Returns [] for empty array (clears existing).
+function normalizeIdentityRows(rawList, validSlugs, categoryName) {
+  if (rawList === undefined || rawList === null) return null;
+  if (!Array.isArray(rawList)) {
+    throw new Error(`${categoryName} must be an array`);
+  }
+  if (rawList.length > MAX_PER_CATEGORY) {
+    throw new Error(`${categoryName} cannot have more than ${MAX_PER_CATEGORY} items`);
+  }
+
+  const seen = new Set();
+  const rows = [];
+  for (const item of rawList) {
+    if (!item || typeof item !== 'object') {
+      throw new Error(`${categoryName}: each item must be an object`);
+    }
+    const value = String(item.value || '').trim();
+    const isOther = !!item.is_other;
+    const otherText = isOther ? String(item.other_text || '').trim() : null;
+
+    if (!validSlugs.has(value)) {
+      throw new Error(`${categoryName}: unknown value "${value}"`);
+    }
+    if (seen.has(value)) {
+      throw new Error(`${categoryName}: duplicate value "${value}"`);
+    }
+    seen.add(value);
+
+    if (isOther) {
+      if (value !== 'other') {
+        throw new Error(`${categoryName}: is_other can only be true for value="other"`);
+      }
+      if (!otherText) {
+        throw new Error(`${categoryName}: "Other" requires non-empty text`);
+      }
+      if (otherText.length > MAX_OTHER_TEXT_LENGTH) {
+        throw new Error(`${categoryName}: "Other" text must be ${MAX_OTHER_TEXT_LENGTH} characters or less`);
+      }
+    } else if (value === 'other') {
+      throw new Error(`${categoryName}: value="other" must have is_other=true and text`);
+    }
+
+    rows.push({ value, is_other: isOther, other_text: otherText });
+  }
+  return rows;
+}
+
+// Full-replace pattern: delete all existing rows for clinic, insert new ones,
+// then recompute is_match_ready.
+async function saveIdentity(supabase, clinicId, expertiseRows, concernRows) {
+  // 1. Replace expertise rows (only if provided)
+  if (expertiseRows !== null) {
+    const { error: delErr } = await supabase
+      .from('clinic_expertise')
+      .delete()
+      .eq('clinic_id', String(clinicId));
+    if (delErr) throw new Error(`expertise delete failed: ${delErr.message}`);
+
+    if (expertiseRows.length > 0) {
+      const { error: insErr } = await supabase
+        .from('clinic_expertise')
+        .insert(expertiseRows.map(r => ({ clinic_id: String(clinicId), ...r })));
+      if (insErr) throw new Error(`expertise insert failed: ${insErr.message}`);
+    }
+  }
+
+  // 2. Replace concern rows (only if provided)
+  if (concernRows !== null) {
+    const { error: delErr } = await supabase
+      .from('clinic_concerns')
+      .delete()
+      .eq('clinic_id', String(clinicId));
+    if (delErr) throw new Error(`concerns delete failed: ${delErr.message}`);
+
+    if (concernRows.length > 0) {
+      const { error: insErr } = await supabase
+        .from('clinic_concerns')
+        .insert(concernRows.map(r => ({ clinic_id: String(clinicId), ...r })));
+      if (insErr) throw new Error(`concerns insert failed: ${insErr.message}`);
+    }
+  }
+
+  // 3. Recompute is_match_ready: needs 1–3 expertise AND 1–3 concerns
+  const [expCountRes, conCountRes] = await Promise.all([
+    supabase.from('clinic_expertise').select('id', { count: 'exact', head: true }).eq('clinic_id', String(clinicId)),
+    supabase.from('clinic_concerns').select('id', { count: 'exact', head: true }).eq('clinic_id', String(clinicId))
+  ]);
+  const expCount = expCountRes.count || 0;
+  const conCount = conCountRes.count || 0;
+  const isMatchReady = (expCount >= 1 && expCount <= 3) && (conCount >= 1 && conCount <= 3);
+
+  const { error: updErr } = await supabase
+    .from('clinics')
+    .update({ is_match_ready: isMatchReady })
+    .eq('id', String(clinicId));
+  if (updErr) throw new Error(`is_match_ready update failed: ${updErr.message}`);
+
+  return { is_match_ready: isMatchReady };
+}
+
+// Fetch identity rows for a clinic. Returns { expertise: [...], concerns: [...] }
+async function fetchIdentity(supabase, clinicId) {
+  const [expRes, conRes] = await Promise.all([
+    supabase.from('clinic_expertise')
+      .select('value, is_other, other_text')
+      .eq('clinic_id', String(clinicId))
+      .order('created_at', { ascending: true }),
+    supabase.from('clinic_concerns')
+      .select('value, is_other, other_text')
+      .eq('clinic_id', String(clinicId))
+      .order('created_at', { ascending: true })
+  ]);
+  return {
+    expertise: expRes.data || [],
+    concerns:  conRes.data || []
+  };
+}
+
+
 exports.handler = async (event) => {
   const headers = {
     'Content-Type': 'application/json',
@@ -113,11 +266,17 @@ exports.handler = async (event) => {
         .limit(1)
         .maybeSingle();
 
+      // M25: fetch identity rows so the portal can render the Clinic Identity tab
+      const identity = await fetchIdentity(supabase, targetId);
+
       const clinic = {
         ...clinics[0],
         name:          nameRow?.clinic_name || clinics[0].name || null,
         neighbourhood: nameRow?.clinic_neighbourhood || clinics[0].neighbourhood || null,
-        prices:        priceRows || []
+        prices:        priceRows || [],
+        // M25 identity layer
+        expertise:     identity.expertise,
+        concerns:      identity.concerns
       };
 
       // For chain accounts: return name map for the switcher
@@ -135,7 +294,7 @@ exports.handler = async (event) => {
       if (missing.length > 0) {
         const { data: claimRows } = await supabase
           .from('claims')
-          .select('clinic_id, clinic_name')
+          .select('clinic_id, clinic_name, clinic_neighbourhood')
           .in('clinic_id', missing);
         (claimRows || []).forEach(cl => {
           const label = cl.clinic_neighbourhood
@@ -201,21 +360,33 @@ exports.handler = async (event) => {
         return { statusCode: 403, headers, body: JSON.stringify({ error: 'Forbidden' }) };
       }
 
-      // Only allow safe fields to be updated
+      // M25: validate identity arrays BEFORE writing anything else,
+      // so a bad payload doesn't leave clinic in a half-saved state.
+      let expertiseRows, concernRows;
+      try {
+        expertiseRows = normalizeIdentityRows(payload.expertise, EXPERTISE_SLUGS, 'expertise');
+        concernRows   = normalizeIdentityRows(payload.concerns,  CONCERN_SLUGS,  'concerns');
+      } catch (e) {
+        return { statusCode: 400, headers, body: JSON.stringify({ error: e.message }) };
+      }
+
+      // Only allow safe fields to be updated on the clinics table
       const safePayload = {};
       const allowedFields = ['phone', 'email', 'website', 'booking_url', 'promo', 'promo_text', 'consult_free', 'hours', 'photos', 'logo_url', 'injector_credentials', 'languages'];
       for (const field of allowedFields) {
         if (payload[field] !== undefined) safePayload[field] = payload[field];
       }
 
-      const { error: updateError } = await supabase
-        .from('clinics')
-        .update(safePayload)
-        .eq('id', clinicId);
+      if (Object.keys(safePayload).length > 0) {
+        const { error: updateError } = await supabase
+          .from('clinics')
+          .update(safePayload)
+          .eq('id', clinicId);
 
-      if (updateError) {
-        console.error('Update error:', updateError);
-        return { statusCode: 500, headers, body: JSON.stringify({ error: updateError.message }) };
+        if (updateError) {
+          console.error('Update error:', updateError);
+          return { statusCode: 500, headers, body: JSON.stringify({ error: updateError.message }) };
+        }
       }
 
       // Handle multi-price rows → clinic_prices table
@@ -253,7 +424,27 @@ exports.handler = async (event) => {
           .eq('id', String(clinicId));
       }
 
-      return { statusCode: 200, headers, body: JSON.stringify({ success: true }) };
+      // M25: write identity rows (full-replace) and recompute is_match_ready.
+      // Only runs if the payload actually included identity fields — saves on
+      // unrelated tab changes don't touch the identity tables.
+      let identityResult = null;
+      if (expertiseRows !== null || concernRows !== null) {
+        try {
+          identityResult = await saveIdentity(supabase, clinicId, expertiseRows, concernRows);
+        } catch (e) {
+          console.error('Identity save error:', e);
+          return { statusCode: 500, headers, body: JSON.stringify({ error: e.message }) };
+        }
+      }
+
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          success: true,
+          ...(identityResult ? { is_match_ready: identityResult.is_match_ready } : {})
+        })
+      };
     }
 
     return { statusCode: 400, headers, body: JSON.stringify({ error: 'Unknown action' }) };
