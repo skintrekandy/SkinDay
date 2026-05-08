@@ -1,0 +1,33 @@
+{
+  "version": 2,
+  "updated_at": "2026-05-07",
+  "note": "Curated v2 vocabulary for patient-facing concerns. Slugs are used in URL params (e.g. ?concern=melasma) and become the basis for concern-based SEO pages in M27+. Display labels can be edited; slugs cannot be changed without a redirect plan. v2 additions vs v1: loose-skin, jowls, undereye-hollowness, pigmentation, dull-tired-skin, scarring. Note on overlap: pigmentation is an umbrella term that overlaps with melasma, uneven-skin-tone, and sun-damage. v1 patient-side filter does exact slug match only; soft-matching is M27+/NLP-layer work.",
+  "items": [
+    { "slug": "acne-scars",          "display": "Acne scars" },
+    { "slug": "active-acne",         "display": "Acne (active)" },
+    { "slug": "scarring",            "display": "Scarring" },
+    { "slug": "stretch-marks",       "display": "Stretch marks" },
+    { "slug": "melasma",             "display": "Melasma" },
+    { "slug": "pigmentation",        "display": "Pigmentation" },
+    { "slug": "uneven-skin-tone",    "display": "Uneven skin tone" },
+    { "slug": "sun-damage",          "display": "Sun damage" },
+    { "slug": "redness-sensitivity", "display": "Redness & sensitivity" },
+    { "slug": "rosacea",             "display": "Rosacea" },
+    { "slug": "enlarged-pores",      "display": "Enlarged pores" },
+    { "slug": "skin-texture",        "display": "Skin texture" },
+    { "slug": "dull-tired-skin",     "display": "Dull / tired skin" },
+    { "slug": "fine-lines-wrinkles", "display": "Fine lines & wrinkles" },
+    { "slug": "volume-loss",         "display": "Volume loss" },
+    { "slug": "loose-skin",          "display": "Loose skin" },
+    { "slug": "jowls",               "display": "Jowls" },
+    { "slug": "jawline-laxity",      "display": "Jawline laxity / sagging" },
+    { "slug": "double-chin",         "display": "Double chin" },
+    { "slug": "undereye-hollowness", "display": "Undereye hollowness / tired appearance" },
+    { "slug": "dark-circles",        "display": "Dark circles" },
+    { "slug": "hair-thinning",       "display": "Hair thinning / loss" },
+    { "slug": "cellulite",           "display": "Cellulite" },
+    { "slug": "body-contouring",     "display": "Body fat / contouring" },
+    { "slug": "breast-chest",        "display": "Breast / chest aesthetics" },
+    { "slug": "other",               "display": "Other" }
+  ]
+}
