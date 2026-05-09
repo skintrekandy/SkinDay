@@ -3420,9 +3420,12 @@ function buildApiUrl(page) {
   params.set('page', page);
   params.set('sort', currentSort);
 
+  // Name search and neighbourhood/province/promo are independent — all can combine
   if (currentNameQuery) {
     params.set('search', currentNameQuery);
-  } else if (currentFilter === 'promo') {
+  }
+
+  if (currentFilter === 'promo') {
     params.set('promo', 'true');
   } else if (PROVINCE_MAP[currentFilter]) {
     params.set('province', PROVINCE_MAP[currentFilter]);
