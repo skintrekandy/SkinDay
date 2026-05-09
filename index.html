@@ -905,7 +905,39 @@
       display: flex; align-items: center; justify-content: space-between;
     }
 
-    /* ── VISIT SIGNAL ROW ── */
+    /* ── CARD IDENTITY LINE ── */
+    .card-specializes {
+      padding: 0 1.4rem 0.9rem;
+      font-size: 0.75rem;
+      color: var(--rose);
+      line-height: 1.4;
+    }
+    .card-specializes-label {
+      color: var(--muted);
+      font-weight: 400;
+      margin-right: 0.2em;
+    }
+
+    /* ── MODAL IDENTITY SECTION ── */
+    .cm-identity-section { padding: 18px 24px; border-bottom: 1px solid var(--border); }
+    .cm-identity-expertise-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .cm-identity-expertise-pill {
+      font-size: 12px; color: var(--rose);
+      background: rgba(200,114,90,0.08); border: 1px solid rgba(200,114,90,0.2);
+      border-radius: 20px; padding: 3px 10px;
+    }
+    .cm-identity-concerns-label {
+      font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--muted); margin: 14px 0 6px;
+    }
+    .cm-identity-concerns-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+    .cm-identity-concerns-chip {
+      font-size: 12px; color: var(--deep);
+      background: var(--warm); border: 1px solid var(--border);
+      border-radius: 4px; padding: 3px 9px;
+    }
+
+
     .card-visit-row {
       padding: 0.45rem 1.4rem;
       border-top: 1px solid rgba(234,226,216,0.5);
@@ -3473,12 +3505,22 @@ function renderPageCards(clinicsData, append) {
       : c.price_source === 'inquiry'
       ? `<span class="trust-badge trust-badge-inquiry">Verified via inquiry · ${formatPriceDate(c.price_date)}</span>`
       : null;
-    const priceHTML = hasPrice
-      ? `<div class="price-main">
+    const priceBlockHTML = hasPrice
+      ? `<div class="card-price">
+          <div class="price-label">${toxinLabel} — per unit</div>
+          <div class="price-main">
            <span class="price-from">from</span><span class="price-tooltip-wrap"><span class="price-amount">$${c.price}</span>${priceSourceLabel ? `<span class="price-tooltip">${c.price_source === 'clinic' ? '✓ Managed by clinic' : 'Verified via inquiry'} · ${formatPriceDate(c.price_date)}</span>` : ''}</span>
            <span class="price-unit">/ unit · ${toxinLabel}</span>
-         </div>`
-      : `<div class="price-not-listed">Price not listed</div>`;
+         </div>
+        </div>`
+      : '';
+
+    // Identity — expertise labels, max 3, only when present
+    const expertiseItems = (c.identity && c.identity.expertise) ? c.identity.expertise : [];
+    const expertiseLabels = expertiseItems.slice(0, 3).map(e => e.label).filter(Boolean);
+    const identityLineHTML = expertiseLabels.length
+      ? `<div class="card-specializes"><span class="card-specializes-label">Specializes in</span>${expertiseLabels.join(' · ')}</div>`
+      : '';
     const badgeHTML = [
       (c.promo && c.promo_text) ? '<span class="badge badge-promo">Promo Available</span>' : '',
     ].filter(Boolean).join('');
@@ -3516,10 +3558,8 @@ function renderPageCards(clinicsData, append) {
           <div class="review-count">${(c.reviews || 0).toLocaleString()} Google reviews</div>
           ${pillsHTML}
         </div>
-        <div class="card-price">
-          <div class="price-label">${toxinLabel} — per unit</div>
-          ${priceHTML}
-        </div>
+        ${priceBlockHTML}
+        ${identityLineHTML}
         <div class="card-visit-row">
           <span class="card-visit-prompt">
             <span class="card-visit-line1">Been here?</span>
@@ -5190,6 +5230,14 @@ function maybeShowVisitPrompt() {
         <div id="cm-practitioners-list"></div>
       </div>
 
+      <!-- What we focus on (identity — shown only when clinic has expertise/concerns) -->
+      <div class="cm-identity-section" id="cm-identity-section" style="display:none">
+        <p class="cm-section-label">What we focus on</p>
+        <div class="cm-identity-expertise-pills" id="cm-identity-expertise-pills"></div>
+        <p class="cm-identity-concerns-label" id="cm-identity-concerns-label" style="display:none">Patient concerns we see most</p>
+        <div class="cm-identity-concerns-chips" id="cm-identity-concerns-chips"></div>
+      </div>
+
       <!-- Contact -->
       <div class="cm-contact-section">
         <div class="cm-contact-primary-row">
@@ -5636,6 +5684,31 @@ window.openClinicModal = async function openClinicModal(clinicId) {
   // Hide details section if nothing to show
   const detailsSection = document.getElementById('cm-details-section');
   detailsSection.style.display = (creds.length || langs.length) ? 'block' : 'none';
+
+  // Identity — expertise pills + concerns chips
+  const identitySection = document.getElementById('cm-identity-section');
+  const expertisePillsEl = document.getElementById('cm-identity-expertise-pills');
+  const concernsLabelEl  = document.getElementById('cm-identity-concerns-label');
+  const concernsChipsEl  = document.getElementById('cm-identity-concerns-chips');
+  const identity = clinic.identity || { expertise: [], concerns: [] };
+  const hasExpertise = identity.expertise && identity.expertise.length > 0;
+  const hasConcerns  = identity.concerns  && identity.concerns.length  > 0;
+
+  if (hasExpertise || hasConcerns) {
+    identitySection.style.display = 'block';
+    expertisePillsEl.innerHTML = hasExpertise
+      ? identity.expertise.map(e => e.label ? `<span class="cm-identity-expertise-pill">${e.label}</span>` : '').join('')
+      : '';
+    if (hasConcerns) {
+      concernsLabelEl.style.display = 'block';
+      concernsChipsEl.innerHTML = identity.concerns.map(c => c.label ? `<span class="cm-identity-concerns-chip">${c.label}</span>` : '').join('');
+    } else {
+      concernsLabelEl.style.display = 'none';
+      concernsChipsEl.innerHTML = '';
+    }
+  } else {
+    identitySection.style.display = 'none';
+  }
 
   // Claim links
   const claimHref = '/claim.html?clinic=' + clinic.id;
@@ -6181,7 +6254,7 @@ function buildCard(c, carousel) {
   const reviews = (c.reviews||0).toLocaleString();
   const priceHTML = c.price != null
     ? `<div style="margin-bottom:0.3rem;"><span class="map-card-price">$${c.price}</span> <span class="map-card-price-unit">/ unit · Botox</span></div>`
-    : `<div class="map-card-no-price" style="margin-bottom:0.3rem;">Price not listed</div>`;
+    : '';
 
   const hoverAttrs = window.matchMedia('(hover: hover)').matches
     ? `onmouseenter="highlightPinById('${c.id}')" onmouseleave="unhighlightPinById('${c.id}')"`

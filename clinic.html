@@ -835,7 +835,7 @@ function renderClinic(clinic) {
       : null;
     priceHTML = `<div class="price-display"><span class="price-amount">From $${parseFloat(clinic.price).toFixed(2)}</span><span class="price-unit">/ unit</span></div><div class="price-sub">Botulinum toxin · per unit${srcLabel ? ` · <span style="font-size:0.82em;color:var(--muted)">${srcLabel}</span>` : ''}</div>`;
   } else {
-    priceHTML = `<p style="font-size:0.88rem;color:var(--muted);">Price not listed</p>`;
+    priceHTML = `<p style="font-size:0.88rem;color:var(--muted);font-style:italic;">Not yet published</p>`;
   }
 
   // Promo HTML — standalone card, only rendered when promo text is present
@@ -867,7 +867,32 @@ function renderClinic(clinic) {
             </a>`;
   })();
 
-  // Claim band (only for unclaimed)
+  // Identity card — expertise + concerns
+  let identityCardHTML = '';
+  const identity = clinic.identity || { expertise: [], concerns: [] };
+  const hasExpertise = identity.expertise && identity.expertise.length > 0;
+  const hasConcerns  = identity.concerns  && identity.concerns.length  > 0;
+  if (hasExpertise || hasConcerns) {
+    const expertisePills = hasExpertise
+      ? identity.expertise.map(e => e.label ? `<span style="display:inline-block;font-size:0.78rem;color:var(--rose);background:rgba(200,114,90,0.08);border:1px solid rgba(200,114,90,0.2);border-radius:20px;padding:4px 12px;margin:0 4px 6px 0;">${e.label}</span>` : '').join('')
+      : '';
+    const concernsBlock = hasConcerns
+      ? `<div style="margin-top:14px;">
+           <div style="font-size:0.68rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Patient concerns we see most</div>
+           <div style="display:flex;flex-wrap:wrap;gap:5px;">
+             ${identity.concerns.map(c => c.label ? `<span style="font-size:0.78rem;color:var(--deep);background:var(--warm);border:1px solid var(--border);border-radius:4px;padding:3px 10px;">${c.label}</span>` : '').join('')}
+           </div>
+         </div>`
+      : '';
+    identityCardHTML = `
+    <div class="card animate animate-delay-2">
+      <div class="card-section">
+        <div class="section-label">What we focus on</div>
+        <div style="margin-top:10px;">${expertisePills}</div>
+        ${concernsBlock}
+      </div>
+    </div>`;
+  }
   const claimBandHTML = !isClaimed ? `
     <div class="claim-band animate animate-delay-3">
       <div class="claim-band-copy">
@@ -951,6 +976,9 @@ function renderClinic(clinic) {
 
     <!-- PRACTITIONERS -->
     ${practitionersHTML}
+
+    <!-- IDENTITY -->
+    ${identityCardHTML}
 
     <!-- CONTACT -->
     <div class="card animate animate-delay-2">
