@@ -905,19 +905,6 @@
       display: flex; align-items: center; justify-content: space-between;
     }
 
-    /* ── CARD IDENTITY LINE ── */
-    .card-specializes {
-      padding: 0 1.4rem 0.9rem;
-      font-size: 0.75rem;
-      color: var(--rose);
-      line-height: 1.4;
-    }
-    .card-specializes-label {
-      color: var(--muted);
-      font-weight: 400;
-      margin-right: 0.2em;
-    }
-
     /* ── MODAL IDENTITY SECTION ── */
     .cm-identity-section { padding: 18px 24px; border-bottom: 1px solid var(--border); }
     .cm-identity-expertise-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
@@ -3515,12 +3502,6 @@ function renderPageCards(clinicsData, append) {
         </div>`
       : '';
 
-    // Identity — expertise labels, max 3, only when present
-    const expertiseItems = (c.identity && c.identity.expertise) ? c.identity.expertise : [];
-    const expertiseLabels = expertiseItems.slice(0, 3).map(e => e.label).filter(Boolean);
-    const identityLineHTML = expertiseLabels.length
-      ? `<div class="card-specializes"><span class="card-specializes-label">Specializes in</span>${expertiseLabels.join(' · ')}</div>`
-      : '';
     const badgeHTML = [
       (c.promo && c.promo_text) ? '<span class="badge badge-promo">Promo Available</span>' : '',
     ].filter(Boolean).join('');
@@ -3559,7 +3540,6 @@ function renderPageCards(clinicsData, append) {
           ${pillsHTML}
         </div>
         ${priceBlockHTML}
-        ${identityLineHTML}
         <div class="card-visit-row">
           <span class="card-visit-prompt">
             <span class="card-visit-line1">Been here?</span>
