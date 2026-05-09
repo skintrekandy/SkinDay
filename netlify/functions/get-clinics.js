@@ -14,6 +14,9 @@ const PAGE_SIZE = 24;
 
 exports.handler = async (event) => {
   try {
+    // Normalize an identity row to a display-ready { label } object
+    const normalizeIdentityRow = row => ({ label: row.is_other ? row.other_text : row.value });
+
     const supabase = createClient(
       process.env.SUPABASE_URL,
       process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -35,6 +38,17 @@ exports.handler = async (event) => {
         statusCode: 404,
         headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
         body: JSON.stringify({ error: 'Not found' })
+      };
+
+      // Attach identity (expertise + concerns) for this clinic
+      const clinicId = String(data.id);
+      const [expertiseRes, concernsRes] = await Promise.all([
+        supabase.from('clinic_expertise').select('value, is_other, other_text').eq('clinic_id', clinicId),
+        supabase.from('clinic_concerns').select('value, is_other, other_text').eq('clinic_id', clinicId),
+      ]);
+      data.identity = {
+        expertise: (expertiseRes.data || []).map(normalizeIdentityRow),
+        concerns:  (concernsRes.data  || []).map(normalizeIdentityRow),
       };
 
       return {
@@ -163,21 +177,45 @@ exports.handler = async (event) => {
     const totalCount = countRes.count || 0;
     const pageSlice  = pool.slice(from, from + PAGE_SIZE);
 
-    // ── FETCH CLINIC_PRICES FOR THIS PAGE ────────────────────
+    // ── FETCH CLINIC_PRICES + IDENTITY FOR THIS PAGE ─────────
     const clinicIds = pageSlice.map(c => String(c.id));
-    let pricesMap = {};
+    let pricesMap   = {};
+    let identityMap = {};
 
     if (clinicIds.length > 0) {
-      const { data: pricesData } = await supabase
-        .from('clinic_prices')
-        .select('clinic_id, toxin, price, injector_type, price_source, price_date')
-        .in('clinic_id', clinicIds)
-        .order('price', { ascending: true });
+      const [pricesRes, expertiseRes, concernsRes] = await Promise.all([
+        supabase
+          .from('clinic_prices')
+          .select('clinic_id, toxin, price, injector_type, price_source, price_date')
+          .in('clinic_id', clinicIds)
+          .order('price', { ascending: true }),
+        supabase
+          .from('clinic_expertise')
+          .select('clinic_id, value, is_other, other_text')
+          .in('clinic_id', clinicIds),
+        supabase
+          .from('clinic_concerns')
+          .select('clinic_id, value, is_other, other_text')
+          .in('clinic_id', clinicIds),
+      ]);
 
-      if (pricesData && pricesData.length) {
-        pricesData.forEach(p => {
+      if (pricesRes.data && pricesRes.data.length) {
+        pricesRes.data.forEach(p => {
           if (!pricesMap[p.clinic_id]) pricesMap[p.clinic_id] = [];
           pricesMap[p.clinic_id].push(p);
+        });
+      }
+
+      if (expertiseRes.data) {
+        expertiseRes.data.forEach(row => {
+          if (!identityMap[row.clinic_id]) identityMap[row.clinic_id] = { expertise: [], concerns: [] };
+          identityMap[row.clinic_id].expertise.push(normalizeIdentityRow(row));
+        });
+      }
+      if (concernsRes.data) {
+        concernsRes.data.forEach(row => {
+          if (!identityMap[row.clinic_id]) identityMap[row.clinic_id] = { expertise: [], concerns: [] };
+          identityMap[row.clinic_id].concerns.push(normalizeIdentityRow(row));
         });
       }
     }
@@ -214,6 +252,12 @@ exports.handler = async (event) => {
       } else {
         out.prices = [];
       }
+
+      // Attach identity
+      const id = identityMap[String(clinic.id)];
+      out.identity = id
+        ? { expertise: id.expertise, concerns: id.concerns }
+        : { expertise: [], concerns: [] };
 
       return out;
     });
