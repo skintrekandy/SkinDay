@@ -4,39 +4,92 @@ const fs   = require('fs');
 
 // ── TAXONOMY RESOLVER ────────────────────────────────────────────
 // Loads slug→label maps from /data/taxonomy/*.json at cold start.
+// JSON shape: { "slug": "...", "display": "..." }
 // Falls back to inline map so labels always resolve even if file path shifts.
 function buildTaxonomyMap(filename, fallback) {
   try {
     const filePath = path.join(__dirname, '..', '..', 'data', 'taxonomy', filename);
     const items = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    return Object.fromEntries(items.map(i => [i.value, i.label]));
+    return Object.fromEntries(items.map(i => [i.slug, i.display]));
   } catch(e) {
     return fallback;
   }
 }
 
 const EXPERTISE_MAP = buildTaxonomyMap('expertise.json', {
-  'collagen-first-biostim':      'Collagen-first / biostimulation',
-  'natural-rejuvenation':        'Natural rejuvenation',
-  'conservative-minimal-filler': 'Conservative / minimal-filler approach',
-  'skin-quality':                'Skin quality',
-  'full-face-balancing':         'Full-face balancing',
-  'volume-restoration':          'Volume restoration',
-  'preventative':                'Preventative treatments',
-  'combination-therapy':         'Combination therapy',
+  'natural-rejuvenation':       'Natural results',
+  'facial-balancing':           'Facial balancing',
+  'preventative-botox':         'Preventative Botox',
+  'biostimulators':             'Biostimulators',
+  'regenerative-aesthetics':    'Regenerative aesthetics',
+  'skin-quality':               'Skin quality',
+  'non-surgical-lifting':       'Non-surgical lifting',
+  'skin-tightening-lifting':    'Skin tightening',
+  'laser-treatments':           'Laser treatments',
+  'pigmentation':               'Pigmentation',
+  'melasma':                    'Melasma',
+  'hyperpigmentation':          'Hyperpigmentation',
+  'rosacea-redness':            'Rosacea & redness',
+  'texture-pores':              'Texture & pores',
+  'sensitive-skin':             'Sensitive skin',
+  'acne-treatment':             'Acne treatment',
+  'acne-scars':                 'Acne scars',
+  'post-acne-repair':           'Post-acne repair',
+  'scars-stretch-marks':        'Scars & stretch marks',
+  'under-eye-rejuvenation':     'Under-eye rejuvenation',
+  'jawline-contouring':         'Jawline contouring',
+  'lip-treatments':             'Lip treatments',
+  'double-chin':                'Double chin reduction',
+  'conservative-filler':        'Conservative filler',
+  'full-face-balancing':        'Full-face balancing',
+  'asian-skin':                 'Asian skin',
+  'melanin-rich-skin':          'Melanin-rich skin',
+  'korean-aesthetics':          'Korean aesthetics',
+  'mens-aesthetics':            "Men's aesthetics",
+  'hair-restoration':           'Hair restoration',
+  'body-contouring':            'Body contouring',
+  'medical-weight-loss':        'Medical weight loss',
+  'wellness-longevity':         'Wellness & longevity',
+  'womens-wellness':            "Women's wellness",
+  'postpartum-restoration':     'Postpartum restoration',
+  'preventative-aging':         'Preventative aging',
+  'mature-skin':                'Mature skin',
+  'bridal-prep':                'Bridal prep',
+  'medical-facials':            'Medical facials',
+  'paramedical-camouflage':     'Camouflage treatments',
+  'surgical-aesthetics':        'Surgical aesthetics',
+  'other':                      'Other',
+  // Legacy slugs from before taxonomy v2 — keep until all DB rows are migrated
+  'collagen-first-biostim':      'Biostimulators',
+  'conservative-minimal-filler': 'Conservative filler',
 });
 
 const CONCERNS_MAP = buildTaxonomyMap('concerns.json', {
-  'undereye-hollowness': 'Undereye hollowness / tired appearance',
-  'volume-loss':         'Volume loss',
-  'jawline-laxity':      'Jawline laxity / sagging',
-  'skin-texture':        'Skin texture & pores',
-  'redness-rosacea':     'Redness / rosacea',
-  'fine-lines':          'Fine lines & wrinkles',
-  'hyperpigmentation':   'Hyperpigmentation',
-  'acne-scarring':       'Acne scarring',
-  'lip-enhancement':     'Lip enhancement',
-  'brow-lifting':        'Brow lifting',
+  'active-acne':       'Acne',
+  'acne-scars':        'Acne scars',
+  'scars':             'Scars',
+  'stretch-marks':     'Stretch marks',
+  'pigmentation':      'Pigmentation & dark spots',
+  'melasma':           'Melasma',
+  'redness-rosacea':   'Redness & rosacea',
+  'skin-texture':      'Texture & pores',
+  'dull-skin':         'Dull / tired skin',
+  'sensitive-skin':    'Sensitive skin',
+  'fine-lines':        'Fine lines & wrinkles',
+  'volume-loss':       'Volume loss',
+  'skin-laxity':       'Skin laxity & sagging',
+  'jawline-definition':'Jawline definition',
+  'double-chin':       'Double chin',
+  'under-eye':         'Under-eye concerns',
+  'dark-circles':      'Dark circles',
+  'hair-loss':         'Hair thinning & loss',
+  'body-contouring':   'Body contouring',
+  'cellulite':         'Cellulite',
+  'breast-chest':      'Breast & chest concerns',
+  'other':             'Other',
+  // Legacy slugs
+  'undereye-hollowness': 'Under-eye concerns',
+  'jawline-laxity':      'Skin laxity & sagging',
 });
 
 const CARD_FIELDS = `
