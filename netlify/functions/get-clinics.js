@@ -1,4 +1,43 @@
 const { createClient } = require('@supabase/supabase-js');
+const path = require('path');
+const fs   = require('fs');
+
+// ── TAXONOMY RESOLVER ────────────────────────────────────────────
+// Loads slug→label maps from /data/taxonomy/*.json at cold start.
+// Falls back to inline map so labels always resolve even if file path shifts.
+function buildTaxonomyMap(filename, fallback) {
+  try {
+    const filePath = path.join(__dirname, '..', '..', 'data', 'taxonomy', filename);
+    const items = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    return Object.fromEntries(items.map(i => [i.value, i.label]));
+  } catch(e) {
+    return fallback;
+  }
+}
+
+const EXPERTISE_MAP = buildTaxonomyMap('expertise.json', {
+  'collagen-first-biostim':      'Collagen-first / biostimulation',
+  'natural-rejuvenation':        'Natural rejuvenation',
+  'conservative-minimal-filler': 'Conservative / minimal-filler approach',
+  'skin-quality':                'Skin quality',
+  'full-face-balancing':         'Full-face balancing',
+  'volume-restoration':          'Volume restoration',
+  'preventative':                'Preventative treatments',
+  'combination-therapy':         'Combination therapy',
+});
+
+const CONCERNS_MAP = buildTaxonomyMap('concerns.json', {
+  'undereye-hollowness': 'Undereye hollowness / tired appearance',
+  'volume-loss':         'Volume loss',
+  'jawline-laxity':      'Jawline laxity / sagging',
+  'skin-texture':        'Skin texture & pores',
+  'redness-rosacea':     'Redness / rosacea',
+  'fine-lines':          'Fine lines & wrinkles',
+  'hyperpigmentation':   'Hyperpigmentation',
+  'acne-scarring':       'Acne scarring',
+  'lip-enhancement':     'Lip enhancement',
+  'brow-lifting':        'Brow lifting',
+});
 
 const CARD_FIELDS = `
   id, name, slug, neighbourhood, area, province, region,
@@ -15,7 +54,10 @@ const PAGE_SIZE = 24;
 exports.handler = async (event) => {
   try {
     // Normalize an identity row to a display-ready { label } object
-    const normalizeIdentityRow = row => ({ label: row.is_other ? row.other_text : row.value });
+    // is_other rows use free-text; standard rows resolve slug → display label via taxonomy map
+    const normalizeIdentityRow = (row, map) => ({
+      label: row.is_other ? row.other_text : (map[row.value] || row.value)
+    });
 
     const supabase = createClient(
       process.env.SUPABASE_URL,
@@ -47,8 +89,8 @@ exports.handler = async (event) => {
         supabase.from('clinic_concerns').select('value, is_other, other_text').eq('clinic_id', clinicId),
       ]);
       data.identity = {
-        expertise: (expertiseRes.data || []).map(normalizeIdentityRow),
-        concerns:  (concernsRes.data  || []).map(normalizeIdentityRow),
+        expertise: (expertiseRes.data || []).map(r => normalizeIdentityRow(r, EXPERTISE_MAP)),
+        concerns:  (concernsRes.data  || []).map(r => normalizeIdentityRow(r, CONCERNS_MAP)),
       };
 
       return {
@@ -209,13 +251,13 @@ exports.handler = async (event) => {
       if (expertiseRes.data) {
         expertiseRes.data.forEach(row => {
           if (!identityMap[row.clinic_id]) identityMap[row.clinic_id] = { expertise: [], concerns: [] };
-          identityMap[row.clinic_id].expertise.push(normalizeIdentityRow(row));
+          identityMap[row.clinic_id].expertise.push(normalizeIdentityRow(row, EXPERTISE_MAP));
         });
       }
       if (concernsRes.data) {
         concernsRes.data.forEach(row => {
           if (!identityMap[row.clinic_id]) identityMap[row.clinic_id] = { expertise: [], concerns: [] };
-          identityMap[row.clinic_id].concerns.push(normalizeIdentityRow(row));
+          identityMap[row.clinic_id].concerns.push(normalizeIdentityRow(row, CONCERNS_MAP));
         });
       }
     }
