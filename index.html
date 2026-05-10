@@ -5616,9 +5616,8 @@ window.openClinicModal = async function openClinicModal(clinicId) {
 
   function renderModalPhotos(allUrls) {
     if (!allUrls.length) return;
-    const thumbUrls = allUrls.slice(0, 4);
-    const gridClass = thumbUrls.length <= 2 ? 'cm-photos-grid' : 'cm-photos-grid three-up';
-    photosGrid.className = gridClass;
+    const thumbUrls = allUrls.slice(0, 3);
+    photosGrid.className = 'cm-photos-grid three-up';
     photosGrid.innerHTML = thumbUrls.map((url, i) =>
       `<img src="${url}" class="cm-photo-thumb" alt="" loading="lazy" data-lightbox-index="${i}" onerror="this.remove()">`
     ).join('');

@@ -97,12 +97,54 @@
     .back-link:hover { color: var(--rose); }
     .back-link svg { flex-shrink: 0; }
 
-    /* ── HERO SECTION ── */
+    /* ── HERO SECTION — Tier A (photo) ── */
+    .profile-hero-photo {
+      position: relative;
+      width: 100%; height: 540px;
+      border-radius: 16px;
+      overflow: hidden;
+      margin-bottom: 0;
+      background: var(--deep);
+      animation: heroFadeUp 0.55s ease both;
+    }
+    @keyframes heroFadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .profile-hero-photo img {
+      width: 100%; height: 100%; object-fit: cover; display: block;
+    }
+    .profile-hero-photo .hero-gradient {
+      position: absolute; inset: 0;
+      background: linear-gradient(
+        to bottom,
+        rgba(28,23,20,0) 25%,
+        rgba(28,23,20,0.45) 58%,
+        rgba(28,23,20,0.85) 100%
+      );
+      pointer-events: none;
+    }
+    .profile-hero-photo .hero-meta {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      padding: 2.5rem 2.25rem 2rem;
+    }
+    .profile-hero-photo .profile-pills {
+      margin-bottom: 0.9rem;
+    }
+    .profile-hero-photo .profile-name {
+      font-size: 2.8rem;
+      margin-bottom: 0.8rem;
+      letter-spacing: -0.01em;
+    }
+    .profile-hero-photo .profile-rating-row {
+      margin-top: 0;
+    }
+    /* ── HERO SECTION — Tier B (no photo) ── */
     .profile-hero {
       background: var(--deep);
       border-radius: 16px;
       padding: 2rem 2rem 1.75rem;
-      margin-bottom: 1.5rem;
+      margin-bottom: 1rem;
       position: relative;
       overflow: hidden;
     }
@@ -114,7 +156,7 @@
     }
     .profile-pills {
       display: flex; align-items: center; gap: 0.5rem;
-      flex-wrap: wrap; margin-bottom: 1rem;
+      flex-wrap: wrap; margin-bottom: 0.85rem;
     }
     .pill {
       display: inline-flex; align-items: center; gap: 0.3rem;
@@ -268,20 +310,42 @@
     }
     .promo-icon { margin-right: 0.35rem; }
 
-    /* ── PHOTOS ── */
+    /* ── PHOTOS — masonry editorial grid ── */
     .photos-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
       gap: 6px;
     }
+    /* 1 photo */
+    .photos-grid.count-1 { grid-template-columns: 1fr; }
+    .photos-grid.count-1 .photos-grid-item { aspect-ratio: 16/7; }
+    /* 2 photos: 60/40 */
+    .photos-grid.count-2 { grid-template-columns: 3fr 2fr; }
+    .photos-grid.count-2 .photos-grid-item { aspect-ratio: 4/3; }
+    /* 3 photos: large left, 2 stacked right */
+    .photos-grid.count-3 { grid-template-columns: 3fr 2fr; }
+    .photos-grid.count-3 .photos-grid-item:first-child { grid-row: span 2; aspect-ratio: unset; }
+    .photos-grid.count-3 .photos-grid-item:not(:first-child) { aspect-ratio: 4/3; }
+    /* 4-6 photos: large top-left + grid */
+    .photos-grid.count-4,
+    .photos-grid.count-5,
+    .photos-grid.count-6 { grid-template-columns: 3fr 2fr; }
+    .photos-grid.count-4 .photos-grid-item:first-child,
+    .photos-grid.count-5 .photos-grid-item:first-child,
+    .photos-grid.count-6 .photos-grid-item:first-child { grid-row: span 2; aspect-ratio: unset; }
+    .photos-grid.count-4 .photos-grid-item:not(:first-child),
+    .photos-grid.count-5 .photos-grid-item:not(:first-child),
+    .photos-grid.count-6 .photos-grid-item:not(:first-child) { aspect-ratio: 4/3; }
+    /* fallback for remaining items in count-5,6 — second column continuation */
+    .photos-grid.count-5,
+    .photos-grid.count-6 { grid-template-columns: 3fr 2fr; }
     .photos-grid-item {
-      aspect-ratio: 4/3;
       border-radius: 6px;
       overflow: hidden;
       background: var(--warm);
+      min-height: 140px;
     }
     .photos-grid-item img {
-      width: 100%; height: 100%; object-fit: cover;
+      width: 100%; height: 100%; object-fit: cover; display: block;
     }
     .photos-placeholder {
       display: flex; flex-direction: column;
@@ -296,30 +360,34 @@
     .photos-placeholder p { font-size: 0.85rem; color: var(--muted); }
     .photos-placeholder a { color: var(--rose); text-decoration: none; font-size: 0.82rem; }
 
-    /* ── CONTACT BUTTONS ── */
-    .contact-row {
-      display: flex; gap: 0.6rem; flex-wrap: wrap;
-    }
-    .contact-btn {
-      display: inline-flex; align-items: center; gap: 0.45rem;
-      padding: 0.6rem 1.1rem;
-      border-radius: 8px;
+    /* ── CONTACT ── */
+    .contact-primary-btn {
+      display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+      width: 100%;
+      padding: 0.85rem 1.4rem;
+      background: var(--rose); border: none; border-radius: 10px;
       font-family: 'DM Sans', sans-serif;
-      font-size: 0.85rem; font-weight: 500;
-      text-decoration: none;
-      cursor: pointer;
-      border: 1.5px solid var(--border);
-      background: white;
-      color: var(--deep);
-      transition: all 0.2s;
+      font-size: 0.95rem; font-weight: 600;
+      color: white; text-decoration: none; cursor: pointer;
+      transition: background 0.2s;
+      margin-bottom: 1rem;
     }
-    .contact-btn:hover { border-color: var(--deep); }
-    .contact-btn.primary {
-      background: var(--rose); border-color: var(--rose); color: white;
+    .contact-primary-btn:hover { background: var(--rose-m); }
+    .contact-primary-btn.dim { opacity: 0.4; pointer-events: none; }
+    .contact-links {
+      display: flex; gap: 1.5rem; flex-wrap: wrap;
     }
-    .contact-btn.primary:hover { background: var(--rose-m); border-color: var(--rose-m); }
-    .contact-btn.dim { opacity: 0.4; pointer-events: none; }
-    .contact-btn svg { flex-shrink: 0; }
+    .contact-link {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.85rem; color: var(--muted);
+      text-decoration: none; cursor: pointer;
+      transition: color 0.15s;
+      background: none; border: none; font-family: 'DM Sans', sans-serif;
+      padding: 0;
+    }
+    .contact-link:hover { color: var(--deep); }
+    .contact-link.dim { opacity: 0.35; pointer-events: none; }
+    .contact-link svg { flex-shrink: 0; }
 
     /* ── DETAILS ── */
     .details-list { display: flex; flex-direction: column; gap: 0.7rem; }
@@ -396,16 +464,56 @@
     }
     .report-link:hover { color: var(--muted); }
 
+    /* ── VISIT SIGNAL elevated ── */
+    .visit-banner {
+      padding: 1.5rem 1.75rem !important;
+      background: rgba(250,247,242,0.6) !important;
+      border-bottom: 1px solid rgba(200,114,90,0.12) !important;
+    }
+    .visit-banner:hover {
+      background: rgba(200,114,90,0.07) !important;
+    }
+    .visit-banner-copy {
+      gap: 0.5rem !important;
+    }
+    .visit-banner-copy span:first-child {
+      font-size: 0.72rem !important;
+      color: var(--muted) !important;
+      letter-spacing: 0.06em !important;
+      text-transform: uppercase !important;
+      font-weight: 600 !important;
+    }
+    .visit-banner-copy span:last-child {
+      font-size: 0.95rem !important;
+      font-weight: 600 !important;
+    }
+
+    /* ── IDENTITY PILLS ── */
+    .identity-tag {
+      padding: 0.4rem 1rem !important;
+      font-size: 0.8rem !important;
+      gap: 0.4rem !important;
+    }
+
     /* ── MOBILE ── */
     @media (max-width: 600px) {
-      .page-wrap { padding: 88px 4% 60px; }
+      .page-wrap { padding: 72px 4% 60px; }
+      .profile-hero-photo { height: 340px; border-radius: 0; }
+      .profile-hero-photo .hero-meta { padding: 1.5rem 1.25rem 1.75rem; }
+      .profile-hero-photo .profile-name { font-size: 2rem !important; }
       .profile-hero { padding: 1.5rem; }
       .profile-name { font-size: 1.9rem; }
       .card-section { padding: 1.1rem 1.25rem; }
       .claim-band { padding: 1.25rem 1.5rem; }
-      .photos-grid { grid-template-columns: repeat(2, 1fr); }
-      .contact-row { gap: 0.5rem; }
-      .contact-btn { font-size: 0.8rem; padding: 0.55rem 0.9rem; }
+      .photos-grid.count-3,
+      .photos-grid.count-4,
+      .photos-grid.count-5,
+      .photos-grid.count-6 { grid-template-columns: 1fr 1fr; }
+      .photos-grid.count-3 .photos-grid-item:first-child,
+      .photos-grid.count-4 .photos-grid-item:first-child,
+      .photos-grid.count-5 .photos-grid-item:first-child,
+      .photos-grid.count-6 .photos-grid-item:first-child { grid-row: span 1; aspect-ratio: 4/3; }
+      .contact-links { gap: 1rem; }
     }
 
     /* ── PRACTITIONERS ── */
@@ -598,33 +706,7 @@
     .auth-toggle { text-align: center; margin-top: 1.1rem; font-size: 0.82rem; color: var(--muted); }
     .auth-toggle button { background: none; border: none; color: var(--rose); font-size: 0.82rem; cursor: pointer; font-family: 'DM Sans', sans-serif; text-decoration: underline; }
     .auth-error { font-size: 0.8rem; color: var(--rose); text-align: center; margin-top: 0.5rem; min-height: 1.2rem; }
-    /* ── PHOTO HERO ── */
-    .photo-hero {
-      width: 100%; height: 260px;
-      position: relative; overflow: hidden;
-      border-radius: 16px; margin-bottom: 1.5rem;
-      background: var(--deep);
-    }
-    .photo-hero img {
-      width: 100%; height: 100%; object-fit: cover; display: block;
-    }
-    .photo-hero::after {
-      content: '';
-      position: absolute; inset: 0;
-      background: linear-gradient(to bottom, rgba(28,23,20,0.08) 0%, rgba(28,23,20,0.55) 100%);
-      pointer-events: none;
-    }
-    .photo-hero-name {
-      position: absolute; bottom: 20px; left: 24px;
-      color: #fff; font-family: 'Cormorant Garamond', serif;
-      font-size: 2rem; font-weight: 400; line-height: 1.1;
-      text-shadow: 0 1px 6px rgba(0,0,0,0.4);
-      z-index: 1;
-    }
-    @media (max-width: 600px) {
-      .photo-hero { height: 200px; border-radius: 0; margin-bottom: 1rem; }
-      .photo-hero-name { font-size: 1.6rem; left: 16px; bottom: 14px; }
-    }
+
 
     /* ── PHOTOS GRID (clickable) ── */
     .photos-grid-item img { cursor: pointer; transition: opacity 0.15s; }
@@ -950,21 +1032,38 @@ function renderClinic(clinic) {
     </div>`;
   }
 
-  wrap.innerHTML = `
-    <a href="/index.html" class="back-link animate">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M19 12H5M12 5l-7 7 7 7"/>
-      </svg>
-      Back to directory
-    </a>
+  // Tier A: claimed + photos → immersive hero. Tier B: dark card.
+  const hasTierA = isClaimed && clinic.photo_filenames && clinic.photo_filenames.length > 0;
 
-    <!-- HERO -->
+  const tierAHero = hasTierA ? `
+    <div class="profile-hero-photo animate" id="profile-hero-photo">
+      <img id="hero-main-img" src="" alt="${clinic.name}" loading="eager" onerror="this.parentElement.classList.add('hero-img-failed')" />
+      <div class="hero-gradient"></div>
+      <div class="hero-meta">
+        <div class="profile-pills" style="margin-bottom:0.6rem;">
+          <span class="pill pill-neighbourhood">${clinic.neighbourhood}</span>
+          ${isClaimed ? `<span class="pill pill-verified">Verified listing</span>` : ''}
+          ${(clinic.promo && clinic.promo_text) ? `<span class="promo-badge">🎉 Promo</span>` : ''}
+        </div>
+        <h1 class="profile-name" style="display:flex;align-items:center;gap:10px;margin-bottom:0.6rem;">
+          ${clinic.logo_url ? `<img src="${clinic.logo_url}" alt="" style="width:32px;height:32px;border-radius:5px;object-fit:contain;background:rgba(255,255,255,0.12);flex-shrink:0;">` : ''}
+          ${clinic.name}
+        </h1>
+        <div class="profile-rating-row">
+          <div class="stars">${renderStars(clinic.rating)}</div>
+          <span class="rating-num">${clinic.rating != null ? clinic.rating.toFixed(1) : '—'}</span>
+          <span class="review-count" style="color:rgba(250,247,242,0.5);">${(clinic.reviews || 0).toLocaleString()} reviews on Google</span>
+          ${clinic.maps_url ? `<a href="${clinic.maps_url}" target="_blank" rel="noopener" class="review-link">See on Maps →</a>` : ''}
+        </div>
+        <div id="profileVisitSignal" style="margin-top:0.5rem;"></div>
+      </div>
+    </div>` : '';
+
+  const tierBHero = !hasTierA ? `
     <div class="profile-hero animate animate-delay-1">
       <div class="profile-pills">
         <span class="pill pill-neighbourhood">${clinic.neighbourhood}</span>
-        ${isClaimed
-          ? `<span class="pill pill-verified">Verified listing</span>`
-          : `<span class="pill pill-unverified">Unverified listing</span>`}
+        ${isClaimed ? `<span class="pill pill-verified">Verified listing</span>` : `<span class="pill pill-unverified">Unverified listing</span>`}
         ${(clinic.promo && clinic.promo_text) ? `<span class="promo-badge">🎉 Promo Available</span>` : ''}
       </div>
       <h1 class="profile-name" style="display:flex;align-items:center;gap:10px;">
@@ -978,7 +1077,18 @@ function renderClinic(clinic) {
         ${clinic.maps_url ? `<a href="${clinic.maps_url}" target="_blank" rel="noopener" class="review-link">See on Maps →</a>` : ''}
       </div>
       <div id="profileVisitSignal"></div>
-    </div>
+    </div>` : '';
+
+  wrap.innerHTML = `
+    <a href="/index.html" class="back-link animate">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M19 12H5M12 5l-7 7 7 7"/>
+      </svg>
+      Back to directory
+    </a>
+
+    ${tierAHero}
+    ${tierBHero}
 
     <!-- PROMO (above pricing, only when promo text exists) -->
     ${promoHTML}
@@ -1015,22 +1125,30 @@ function renderClinic(clinic) {
       </div>
       <div class="card-section">
         <div class="section-label">Contact</div>
-        <div class="contact-row">
-          ${bookNowHTML}
-          <a class="contact-btn primary ${directionsDisabled}" href="${clinic.maps_url || '#'}" target="_blank" rel="noopener">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3,11 22,2 13,21 11,13 3,11"/></svg>
+        ${clinic.booking_url
+          ? `<a class="contact-primary-btn" href="${clinic.booking_url}" target="_blank" rel="noopener">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              Book Consultation
+            </a>`
+          : `<a class="contact-primary-btn dim" href="#" aria-disabled="true">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              Booking not available
+            </a>`}
+        <div class="contact-links">
+          <a class="contact-link ${directionsDisabled}" href="${clinic.maps_url || '#'}" target="_blank" rel="noopener">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3,11 22,2 13,21 11,13 3,11"/></svg>
             Directions
           </a>
-          <a class="contact-btn ${callDisabled}" href="${clinic.phone ? 'tel:' + clinic.phone.replace(/\s/g,'') : '#'}">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.69a16 16 0 0 0 6.29 6.29l.95-.95a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          <a class="contact-link ${callDisabled}" href="${clinic.phone ? 'tel:' + clinic.phone.replace(/\s/g,'') : '#'}">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.69a16 16 0 0 0 6.29 6.29l.95-.95a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
             Call
           </a>
-          <a class="contact-btn ${emailDisabled}" href="${clinic.email ? 'mailto:' + clinic.email : '#'}">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          <a class="contact-link ${emailDisabled}" href="${clinic.email ? 'mailto:' + clinic.email : '#'}">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
             Email
           </a>
-          <a class="contact-btn ${websiteDisabled}" href="${clinic.website || '#'}" target="_blank" rel="noopener">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          <a class="contact-link ${websiteDisabled}" href="${clinic.website || '#'}" target="_blank" rel="noopener">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
             Website
           </a>
         </div>
@@ -1118,32 +1236,30 @@ function fetchAndRenderPhotos(clinic) {
   function renderPhotos(allUrls) {
     if (!allUrls.length) return;
 
-    // Hero: insert before first child of pageWrap
-    const existing = document.querySelector('.photo-hero');
-    if (!existing) {
-      const heroEl = document.createElement('div');
-      heroEl.className = 'photo-hero animate animate-delay-1';
-      heroEl.innerHTML = `
-        <img src="${allUrls[0]}" alt="${clinic.name}" loading="eager" onerror="this.parentElement.style.display='none'" />
-        <div class="photo-hero-name">${clinic.name}</div>`;
-      const pageWrap = document.getElementById('pageWrap');
-      const firstChild = pageWrap ? pageWrap.firstElementChild : null;
-      if (pageWrap && firstChild) pageWrap.insertBefore(heroEl, firstChild);
-    }
+    // Tier A: set hero image src (hero element already in DOM from renderClinic)
+    const heroImg = document.getElementById('hero-main-img');
+    if (heroImg) heroImg.src = allUrls[0];
 
-    // Gallery: replace the photos card-section
-    const galleryUrls = allUrls.slice(0, 6);
+    // Gallery: show max 3, rest via lightbox. "View all" if more exist.
+    const galleryUrls = allUrls.slice(0, 3);
+    const countClass = 'count-' + Math.min(galleryUrls.length, 3);
+    const hasMore = allUrls.length > 3;
     let photoCard = null;
     document.querySelectorAll('.card-section').forEach(sec => {
       if (sec.querySelector('.section-label')?.textContent === 'Photos') photoCard = sec;
     });
     if (photoCard) {
       photoCard.innerHTML = `
-        <div class="section-label">Photos</div>
-        <div class="photos-grid">
+        <div class="section-label" style="display:flex;align-items:center;justify-content:space-between;">
+          Photos
+          ${hasMore ? `<button onclick="openLightbox(${JSON.stringify(allUrls)}, 0)"
+            style="background:none;border:none;font-family:'DM Sans',sans-serif;font-size:0.75rem;color:var(--rose);cursor:pointer;font-weight:500;letter-spacing:0.02em;padding:0;">
+            View all ${allUrls.length} →</button>` : ''}
+        </div>
+        <div class="photos-grid ${countClass}">
           ${galleryUrls.map((url, i) => `
             <div class="photos-grid-item">
-              <img src="${url}" alt="${clinic.name}" loading="lazy" onerror="this.parentElement.remove()"
+              <img src="${url}" alt="${clinic.name}" loading="${i === 0 ? 'eager' : 'lazy'}" onerror="this.parentElement.remove()"
                 style="cursor:pointer" onclick="openLightbox(${JSON.stringify(allUrls)}, ${i})" />
             </div>`).join('')}
         </div>`;
