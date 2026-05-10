@@ -135,18 +135,29 @@ exports.handler = async (event) => {
         body: JSON.stringify({ error: 'Not found' })
       };
 
-      // Attach identity (expertise + concerns) and photos for this clinic
+      // Attach identity, prices, and photos for this clinic
       const clinicId = String(data.id);
-      const [expertiseRes, concernsRes, photosRes] = await Promise.all([
+      const [expertiseRes, concernsRes, photosRes, pricesRes] = await Promise.all([
         supabase.from('clinic_expertise').select('value, is_other, other_text').eq('clinic_id', clinicId),
         supabase.from('clinic_concerns').select('value, is_other, other_text').eq('clinic_id', clinicId),
         supabase.from('clinic_photos').select('filename, display_order').eq('clinic_id', clinicId).order('display_order', { ascending: true }),
+        supabase.from('clinic_prices').select('toxin, price, injector_type, price_source, price_date').eq('clinic_id', clinicId).order('price', { ascending: true }),
       ]);
       data.identity = {
         expertise: (expertiseRes.data || []).map(r => normalizeIdentityRow(r, EXPERTISE_MAP)),
         concerns:  (concernsRes.data  || []).map(r => normalizeIdentityRow(r, CONCERNS_MAP)),
       };
-      // photo_filenames: ordered list from DB, or empty (client falls back to Storage listing)
+      // Full prices array for breakdown table on clinic.html
+      data.prices = pricesRes.data || [];
+      // Sync lowest price from clinic_prices (overrides clinics table snapshot which can lag)
+      if (data.prices.length > 0) {
+        const lowest = [...data.prices].sort((a, b) => a.price - b.price)[0];
+        data.price        = lowest.price;
+        data.price_source = lowest.price_source;
+        data.price_date   = lowest.price_date;
+        data.toxin_type   = lowest.toxin;
+      }
+      // photo_filenames: ordered list from DB, empty = client falls back to Storage listing
       data.photo_filenames = (photosRes.data || []).map(r => r.filename);
 
       return {

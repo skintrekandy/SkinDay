@@ -450,61 +450,32 @@ exports.handler = async (event) => {
     // ── SAVE PHOTO ORDER ──
     if (action === 'save-photo-order') {
       const { clinicId, filenames } = body;
-
-      if (!clinicId) {
-        return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing clinicId' }) };
-      }
-      if (!Array.isArray(filenames)) {
-        return { statusCode: 400, headers, body: JSON.stringify({ error: 'filenames must be an array' }) };
-      }
+      if (!clinicId) return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing clinicId' }) };
+      if (!Array.isArray(filenames)) return { statusCode: 400, headers, body: JSON.stringify({ error: 'filenames must be an array' }) };
 
       // Verify ownership (same pattern as save-clinic)
       const orderMeta = user.user_metadata || {};
-      const ownedOrderIds = Array.isArray(orderMeta.clinic_ids)
-        ? orderMeta.clinic_ids.map(String)
-        : [];
+      const ownedOrderIds = Array.isArray(orderMeta.clinic_ids) ? orderMeta.clinic_ids.map(String) : [];
       let isOrderOwner = ownedOrderIds.includes(String(clinicId));
       if (!isOrderOwner) {
-        const { data: claims } = await supabase
-          .from('claims')
-          .select('clinic_id, chain_clinic_ids')
-          .eq('owner_email', userEmail)
-          .limit(1);
+        const { data: claims } = await supabase.from('claims').select('clinic_id, chain_clinic_ids').eq('owner_email', userEmail).limit(1);
         if (claims && claims.length > 0) {
           if (String(claims[0].clinic_id) === String(clinicId)) isOrderOwner = true;
           if (!isOrderOwner && claims[0].chain_clinic_ids) {
-            try {
-              const chainIds = JSON.parse(claims[0].chain_clinic_ids).map(String);
-              isOrderOwner = chainIds.includes(String(clinicId));
-            } catch { /* ignore */ }
+            try { const ids = JSON.parse(claims[0].chain_clinic_ids).map(String); isOrderOwner = ids.includes(String(clinicId)); } catch {}
           }
         }
       }
-      if (!isOrderOwner) {
-        return { statusCode: 403, headers, body: JSON.stringify({ error: 'Forbidden' }) };
-      }
+      if (!isOrderOwner) return { statusCode: 403, headers, body: JSON.stringify({ error: 'Forbidden' }) };
 
-      // Delete all existing rows for this clinic, then insert in new order
-      const { error: delErr } = await supabase
-        .from('clinic_photos')
-        .delete()
-        .eq('clinic_id', String(clinicId));
-      if (delErr) {
-        return { statusCode: 500, headers, body: JSON.stringify({ error: delErr.message }) };
-      }
+      const { error: delErr } = await supabase.from('clinic_photos').delete().eq('clinic_id', String(clinicId));
+      if (delErr) return { statusCode: 500, headers, body: JSON.stringify({ error: delErr.message }) };
 
       if (filenames.length > 0) {
-        const rows = filenames.map((filename, i) => ({
-          clinic_id:     String(clinicId),
-          filename:      filename,
-          display_order: i,
-        }));
+        const rows = filenames.map((filename, i) => ({ clinic_id: String(clinicId), filename, display_order: i }));
         const { error: insErr } = await supabase.from('clinic_photos').insert(rows);
-        if (insErr) {
-          return { statusCode: 500, headers, body: JSON.stringify({ error: insErr.message }) };
-        }
+        if (insErr) return { statusCode: 500, headers, body: JSON.stringify({ error: insErr.message }) };
       }
-
       return { statusCode: 200, headers, body: JSON.stringify({ success: true }) };
     }
 
