@@ -135,16 +135,19 @@ exports.handler = async (event) => {
         body: JSON.stringify({ error: 'Not found' })
       };
 
-      // Attach identity (expertise + concerns) for this clinic
+      // Attach identity (expertise + concerns) and photos for this clinic
       const clinicId = String(data.id);
-      const [expertiseRes, concernsRes] = await Promise.all([
+      const [expertiseRes, concernsRes, photosRes] = await Promise.all([
         supabase.from('clinic_expertise').select('value, is_other, other_text').eq('clinic_id', clinicId),
         supabase.from('clinic_concerns').select('value, is_other, other_text').eq('clinic_id', clinicId),
+        supabase.from('clinic_photos').select('filename, display_order').eq('clinic_id', clinicId).order('display_order', { ascending: true }),
       ]);
       data.identity = {
         expertise: (expertiseRes.data || []).map(r => normalizeIdentityRow(r, EXPERTISE_MAP)),
         concerns:  (concernsRes.data  || []).map(r => normalizeIdentityRow(r, CONCERNS_MAP)),
       };
+      // photo_filenames: ordered list from DB, or empty (client falls back to Storage listing)
+      data.photo_filenames = (photosRes.data || []).map(r => r.filename);
 
       return {
         statusCode: 200,
