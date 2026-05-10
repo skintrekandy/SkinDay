@@ -2604,8 +2604,9 @@
     return Promise.all(photos.map(async (p) => {
       if (!p.file) return { url: p.url, filename: p.filename }; // already uploaded
       const timestamp = Date.now();
-      const storageFilename = `clinic-${currentClinic.id}/${timestamp}-${p.file.name}`;
-      const bareFilename = `${timestamp}-${p.file.name}`;
+      const safeName = p.file.name.toLowerCase().replace(/\s+/g, '-').replace(/[()]/g, '');
+      const storageFilename = `clinic-${currentClinic.id}/${timestamp}-${safeName}`;
+      const bareFilename = `${timestamp}-${safeName}`;
       const res = await fetch(`${SUPABASE_URL}/storage/v1/object/clinic-photos/${storageFilename}`, {
         method: 'POST',
         headers: {

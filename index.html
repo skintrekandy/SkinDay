@@ -5637,7 +5637,7 @@ window.openClinicModal = async function openClinicModal(clinicId) {
   }).then(r => r.ok ? r.json() : []).then(rows => {
     if (Array.isArray(rows) && rows.length > 0) {
       const orderedUrls = rows.map(r =>
-        `${SB_URL}/storage/v1/object/public/clinic-photos/clinic-${clinicIdStr}/${encodeURIComponent(r.filename)}`
+        `${SB_URL}/storage/v1/object/public/clinic-photos/clinic-${clinicIdStr}/${r.filename}`
       );
       renderModalPhotos(orderedUrls);
     } else {
@@ -5650,7 +5650,7 @@ window.openClinicModal = async function openClinicModal(clinicId) {
         if (!files || !files.length) return;
         const urls = files
           .filter(f => f.name && !f.name.endsWith('/'))
-          .map(f => `${SB_URL}/storage/v1/object/public/clinic-photos/clinic-${clinicIdStr}/${encodeURIComponent(f.name)}`);
+          .map(f => `${SB_URL}/storage/v1/object/public/clinic-photos/clinic-${clinicIdStr}/${f.name}`);
         renderModalPhotos(urls);
       }).catch(() => {});
     }

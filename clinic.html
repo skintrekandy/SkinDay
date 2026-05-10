@@ -1112,7 +1112,7 @@ function fetchAndRenderPhotos(clinic) {
   function buildPhotoUrls(files) {
     return files
       .filter(f => f.name && !f.name.endsWith('/'))
-      .map(f => `${_SB_URL}/storage/v1/object/public/clinic-photos/clinic-${_clinicIdStr}/${encodeURIComponent(f.name)}`);
+      .map(f => `${_SB_URL}/storage/v1/object/public/clinic-photos/clinic-${_clinicIdStr}/${f.name}`);
   }
 
   function renderPhotos(allUrls) {
@@ -1152,7 +1152,7 @@ function fetchAndRenderPhotos(clinic) {
 
   if (clinic.photo_filenames && clinic.photo_filenames.length > 0) {
     const orderedUrls = clinic.photo_filenames.map(
-      fn => `${_SB_URL}/storage/v1/object/public/clinic-photos/clinic-${_clinicIdStr}/${encodeURIComponent(fn)}`
+      fn => `${_SB_URL}/storage/v1/object/public/clinic-photos/clinic-${_clinicIdStr}/${fn}`
     );
     renderPhotos(orderedUrls);
   } else {
