@@ -5630,26 +5630,31 @@ window.openClinicModal = async function openClinicModal(clinicId) {
     });
   }
 
-  if (clinic.photo_filenames && clinic.photo_filenames.length > 0) {
-    // Ordered filenames from clinic_photos table
-    const orderedUrls = clinic.photo_filenames.map(
-      fn => `${SB_URL}/storage/v1/object/public/clinic-photos/clinic-${clinicIdStr}/${fn}`
-    );
-    renderModalPhotos(orderedUrls);
-  } else {
-    // Fallback: Storage listing (unordered)
-    fetch(`${SB_URL}/storage/v1/object/list/clinic-photos`, {
-      method: 'POST',
-      headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prefix: 'clinic-' + clinicIdStr + '/', limit: 20 })
-    }).then(r => r.ok ? r.json() : []).then(files => {
-      if (!files || !files.length) return;
-      const urls = files
-        .filter(f => f.name && !f.name.endsWith('/'))
-        .map(f => `${SB_URL}/storage/v1/object/public/clinic-photos/clinic-${clinicIdStr}/${encodeURIComponent(f.name)}`);
-      renderModalPhotos(urls);
-    }).catch(() => {});
-  }
+  // Always query clinic_photos table for ordered filenames first,
+  // fall back to Storage listing only if no rows exist.
+  fetch(`${SB_URL}/rest/v1/clinic_photos?clinic_id=eq.${encodeURIComponent(clinicIdStr)}&order=display_order.asc`, {
+    headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` }
+  }).then(r => r.ok ? r.json() : []).then(rows => {
+    if (Array.isArray(rows) && rows.length > 0) {
+      const orderedUrls = rows.map(r =>
+        `${SB_URL}/storage/v1/object/public/clinic-photos/clinic-${clinicIdStr}/${encodeURIComponent(r.filename)}`
+      );
+      renderModalPhotos(orderedUrls);
+    } else {
+      // Fallback: Storage listing (unordered) for clinics with no saved order
+      fetch(`${SB_URL}/storage/v1/object/list/clinic-photos`, {
+        method: 'POST',
+        headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prefix: 'clinic-' + clinicIdStr + '/', limit: 20 })
+      }).then(r => r.ok ? r.json() : []).then(files => {
+        if (!files || !files.length) return;
+        const urls = files
+          .filter(f => f.name && !f.name.endsWith('/'))
+          .map(f => `${SB_URL}/storage/v1/object/public/clinic-photos/clinic-${clinicIdStr}/${encodeURIComponent(f.name)}`);
+        renderModalPhotos(urls);
+      }).catch(() => {});
+    }
+  }).catch(() => {});
   document.getElementById('cm-photos-link-unclaimed').style.display = isClaimed ? 'none' : 'inline';
   document.getElementById('cm-photos-link-claimed').style.display   = isClaimed ? 'inline' : 'none';
 
