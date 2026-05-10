@@ -365,12 +365,6 @@
     }
     .claim-band-btn:hover { background: var(--rose-m); }
 
-    /* ── SERVICES ── */
-    .services-placeholder {
-      display: flex; align-items: center; gap: 0.5rem;
-      font-size: 0.85rem; color: var(--dim); font-style: italic;
-    }
-
     /* ── NOT FOUND ── */
     .not-found {
       text-align: center;
@@ -604,6 +598,79 @@
     .auth-toggle { text-align: center; margin-top: 1.1rem; font-size: 0.82rem; color: var(--muted); }
     .auth-toggle button { background: none; border: none; color: var(--rose); font-size: 0.82rem; cursor: pointer; font-family: 'DM Sans', sans-serif; text-decoration: underline; }
     .auth-error { font-size: 0.8rem; color: var(--rose); text-align: center; margin-top: 0.5rem; min-height: 1.2rem; }
+    /* ── PHOTO HERO ── */
+    .photo-hero {
+      width: 100%; height: 260px;
+      position: relative; overflow: hidden;
+      border-radius: 16px; margin-bottom: 1.5rem;
+      background: var(--deep);
+    }
+    .photo-hero img {
+      width: 100%; height: 100%; object-fit: cover; display: block;
+    }
+    .photo-hero::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(to bottom, rgba(28,23,20,0.08) 0%, rgba(28,23,20,0.55) 100%);
+      pointer-events: none;
+    }
+    .photo-hero-name {
+      position: absolute; bottom: 20px; left: 24px;
+      color: #fff; font-family: 'Cormorant Garamond', serif;
+      font-size: 2rem; font-weight: 400; line-height: 1.1;
+      text-shadow: 0 1px 6px rgba(0,0,0,0.4);
+      z-index: 1;
+    }
+    @media (max-width: 600px) {
+      .photo-hero { height: 200px; border-radius: 0; margin-bottom: 1rem; }
+      .photo-hero-name { font-size: 1.6rem; left: 16px; bottom: 14px; }
+    }
+
+    /* ── PHOTOS GRID (clickable) ── */
+    .photos-grid-item img { cursor: pointer; transition: opacity 0.15s; }
+    .photos-grid-item img:hover { opacity: 0.85; }
+
+    /* ── LIGHTBOX ── */
+    .sd-lightbox {
+      position: fixed; inset: 0; z-index: 9999;
+      background: rgba(0,0,0,0.93);
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+    .sd-lightbox.open { opacity: 1; pointer-events: all; }
+    .sd-lightbox-img {
+      max-width: min(90vw, 1100px); max-height: 85vh;
+      object-fit: contain; border-radius: 4px;
+      user-select: none; -webkit-user-drag: none;
+    }
+    .sd-lightbox-close {
+      position: absolute; top: 20px; right: 24px;
+      width: 36px; height: 36px; border-radius: 50%;
+      background: rgba(255,255,255,0.12);
+      border: none; color: #fff; font-size: 18px; line-height: 1;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s;
+    }
+    .sd-lightbox-close:hover { background: rgba(255,255,255,0.22); }
+    .sd-lightbox-nav {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      width: 44px; height: 44px; border-radius: 50%;
+      background: rgba(255,255,255,0.12);
+      border: none; color: #fff; font-size: 20px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s; user-select: none;
+    }
+    .sd-lightbox-nav:hover { background: rgba(255,255,255,0.22); }
+    .sd-lightbox-nav.prev { left: 20px; }
+    .sd-lightbox-nav.next { right: 20px; }
+    .sd-lightbox-nav:disabled { opacity: 0.2; pointer-events: none; }
+    .sd-lightbox-counter {
+      position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+      font-size: 13px; color: rgba(255,255,255,0.6);
+      font-family: 'DM Sans', sans-serif; letter-spacing: 0.04em;
+      background: rgba(0,0,0,0.35); border-radius: 20px; padding: 4px 12px;
+    }
   </style>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="/favicon-32x32.png" type="image/png" sizes="32x32">
@@ -670,38 +737,64 @@ function renderClinic(clinic) {
   // Load visit signal asynchronously
   loadVisitSignal(String(clinic.id));
 
-  // Fetch photos from Supabase Storage asynchronously after render
+  // ── PHOTOS: hero + gallery + lightbox ──
   const _clinicIdStr = String(clinic.id);
-  fetch(`${_SB_URL}/storage/v1/object/list/clinic-photos`, {
-    method: 'POST',
-    headers: {
-      'apikey': _SB_KEY,
-      'Authorization': `Bearer ${_SB_KEY}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ prefix: 'clinic-' + _clinicIdStr + '/', limit: 20 })
-  }).then(r => r.ok ? r.json() : []).then(files => {
-    if (!files || !files.length) return;
-    const urls = files
+
+  function buildPhotoUrls(files) {
+    return files
       .filter(f => f.name && !f.name.endsWith('/'))
-      .map(f => `${_SB_URL}/storage/v1/object/public/clinic-photos/clinic-${_clinicIdStr}/${f.name}`);
-    if (!urls.length) return;
-    // Replace the photos section in the rendered page
+      .map(f => `${_SB_URL}/storage/v1/object/public/clinic-photos/clinic-${_clinicIdStr}/${encodeURIComponent(f.name)}`);
+  }
+
+  function renderPhotos(allUrls) {
+    if (!allUrls.length) return;
+
+    // Hero: first photo above profile card
+    const heroEl = document.createElement('div');
+    heroEl.className = 'photo-hero animate animate-delay-1';
+    heroEl.innerHTML = `
+      <img src="${allUrls[0]}" alt="${clinic.name}" loading="eager" onerror="this.parentElement.style.display='none'" />
+      <div class="photo-hero-name">${clinic.name}</div>`;
+    const pageWrap = document.getElementById('pageWrap');
+    const firstChild = pageWrap ? pageWrap.firstElementChild : null;
+    if (pageWrap && firstChild) pageWrap.insertBefore(heroEl, firstChild);
+
+    // Gallery card: up to 6 photos with lightbox
+    const galleryUrls = allUrls.slice(0, 6);
     const photosSection = document.querySelector('.card-section .section-label');
     let photoCard = null;
     document.querySelectorAll('.card-section').forEach(sec => {
       if (sec.querySelector('.section-label')?.textContent === 'Photos') photoCard = sec;
     });
-    if (!photoCard) return;
-    photoCard.innerHTML = `
-      <div class="section-label">Photos</div>
-      <div class="photos-grid">
-        ${urls.map(url => `
-          <div class="photos-grid-item">
-            <img src="${url}" alt="${clinic.name}" loading="lazy" />
-          </div>`).join('')}
-      </div>`;
-  }).catch(() => {});
+    if (photoCard) {
+      photoCard.innerHTML = `
+        <div class="section-label">Photos</div>
+        <div class="photos-grid">
+          ${galleryUrls.map((url, i) => `
+            <div class="photos-grid-item">
+              <img src="${url}" alt="${clinic.name}" loading="lazy" onerror="this.parentElement.remove()"
+                style="cursor:pointer" onclick="openLightbox(${JSON.stringify(allUrls)}, ${i})" />
+            </div>`).join('')}
+        </div>`;
+    }
+  }
+
+  // Use ordered filenames from API if present, else fall back to Storage listing
+  if (clinic.photo_filenames && clinic.photo_filenames.length > 0) {
+    const orderedUrls = clinic.photo_filenames.map(
+      fn => `${_SB_URL}/storage/v1/object/public/clinic-photos/clinic-${_clinicIdStr}/${encodeURIComponent(fn)}`
+    );
+    renderPhotos(orderedUrls);
+  } else {
+    fetch(`${_SB_URL}/storage/v1/object/list/clinic-photos`, {
+      method: 'POST',
+      headers: { 'apikey': _SB_KEY, 'Authorization': `Bearer ${_SB_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prefix: 'clinic-' + _clinicIdStr + '/', limit: 20 })
+    }).then(r => r.ok ? r.json() : []).then(files => {
+      if (!files || !files.length) return;
+      renderPhotos(buildPhotoUrls(files));
+    }).catch(() => {});
+  }
 
   // ── SEO: title, meta, OG, Twitter, canonical, JSON-LD ──
   const slug = clinic.slug || toSlug(clinic.name);
@@ -1027,16 +1120,7 @@ function renderClinic(clinic) {
           </div>` : ''}
         </div>
       </div>
-      <div class="card-section">
-        <div class="section-label">Services</div>
-        <div class="services-placeholder">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          Full treatment menu coming in a future update.
-        </div>
-      </div>
-    </div>
-
-    ${claimBandHTML}
+      ${claimBandHTML}
 
     <a href="mailto:support@skinday.ca?subject=Report: ${encodeURIComponent(clinic.name)}" class="report-link">Report incorrect information</a>
   `;
@@ -1461,6 +1545,65 @@ async function loadVisitSignal(clinicId) {
 <!-- ── CLINICS DATA + INIT ── -->
 <script>
 initFromDB();
+</script>
+
+<!-- LIGHTBOX -->
+<div class="sd-lightbox" id="sdLightbox" role="dialog" aria-modal="true" aria-label="Photo viewer">
+  <button class="sd-lightbox-close" id="sdLightboxClose" aria-label="Close">✕</button>
+  <button class="sd-lightbox-nav prev" id="sdLightboxPrev" aria-label="Previous photo">‹</button>
+  <img class="sd-lightbox-img" id="sdLightboxImg" src="" alt="" draggable="false" />
+  <button class="sd-lightbox-nav next" id="sdLightboxNext" aria-label="Next photo">›</button>
+  <div class="sd-lightbox-counter" id="sdLightboxCounter"></div>
+</div>
+
+<script>
+(function() {
+  let _lbUrls = [], _lbIdx = 0, _lbTouch = null;
+
+  window.openLightbox = function(urls, idx) {
+    _lbUrls = urls; _lbIdx = idx || 0;
+    renderLB();
+    document.getElementById('sdLightbox').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  };
+
+  function closeLB() {
+    document.getElementById('sdLightbox').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+  function renderLB() {
+    document.getElementById('sdLightboxImg').src = _lbUrls[_lbIdx];
+    document.getElementById('sdLightboxCounter').textContent = `${_lbIdx + 1} / ${_lbUrls.length}`;
+    document.getElementById('sdLightboxPrev').disabled = _lbIdx === 0;
+    document.getElementById('sdLightboxNext').disabled = _lbIdx === _lbUrls.length - 1;
+  }
+  function prev() { if (_lbIdx > 0) { _lbIdx--; renderLB(); } }
+  function next() { if (_lbIdx < _lbUrls.length - 1) { _lbIdx++; renderLB(); } }
+
+  document.getElementById('sdLightboxClose').addEventListener('click', closeLB);
+  document.getElementById('sdLightboxPrev').addEventListener('click', prev);
+  document.getElementById('sdLightboxNext').addEventListener('click', next);
+  document.getElementById('sdLightbox').addEventListener('click', function(e) {
+    if (e.target === this) closeLB();
+  });
+  document.addEventListener('keydown', function(e) {
+    const lb = document.getElementById('sdLightbox');
+    if (!lb.classList.contains('open')) return;
+    if (e.key === 'Escape') closeLB();
+    if (e.key === 'ArrowLeft') prev();
+    if (e.key === 'ArrowRight') next();
+  });
+  document.getElementById('sdLightbox').addEventListener('touchstart', function(e) {
+    _lbTouch = e.touches[0].clientX;
+  }, { passive: true });
+  document.getElementById('sdLightbox').addEventListener('touchend', function(e) {
+    if (_lbTouch === null) return;
+    const dx = e.changedTouches[0].clientX - _lbTouch;
+    _lbTouch = null;
+    if (Math.abs(dx) < 40) return;
+    dx < 0 ? next() : prev();
+  }, { passive: true });
+})();
 </script>
 
 </body>

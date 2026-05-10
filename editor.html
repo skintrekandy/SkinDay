@@ -1130,6 +1130,44 @@
       .save-bar-msg { font-size: 12px; }
       .btn-discard, .btn-save { padding: 9px 14px; font-size: 13px; }
     }
+    /* ─── PHOTO DRAG LIST ─── */
+    .photo-drag-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 12px;
+      background: var(--warm-white); border: 1px solid var(--border);
+      border-radius: 10px; margin-bottom: 8px;
+      cursor: default; transition: box-shadow 0.15s, opacity 0.15s;
+      user-select: none;
+    }
+    .photo-drag-item.dragging { opacity: 0.4; }
+    .photo-drag-item.drag-over { box-shadow: 0 0 0 2px var(--rose); }
+    .photo-drag-handle {
+      color: var(--bark-light); font-size: 16px; cursor: grab; flex-shrink: 0;
+    }
+    .photo-drag-handle:active { cursor: grabbing; }
+    .photo-drag-thumb {
+      width: 52px; height: 52px; border-radius: 6px;
+      object-fit: cover; flex-shrink: 0; border: 1px solid var(--border);
+    }
+    .photo-drag-name {
+      flex: 1; font-size: 13px; color: var(--bark-mid);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .photo-drag-badge {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
+      text-transform: uppercase; color: var(--rose);
+      background: rgba(201,115,106,0.10); border-radius: 4px;
+      padding: 2px 6px; flex-shrink: 0;
+    }
+    .photo-drag-remove {
+      background: none; border: none; font-size: 0.82rem;
+      color: var(--bark-light); cursor: pointer; padding: 4px;
+      transition: color 0.15s; flex-shrink: 0;
+    }
+    .photo-drag-remove:hover { color: var(--rose); }
+
+    /* ─── /PHOTO DRAG LIST ─── */
+
     /* ─── PRACTITIONERS ─── */
     .practitioner-row {
       display: grid;
@@ -1531,13 +1569,16 @@
       <!-- PHOTOS CARD -->
       <div class="card">
         <div class="card-title">Clinic Photos</div>
-        <div class="card-desc">Upload up to 6 photos — clinic exterior, treatment rooms, or before/after results.</div>
-        <div class="photo-grid" id="photo-grid"></div>
+        <div class="card-desc">Upload up to 6 photos. Drag to reorder — the first photo becomes your cover image on your profile page.</div>
+        <div id="photo-drag-list" style="margin-bottom:16px;"></div>
         <input type="file" id="photo-upload-input" accept="image/*" style="display:none;" onchange="handlePhotoUpload(event)" />
-        <button class="photo-add-btn" onclick="document.getElementById('photo-upload-input').click()">
-          <span style="font-size:18px;">＋</span> Add Photo
-        </button>
-        <div class="field-hint" style="margin-top:12px;">JPG or PNG, max 5MB each. First photo is used as your cover image.</div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <button class="photo-add-btn" onclick="document.getElementById('photo-upload-input').click()">
+            <span style="font-size:18px;">＋</span> Add Photo
+          </button>
+          <button id="photo-order-save-btn" onclick="savePhotoOrder()" style="display:none;padding:10px 18px;background:var(--rose);border:none;border-radius:8px;color:white;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:background 0.2s;" onmouseover="this.style.background='var(--rose-deep)'" onmouseout="this.style.background='var(--rose)'">Save Order</button>
+        </div>
+        <div class="field-hint" style="margin-top:12px;">JPG or PNG, max 5MB each. Drag ☰ to reorder. First photo is your hero image.</div>
       </div>
     </div>
   </div>
@@ -1871,10 +1912,50 @@
     if (consultCheck) consultCheck.checked = !!c.consult_free;
     togglePromoText();
 
-    // Photos
-    photos = (c.photos || []).map(url => ({ url }));
+    // Photos: fetch from Storage to get real filenames for ordering
+    photos = [];
     logoState = { url: c.logo_url || null, file: null, removed: false };
     renderLogoPreview();
+
+    // Async fetch photo list from Storage
+    (async function loadPhotos() {
+      try {
+        const res = await fetch(`${SUPABASE_URL}/storage/v1/object/list/clinic-photos`, {
+          method: 'POST',
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${sessionStorage.getItem('sd_token')}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ prefix: `clinic-${c.id}/`, limit: 20 })
+        });
+        const files = res.ok ? await res.json() : [];
+        if (!Array.isArray(files)) return;
+        // Fetch order from clinic_photos table to sort correctly
+        const orderRes = await fetch(
+          `${SUPABASE_URL}/rest/v1/clinic_photos?clinic_id=eq.${encodeURIComponent(String(c.id))}&order=display_order.asc`,
+          { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${sessionStorage.getItem('sd_token')}` } }
+        );
+        const orderRows = orderRes.ok ? await orderRes.json() : [];
+        const orderMap = {};
+        if (Array.isArray(orderRows)) orderRows.forEach((r, i) => { orderMap[r.filename] = r.display_order; });
+
+        const storageFiles = files
+          .filter(f => f.name && !f.name.endsWith('/'))
+          .map(f => ({
+            filename: f.name,
+            url: `${SUPABASE_URL}/storage/v1/object/public/clinic-photos/clinic-${c.id}/${encodeURIComponent(f.name)}`,
+            order: orderMap[f.name] !== undefined ? orderMap[f.name] : 999
+          }))
+          .sort((a, b) => a.order - b.order);
+
+        photos = storageFiles.map(f => ({ url: f.url, filename: f.filename }));
+        buildPhotoGrid();
+        showOrderSaveBtn(false);
+      } catch(e) {
+        // Silently fail — empty photo list shown
+      }
+    })();
 
     // Injector credentials checkboxes
     const allCreds = ['physician','np','rn','img'];
@@ -1972,32 +2053,85 @@
   }
 
   // ─── PHOTOS ───
+  // ─── PHOTO DRAG-LIST ─────────────────────────────────────────
+  // photos[] = [{ url, filename, file? }]
+  // filename is the bare Storage filename (no path prefix) — used for save-photo-order
+
+  let photoDragSrc = null;
+
   function buildPhotoGrid() {
-    const grid = document.getElementById('photo-grid');
-    grid.innerHTML = '';
+    const list = document.getElementById('photo-drag-list');
+    list.innerHTML = '';
+    if (!photos.length) return;
 
-    const slots = Math.max(photos.length + 1, 3);
-    for (let i = 0; i < Math.min(slots, 6); i++) {
-      const slot = document.createElement('div');
-      slot.className = 'photo-slot';
+    photos.forEach((p, i) => {
+      const item = document.createElement('div');
+      item.className = 'photo-drag-item';
+      item.draggable = true;
+      item.dataset.idx = i;
+      item.innerHTML = `
+        <span class="photo-drag-handle" title="Drag to reorder">☰</span>
+        <img class="photo-drag-thumb" src="${p.url}" alt="Photo ${i+1}" onerror="this.style.opacity='0.3'" />
+        <span class="photo-drag-name">${p.filename || 'New photo'}</span>
+        ${i === 0 ? '<span class="photo-drag-badge">Cover</span>' : ''}
+        <button class="photo-drag-remove" onclick="removePhoto(${i});event.stopPropagation();" title="Remove">✕</button>`;
 
-      if (photos[i]) {
-        slot.innerHTML = `
-          <img src="${photos[i].url}" alt="Clinic photo ${i+1}" />
-          <div class="photo-slot-overlay">
-            <button class="photo-remove" onclick="removePhoto(${i}); event.stopPropagation();">Remove</button>
-          </div>
-        `;
-      } else {
-        slot.innerHTML = `
-          <div class="photo-slot-icon">📷</div>
-          <div class="photo-slot-label">Add photo</div>
-        `;
-        slot.onclick = () => {
-          document.getElementById('photo-upload-input').click();
-        };
-      }
-      grid.appendChild(slot);
+      item.addEventListener('dragstart', e => {
+        photoDragSrc = i;
+        item.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+      });
+      item.addEventListener('dragend', () => {
+        item.classList.remove('dragging');
+        list.querySelectorAll('.photo-drag-item').forEach(el => el.classList.remove('drag-over'));
+      });
+      item.addEventListener('dragover', e => {
+        e.preventDefault(); e.dataTransfer.dropEffect = 'move';
+        list.querySelectorAll('.photo-drag-item').forEach(el => el.classList.remove('drag-over'));
+        item.classList.add('drag-over');
+      });
+      item.addEventListener('drop', e => {
+        e.preventDefault();
+        item.classList.remove('drag-over');
+        const targetIdx = parseInt(item.dataset.idx);
+        if (photoDragSrc === null || photoDragSrc === targetIdx) return;
+        const moved = photos.splice(photoDragSrc, 1)[0];
+        photos.splice(targetIdx, 0, moved);
+        photoDragSrc = null;
+        buildPhotoGrid();
+        showOrderSaveBtn(true);
+      });
+
+      list.appendChild(item);
+    });
+  }
+
+  function showOrderSaveBtn(show) {
+    const btn = document.getElementById('photo-order-save-btn');
+    if (btn) btn.style.display = show ? 'inline-flex' : 'none';
+  }
+
+  async function savePhotoOrder() {
+    const token = sessionStorage.getItem('sd_token');
+    const btn = document.getElementById('photo-order-save-btn');
+    if (btn) { btn.textContent = 'Saving…'; btn.disabled = true; }
+    try {
+      // Only save filenames of already-uploaded photos (skip blob URLs from new uploads)
+      const filenames = photos
+        .filter(p => !p.file && p.filename)
+        .map(p => p.filename);
+      const res = await fetch('/api/save-clinic', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ action: 'save-photo-order', clinicId: currentClinic.id, filenames })
+      });
+      if (!res.ok) throw new Error('Save failed');
+      showToast('Photo order saved ✓', 'success');
+      showOrderSaveBtn(false);
+    } catch(e) {
+      showToast('Failed to save order — try again.', 'error');
+    } finally {
+      if (btn) { btn.textContent = 'Save Order'; btn.disabled = false; }
     }
   }
 
@@ -2007,7 +2141,7 @@
     if (photos.length >= 6) { showToast('Maximum 6 photos allowed.', 'error'); return; }
 
     const url = URL.createObjectURL(file);
-    photos.push({ url, file });
+    photos.push({ url, filename: file.name, file });
     buildPhotoGrid();
     markDirty();
     e.target.value = '';
@@ -2365,9 +2499,13 @@
     btn.disabled = true;
 
     try {
-      // Upload any new photos to Supabase Storage (placeholder — wire to real bucket)
-      const uploadedUrls = await uploadNewPhotos(token);
-      const allPhotoUrls = photos.map((p, i) => uploadedUrls[i] || p.url);
+      // Upload any new photos to Supabase Storage
+      const uploadedResults = await uploadNewPhotos(token);
+      // Sync filenames back into photos[] so order save has correct filenames
+      uploadedResults.forEach((r, i) => {
+        if (photos[i]) { photos[i].url = r.url; photos[i].filename = r.filename; photos[i].file = undefined; }
+      });
+      const allPhotoUrls = uploadedResults.map(r => r.url);
 
       // Upload logo if changed
       const logoUrl = await uploadLogo(token);
@@ -2425,6 +2563,17 @@
       await practitionerSave(currentClinic.id, token);
       practitionerOriginal = practitioners.filter(p => p.name.trim()).map((p, i) => ({ ...p, display_order: i }));
 
+      // Save photo order (only for already-uploaded photos with real filenames)
+      const orderedFilenames = photos.filter(p => !p.file && p.filename).map(p => p.filename);
+      if (orderedFilenames.length > 0) {
+        await fetch('/api/save-clinic', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ action: 'save-photo-order', clinicId: currentClinic.id, filenames: orderedFilenames })
+        });
+        showOrderSaveBtn(false);
+      }
+
       // Update local state
       Object.assign(currentClinic, payload);
       originalData = { ...payload, photos: photos.map(p => ({ url: p.url })), injector_credentials: [...payload.injector_credentials], languages: [...payload.languages] };
@@ -2450,12 +2599,14 @@
   }
 
   async function uploadNewPhotos(token) {
-    // Returns array of URLs in same order as photos[]
-    // New photos have a .file property; existing ones don't
+    // Returns array of { url, filename } in same order as photos[]
+    // New photos have a .file property; existing ones already have a Storage filename
     return Promise.all(photos.map(async (p) => {
-      if (!p.file) return p.url; // already uploaded
-      const filename = `clinic-${currentClinic.id}/${Date.now()}-${p.file.name}`;
-      const res = await fetch(`${SUPABASE_URL}/storage/v1/object/clinic-photos/${filename}`, {
+      if (!p.file) return { url: p.url, filename: p.filename }; // already uploaded
+      const timestamp = Date.now();
+      const storageFilename = `clinic-${currentClinic.id}/${timestamp}-${p.file.name}`;
+      const bareFilename = `${timestamp}-${p.file.name}`;
+      const res = await fetch(`${SUPABASE_URL}/storage/v1/object/clinic-photos/${storageFilename}`, {
         method: 'POST',
         headers: {
           'apikey': SUPABASE_KEY,
@@ -2464,8 +2615,9 @@
         },
         body: p.file
       });
-      if (!res.ok) return p.url; // fallback to blob URL on error
-      return `${SUPABASE_URL}/storage/v1/object/public/clinic-photos/${filename}`;
+      if (!res.ok) return { url: p.url, filename: p.filename }; // fallback
+      const url = `${SUPABASE_URL}/storage/v1/object/public/clinic-photos/${storageFilename}`;
+      return { url, filename: bareFilename };
     }));
   }
 

@@ -2123,14 +2123,20 @@
   .cm-price-lock-text a:hover { border-color: var(--rose); }
 
   /* PHOTOS */
-  .cm-photos-section { padding: 20px 24px; border-bottom: 1px solid var(--border); }
+  .cm-photos-section { padding: 20px 24px 24px; border-bottom: 1px solid var(--border); }
   .cm-section-label {
     font-size: 11px; font-weight: 500;
     text-transform: uppercase; letter-spacing: 0.08em;
     color: var(--muted); margin-bottom: 12px;
   }
-  .cm-photos-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; }
-  .cm-photo-thumb { aspect-ratio: 1; border-radius: 8px; object-fit: cover; width: 100%; background: var(--warm); }
+  .cm-photos-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 6px; }
+  .cm-photos-grid.three-up { grid-template-columns: repeat(3,1fr); }
+  .cm-photo-thumb {
+    aspect-ratio: 1; border-radius: 8px; object-fit: cover; width: 100%;
+    background: var(--warm); cursor: pointer; transition: opacity 0.15s, brightness 0.15s;
+    display: block;
+  }
+  .cm-photo-thumb:hover { opacity: 0.88; }
   .cm-photos-placeholder {
     background: var(--warm); border: 1px dashed var(--border);
     border-radius: 10px; padding: 28px 20px; text-align: center;
@@ -2140,6 +2146,48 @@
   .cm-photos-placeholder p { font-size: 13px; color: var(--muted); }
   .cm-photos-placeholder a { color: var(--rose); text-decoration: none; border-bottom: 1px solid var(--rose-bg); font-size: 13px; transition: border-color 0.15s; }
   .cm-photos-placeholder a:hover { border-color: var(--rose); }
+
+  /* LIGHTBOX */
+  .sd-lightbox {
+    position: fixed; inset: 0; z-index: 9999;
+    background: rgba(0,0,0,0.93);
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+  .sd-lightbox.open { opacity: 1; pointer-events: all; }
+  .sd-lightbox-img {
+    max-width: min(90vw, 1100px); max-height: 85vh;
+    object-fit: contain; border-radius: 4px;
+    user-select: none; -webkit-user-drag: none;
+  }
+  .sd-lightbox-close {
+    position: absolute; top: 20px; right: 24px;
+    width: 36px; height: 36px; border-radius: 50%;
+    background: rgba(255,255,255,0.12);
+    border: none; color: #fff; font-size: 18px; line-height: 1;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+  }
+  .sd-lightbox-close:hover { background: rgba(255,255,255,0.22); }
+  .sd-lightbox-nav {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    width: 44px; height: 44px; border-radius: 50%;
+    background: rgba(255,255,255,0.12);
+    border: none; color: #fff; font-size: 20px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s; user-select: none;
+  }
+  .sd-lightbox-nav:hover { background: rgba(255,255,255,0.22); }
+  .sd-lightbox-nav.prev { left: 20px; }
+  .sd-lightbox-nav.next { right: 20px; }
+  .sd-lightbox-nav:disabled { opacity: 0.2; pointer-events: none; }
+  .sd-lightbox-counter {
+    position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+    font-size: 13px; color: rgba(255,255,255,0.6);
+    font-family: 'DM Sans', sans-serif; letter-spacing: 0.04em;
+    background: rgba(0,0,0,0.35); border-radius: 20px; padding: 4px 12px;
+  }
 
   /* CONTACT */
   .cm-contact-section { padding: 20px 24px; border-bottom: 1px solid var(--border); }
@@ -2184,11 +2232,6 @@
     background: var(--warm); border: 1px solid var(--border);
     border-radius: 4px; padding: 2px 8px;
   }
-
-  /* SERVICES */
-  .cm-services-section { padding: 20px 24px; border-bottom: 1px solid var(--border); }
-  .cm-services-coming { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--dim); }
-  .cm-services-coming svg { width: 14px; height: 14px; stroke: var(--dim); }
 
   /* CLAIM BAND */
   .cm-claim-band {
@@ -5263,15 +5306,6 @@ function maybeShowVisitPrompt() {
         </div>
       </div>
 
-      <!-- Services (M4 placeholder) -->
-      <div class="cm-services-section">
-        <p class="cm-section-label">Services</p>
-        <div class="cm-services-coming">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
-          Full treatment menu coming in a future update.
-        </div>
-      </div>
-
       <!-- Claim band (unclaimed only) -->
       <div class="cm-claim-band" id="cm-claim-band" style="display:none">
         <div>
@@ -5576,39 +5610,46 @@ window.openClinicModal = async function openClinicModal(clinicId) {
   photosGrid.style.display = 'none';
   photosPlaceholder.style.display = 'flex';
 
-  // Fetch photos from Supabase Storage
+  // Photos: use ordered filenames from API (clinic_photos table) if present,
+  // otherwise fall back to Storage listing. Max 4 thumbs in modal; lightbox shows all.
   const clinicIdStr = String(clinic.id);
-  fetch(`${SB_URL}/storage/v1/object/list/clinic-photos`, {
-    method: 'POST',
-    headers: {
-      'apikey': SB_KEY,
-      'Authorization': `Bearer ${SB_KEY}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ prefix: 'clinic-' + clinicIdStr + '/', limit: 20 })
-  }).then(r => r.ok ? r.json() : []).then(files => {
-    if (!files || !files.length) return;
-    const urls = files
-      .filter(f => f.name && !f.name.endsWith('/'))
-      .map(f => `${SB_URL}/storage/v1/object/public/clinic-photos/clinic-${clinicIdStr}/${f.name}`);
-    // Filter out logo: logo is always named "logo.ext" and lives in clinic-logos bucket.
-    // Photos in clinic-photos may have the same filename — exclude by name match.
-    const logoFilename = clinic.logo_url
-      ? clinic.logo_url.split('/').pop().split('?')[0].toLowerCase()
-      : null;
-    const filteredUrls = urls.filter(url => {
-      if (!logoFilename) return true;
-      const fname = url.split('/').pop().split('?')[0].toLowerCase();
-      return fname !== logoFilename;
+
+  function renderModalPhotos(allUrls) {
+    if (!allUrls.length) return;
+    const thumbUrls = allUrls.slice(0, 4);
+    const gridClass = thumbUrls.length <= 2 ? 'cm-photos-grid' : 'cm-photos-grid three-up';
+    photosGrid.className = gridClass;
+    photosGrid.innerHTML = thumbUrls.map((url, i) =>
+      `<img src="${url}" class="cm-photo-thumb" alt="" loading="lazy" data-lightbox-index="${i}" onerror="this.remove()">`
+    ).join('');
+    photosGrid.style.display = 'grid';
+    photosPlaceholder.style.display = 'none';
+    // Wire lightbox
+    photosGrid.querySelectorAll('.cm-photo-thumb').forEach(img => {
+      img.addEventListener('click', () => openLightbox(allUrls, parseInt(img.dataset.lightboxIndex)));
     });
-    if (filteredUrls.length) {
-      photosGrid.innerHTML = filteredUrls.map(url =>
-        `<img src="${url}" class="cm-photo-thumb" alt="" loading="lazy" onerror="this.style.display='none'">`
-      ).join('');
-      photosGrid.style.display = 'grid';
-      photosPlaceholder.style.display = 'none';
-    }
-  }).catch(() => {});
+  }
+
+  if (clinic.photo_filenames && clinic.photo_filenames.length > 0) {
+    // Ordered filenames from clinic_photos table
+    const orderedUrls = clinic.photo_filenames.map(
+      fn => `${SB_URL}/storage/v1/object/public/clinic-photos/clinic-${clinicIdStr}/${fn}`
+    );
+    renderModalPhotos(orderedUrls);
+  } else {
+    // Fallback: Storage listing (unordered)
+    fetch(`${SB_URL}/storage/v1/object/list/clinic-photos`, {
+      method: 'POST',
+      headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prefix: 'clinic-' + clinicIdStr + '/', limit: 20 })
+    }).then(r => r.ok ? r.json() : []).then(files => {
+      if (!files || !files.length) return;
+      const urls = files
+        .filter(f => f.name && !f.name.endsWith('/'))
+        .map(f => `${SB_URL}/storage/v1/object/public/clinic-photos/clinic-${clinicIdStr}/${encodeURIComponent(f.name)}`);
+      renderModalPhotos(urls);
+    }).catch(() => {});
+  }
   document.getElementById('cm-photos-link-unclaimed').style.display = isClaimed ? 'none' : 'inline';
   document.getElementById('cm-photos-link-claimed').style.display   = isClaimed ? 'inline' : 'none';
 
@@ -6515,6 +6556,72 @@ function openMapClinicModal(id) { openMapModal(String(id)); }
   </div>
 </div>
 
+<!-- LIGHTBOX JS (shared — called from modal and clinic.html) -->
+<script>
+(function() {
+  let _lbUrls = [], _lbIdx = 0, _lbTouch = null;
+
+  function openLightbox(urls, idx) {
+    _lbUrls = urls;
+    _lbIdx  = idx || 0;
+    renderLightbox();
+    document.getElementById('sdLightbox').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeLightbox() {
+    document.getElementById('sdLightbox').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  function renderLightbox() {
+    document.getElementById('sdLightboxImg').src = _lbUrls[_lbIdx];
+    document.getElementById('sdLightboxCounter').textContent = `${_lbIdx + 1} / ${_lbUrls.length}`;
+    document.getElementById('sdLightboxPrev').disabled = _lbIdx === 0;
+    document.getElementById('sdLightboxNext').disabled = _lbIdx === _lbUrls.length - 1;
+  }
+
+  function lbPrev() { if (_lbIdx > 0) { _lbIdx--; renderLightbox(); } }
+  function lbNext() { if (_lbIdx < _lbUrls.length - 1) { _lbIdx++; renderLightbox(); } }
+
+  // Expose globally so modal + clinic.html photo renders can call it
+  window.openLightbox = openLightbox;
+
+  document.addEventListener('DOMContentLoaded', function() {
+    const lb    = document.getElementById('sdLightbox');
+    if (!lb) return;
+    document.getElementById('sdLightboxClose').addEventListener('click', closeLightbox);
+    document.getElementById('sdLightboxPrev').addEventListener('click', lbPrev);
+    document.getElementById('sdLightboxNext').addEventListener('click', lbNext);
+
+    // Close on overlay click (not on img/buttons)
+    lb.addEventListener('click', function(e) {
+      if (e.target === lb) closeLightbox();
+    });
+
+    // Keyboard
+    document.addEventListener('keydown', function(e) {
+      if (!lb.classList.contains('open')) return;
+      if (e.key === 'Escape')     closeLightbox();
+      if (e.key === 'ArrowLeft')  lbPrev();
+      if (e.key === 'ArrowRight') lbNext();
+    });
+
+    // Touch swipe
+    lb.addEventListener('touchstart', function(e) {
+      _lbTouch = e.touches[0].clientX;
+    }, { passive: true });
+    lb.addEventListener('touchend', function(e) {
+      if (_lbTouch === null) return;
+      const dx = e.changedTouches[0].clientX - _lbTouch;
+      _lbTouch = null;
+      if (Math.abs(dx) < 40) return;
+      dx < 0 ? lbNext() : lbPrev();
+    }, { passive: true });
+  });
+})();
+</script>
+
 <script>
 (async function fetchClinicCount() {
   try {
@@ -6549,6 +6656,14 @@ function openMapClinicModal(id) { openMapModal(String(id)); }
   }
 })();
 </script>
+<!-- LIGHTBOX -->
+<div class="sd-lightbox" id="sdLightbox" role="dialog" aria-modal="true" aria-label="Photo viewer">
+  <button class="sd-lightbox-close" id="sdLightboxClose" aria-label="Close">✕</button>
+  <button class="sd-lightbox-nav prev" id="sdLightboxPrev" aria-label="Previous photo">‹</button>
+  <img class="sd-lightbox-img" id="sdLightboxImg" src="" alt="" draggable="false" />
+  <button class="sd-lightbox-nav next" id="sdLightboxNext" aria-label="Next photo">›</button>
+  <div class="sd-lightbox-counter" id="sdLightboxCounter"></div>
+</div>
 
 </body>
 </html>
