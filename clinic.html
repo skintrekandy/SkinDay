@@ -1093,13 +1093,14 @@ function renderClinic(clinic) {
     <!-- PROMO (above pricing, only when promo text exists) -->
     ${promoHTML}
 
-    <!-- PRICING -->
+    <!-- PRICING — only render if there's something to show -->
+    ${hasPrices || isClaimed ? `
     <div class="card animate animate-delay-2">
       <div class="card-section">
-        <div class="section-label">Botox</div>
+        <div class="section-label">Neurotoxin Pricing</div>
         ${priceHTML}
       </div>
-    </div>
+    </div>` : ''}
 
     <!-- PHOTOS -->
     <div class="card animate animate-delay-2">
@@ -1236,9 +1237,23 @@ function fetchAndRenderPhotos(clinic) {
   function renderPhotos(allUrls) {
     if (!allUrls.length) return;
 
-    // Tier A: set hero image src (hero element already in DOM from renderClinic)
+    // Tier A: set hero image src, check landscape ratio after load
     const heroImg = document.getElementById('hero-main-img');
-    if (heroImg) heroImg.src = allUrls[0];
+    if (heroImg) {
+      heroImg.onload = function() {
+        const ratio = this.naturalWidth / this.naturalHeight;
+        if (ratio < 1.3) {
+          // Portrait or square — not hero-safe, collapse to Tier B appearance
+          const heroPhoto = document.getElementById('profile-hero-photo');
+          if (heroPhoto) {
+            heroPhoto.style.height = '0';
+            heroPhoto.style.margin = '0';
+            heroPhoto.style.overflow = 'hidden';
+          }
+        }
+      };
+      heroImg.src = allUrls[0];
+    }
 
     // Gallery: show max 3, rest via lightbox. "View all" if more exist.
     const galleryUrls = allUrls.slice(0, 3);
