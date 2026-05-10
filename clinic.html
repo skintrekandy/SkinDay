@@ -1200,6 +1200,12 @@ async function initFromDB() {
       if (!Array.isArray(clinic[field])) clinic[field] = [];
     });
 
+    // Normalise photo_filenames
+    if (typeof clinic.photo_filenames === 'string') {
+      try { clinic.photo_filenames = JSON.parse(clinic.photo_filenames); } catch { clinic.photo_filenames = []; }
+    }
+    if (!Array.isArray(clinic.photo_filenames)) clinic.photo_filenames = [];
+
     renderClinic(clinic);
 
     // ── PHOTOS: fetch and render after DOM is ready ──
@@ -1218,6 +1224,7 @@ async function initFromDB() {
         if (Array.isArray(practitioners) && practitioners.length > 0) {
           clinic.practitioners = practitioners;
           renderClinic(clinic);
+          fetchAndRenderPhotos(clinic);
         }
       }
     } catch(e) { /* non-fatal */ }
