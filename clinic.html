@@ -737,65 +737,6 @@ function renderClinic(clinic) {
   // Load visit signal asynchronously
   loadVisitSignal(String(clinic.id));
 
-  // ── PHOTOS: hero + gallery + lightbox ──
-  const _clinicIdStr = String(clinic.id);
-
-  function buildPhotoUrls(files) {
-    return files
-      .filter(f => f.name && !f.name.endsWith('/'))
-      .map(f => `${_SB_URL}/storage/v1/object/public/clinic-photos/clinic-${_clinicIdStr}/${encodeURIComponent(f.name)}`);
-  }
-
-  function renderPhotos(allUrls) {
-    if (!allUrls.length) return;
-
-    // Hero: first photo above profile card
-    const heroEl = document.createElement('div');
-    heroEl.className = 'photo-hero animate animate-delay-1';
-    heroEl.innerHTML = `
-      <img src="${allUrls[0]}" alt="${clinic.name}" loading="eager" onerror="this.parentElement.style.display='none'" />
-      <div class="photo-hero-name">${clinic.name}</div>`;
-    const pageWrap = document.getElementById('pageWrap');
-    const firstChild = pageWrap ? pageWrap.firstElementChild : null;
-    if (pageWrap && firstChild) pageWrap.insertBefore(heroEl, firstChild);
-
-    // Gallery card: up to 6 photos with lightbox
-    const galleryUrls = allUrls.slice(0, 6);
-    const photosSection = document.querySelector('.card-section .section-label');
-    let photoCard = null;
-    document.querySelectorAll('.card-section').forEach(sec => {
-      if (sec.querySelector('.section-label')?.textContent === 'Photos') photoCard = sec;
-    });
-    if (photoCard) {
-      photoCard.innerHTML = `
-        <div class="section-label">Photos</div>
-        <div class="photos-grid">
-          ${galleryUrls.map((url, i) => `
-            <div class="photos-grid-item">
-              <img src="${url}" alt="${clinic.name}" loading="lazy" onerror="this.parentElement.remove()"
-                style="cursor:pointer" onclick="openLightbox(${JSON.stringify(allUrls)}, ${i})" />
-            </div>`).join('')}
-        </div>`;
-    }
-  }
-
-  // Use ordered filenames from API if present, else fall back to Storage listing
-  if (clinic.photo_filenames && clinic.photo_filenames.length > 0) {
-    const orderedUrls = clinic.photo_filenames.map(
-      fn => `${_SB_URL}/storage/v1/object/public/clinic-photos/clinic-${_clinicIdStr}/${encodeURIComponent(fn)}`
-    );
-    renderPhotos(orderedUrls);
-  } else {
-    fetch(`${_SB_URL}/storage/v1/object/list/clinic-photos`, {
-      method: 'POST',
-      headers: { 'apikey': _SB_KEY, 'Authorization': `Bearer ${_SB_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prefix: 'clinic-' + _clinicIdStr + '/', limit: 20 })
-    }).then(r => r.ok ? r.json() : []).then(files => {
-      if (!files || !files.length) return;
-      renderPhotos(buildPhotoUrls(files));
-    }).catch(() => {});
-  }
-
   // ── SEO: title, meta, OG, Twitter, canonical, JSON-LD ──
   const slug = clinic.slug || toSlug(clinic.name);
   const pageUrl = `https://skinday.ca/clinic/${slug}`;
@@ -853,17 +794,8 @@ function renderClinic(clinic) {
   script.textContent = JSON.stringify(jsonLd);
   document.head.appendChild(script);
 
-  // Photos HTML
-  let photosHTML = '';
-  if (clinic.photos && clinic.photos.length > 0) {
-    photosHTML = `<div class="photos-grid">
-      ${clinic.photos.map(url => `
-        <div class="photos-grid-item">
-          <img src="${url}" alt="${clinic.name}" loading="lazy" />
-        </div>`).join('')}
-    </div>`;
-  } else {
-    photosHTML = `<div class="photos-placeholder">
+  // Photos HTML — placeholder replaced after DOM is ready by fetchAndRenderPhotos()
+  const photosPlaceholderHTML = `<div class="photos-placeholder" id="photos-placeholder-inner">
       <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
         <rect x="3" y="3" width="18" height="18" rx="2"/>
         <path d="M3 9l4-4 4 4 4-5 4 5"/>
@@ -874,7 +806,7 @@ function renderClinic(clinic) {
         ? `<a href="/editor.html">Add photos in your dashboard →</a>`
         : `<a href="${claimHref}">Own this clinic? Add photos →</a>`}
     </div>`;
-  }
+  const photosHTML = photosPlaceholderHTML;
 
   // Price HTML — show prices if we have them regardless of claimed status
   let priceHTML = '';
@@ -1174,6 +1106,67 @@ function init() {
 // Best approach: extract clinics array to a shared clinics-data.js file.
 // For this standalone page, we fetch all from DB and match by slug.
 
+function fetchAndRenderPhotos(clinic) {
+  const _clinicIdStr = String(clinic.id);
+
+  function buildPhotoUrls(files) {
+    return files
+      .filter(f => f.name && !f.name.endsWith('/'))
+      .map(f => `${_SB_URL}/storage/v1/object/public/clinic-photos/clinic-${_clinicIdStr}/${encodeURIComponent(f.name)}`);
+  }
+
+  function renderPhotos(allUrls) {
+    if (!allUrls.length) return;
+
+    // Hero: insert before first child of pageWrap
+    const existing = document.querySelector('.photo-hero');
+    if (!existing) {
+      const heroEl = document.createElement('div');
+      heroEl.className = 'photo-hero animate animate-delay-1';
+      heroEl.innerHTML = `
+        <img src="${allUrls[0]}" alt="${clinic.name}" loading="eager" onerror="this.parentElement.style.display='none'" />
+        <div class="photo-hero-name">${clinic.name}</div>`;
+      const pageWrap = document.getElementById('pageWrap');
+      const firstChild = pageWrap ? pageWrap.firstElementChild : null;
+      if (pageWrap && firstChild) pageWrap.insertBefore(heroEl, firstChild);
+    }
+
+    // Gallery: replace the photos card-section
+    const galleryUrls = allUrls.slice(0, 6);
+    let photoCard = null;
+    document.querySelectorAll('.card-section').forEach(sec => {
+      if (sec.querySelector('.section-label')?.textContent === 'Photos') photoCard = sec;
+    });
+    if (photoCard) {
+      photoCard.innerHTML = `
+        <div class="section-label">Photos</div>
+        <div class="photos-grid">
+          ${galleryUrls.map((url, i) => `
+            <div class="photos-grid-item">
+              <img src="${url}" alt="${clinic.name}" loading="lazy" onerror="this.parentElement.remove()"
+                style="cursor:pointer" onclick="openLightbox(${JSON.stringify(allUrls)}, ${i})" />
+            </div>`).join('')}
+        </div>`;
+    }
+  }
+
+  if (clinic.photo_filenames && clinic.photo_filenames.length > 0) {
+    const orderedUrls = clinic.photo_filenames.map(
+      fn => `${_SB_URL}/storage/v1/object/public/clinic-photos/clinic-${_clinicIdStr}/${encodeURIComponent(fn)}`
+    );
+    renderPhotos(orderedUrls);
+  } else {
+    fetch(`${_SB_URL}/storage/v1/object/list/clinic-photos`, {
+      method: 'POST',
+      headers: { 'apikey': _SB_KEY, 'Authorization': `Bearer ${_SB_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prefix: 'clinic-' + _clinicIdStr + '/', limit: 20 })
+    }).then(r => r.ok ? r.json() : []).then(files => {
+      if (!files || !files.length) return;
+      renderPhotos(buildPhotoUrls(files));
+    }).catch(() => {});
+  }
+}
+
 async function initFromDB() {
   const pathParts = window.location.pathname.split('/');
   const slug = decodeURIComponent(pathParts[pathParts.length - 1] || pathParts[pathParts.length - 2] || '');
@@ -1208,6 +1201,9 @@ async function initFromDB() {
     });
 
     renderClinic(clinic);
+
+    // ── PHOTOS: fetch and render after DOM is ready ──
+    fetchAndRenderPhotos(clinic);
 
     // Fetch practitioners for this clinic
     try {
