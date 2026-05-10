@@ -942,7 +942,7 @@ function renderClinic(clinic) {
       : null;
     priceHTML = `<div class="price-display"><span class="price-amount">From $${parseFloat(clinic.price).toFixed(2)}</span><span class="price-unit">/ unit</span></div><div class="price-sub">Botulinum toxin · per unit${srcLabel ? ` · <span style="font-size:0.82em;color:var(--muted)">${srcLabel}</span>` : ''}</div>`;
   } else {
-    priceHTML = `<p style="font-size:0.88rem;color:var(--muted);font-style:italic;">Not yet published</p>`;
+    priceHTML = '';
   }
 
   // Promo HTML — standalone card, only rendered when promo text is present
@@ -1093,8 +1093,8 @@ function renderClinic(clinic) {
     <!-- PROMO (above pricing, only when promo text exists) -->
     ${promoHTML}
 
-    <!-- PRICING — only render if there's something to show -->
-    ${hasPrices || isClaimed ? `
+    <!-- PRICING — only render if prices exist -->
+    ${hasPrices ? `
     <div class="card animate animate-delay-2">
       <div class="card-section">
         <div class="section-label">Neurotoxin Pricing</div>
