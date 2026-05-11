@@ -36,13 +36,6 @@
   to     = "/clinic.html"
   status = 200
 
-# Protect admin page with Netlify password (optional — belt-and-suspenders on top of ADMIN_SECRET)
-# Uncomment and set in Netlify dashboard → Site settings → Access control if desired
-# [[headers]]
-#   for = "/skinday-admin.html"
-#   [headers.values]
-#     X-Robots-Tag = "noindex"
-
 [[redirects]]
   from   = "/api/track-click"
   to     = "/.netlify/functions/track-click"
@@ -86,4 +79,13 @@
 [[redirects]]
   from   = "/api/update-visit"
   to     = "/.netlify/functions/update-visit"
+  status = 200
+
+# ── DYNAMIC SITEMAP ──────────────────────────────────────────────
+# Serves live clinic slugs from Supabase instead of the stale static file.
+# The static sitemap.xml file can be deleted or kept as a fallback —
+# this redirect takes priority.
+[[redirects]]
+  from   = "/sitemap.xml"
+  to     = "/.netlify/functions/sitemap"
   status = 200
