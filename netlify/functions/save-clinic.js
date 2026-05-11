@@ -449,7 +449,7 @@ exports.handler = async (event) => {
 
     // ── SAVE PHOTO ORDER ──
     if (action === 'save-photo-order') {
-      const { clinicId, filenames } = body;
+      const { clinicId, filenames, heroFilename } = body;
       if (!clinicId) return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing clinicId' }) };
       if (!Array.isArray(filenames)) return { statusCode: 400, headers, body: JSON.stringify({ error: 'filenames must be an array' }) };
 
@@ -472,7 +472,13 @@ exports.handler = async (event) => {
       if (delErr) return { statusCode: 500, headers, body: JSON.stringify({ error: delErr.message }) };
 
       if (filenames.length > 0) {
-        const rows = filenames.map((filename, i) => ({ clinic_id: String(clinicId), filename, display_order: i }));
+        const rows = filenames.map((filename, i) => ({
+          clinic_id:     String(clinicId),
+          filename,
+          display_order: i,
+          // heroFilename null = no hero designated → all false (graceful fallback to allUrls[0] on clinic.html)
+          is_hero:       heroFilename ? filename === heroFilename : false
+        }));
         const { error: insErr } = await supabase.from('clinic_photos').insert(rows);
         if (insErr) return { statusCode: 500, headers, body: JSON.stringify({ error: insErr.message }) };
       }

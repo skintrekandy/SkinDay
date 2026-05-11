@@ -140,7 +140,7 @@ exports.handler = async (event) => {
       const [expertiseRes, concernsRes, photosRes, pricesRes] = await Promise.all([
         supabase.from('clinic_expertise').select('value, is_other, other_text').eq('clinic_id', clinicId),
         supabase.from('clinic_concerns').select('value, is_other, other_text').eq('clinic_id', clinicId),
-        supabase.from('clinic_photos').select('filename, display_order').eq('clinic_id', clinicId).order('display_order', { ascending: true }),
+        supabase.from('clinic_photos').select('filename, display_order, is_hero').eq('clinic_id', clinicId).order('display_order', { ascending: true }),
         supabase.from('clinic_prices').select('toxin, price, injector_type, price_source, price_date').eq('clinic_id', clinicId).order('price', { ascending: true }),
       ]);
       data.identity = {
@@ -159,6 +159,9 @@ exports.handler = async (event) => {
       }
       // photo_filenames: ordered list from DB, empty = client falls back to Storage listing
       data.photo_filenames = (photosRes.data || []).map(r => r.filename);
+      // hero_filename: explicitly designated cover photo, null = fallback to first photo
+      const heroRow = (photosRes.data || []).find(r => r.is_hero === true);
+      data.hero_filename = heroRow ? heroRow.filename : null;
 
       return {
         statusCode: 200,
