@@ -1113,7 +1113,7 @@ function renderClinic(clinic) {
     </div>
 
     <!-- PRACTITIONERS -->
-    ${practitionersHTML}
+    <div id="practitioners-section">${practitionersHTML}</div>
 
     <!-- IDENTITY -->
     ${identityCardHTML}
@@ -1318,7 +1318,10 @@ async function initFromDB() {
     // ── PHOTOS: fetch and render after DOM is ready ──
     fetchAndRenderPhotos(clinic);
 
-    // Fetch practitioners for this clinic
+    // ── PRACTITIONERS: fetch and patch in place — no full re-render ──
+    // Patching practitioners-section directly eliminates the race condition
+    // where a second renderClinic() call wipes the photo DOM before
+    // fetchAndRenderPhotos() has finished populating it.
     try {
       const SUPABASE_URL = 'https://vefldlqtyxdywbzdjuia.supabase.co';
       const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlZmxkbHF0eXhkeXdiemRqdWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNDAwMjgsImV4cCI6MjA4NzkxNjAyOH0.o582sXiUkB3j4FiHEA5rE3ABy_pdTeeK1PnNpNirHZA';
@@ -1330,8 +1333,29 @@ async function initFromDB() {
         const practitioners = await pRes.json();
         if (Array.isArray(practitioners) && practitioners.length > 0) {
           clinic.practitioners = practitioners;
-          renderClinic(clinic);
-          fetchAndRenderPhotos(clinic);
+
+          // Patch only the practitioners subsection — photos and visit signal untouched
+          const section = document.getElementById('practitioners-section');
+          if (section) {
+            const initials = name => name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+            const items = practitioners.map((p, i) => `
+              <div class="practitioner-item">
+                <div class="practitioner-avatar">${initials(p.name || '?')}</div>
+                <div class="practitioner-info">
+                  <div class="practitioner-name">
+                    ${p.name}${i === 0 ? '<span class="practitioner-primary">Lead</span>' : ''}
+                  </div>
+                  ${p.designation ? `<div class="practitioner-desig">${p.designation}</div>` : ''}
+                </div>
+              </div>`).join('');
+            section.innerHTML = `
+              <div class="card animate animate-delay-2">
+                <div class="card-section">
+                  <div class="section-label">Lead Practitioners</div>
+                  <div class="practitioner-list">${items}</div>
+                </div>
+              </div>`;
+          }
         }
       }
     } catch(e) { /* non-fatal */ }
