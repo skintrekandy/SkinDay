@@ -3204,6 +3204,7 @@
       showToast(toastMsg, 'success');
 
     } catch (e) {
+      console.error('Save error:', e);
       showToast('Error saving — please try again.', 'error');
     } finally {
       btn.textContent = 'Save & Publish';
