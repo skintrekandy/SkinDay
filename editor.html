@@ -2322,22 +2322,22 @@
   // Originals captured at load time, used by the discard-changes flow.
   let identityOriginal = { expertise: [], concerns: [] };
 
+  let taxonomyPromise = null;
+
   async function identityLoadTaxonomy() {
-    if (identityTaxonomy.expertise.length > 0) return; // already loaded
-    try {
-      const [expRes, conRes] = await Promise.all([
-        fetch('/data/taxonomy/expertise.json'),
-        fetch('/data/taxonomy/concerns.json')
-      ]);
-      const expJson = await expRes.json();
-      const conJson = await conRes.json();
-      identityTaxonomy.expertise = expJson.items || [];
-      identityTaxonomy.concerns  = conJson.items || [];
-    } catch (e) {
+    if (taxonomyPromise) return taxonomyPromise;
+    taxonomyPromise = Promise.all([
+      fetch('/data/taxonomy/expertise.json').then(r => r.json()),
+      fetch('/data/taxonomy/concerns.json').then(r => r.json())
+    ]).then(([expJson, conJson]) => {
+      // Files are plain arrays, not { items: [] }
+      identityTaxonomy.expertise = Array.isArray(expJson) ? expJson : (expJson.items || []);
+      identityTaxonomy.concerns  = Array.isArray(conJson) ? conJson : (conJson.items || []);
+    }).catch(e => {
       console.error('Failed to load taxonomy', e);
-      identityTaxonomy.expertise = [];
-      identityTaxonomy.concerns  = [];
-    }
+      taxonomyPromise = null; // allow retry on next tab visit
+    });
+    return taxonomyPromise;
   }
 
   // Look up a display label for a given slug in a category
@@ -2377,11 +2377,11 @@
       counterEl.classList.remove('full');
     }
 
-    // Dropdown — rebuild options, excluding already-selected slugs (except 'other', which can be picked again only if not yet present)
+    // Dropdown — rebuild options, excluding already-selected slugs
     const selectedSlugs = new Set(state.map(e => e.value));
     const placeholder = category === 'expertise'
-      ? (num >= 3 ? 'Top 3 selected — remove one to add another' : 'Add an area of expertise…')
-      : (num >= 3 ? 'Top 3 selected — remove one to add another' : 'Add a patient concern…');
+      ? (num >= 3 ? 'Top 3 selected — remove one to change' : 'Add an area of expertise…')
+      : (num >= 3 ? 'Top 3 selected — remove one to change' : 'Add a patient concern…');
 
     selectEl.innerHTML = '';
     const placeholderOpt = document.createElement('option');
@@ -2389,8 +2389,9 @@
     placeholderOpt.textContent = placeholder;
     selectEl.appendChild(placeholderOpt);
 
+    // Always populate all options (minus already selected) so dropdown never appears empty
     (identityTaxonomy[category] || []).forEach(item => {
-      if (selectedSlugs.has(item.slug)) return; // hide already-picked
+      if (selectedSlugs.has(item.slug)) return;
       const opt = document.createElement('option');
       opt.value = item.slug;
       opt.textContent = item.display;
