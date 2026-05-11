@@ -1867,6 +1867,10 @@
 
     <!-- ─── TAB: PHOTOS ─── -->
     <div class="tab-pane" id="tab-photos">
+      <!-- Location context banner — only shown for chain accounts -->
+      <div id="photos-location-banner" style="display:none;background:rgba(201,169,110,0.10);border:1px solid var(--gold);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--bark);">
+        📍 Editing photos for: <strong id="photos-location-name"></strong>
+      </div>
       <!-- LOGO CARD -->
       <div class="card" style="margin-bottom:16px;">
         <div class="card-title">Clinic Logo</div>
@@ -2196,8 +2200,25 @@
     // Rebuild dropdown to reflect active location
     if (allClinicIds.length > 1) buildLocationSwitcher();
 
+    // Show location context banner in Photos tab for chain accounts
+    const photosBanner = document.getElementById('photos-location-banner');
+    const photosLocationName = document.getElementById('photos-location-name');
+    if (photosBanner && photosLocationName) {
+      if (allClinicIds.length > 1) {
+        photosLocationName.textContent = hood ? `${name} — ${hood}` : name;
+        photosBanner.style.display = 'block';
+      } else {
+        photosBanner.style.display = 'none';
+      }
+    }
+
+    // Hard reset photo state on location switch — prevents stale photos
+    // from a previous location persisting visually or in memory
     photos = [];
-    populateFields();
+    buildPhotoGrid(); // render empty grid immediately
+    const photoAddBtn = document.querySelector('.photo-add-btn');
+    if (photoAddBtn) photoAddBtn.disabled = true; // disable until new location loads
+    populateFields(); // this re-enables upload after async photo load completes
     buildHoursTable();
     buildPhotoGrid();
     practitionerLoad(currentClinic.id);
@@ -2235,6 +2256,10 @@
     renderLogoPreview();
 
     // Async fetch photo list from Storage
+    // Freeze clinic context at load time — protects against location switch mid-upload
+    const frozenClinicId = String(c.id);
+    const frozenClinicName = c.name || '';
+    const frozenClinicHood = c.neighbourhood || '';
     (async function loadPhotos() {
       try {
         const res = await fetch(`${SUPABASE_URL}/storage/v1/object/list/clinic-photos`, {
@@ -2244,13 +2269,13 @@
             'Authorization': `Bearer ${sessionStorage.getItem('sd_token')}`,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ prefix: `clinic-${c.id}/`, limit: 20 })
+          body: JSON.stringify({ prefix: `clinic-${frozenClinicId}/`, limit: 20 })
         });
         const files = res.ok ? await res.json() : [];
         if (!Array.isArray(files)) return;
         // Fetch order from clinic_photos table to sort correctly
         const orderRes = await fetch(
-          `${SUPABASE_URL}/rest/v1/clinic_photos?clinic_id=eq.${encodeURIComponent(String(c.id))}&select=filename,display_order,is_hero&order=display_order.asc`,
+          `${SUPABASE_URL}/rest/v1/clinic_photos?clinic_id=eq.${encodeURIComponent(frozenClinicId)}&select=filename,display_order,is_hero&order=display_order.asc`,
           { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${sessionStorage.getItem('sd_token')}` } }
         );
         const orderRows = orderRes.ok ? await orderRes.json() : [];
@@ -2265,12 +2290,19 @@
           .filter(f => f.name && !f.name.endsWith('/'))
           .map(f => ({
             filename: f.name,
-            url: `${SUPABASE_URL}/storage/v1/object/public/clinic-photos/clinic-${c.id}/${encodeURIComponent(f.name)}`,
+            url: `${SUPABASE_URL}/storage/v1/object/public/clinic-photos/clinic-${frozenClinicId}/${encodeURIComponent(f.name)}`,
             order: orderMap[f.name] !== undefined ? orderMap[f.name] : 999
           }))
           .sort((a, b) => a.order - b.order);
 
+        // Abort render if clinic switched while photos were loading
+        if (String(currentClinic.id) !== frozenClinicId) return;
+
         photos = storageFiles.map(f => ({ url: f.url, filename: f.filename, is_hero: heroMap[f.filename] || false }));
+        buildPhotoGrid();
+        // Re-enable upload button now that correct location photos are loaded
+        const photoAddBtn = document.querySelector('.photo-add-btn');
+        if (photoAddBtn) photoAddBtn.disabled = false;
         buildPhotoGrid();
         showOrderSaveBtn(false);
       } catch(e) {
@@ -2449,10 +2481,11 @@
 
   async function savePhotoOrder() {
     const token = sessionStorage.getItem('sd_token');
+    // Freeze clinic ID at save time — protects against location switch mid-operation
+    const saveClinicId = String(currentClinic.id);
     const btn = document.getElementById('photo-order-save-btn');
     if (btn) { btn.textContent = 'Saving…'; btn.disabled = true; }
     try {
-      // Only save filenames of already-uploaded photos (skip blob URLs from new uploads)
       const filenames = photos
         .filter(p => !p.file && p.filename)
         .map(p => p.filename);
@@ -2461,7 +2494,7 @@
       const res = await fetch('/api/save-clinic', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ action: 'save-photo-order', clinicId: currentClinic.id, filenames, heroFilename })
+        body: JSON.stringify({ action: 'save-photo-order', clinicId: saveClinicId, filenames, heroFilename })
       });
       if (!res.ok) throw new Error('Save failed');
       showToast('Photo order saved ✓', 'success');
@@ -2517,8 +2550,10 @@
 
   async function uploadLogo(token) {
     if (!logoState.file) return logoState.removed ? null : logoState.url;
+    // Freeze clinic ID at upload time
+    const logoClinicId = String(currentClinic.id);
     const ext = logoState.file.name.split('.').pop();
-    const filename = `clinic-${currentClinic.id}/logo.${ext}`;
+    const filename = `clinic-${logoClinicId}/logo.${ext}`;
     const res = await fetch(`${SUPABASE_URL}/storage/v1/object/clinic-logos/${filename}`, {
       method: 'POST',
       headers: {
@@ -3143,10 +3178,11 @@
       if (orderedFilenames.length > 0) {
         const heroPhoto = photos.find(p => p.is_hero && !p.file && p.filename);
         const heroFilename = heroPhoto ? heroPhoto.filename : null;
+        // Use saveId (already frozen above) — never currentClinic.id directly
         await fetch('/api/save-clinic', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ action: 'save-photo-order', clinicId: currentClinic.id, filenames: orderedFilenames, heroFilename })
+          body: JSON.stringify({ action: 'save-photo-order', clinicId: saveId, filenames: orderedFilenames, heroFilename })
         });
         showOrderSaveBtn(false);
       }
@@ -3176,13 +3212,20 @@
   }
 
   async function uploadNewPhotos(token) {
-    // Returns array of { url, filename } in same order as photos[]
-    // New photos have a .file property; existing ones already have a Storage filename
+    // Freeze clinic ID at the start of the upload batch.
+    // If the user switches location mid-upload, we abort rather than
+    // write photos to the wrong clinic.
+    const uploadClinicId = String(currentClinic.id);
     return Promise.all(photos.map(async (p) => {
       if (!p.file) return { url: p.url, filename: p.filename }; // already uploaded
+      // Write protection: abort if clinic switched during upload
+      if (String(currentClinic.id) !== uploadClinicId) {
+        console.warn('Location switched mid-upload — aborting write for', p.file.name);
+        return { url: p.url, filename: p.filename };
+      }
       const timestamp = Date.now();
       const safeName = p.file.name.toLowerCase().replace(/\s+/g, '-').replace(/[()]/g, '');
-      const storageFilename = `clinic-${currentClinic.id}/${timestamp}-${safeName}`;
+      const storageFilename = `clinic-${uploadClinicId}/${timestamp}-${safeName}`;
       const bareFilename = `${timestamp}-${safeName}`;
       const res = await fetch(`${SUPABASE_URL}/storage/v1/object/clinic-photos/${storageFilename}`, {
         method: 'POST',
