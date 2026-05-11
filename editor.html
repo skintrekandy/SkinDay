@@ -3603,13 +3603,10 @@
         body: JSON.stringify({ action: 'delete-price', clinicId, toxin, injectorType })
       });
       if (!res.ok) throw new Error('Delete failed');
-      // Remove from display and reload prices
       const row = document.getElementById(`existing-price-row-${rowIdx}`);
       if (row) row.remove();
-      // Remove corresponding add/update row
       const priceRows = document.querySelectorAll('#portal-price-rows > div');
       if (priceRows[rowIdx]) priceRows[rowIdx].remove();
-      // If no rows left, hide the existing section
       const existingList = document.getElementById('portal-existing-list');
       if (existingList && !existingList.children.length) {
         document.getElementById('portal-existing-prices').style.display = 'none';
@@ -3622,7 +3619,7 @@
     }
   }
 
-
+  function portalLoadPrices(clinic) {
     document.getElementById('portal-price-rows').innerHTML = '';
     portalRowCount = 0;
     const existingEl = document.getElementById('portal-existing-prices');
