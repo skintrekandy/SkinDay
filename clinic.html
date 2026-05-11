@@ -1207,13 +1207,19 @@ function fetchAndRenderPhotos(clinic) {
   function renderPhotos(allUrls) {
     if (!allUrls.length) return;
 
-    // Tier A: set hero image src, check landscape ratio after load
+    // Tier A: set hero image src using designated cover photo, fallback to first photo
     const heroImg = document.getElementById('hero-main-img');
     if (heroImg) {
+      // Use explicitly designated hero filename if set, otherwise first ordered photo
+      const _clinicIdStrH = String(clinic.id);
+      const heroFilename = clinic.hero_filename || null;
+      const heroUrl = heroFilename
+        ? `${_SB_URL}/storage/v1/object/public/clinic-photos/clinic-${_clinicIdStrH}/${heroFilename}`
+        : allUrls[0];
       heroImg.onload = function() {
         const ratio = this.naturalWidth / this.naturalHeight;
-        if (ratio < 1.3) {
-          // Portrait or square — not hero-safe, collapse to Tier B appearance
+        if (ratio < 1.3 && !heroFilename) {
+          // Portrait or square with no explicit hero set — collapse to Tier B appearance
           const heroPhoto = document.getElementById('profile-hero-photo');
           if (heroPhoto) {
             heroPhoto.style.height = '0';
@@ -1222,7 +1228,7 @@ function fetchAndRenderPhotos(clinic) {
           }
         }
       };
-      heroImg.src = allUrls[0];
+      heroImg.src = heroUrl;
     }
 
     // Gallery: show max 3, rest via lightbox. "View all" if more exist.

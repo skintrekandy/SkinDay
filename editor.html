@@ -1165,6 +1165,17 @@
       transition: color 0.15s; flex-shrink: 0;
     }
     .photo-drag-remove:hover { color: var(--rose); }
+    .photo-hero-btn {
+      background: none; border: 1px solid var(--border); border-radius: 6px;
+      font-family: 'DM Sans', sans-serif; font-size: 11px; font-weight: 500;
+      color: var(--bark-light); padding: 3px 8px; cursor: pointer;
+      white-space: nowrap; transition: all 0.15s; flex-shrink: 0;
+    }
+    .photo-hero-btn:hover { border-color: var(--gold); color: var(--gold); }
+    .photo-hero-btn.is-hero {
+      background: rgba(201,169,110,0.12); border-color: var(--gold);
+      color: var(--gold); font-weight: 600;
+    }
 
     /* ─── /PHOTO DRAG LIST ─── */
 
@@ -1933,12 +1944,16 @@
         if (!Array.isArray(files)) return;
         // Fetch order from clinic_photos table to sort correctly
         const orderRes = await fetch(
-          `${SUPABASE_URL}/rest/v1/clinic_photos?clinic_id=eq.${encodeURIComponent(String(c.id))}&order=display_order.asc`,
+          `${SUPABASE_URL}/rest/v1/clinic_photos?clinic_id=eq.${encodeURIComponent(String(c.id))}&select=filename,display_order,is_hero&order=display_order.asc`,
           { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${sessionStorage.getItem('sd_token')}` } }
         );
         const orderRows = orderRes.ok ? await orderRes.json() : [];
         const orderMap = {};
-        if (Array.isArray(orderRows)) orderRows.forEach((r, i) => { orderMap[r.filename] = r.display_order; });
+        const heroMap = {};
+        if (Array.isArray(orderRows)) orderRows.forEach(r => {
+          orderMap[r.filename] = r.display_order;
+          heroMap[r.filename]  = r.is_hero === true;
+        });
 
         const storageFiles = files
           .filter(f => f.name && !f.name.endsWith('/'))
@@ -1949,7 +1964,7 @@
           }))
           .sort((a, b) => a.order - b.order);
 
-        photos = storageFiles.map(f => ({ url: f.url, filename: f.filename }));
+        photos = storageFiles.map(f => ({ url: f.url, filename: f.filename, is_hero: heroMap[f.filename] || false }));
         buildPhotoGrid();
         showOrderSaveBtn(false);
       } catch(e) {
@@ -2069,11 +2084,13 @@
       item.className = 'photo-drag-item';
       item.draggable = true;
       item.dataset.idx = i;
+      const isHero = p.is_hero === true;
       item.innerHTML = `
         <span class="photo-drag-handle" title="Drag to reorder">☰</span>
         <img class="photo-drag-thumb" src="${p.url}" alt="Photo ${i+1}" onerror="this.style.opacity='0.3'" />
         <span class="photo-drag-name">${p.filename || 'New photo'}</span>
-        ${i === 0 ? '<span class="photo-drag-badge">Cover</span>' : ''}
+        ${isHero ? '<span class="photo-drag-badge">Cover</span>' : ''}
+        <button class="photo-hero-btn${isHero ? ' is-hero' : ''}" onclick="setCoverPhoto(${i});event.stopPropagation();" title="Use as cover image">${isHero ? '★ Cover' : '☆ Set as Cover'}</button>
         <button class="photo-drag-remove" onclick="removePhoto(${i});event.stopPropagation();" title="Remove">✕</button>`;
 
       item.addEventListener('dragstart', e => {
@@ -2106,6 +2123,19 @@
     });
   }
 
+  // Mark one photo as cover, clear all others, then save immediately
+  async function setCoverPhoto(idx) {
+    if (!photos[idx] || photos[idx].file) {
+      showToast('Upload the photo first before setting it as cover.', 'error');
+      return;
+    }
+    // Toggle off if already hero
+    const wasHero = photos[idx].is_hero === true;
+    photos.forEach((p, i) => { p.is_hero = !wasHero && i === idx; });
+    buildPhotoGrid();
+    await savePhotoOrder();
+  }
+
   function showOrderSaveBtn(show) {
     const btn = document.getElementById('photo-order-save-btn');
     if (btn) btn.style.display = show ? 'inline-flex' : 'none';
@@ -2120,10 +2150,12 @@
       const filenames = photos
         .filter(p => !p.file && p.filename)
         .map(p => p.filename);
+      const heroPhoto = photos.find(p => p.is_hero && !p.file && p.filename);
+      const heroFilename = heroPhoto ? heroPhoto.filename : null;
       const res = await fetch('/api/save-clinic', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ action: 'save-photo-order', clinicId: currentClinic.id, filenames })
+        body: JSON.stringify({ action: 'save-photo-order', clinicId: currentClinic.id, filenames, heroFilename })
       });
       if (!res.ok) throw new Error('Save failed');
       showToast('Photo order saved ✓', 'success');
@@ -2566,10 +2598,12 @@
       // Save photo order (only for already-uploaded photos with real filenames)
       const orderedFilenames = photos.filter(p => !p.file && p.filename).map(p => p.filename);
       if (orderedFilenames.length > 0) {
+        const heroPhoto = photos.find(p => p.is_hero && !p.file && p.filename);
+        const heroFilename = heroPhoto ? heroPhoto.filename : null;
         await fetch('/api/save-clinic', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ action: 'save-photo-order', clinicId: currentClinic.id, filenames: orderedFilenames })
+          body: JSON.stringify({ action: 'save-photo-order', clinicId: currentClinic.id, filenames: orderedFilenames, heroFilename })
         });
         showOrderSaveBtn(false);
       }
