@@ -1,32 +1,57 @@
 const { createClient } = require('@supabase/supabase-js');
 
 // ─────────────────────────────────────────────────────────────
-// M25 — Clinic Identity taxonomy slugs
+// M28 — Clinic Identity taxonomy slugs
 // These MUST match /data/taxonomy/expertise.json and concerns.json
 // in the repo. Server validates incoming values against these sets
 // to prevent slug spoofing or stale UI from writing bad data.
 // If you add/remove a taxonomy item, update this list AND the JSON.
+//
+// TODO (M29+): refactor to read the JSON files at function startup
+// so there's a single source of truth. For now, keep these in sync
+// by hand.
 // ─────────────────────────────────────────────────────────────
 const EXPERTISE_SLUGS = new Set([
-  'natural-rejuvenation','acne-scar-revision','asian-skin-expertise',
-  'ethnic-melanin-skin','pigment-correction','hair-restoration',
-  'mature-skin-preventative','mens-aesthetics','skin-tightening-lifting',
-  'regenerative-aesthetics','rosacea-redness','body-contouring',
-  'post-acne-skin-repair','medical-acne','skin-health-medical-facials',
-  'medical-grade-laser','surgical-procedures','wellness-longevity',
-  'bridal-event-prep','conservative-minimal-filler','high-volume-injectable',
-  'korean-style-aesthetics','paramedical-camouflage','scar-stretch-mark-correction',
-  'collagen-first-biostim','lip-aesthetics','other'
+  'acne-scar-revision', 'age-positive-aesthetics', 'asian-skin',
+  'biostimulators', 'body-contouring', 'bridal-aesthetics',
+  'cannula-technique', 'collagen-restoration', 'combination-planning',
+  'conservative-filler', 'dramatic-contour', 'facial-balancing',
+  'facial-slimming', 'full-face-filler-planning', 'full-face-harmonization',
+  'glamour-aesthetics', 'hair-restoration', 'high-definition-contouring',
+  'hormonal-wellness', 'intimate-wellness', 'iv-therapy',
+  'jawline-contouring', 'laser-treatments', 'layered-rejuvenation',
+  'lgbtq-affirming', 'lip-enhancement', 'long-term-planning',
+  'mature-skin', 'medical-grade-skincare', 'medical-weight-loss',
+  'melanin-rich-skin', 'melasma-management', 'mens-aesthetics',
+  'natural-results', 'non-surgical-lifting', 'pigmentation-correction',
+  'postpartum-restoration', 'precision-neurotoxin', 'preventative-aging',
+  'profile-balancing', 'profile-sculpting', 'regenerative-skin',
+  'rosacea-redness', 'sensitive-skin-expertise', 'skin-resurfacing',
+  'skin-tightening', 'structured-balancing', 'subtle-rejuvenation',
+  'texture-refinement', 'ultrasound-guided', 'under-eye-rejuvenation',
+  'volume-focused', 'wellness-longevity',
+  // Sentinel for user-submitted suggestions (paired with is_other=true + other_text).
+  // Picker UI no longer surfaces "Other" as a primary option but uses the
+  // "Suggest a specialty" affordance, which submits with value='other'.
+  'other'
 ]);
 
 const CONCERN_SLUGS = new Set([
-  'acne-scars','active-acne','scarring','stretch-marks',
-  'melasma','pigmentation','uneven-skin-tone','sun-damage',
-  'redness-sensitivity','rosacea','enlarged-pores','skin-texture',
-  'dull-tired-skin','fine-lines-wrinkles','volume-loss','loose-skin',
-  'jowls','jawline-laxity','double-chin','undereye-hollowness',
-  'dark-circles','hair-thinning','cellulite','body-contouring',
-  'breast-chest','other'
+  'acne-scars', 'active-acne', 'aging-neck',
+  'body-shape', 'cellulite', 'cheek-definition',
+  'dark-circles', 'double-chin', 'dull-skin',
+  'excess-sweating', 'facial-asymmetry', 'fine-lines',
+  'fuller-lips', 'glamour-enhancement', 'hair-loss',
+  'heavy-lower-face', 'high-definition-look', 'hollow-cheeks',
+  'jawline-definition', 'loose-skin', 'melasma',
+  'more-defined-profile', 'more-sculpted', 'pigmentation',
+  'postpartum-body', 'redness-rosacea', 'sensitive-skin',
+  'sharper-contours', 'skin-laxity', 'skin-texture',
+  'stretch-marks', 'sun-damage', 'thin-lips',
+  'under-eye', 'uneven-tone', 'volume-loss',
+  'weak-profile', 'weight-concerns',
+  // Sentinel for user-submitted suggestions (see note in EXPERTISE_SLUGS).
+  'other'
 ]);
 
 const MAX_PER_CATEGORY = 3;
