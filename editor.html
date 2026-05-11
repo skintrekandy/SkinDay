@@ -3169,39 +3169,40 @@
         if (!res.ok) throw new Error(`Save failed for clinic ${saveId}`);
       }
 
-      // Save practitioners for current location only
-      await practitionerSave(currentClinic.id, token);
-      practitionerOriginal = practitioners.filter(p => p.name.trim()).map((p, i) => ({ ...p, display_order: i }));
-
-      // Save photo order (only for already-uploaded photos with real filenames)
-      const orderedFilenames = photos.filter(p => !p.file && p.filename).map(p => p.filename);
-      if (orderedFilenames.length > 0) {
-        const heroPhoto = photos.find(p => p.is_hero && !p.file && p.filename);
-        const heroFilename = heroPhoto ? heroPhoto.filename : null;
-        // Use saveId (already frozen above) — never currentClinic.id directly
-        await fetch('/api/save-clinic', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ action: 'save-photo-order', clinicId: saveId, filenames: orderedFilenames, heroFilename })
-        });
-        showOrderSaveBtn(false);
-      }
-
-      // Update local state
+      // ── Core save succeeded — show success now ────────────────
       Object.assign(currentClinic, payload);
       originalData = { ...payload, photos: photos.map(p => ({ url: p.url })), injector_credentials: [...payload.injector_credentials], languages: [...payload.languages] };
-      // M25: re-snapshot identity originals after save so future discards revert here
       identityOriginal.expertise = JSON.parse(JSON.stringify(identityState.expertise));
       identityOriginal.concerns  = JSON.parse(JSON.stringify(identityState.concerns));
       isDirty = false;
       document.getElementById('save-bar').classList.remove('visible');
-      // Reset apply-all checkbox after save
       const applyAllEl = document.getElementById('apply-all-locations');
       if (applyAllEl) applyAllEl.checked = false;
       const toastMsg = saveIds.length > 1
         ? `Changes saved to ${saveIds.length} locations ✓`
         : 'Changes saved and published! ✓';
       showToast(toastMsg, 'success');
+
+      // ── Non-critical saves — failures logged but don't override success toast ──
+      try {
+        await practitionerSave(currentClinic.id, token);
+        practitionerOriginal = practitioners.filter(p => p.name.trim()).map((p, i) => ({ ...p, display_order: i }));
+      } catch(e) { console.error('Practitioner save error (non-fatal):', e); }
+
+      try {
+        const photoClinicId = String(currentClinic.id);
+        const orderedFilenames = photos.filter(p => !p.file && p.filename).map(p => p.filename);
+        if (orderedFilenames.length > 0) {
+          const heroPhoto = photos.find(p => p.is_hero && !p.file && p.filename);
+          const heroFilename = heroPhoto ? heroPhoto.filename : null;
+          await fetch('/api/save-clinic', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ action: 'save-photo-order', clinicId: photoClinicId, filenames: orderedFilenames, heroFilename })
+          });
+          showOrderSaveBtn(false);
+        }
+      } catch(e) { console.error('Photo order save error (non-fatal):', e); }
 
     } catch (e) {
       console.error('Save error:', e);
