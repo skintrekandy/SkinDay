@@ -533,6 +533,66 @@ exports.handler = async (event) => {
       return { statusCode: 200, headers, body: JSON.stringify({ success: true }) };
     }
 
+    // ── DELETE PRICE ──
+    if (action === 'delete-price') {
+      const { clinicId, toxin, injectorType } = body;
+      if (!clinicId || !toxin) return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing clinicId or toxin' }) };
+
+      // Verify ownership
+      const delMeta = user.user_metadata || {};
+      const ownedDelIds = Array.isArray(delMeta.clinic_ids) ? delMeta.clinic_ids.map(String) : [];
+      let isDelOwner = ownedDelIds.includes(String(clinicId));
+      if (!isDelOwner) {
+        const { data: claims } = await supabase.from('claims').select('clinic_id, chain_clinic_ids').eq('owner_email', userEmail).limit(1);
+        if (claims && claims.length > 0) {
+          if (String(claims[0].clinic_id) === String(clinicId)) isDelOwner = true;
+          if (!isDelOwner && claims[0].chain_clinic_ids) {
+            try { const ids = JSON.parse(claims[0].chain_clinic_ids).map(String); isDelOwner = ids.includes(String(clinicId)); } catch {}
+          }
+        }
+      }
+      if (!isDelOwner) return { statusCode: 403, headers, body: JSON.stringify({ error: 'Forbidden' }) };
+
+      // Delete the specific price row
+      let query = supabase.from('clinic_prices')
+        .delete()
+        .eq('clinic_id', String(clinicId))
+        .eq('toxin', toxin);
+
+      if (injectorType) {
+        query = query.eq('injector_type', injectorType);
+      } else {
+        query = query.is('injector_type', null);
+      }
+
+      const { error: delErr } = await query;
+      if (delErr) return { statusCode: 500, headers, body: JSON.stringify({ error: delErr.message }) };
+
+      // Sync lowest remaining price back to clinics table
+      const { data: remaining } = await supabase
+        .from('clinic_prices')
+        .select('price, toxin, price_source, price_date')
+        .eq('clinic_id', String(clinicId))
+        .order('price', { ascending: true })
+        .limit(1);
+
+      if (remaining && remaining.length > 0) {
+        await supabase.from('clinics').update({
+          price: remaining[0].price,
+          toxin_type: remaining[0].toxin,
+          price_source: remaining[0].price_source,
+          price_date: remaining[0].price_date,
+        }).eq('id', String(clinicId));
+      } else {
+        // No prices left — clear the price columns
+        await supabase.from('clinics').update({
+          price: null, toxin_type: null, price_source: null, price_date: null
+        }).eq('id', String(clinicId));
+      }
+
+      return { statusCode: 200, headers, body: JSON.stringify({ success: true }) };
+    }
+
     return { statusCode: 400, headers, body: JSON.stringify({ error: 'Unknown action' }) };
 
   } catch (err) {
