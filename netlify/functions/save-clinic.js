@@ -33,7 +33,23 @@ const EXPERTISE_SLUGS = new Set([
   // Sentinel for user-submitted suggestions (paired with is_other=true + other_text).
   // Picker UI no longer surfaces "Other" as a primary option but uses the
   // "Suggest a specialty" affordance, which submits with value='other'.
-  'other'
+  'other',
+  // ── Legacy slugs (pre-taxonomy-v2) ───────────────────────────
+  // Keep until all DB rows are migrated to new slugs.
+  // These were valid in earlier portal versions and may still exist
+  // in clinic_expertise rows. Remove after M29 migration.
+  'natural-rejuvenation', 'collagen-first-biostim', 'conservative-minimal-filler',
+  'skin-quality', 'regenerative-aesthetics', 'skin-tightening-lifting',
+  'acne-treatment', 'post-acne-repair', 'scars-stretch-marks',
+  'full-face-balancing', 'korean-aesthetics', 'womens-wellness',
+  'medical-facials', 'paramedical-camouflage', 'surgical-aesthetics',
+  'preventative-botox', 'acne-scars', 'pigmentation', 'melasma',
+  'rosacea-redness', 'texture-pores', 'sensitive-skin',
+  'under-eye-rejuvenation', 'jawline-contouring', 'lip-treatments',
+  'double-chin', 'melanin-rich-skin', 'hair-restoration',
+  'body-contouring', 'medical-weight-loss', 'wellness-longevity',
+  'postpartum-restoration', 'preventative-aging', 'mature-skin',
+  'bridal-prep', 'non-surgical-lifting', 'laser-treatments', 'asian-skin'
 ]);
 
 const CONCERN_SLUGS = new Set([
@@ -51,7 +67,14 @@ const CONCERN_SLUGS = new Set([
   'under-eye', 'uneven-tone', 'volume-loss',
   'weak-profile', 'weight-concerns',
   // Sentinel for user-submitted suggestions (see note in EXPERTISE_SLUGS).
-  'other'
+  'other',
+  // ── Legacy slugs (pre-taxonomy-v2) ───────────────────────────
+  'undereye-hollowness', 'jawline-laxity', 'fine-lines-wrinkles',
+  'dark-spots', 'redness-rosacea', 'skin-texture', 'hair-thinning',
+  'body-fat', 'volume-loss', 'skin-laxity', 'jawline-definition',
+  'under-eye', 'dark-circles', 'hair-loss', 'breast-chest', 'cellulite',
+  'active-acne', 'acne-scars', 'scars', 'stretch-marks', 'pigmentation',
+  'melasma', 'dull-skin', 'sensitive-skin', 'fine-lines', 'body-contouring'
 ]);
 
 const MAX_PER_CATEGORY = 3;
