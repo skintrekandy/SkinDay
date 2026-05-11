@@ -2249,6 +2249,15 @@
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.getElementById('tab-' + tab).classList.add('active');
     btn.classList.add('active');
+
+    // Identity tab: ensure taxonomy is loaded and dropdowns are populated.
+    // Handles the race where taxonomy fetch completes after initial render.
+    if (tab === 'identity') {
+      identityLoadTaxonomy().then(() => {
+        identityRender('expertise');
+        identityRender('concerns');
+      });
+    }
   }
 
   // ─── DIRTY STATE ───
