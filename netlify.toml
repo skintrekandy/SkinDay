@@ -81,13 +81,6 @@
   to     = "/.netlify/functions/update-visit"
   status = 200
 
-# ── EDGE FUNCTION: canonical injection for clinic pages ──────────
-# Runs at CDN edge before HTML is served — injects correct canonical
-# tag server-side so Googlebot never sees the homepage fallback.
-[[edge_functions]]
-  path     = "/clinic/*"
-  function = "clinic-canonical"
-
 # ── DYNAMIC SITEMAP ──────────────────────────────────────────────
 # Serves live clinic slugs from Supabase instead of the stale static file.
 # The static sitemap.xml file can be deleted or kept as a fallback —
