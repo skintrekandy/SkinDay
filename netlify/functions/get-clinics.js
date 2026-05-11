@@ -286,6 +286,21 @@ exports.handler = async (event) => {
       ...(unpricedRes.data || []),
     ];
 
+    // ── FOUNDER BIAS MITIGATION ───────────────────────────────
+    // Skin Trek (id: 386) is owned by the SkinDay founder.
+    // To avoid the appearance of bias, it is nudged out of the
+    // top 5 positions on page 1. It still appears organically
+    // based on real rating/review data — just not in the spotlight.
+    const FOUNDER_CLINIC_ID = '386';
+    const FOUNDER_MIN_POSITION = 5;
+    if (from === 0) {
+      const founderIdx = pool.findIndex(c => String(c.id) === FOUNDER_CLINIC_ID);
+      if (founderIdx !== -1 && founderIdx < FOUNDER_MIN_POSITION) {
+        const [founder] = pool.splice(founderIdx, 1);
+        pool.splice(FOUNDER_MIN_POSITION, 0, founder);
+      }
+    }
+
     const totalCount = countRes.count || 0;
     const pageSlice  = pool.slice(from, from + PAGE_SIZE);
 
