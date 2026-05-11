@@ -820,7 +820,9 @@ function renderClinic(clinic) {
   loadVisitSignal(String(clinic.id));
 
   // ── SEO: title, meta, OG, Twitter, canonical, JSON-LD ──
-  const slug = clinic.slug || toSlug(clinic.name);
+  // Always use the DB slug as source of truth — never derive from name.
+  // Derived slugs can drift from the indexed URL and create canonical fragmentation.
+  const slug = clinic.slug || toSlug(clinic.name); // toSlug fallback: legacy records only, pre-slug-normalization
   const pageUrl = `https://skinday.ca/clinic/${slug}`;
   const priceDesc = clinic.price ? `Botox from $${clinic.price}/unit. ` : '';
   const credDesc = (clinic.injector_credentials || []).length
@@ -1187,43 +1189,11 @@ function renderNotFound(slug) {
   `;
 }
 
-// ── MAIN: resolve slug → clinic ──
-function init() {
-  // Get slug from URL: /clinic/skin-trek
-  const pathParts = window.location.pathname.split('/');
-  const slug = pathParts[pathParts.length - 1] || pathParts[pathParts.length - 2];
-
-  if (!slug) { renderNotFound(''); return; }
-
-  // Find in static array by slug or numeric id
-  let clinic = clinics.find(c => toSlug(c.name) === slug);
-  if (!clinic && !isNaN(slug)) clinic = clinics.find(c => c.id == slug);
-
-  if (!clinic) { renderNotFound(slug); return; }
-
-  renderClinic(clinic);
-
-  // Then fetch DB overrides and re-render if anything changed
-  fetch('/api/get-clinics')
-    .then(r => r.ok ? r.json() : [])
-    .then(data => {
-      const overrides = Array.isArray(data) ? data : (data.clinics || data.data || []);
-      if (!overrides || overrides.length === 0) return;
-      const override = overrides.find(o => o.id == clinic.id);
-      if (override) {
-        Object.assign(clinic, override);
-        renderClinic(clinic);
-      }
-    })
-    .catch(() => {});
-}
-
 // ── INLINE CLINIC DATA ──
-// Paste the same clinics array from index.html here, or load via API.
-// For now we load from the window if index.html pre-populated it,
-// otherwise fall back to fetching from get-clinics.
-// Best approach: extract clinics array to a shared clinics-data.js file.
-// For this standalone page, we fetch all from DB and match by slug.
+// initFromDB() is the sole entry point. It looks up by slug via
+// /api/get-clinics?slug= and uses clinic.slug from the DB response
+// as the canonical URL identifier throughout. toSlug(name) is kept
+// as a utility but must never be used for URL/canonical construction.
 
 function fetchAndRenderPhotos(clinic) {
   const _clinicIdStr = String(clinic.id);
