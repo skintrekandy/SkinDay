@@ -1931,7 +1931,10 @@
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
-<script src="/clinics-data.js"></script>
+<!-- M30: /clinics-data.js was deprecated in M15. Chain location names now
+     come from a Supabase fetch in populateChainLocationNames(). The script
+     tag has been removed; if you re-add it in the future, also remove the
+     fetch logic or you'll have two sources of truth competing. -->
 <script>
   // ─── SUPABASE CONFIG ───
   // Replace with your actual values
@@ -2029,31 +2032,28 @@
 
       // Chain support: get all clinic IDs from user metadata
       allClinicIds = data.clinic_ids || [currentClinic.id];
-      // Build name map from clinics-data.js static array (has name + neighbourhood)
-      allClinicNames = {};
-      const idsToName = data.clinic_ids || [currentClinic.id];
-      idsToName.forEach(id => {
-        const match = typeof clinics !== 'undefined'
-          ? clinics.find(c => String(c.id) === String(id))
-          : null;
-        if (match) {
-          allClinicNames[String(id)] = match.neighbourhood
-            ? `${match.name} — ${match.neighbourhood}`
-            : match.name;
-        } else {
-          const rawNames = data.clinic_names || {};
-          allClinicNames[String(id)] = rawNames[String(id)] || 'Location ' + id;
-        }
-      });
 
-      // Patch currentClinic.name from clinics-data.js if server returned null
+      // M30: build name+neighbourhood map. Old code relied on a global `clinics`
+      // array from /clinics-data.js (deprecated in M15), which silently fell
+      // back to "Location {id}" labels everywhere. Now we fetch live from
+      // Supabase. If the fetch fails we still degrade to "Location {id}"
+      // rather than blocking login.
+      allClinicNames = {};
+      await populateChainLocationNames(allClinicIds, data.clinic_names);
+
+      // Patch currentClinic.name/neighbourhood from the fetched map if the
+      // server returned null. The map was just populated above.
       if (!currentClinic.name) {
-        const staticMatch = typeof clinics !== 'undefined'
-          ? clinics.find(c => String(c.id) === String(currentClinic.id))
-          : null;
-        if (staticMatch) {
-          currentClinic.name         = staticMatch.name;
-          currentClinic.neighbourhood = staticMatch.neighbourhood;
+        const fromMap = allClinicNames[String(currentClinic.id)];
+        if (fromMap) {
+          // Map entries look like "Name — Neighbourhood". Best-effort split.
+          const dashIdx = fromMap.indexOf(' — ');
+          if (dashIdx > -1) {
+            currentClinic.name = fromMap.slice(0, dashIdx);
+            currentClinic.neighbourhood = fromMap.slice(dashIdx + 3);
+          } else {
+            currentClinic.name = fromMap;
+          }
         }
       }
 
@@ -2088,14 +2088,19 @@
       }
 
       currentClinic = data.clinic;
-      // Patch name from clinics-data.js if null
+      // M30: if server returned null name, recover from allClinicNames map
+      // which was populated at login. Avoids the dead /clinics-data.js
+      // lookup that silently failed for weeks.
       if (!currentClinic.name) {
-        const staticMatch = typeof clinics !== 'undefined'
-          ? clinics.find(c => String(c.id) === String(currentClinic.id))
-          : null;
-        if (staticMatch) {
-          currentClinic.name          = staticMatch.name;
-          currentClinic.neighbourhood = staticMatch.neighbourhood;
+        const fromMap = allClinicNames[String(currentClinic.id)];
+        if (fromMap && !fromMap.startsWith('Unknown clinic')) {
+          const dashIdx = fromMap.indexOf(' — ');
+          if (dashIdx > -1) {
+            currentClinic.name          = fromMap.slice(0, dashIdx);
+            currentClinic.neighbourhood = fromMap.slice(dashIdx + 3);
+          } else {
+            currentClinic.name = fromMap;
+          }
         }
       }
       isDirty = false;
@@ -2121,6 +2126,66 @@
     if (!e.target.closest('#location-switcher-wrap')) closeLocationDropdown();
   });
 
+  // M30: Fetch clinic names + neighbourhoods for all chain locations from
+  // Supabase. Replaces the dead /clinics-data.js lookup. Server's login
+  // response may include a fallback name map in `clinic_names`; we use it
+  // only for IDs the fetch misses. Failures surface as "Unknown clinic ({id})"
+  // rather than the previous "Location {id}" — the old wording looked
+  // intentional and masked the failure for weeks. Make broken things look
+  // broken.
+  async function populateChainLocationNames(ids, serverFallbackNames) {
+    const fallbacks = serverFallbackNames || {};
+
+    // Seed every ID first so the UI is never blank, even on slow networks.
+    // Visible-failure wording: if neither the fetch nor the server fallback
+    // populates this entry, the user (and we) see something obviously wrong.
+    ids.forEach(id => {
+      allClinicNames[String(id)] = fallbacks[String(id)] || `Unknown clinic (${id})`;
+    });
+
+    if (!ids || ids.length === 0) return;
+
+    try {
+      // PostgREST `in.(id1,id2,...)` filter — IDs are TEXT so each must be
+      // a quoted string. Encoding handles any URL-unsafe chars in IDs.
+      const idList = ids.map(id => `"${String(id).replace(/"/g, '\\"')}"`).join(',');
+      const url = `${SUPABASE_URL}/rest/v1/clinics?id=in.(${encodeURIComponent(idList)})&select=id,name,neighbourhood`;
+      const token = sessionStorage.getItem('sd_token');
+      const res = await fetch(url, {
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (!res.ok) {
+        console.warn('[chain names] fetch returned', res.status, '— falling back to seeded values');
+        return;
+      }
+      const rows = await res.json();
+      if (!Array.isArray(rows)) {
+        console.warn('[chain names] unexpected response shape', rows);
+        return;
+      }
+      rows.forEach(row => {
+        if (!row || !row.id) return;
+        const key = String(row.id);
+        if (row.name && row.neighbourhood) {
+          allClinicNames[key] = `${row.name} — ${row.neighbourhood}`;
+        } else if (row.name) {
+          // Empty neighbourhood — fall back to just the name. Avoids
+          // "Skin Trek — " with a trailing dash that looks broken.
+          allClinicNames[key] = row.name;
+        }
+        // else leave the seeded "Unknown clinic ({id})" in place so the
+        // failure is visible.
+      });
+      console.log('[chain names] loaded', rows.length, 'of', ids.length, 'locations:', allClinicNames);
+    } catch (err) {
+      console.warn('[chain names] fetch failed', err);
+      // Seeded values remain in place — visible-failure wording is intentional.
+    }
+  }
+
   function buildLocationSwitcher() {
     const isChain = allClinicIds.length > 1;
     document.getElementById('header-clinic-badge').style.display   = isChain ? 'none' : 'flex';
@@ -2129,7 +2194,7 @@
 
     const itemsEl = document.getElementById('location-dropdown-items');
     itemsEl.innerHTML = allClinicIds.map(id => {
-      const name = allClinicNames[String(id)] || allClinicNames[id] || currentClinic.name || 'Location ' + id;
+      const name = allClinicNames[String(id)] || allClinicNames[id] || currentClinic.name || `Unknown clinic (${id})`;
       const isActive = String(id) === String(currentClinic.id);
       return `<div class="location-dropdown-item${isActive ? ' active' : ''}" onclick="switchLocation('${id}')">${name}</div>`;
     }).join('');
@@ -2145,7 +2210,7 @@
       if (listEl && isChain) {
         const otherNames = allClinicIds
           .filter(id => String(id) !== String(currentClinic.id))
-          .map(id => allClinicNames[String(id)] || 'Location ' + id);
+          .map(id => allClinicNames[String(id)] || `Unknown clinic (${id})`);
         listEl.textContent = otherNames.length
           ? 'Will also update: ' + otherNames.join(', ')
           : '';
