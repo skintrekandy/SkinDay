@@ -1285,20 +1285,45 @@ async function initFromDB() {
 
   if (!slug) { renderNotFound(''); return; }
 
+  // ── FAILURE-MODE POLICY ──
+  // renderNotFound(slug) is ONLY called when the API gives us positive
+  // confirmation that the clinic doesn't exist (HTTP 404).
+  //
+  // For every other failure — server errors (5xx), network errors, timeouts,
+  // JSON parse failures, edge cache issues — we leave the SSR-rendered body
+  // intact. The Netlify render-clinic function injected real clinic content
+  // (<h1>, location, pricing, credentials) before the page reached the user.
+  // Showing that is always better than overwriting it with "Clinic not found"
+  // on a transient hiccup, especially for Googlebot which is sensitive to
+  // Soft 404 classification.
+
   try {
     // Direct slug lookup — no full table fetch needed
     const res = await fetch(`/api/get-clinics?slug=${encodeURIComponent(slug)}`);
 
-    if (!res.ok) {
-      // Fallback: try numeric id
+    if (res.status === 404) {
+      // Positive confirmation: clinic doesn't exist. Numeric-id fallback first
+      // for legacy URLs like /clinic/168, then render true not-found.
       if (!isNaN(slug)) {
-        const res2 = await fetch('/api/get-clinics');
-        const data2 = res2.ok ? await res2.json() : [];
-        const all = Array.isArray(data2) ? data2 : (data2.clinics || []);
-        const clinic = all.find(c => String(c.id) === String(slug));
-        if (clinic) { renderClinic(clinic); return; }
+        try {
+          const res2 = await fetch('/api/get-clinics');
+          if (res2.ok) {
+            const data2 = await res2.json();
+            const all = Array.isArray(data2) ? data2 : (data2.clinics || []);
+            const clinic = all.find(c => String(c.id) === String(slug));
+            if (clinic) { renderClinic(clinic); return; }
+          }
+        } catch (_) { /* fall through to not-found */ }
       }
       renderNotFound(slug);
+      return;
+    }
+
+    if (!res.ok) {
+      // Non-404 error (500, 502, 503, etc.) — transient. Don't replace SSR.
+      // Log so we can see it in browser console if debugging, but leave the
+      // server-rendered content visible to users and crawlers.
+      console.warn('[initFromDB] non-OK response (keeping SSR content):', res.status, slug);
       return;
     }
 
@@ -1366,7 +1391,9 @@ async function initFromDB() {
     } catch(e) { /* non-fatal */ }
 
   } catch(e) {
-    renderNotFound(slug);
+    // Network error, fetch aborted, JSON parse failure, etc.
+    // Treat as transient — keep SSR content visible. Don't show not-found.
+    console.warn('[initFromDB] fetch threw (keeping SSR content):', e, slug);
   }
 }
 </script>
