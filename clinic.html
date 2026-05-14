@@ -809,6 +809,10 @@ function formatPriceDate(dateStr) {
 }
 
 function renderClinic(clinic) {
+  // Remove server-rendered SEO loading state (injected by render-clinic.js
+  // Netlify function). The real UI is about to take over.
+  document.getElementById('ssr-content')?.remove();
+
   const isClaimed = clinic.claimed === true;
   const claimHref = '/claim2.html?clinic=' + clinic.id;
   const wrap = document.getElementById('pageWrap');
@@ -1180,6 +1184,7 @@ function renderClinic(clinic) {
 }
 
 function renderNotFound(slug) {
+  document.getElementById('ssr-content')?.remove();
   document.getElementById('pageWrap').innerHTML = `
     <div class="not-found">
       <h2>Clinic not found</h2>
