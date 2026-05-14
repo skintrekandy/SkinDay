@@ -63,9 +63,13 @@
 # meta description, and content baked into the HTML. The existing
 # client-side JS still hydrates on top of the SSR output for users.
 # `force = true` is required to override the static clinic.html file.
+#
+# Uses splat (/*) instead of :slug because Netlify's :param substitution
+# in query strings is unreliable. The function parses the slug from
+# event.path directly.
 [[redirects]]
-  from   = "/clinic/:slug"
-  to     = "/.netlify/functions/render-clinic?slug=:slug"
+  from   = "/clinic/*"
+  to     = "/.netlify/functions/render-clinic/:splat"
   status = 200
   force  = true
 
