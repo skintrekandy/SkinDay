@@ -197,7 +197,22 @@ function patchTemplate(html, clinic) {
 
 exports.handler = async (event) => {
   try {
-    const slug = (event.queryStringParameters || {}).slug;
+    // Slug arrives via path splat: /.netlify/functions/render-clinic/{slug}
+    // (rewritten from /clinic/{slug} by netlify.toml).
+    // We strip the function-name prefix and take what's left as the slug.
+    // Fallback to ?slug= query param for backward compatibility and direct
+    // function invocation during local testing.
+    let slug = (event.queryStringParameters || {}).slug;
+    if (!slug && event.path) {
+      // event.path is the full request path, e.g. "/clinic/skin-trek"
+      // or "/.netlify/functions/render-clinic/skin-trek" depending on routing.
+      const parts = event.path.split('/').filter(Boolean);
+      // Last segment after the function name or "clinic" prefix is the slug.
+      slug = parts[parts.length - 1];
+      // Guard against the function name itself being the last segment
+      // (i.e. someone hit /clinic with no slug).
+      if (slug === 'render-clinic' || slug === 'clinic') slug = null;
+    }
     if (!slug) {
       return { statusCode: 400, body: 'Missing slug' };
     }
