@@ -88,9 +88,32 @@ function buildDescription(clinic) {
   return `${name} in ${loc}. ${price}${rating}Compare prices, services, and verified clinic details on SkinDay.`.trim();
 }
 
-// Server-rendered content block — visible to crawlers, replaced by client JS
-// on hydration. Keep it semantic and self-contained so a Lynx-style crawler
-// understands the page even without CSS or JS.
+// Format injector_credentials which may be a JSON array string,
+// a plain string, or null. Examples: '["rn","img"]', 'RN, MD', null.
+function formatInjectorCreds(raw) {
+  if (!raw) return '';
+  if (Array.isArray(raw)) return raw.map(s => String(s).toUpperCase()).join(', ');
+  // Try JSON parse if it looks like an array
+  if (typeof raw === 'string' && raw.trim().startsWith('[')) {
+    try {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) return arr.map(s => String(s).toUpperCase()).join(', ');
+    } catch (_) { /* fall through */ }
+  }
+  return String(raw);
+}
+
+// Server-rendered content block — shown immediately on page load with
+// real clinic data (no flash of empty/template content), then removed by
+// the client-side JS in clinic.html once the full rich UI is hydrated.
+//
+// This is progressive enhancement, not cloaking: the content humans see
+// during the brief pre-hydration window is the same content the crawler
+// reads. Google's documentation explicitly endorses this pattern.
+//
+// Visual: styled as a centered loading-state card matching the SkinDay
+// design tokens, so the brief moment before JS replaces it doesn't look
+// broken. Once clinic.html's renderClinic() runs, it removes #ssr-content.
 function buildSeoBody(clinic) {
   const safe = (k) => escapeHtml(clinic[k]);
   const loc  = clinic.neighbourhood || clinic.area || clinic.province || '';
@@ -100,26 +123,51 @@ function buildSeoBody(clinic) {
     : '';
 
   const ratingBlock = (clinic.rating && clinic.reviews)
-    ? `<p>Google rating: ${escapeHtml(clinic.rating)} stars (${escapeHtml(clinic.reviews)} reviews).</p>`
+    ? `<p>${escapeHtml(clinic.rating)} ★ · ${escapeHtml(clinic.reviews)} Google reviews</p>`
     : '';
 
-  const credBlock = clinic.injector_credentials
-    ? `<p>Injector credentials: ${escapeHtml(clinic.injector_credentials)}.</p>`
+  const creds = formatInjectorCreds(clinic.injector_credentials);
+  const credBlock = creds
+    ? `<p>Credentials: ${escapeHtml(creds)}</p>`
     : '';
 
   const expertise = (clinic.identity && clinic.identity.expertise) || [];
   const expertiseBlock = expertise.length
-    ? `<p>Specialties: ${expertise.map(e => escapeHtml(e.label)).join(', ')}.</p>`
+    ? `<p>Specialties: ${expertise.map(e => escapeHtml(e.label)).join(' · ')}</p>`
     : '';
 
+  // Styled to match SkinDay design: centered, cream background, serif heading.
+  // Padding-top accounts for the fixed nav (~64px). Removed by client JS
+  // once hydration completes (clinic.html should call
+  // document.getElementById('ssr-content')?.remove() at the end of render).
+  const style = [
+    'padding:120px 5% 80px',
+    'text-align:center',
+    'font-family:"DM Sans",sans-serif',
+    'color:#1C1714',
+    'background:#FAF7F2',
+    'min-height:50vh',
+  ].join(';');
+
+  const headingStyle = [
+    'font-family:"Cormorant Garamond",serif',
+    'font-size:2.2rem',
+    'font-weight:400',
+    'margin-bottom:0.5rem',
+  ].join(';');
+
+  const locStyle = 'color:#8A7B72;font-size:1rem;margin-bottom:1.5rem;';
+  const pStyle = 'color:#8A7B72;font-size:0.95rem;margin:0.4rem 0;';
+
   return `
-<div id="ssr-content" aria-hidden="false">
-  <h1>${safe('name')}${loc ? ` <small>· ${escapeHtml(loc)}</small>` : ''}</h1>
-  ${priceBlock}
-  ${ratingBlock}
-  ${credBlock}
-  ${expertiseBlock}
-  <p>View pricing, services, photos, and contact details below.</p>
+<div id="ssr-content" style="${style}">
+  <h1 style="${headingStyle}">${safe('name')}</h1>
+  ${loc ? `<p style="${locStyle}">${escapeHtml(loc)}</p>` : ''}
+  ${priceBlock ? priceBlock.replace('<p>', `<p style="${pStyle}">`) : ''}
+  ${ratingBlock ? ratingBlock.replace('<p>', `<p style="${pStyle}">`) : ''}
+  ${credBlock ? credBlock.replace('<p>', `<p style="${pStyle}">`) : ''}
+  ${expertiseBlock ? expertiseBlock.replace('<p>', `<p style="${pStyle}">`) : ''}
+  <p style="${pStyle};margin-top:2rem;font-size:0.85rem;">Loading full profile…</p>
 </div>`.trim();
 }
 
