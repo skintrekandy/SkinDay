@@ -5,7 +5,13 @@
   functions = "netlify/functions"
   publish    = "."          # static HTML files are in root
 
-# Route /api/* to Netlify Functions
+# Functions need clinic.html in the bundle so the SSR function
+# can read the template at runtime.
+[functions]
+  included_files = ["clinic.html"]
+
+
+# ── API FUNCTIONS ────────────────────────────────────────────────
 [[redirects]]
   from   = "/api/get-clinics"
   to     = "/.netlify/functions/get-clinics"
@@ -32,11 +38,6 @@
   status = 200
 
 [[redirects]]
-  from   = "/clinic/:slug"
-  to     = "/clinic.html"
-  status = 200
-
-[[redirects]]
   from   = "/api/track-click"
   to     = "/.netlify/functions/track-click"
   status = 200
@@ -49,6 +50,36 @@
 [[redirects]]
   from   = "/api/get-visit-signal"
   to     = "/.netlify/functions/get-visit-signal"
+  status = 200
+
+[[redirects]]
+  from   = "/api/update-visit"
+  to     = "/.netlify/functions/update-visit"
+  status = 200
+
+
+# ── CLINIC PAGES (SSR) ───────────────────────────────────────────
+# Server-side render clinic profile pages so Google sees real <title>,
+# meta description, and content baked into the HTML. The existing
+# client-side JS still hydrates on top of the SSR output for users.
+# `force = true` is required to override the static clinic.html file.
+[[redirects]]
+  from   = "/clinic/:slug"
+  to     = "/.netlify/functions/render-clinic?slug=:slug"
+  status = 200
+  force  = true
+
+
+# ── BOTOX CITY PAGES (pretty URLs) ───────────────────────────────
+# Maps /botox-{city} → /botox-{city}.html for clean URLs.
+# This list must match the HTML files actually deployed in the repo root.
+# When adding a new city, add the .html file AND a redirect here AND update
+# BOTOX_CITY_PAGES in netlify/functions/sitemap.js.
+
+# Ontario
+[[redirects]]
+  from   = "/botox-toronto"
+  to     = "/botox-toronto.html"
   status = 200
 
 [[redirects]]
@@ -72,20 +103,75 @@
   status = 200
 
 [[redirects]]
-  from   = "/botox-toronto"
-  to     = "/botox-toronto.html"
+  from   = "/botox-london-ontario"
+  to     = "/botox-london-ontario.html"
+  status = 200
+
+# British Columbia
+[[redirects]]
+  from   = "/botox-vancouver"
+  to     = "/botox-vancouver.html"
   status = 200
 
 [[redirects]]
-  from   = "/api/update-visit"
-  to     = "/.netlify/functions/update-visit"
+  from   = "/botox-richmond"
+  to     = "/botox-richmond.html"
   status = 200
+
+[[redirects]]
+  from   = "/botox-victoria"
+  to     = "/botox-victoria.html"
+  status = 200
+
+[[redirects]]
+  from   = "/botox-kelowna"
+  to     = "/botox-kelowna.html"
+  status = 200
+
+# Alberta
+[[redirects]]
+  from   = "/botox-calgary"
+  to     = "/botox-calgary.html"
+  status = 200
+
+[[redirects]]
+  from   = "/botox-edmonton"
+  to     = "/botox-edmonton.html"
+  status = 200
+
+# Quebec
+[[redirects]]
+  from   = "/botox-montreal"
+  to     = "/botox-montreal.html"
+  status = 200
+
+[[redirects]]
+  from   = "/botox-quebec-city"
+  to     = "/botox-quebec-city.html"
+  status = 200
+
+[[redirects]]
+  from   = "/botox-sherbrooke"
+  to     = "/botox-sherbrooke.html"
+  status = 200
+
+[[redirects]]
+  from   = "/botox-gatineau"
+  to     = "/botox-gatineau.html"
+  status = 200
+
+# Manitoba
+[[redirects]]
+  from   = "/botox-winnipeg"
+  to     = "/botox-winnipeg.html"
+  status = 200
+
 
 # ── DYNAMIC SITEMAP ──────────────────────────────────────────────
 # Serves live clinic slugs from Supabase instead of the stale static file.
-# The static sitemap.xml file can be deleted or kept as a fallback —
-# this redirect takes priority.
+# `force = true` ensures this overrides any leftover static sitemap.xml.
 [[redirects]]
   from   = "/sitemap.xml"
   to     = "/.netlify/functions/sitemap"
   status = 200
+  force  = true

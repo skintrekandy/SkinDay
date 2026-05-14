@@ -1,4 +1,13 @@
+# https://skinday.ca/robots.txt
+# Allow all crawlers full access to public site.
+
 User-agent: *
 Allow: /
 
+# Block crawling of admin, portal, and internal routes
+Disallow: /admin
+Disallow: /portal
+Disallow: /api/
+
+# Sitemap
 Sitemap: https://skinday.ca/sitemap.xml
