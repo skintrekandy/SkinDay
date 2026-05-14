@@ -197,23 +197,29 @@ function patchTemplate(html, clinic) {
 
 exports.handler = async (event) => {
   try {
-    // Slug arrives via path splat: /.netlify/functions/render-clinic/{slug}
-    // (rewritten from /clinic/{slug} by netlify.toml).
-    // We strip the function-name prefix and take what's left as the slug.
-    // Fallback to ?slug= query param for backward compatibility and direct
-    // function invocation during local testing.
+    // Slug arrives via path splat from netlify.toml redirect.
+    // Netlify can deliver this in several places depending on routing config,
+    // so we try them in order:
+    //   1. ?slug= query param (direct invocation or :param substitution)
+    //   2. /clinic/{slug} in event.path (original request URL)
+    //   3. /.netlify/functions/render-clinic/{slug} in event.path (post-rewrite)
+    //   4. event.rawUrl (some Netlify versions populate this instead)
     let slug = (event.queryStringParameters || {}).slug;
+
     if (!slug && event.path) {
-      // event.path is the full request path, e.g. "/clinic/skin-trek"
-      // or "/.netlify/functions/render-clinic/skin-trek" depending on routing.
-      const parts = event.path.split('/').filter(Boolean);
-      // Last segment after the function name or "clinic" prefix is the slug.
-      slug = parts[parts.length - 1];
-      // Guard against the function name itself being the last segment
-      // (i.e. someone hit /clinic with no slug).
-      if (slug === 'render-clinic' || slug === 'clinic') slug = null;
+      // Match /clinic/{slug} OR /.netlify/functions/render-clinic/{slug}
+      const m = event.path.match(/(?:\/clinic\/|\/render-clinic\/)([^\/\?#]+)/);
+      if (m) slug = m[1];
     }
+
+    if (!slug && event.rawUrl) {
+      const m = event.rawUrl.match(/(?:\/clinic\/|\/render-clinic\/)([^\/\?#]+)/);
+      if (m) slug = m[1];
+    }
+
     if (!slug) {
+      // Log everything so future debugging is one click in the function logs.
+      console.error('Missing slug. event.path=', event.path, 'event.rawUrl=', event.rawUrl, 'qs=', event.queryStringParameters);
       return { statusCode: 400, body: 'Missing slug' };
     }
 
