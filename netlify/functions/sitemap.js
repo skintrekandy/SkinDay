@@ -26,13 +26,21 @@ const HOMEPAGE = [
   { loc: '/insights', changefreq: 'weekly',  priority: 0.7 },
 ];
 
+// Must match the [[redirects]] block in netlify.toml AND the actual
+// botox-{city}.html files deployed in the repo root. Adding an entry
+// here without the file + redirect creates a Soft 404 in Google.
 const BOTOX_CITY_PAGES = [
-  'botox-toronto', 'botox-vancouver', 'botox-calgary', 'botox-edmonton',
-  'botox-montreal', 'botox-quebec-city', 'botox-winnipeg',
-  'botox-london', 'botox-london-ontario',
-  'botox-richmond', 'botox-richmond-hill',
-  'botox-mississauga', 'botox-brampton', 'botox-markham', 'botox-aurora',
-  'botox-newmarket', 'botox-etobicoke', 'botox-north-york', 'botox-scarborough',
+  // Ontario
+  'botox-toronto', 'botox-north-york', 'botox-richmond-hill',
+  'botox-markham', 'botox-etobicoke', 'botox-london-ontario',
+  // British Columbia
+  'botox-vancouver', 'botox-richmond', 'botox-victoria', 'botox-kelowna',
+  // Alberta
+  'botox-calgary', 'botox-edmonton',
+  // Quebec
+  'botox-montreal', 'botox-quebec-city', 'botox-sherbrooke', 'botox-gatineau',
+  // Manitoba
+  'botox-winnipeg',
 ].map(slug => ({ loc: `/${slug}`, changefreq: 'weekly', priority: 0.8 }));
 
 const COST_GUIDE_PAGES = [
