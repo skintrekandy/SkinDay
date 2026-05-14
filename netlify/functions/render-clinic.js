@@ -103,78 +103,56 @@ function formatInjectorCreds(raw) {
   return String(raw);
 }
 
-// Server-rendered content block — shown immediately on page load with
-// real clinic data (no flash of empty/template content), then removed by
-// the client-side JS in clinic.html once the full rich UI is hydrated.
+// Server-rendered content block — minimal, semantic, crawler-focused.
 //
-// This is progressive enhancement, not cloaking: the content humans see
-// during the brief pre-hydration window is the same content the crawler
-// reads. Google's documentation explicitly endorses this pattern.
+// Goal: defeat Google's Soft 404 classification by giving the page real,
+// unique, body-level content before any JavaScript runs.
 //
-// Visual: styled as a centered loading-state card matching the SkinDay
-// design tokens, so the brief moment before JS replaces it doesn't look
-// broken. Once clinic.html's renderClinic() runs, it removes #ssr-content.
+// Non-goals: visual polish, hydration parity, design matching. Client JS
+// overwrites this block (via document.getElementById('ssr-content')?.remove())
+// once the rich UI is ready, so users never see it.
+//
+// What matters: unique <h1>, unique paragraph content, semantic structure.
+// No inline CSS because that's where today's quote-collision bugs lived.
 function buildSeoBody(clinic) {
-  const safe = (k) => escapeHtml(clinic[k]);
-  const loc  = clinic.neighbourhood || clinic.area || clinic.province || '';
+  const name = escapeHtml(clinic.name || 'Cosmetic Clinic');
+  const loc  = escapeHtml(clinic.neighbourhood || clinic.area || clinic.province || 'Canada');
+  const province = escapeHtml(clinic.province || 'ON');
 
-  const priceBlock = (clinic.price != null && clinic.price > 0)
-    ? `<p>Botox pricing starts from $${escapeHtml(clinic.price)} per unit.</p>`
-    : '';
+  // Build paragraphs from whatever data is available. Each one adds a few
+  // unique words that distinguish this URL from every other clinic page.
+  const paragraphs = [];
 
-  const ratingBlock = (clinic.rating && clinic.reviews)
-    ? `<p>${escapeHtml(clinic.rating)} ★ · ${escapeHtml(clinic.reviews)} Google reviews</p>`
-    : '';
+  paragraphs.push(`Cosmetic clinic in ${loc}, ${province}.`);
+
+  if (clinic.price != null && clinic.price > 0) {
+    paragraphs.push(`Botox pricing from $${escapeHtml(clinic.price)} per unit.`);
+  } else {
+    paragraphs.push(`Botox and neurotoxin pricing available.`);
+  }
+
+  if (clinic.rating && clinic.reviews) {
+    paragraphs.push(`Rated ${escapeHtml(clinic.rating)} stars from ${escapeHtml(clinic.reviews)} Google reviews.`);
+  }
 
   const creds = formatInjectorCreds(clinic.injector_credentials);
-  const credBlock = creds
-    ? `<p>Credentials: ${escapeHtml(creds)}</p>`
-    : '';
+  if (creds) {
+    paragraphs.push(`Injector credentials: ${escapeHtml(creds)}.`);
+  }
 
   const expertise = (clinic.identity && clinic.identity.expertise) || [];
-  const expertiseBlock = expertise.length
-    ? `<p>Specialties: ${expertise.map(e => escapeHtml(e.label)).join(' · ')}</p>`
-    : '';
+  if (expertise.length) {
+    paragraphs.push(`Specialties: ${expertise.map(e => escapeHtml(e.label)).join(', ')}.`);
+  }
 
-  // Styled to match SkinDay design: centered, cream background, serif heading.
-  // Padding-top accounts for the fixed nav (~64px). Removed by client JS
-  // once hydration completes (clinic.html should call
-  // document.getElementById('ssr-content')?.remove() at the end of render).
-  //
-  // CRITICAL: all CSS string values use single-quotes ('DM Sans' not "DM Sans")
-  // because this entire style block lives inside a double-quoted HTML attribute.
-  // Mixing in double-quotes inside style="..." breaks the attribute and the
-  // entire page structure collapses (the rest of <body> gets eaten by the
-  // browser's HTML recovery).
-  const style = [
-    'padding:120px 5% 80px',
-    'text-align:center',
-    "font-family:'DM Sans',sans-serif",
-    'color:#1C1714',
-    'background:#FAF7F2',
-    'min-height:50vh',
-  ].join(';');
+  paragraphs.push(`View full pricing, photos, and contact details on SkinDay.`);
 
-  const headingStyle = [
-    "font-family:'Cormorant Garamond',serif",
-    'font-size:2.2rem',
-    'font-weight:400',
-    'margin-bottom:0.5rem',
-  ].join(';');
+  const body = paragraphs.map(p => `  <p>${p}</p>`).join('\n');
 
-  const locStyle = 'color:#8A7B72;font-size:1rem;margin-bottom:1.5rem;';
-  const pStyle = 'color:#8A7B72;font-size:0.95rem;margin:0.4rem 0;';
-
-  return `
-<div id="ssr-content" style="${style}">
-  <h1 style="${headingStyle}">${safe('name')}</h1>
-  ${loc ? `<p style="${locStyle}">${escapeHtml(loc)}</p>` : ''}
-  ${priceBlock ? priceBlock.replace('<p>', `<p style="${pStyle}">`) : ''}
-  ${ratingBlock ? ratingBlock.replace('<p>', `<p style="${pStyle}">`) : ''}
-  ${credBlock ? credBlock.replace('<p>', `<p style="${pStyle}">`) : ''}
-  ${expertiseBlock ? expertiseBlock.replace('<p>', `<p style="${pStyle}">`) : ''}
-  <p style="${pStyle};margin-top:2rem;font-size:0.85rem;">Loading full profile…</p>
-</div>`.trim();
+  return `<div id="ssr-content">
+  <h1>${name}</h1>
+${body}
+</div>`;
 }
 
 // ── TEMPLATE PATCHING ─────────────────────────────────────────────
@@ -337,6 +315,13 @@ exports.handler = async (event) => {
 
     const template = loadTemplate();
     const rendered = patchTemplate(template, clinic);
+
+    // Sanity check: confirm the injection actually landed. If the regex
+    // missed and #ssr-content isn't in the output, the function logs will
+    // show it immediately rather than us discovering it via Search Console.
+    const ssrPresent = rendered.includes('id="ssr-content"');
+    const titlePresent = rendered.includes(escapeHtml(clinic.name || ''));
+    console.log(`render-clinic slug=${slug} ssr_present=${ssrPresent} title_present=${titlePresent}`);
 
     return {
       statusCode: 200,
