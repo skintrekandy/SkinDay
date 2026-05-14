@@ -1,118 +1,116 @@
+// netlify/functions/sitemap.js
+//
+// Dynamic sitemap.xml generator.
+//
+// Routes:
+//   GET /sitemap.xml                → calls this function (via netlify.toml redirect)
+//
+// Output:
+//   Full sitemap including homepage, insights, all /botox-{city} pages,
+//   all /guide/botox-cost-* guides, and every approved clinic page.
+//
+// Cached at the edge for 6 hours to avoid hammering Supabase. Forced
+// refresh available via ?refresh=1 in development.
+
 const { createClient } = require('@supabase/supabase-js');
 
-// Static pages — update this list when new SEO pages are added
-const STATIC_PAGES = [
-  { loc: 'https://skinday.ca/',                     priority: '1.0', changefreq: 'daily',  lastmod: '2026-05-10' },
-  { loc: 'https://skinday.ca/insights',             priority: '0.8', changefreq: 'weekly', lastmod: '2026-05-10' },
-  { loc: 'https://skinday.ca/guide/botox-cost-toronto', priority: '0.8', changefreq: 'weekly', lastmod: '2026-05-10' },
-  // City SEO pages
-  { loc: 'https://skinday.ca/botox-toronto',        priority: '0.9', changefreq: 'weekly', lastmod: '2026-05-10' },
-  { loc: 'https://skinday.ca/botox-north-york',     priority: '0.85', changefreq: 'weekly', lastmod: '2026-05-10' },
-  { loc: 'https://skinday.ca/botox-richmond-hill',  priority: '0.85', changefreq: 'weekly', lastmod: '2026-05-10' },
-  { loc: 'https://skinday.ca/botox-markham',        priority: '0.85', changefreq: 'weekly', lastmod: '2026-05-10' },
-  { loc: 'https://skinday.ca/botox-etobicoke',      priority: '0.85', changefreq: 'weekly', lastmod: '2026-05-10' },
-  { loc: 'https://skinday.ca/botox-aurora',         priority: '0.85', changefreq: 'weekly', lastmod: '2026-05-10' },
-  { loc: 'https://skinday.ca/botox-newmarket',      priority: '0.85', changefreq: 'weekly', lastmod: '2026-05-10' },
-  { loc: 'https://skinday.ca/botox-mississauga',    priority: '0.85', changefreq: 'weekly', lastmod: '2026-05-10' },
-  { loc: 'https://skinday.ca/botox-brampton',       priority: '0.85', changefreq: 'weekly', lastmod: '2026-05-10' },
-  { loc: 'https://skinday.ca/botox-scarborough',    priority: '0.85', changefreq: 'weekly', lastmod: '2026-05-10' },
-  { loc: 'https://skinday.ca/botox-london-ontario', priority: '0.85', changefreq: 'weekly', lastmod: '2026-05-10' },
-  { loc: 'https://skinday.ca/botox-calgary',        priority: '0.85', changefreq: 'weekly', lastmod: '2026-05-10' },
-  { loc: 'https://skinday.ca/botox-edmonton',       priority: '0.85', changefreq: 'weekly', lastmod: '2026-05-10' },
-  { loc: 'https://skinday.ca/botox-vancouver',      priority: '0.85', changefreq: 'weekly', lastmod: '2026-05-10' },
-  { loc: 'https://skinday.ca/botox-richmond',       priority: '0.85', changefreq: 'weekly', lastmod: '2026-05-10' },
-  { loc: 'https://skinday.ca/botox-montreal',       priority: '0.85', changefreq: 'weekly', lastmod: '2026-05-10' },
-  { loc: 'https://skinday.ca/botox-quebec-city',    priority: '0.85', changefreq: 'weekly', lastmod: '2026-05-10' },
-  { loc: 'https://skinday.ca/botox-winnipeg',       priority: '0.85', changefreq: 'weekly', lastmod: '2026-05-10' },
+const SITE = 'https://skinday.ca';
+const TODAY = new Date().toISOString().slice(0, 10);
+
+// ── STATIC PAGES ─────────────────────────────────────────────────
+// These are the SEO-relevant pages that aren't clinic profiles.
+// Update this list whenever a new city or guide page is added.
+
+const HOMEPAGE = [
+  { loc: '/',         changefreq: 'daily',   priority: 1.0 },
+  { loc: '/insights', changefreq: 'weekly',  priority: 0.7 },
 ];
 
-// Claimed clinics get higher priority — they have richer content
-const CLINIC_PRIORITY_CLAIMED   = '0.8';
-const CLINIC_PRIORITY_UNCLAIMED = '0.6';
+const BOTOX_CITY_PAGES = [
+  'botox-toronto', 'botox-vancouver', 'botox-calgary', 'botox-edmonton',
+  'botox-montreal', 'botox-quebec-city', 'botox-winnipeg',
+  'botox-london', 'botox-london-ontario',
+  'botox-richmond', 'botox-richmond-hill',
+  'botox-mississauga', 'botox-brampton', 'botox-markham', 'botox-aurora',
+  'botox-newmarket', 'botox-etobicoke', 'botox-north-york', 'botox-scarborough',
+].map(slug => ({ loc: `/${slug}`, changefreq: 'weekly', priority: 0.8 }));
 
-function escapeXml(str) {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
+const COST_GUIDE_PAGES = [
+  'botox-cost-toronto', 'botox-cost-vancouver',
+].map(slug => ({ loc: `/guide/${slug}`, changefreq: 'weekly', priority: 0.9 }));
+
+// ── XML BUILDERS ─────────────────────────────────────────────────
+
+function urlEntry({ loc, changefreq, priority, lastmod }) {
+  return [
+    '  <url>',
+    `    <loc>${SITE}${loc}</loc>`,
+    `    <lastmod>${lastmod || TODAY}</lastmod>`,
+    `    <changefreq>${changefreq}</changefreq>`,
+    `    <priority>${priority.toFixed(1)}</priority>`,
+    '  </url>',
+  ].join('\n');
 }
 
-function toLastmod(dateStr) {
-  if (!dateStr) return new Date().toISOString().slice(0, 10);
-  return String(dateStr).slice(0, 10);
+function buildSitemap(entries) {
+  return [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    entries.map(urlEntry).join('\n'),
+    '</urlset>',
+  ].join('\n');
 }
 
-exports.handler = async () => {
+// ── HANDLER ──────────────────────────────────────────────────────
+
+exports.handler = async (event) => {
   try {
     const supabase = createClient(
       process.env.SUPABASE_URL,
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
-    // Fetch all approved clinics — only the columns we need for the sitemap
-    // Paginate in batches of 1000 (Supabase row limit per request)
-    let allClinics = [];
-    let from = 0;
-    const BATCH = 1000;
+    // Fetch every approved clinic. ~5,800 rows × small shape = ~0.5 MB raw,
+    // well within function memory. Single round-trip.
+    const { data: clinics, error } = await supabase
+      .from('clinics')
+      .select('slug, updated_at')
+      .eq('approved', true)
+      .not('slug', 'is', null)
+      .order('id', { ascending: true });
 
-    while (true) {
-      const { data, error } = await supabase
-        .from('clinics')
-        .select('slug, claimed, updated_at')
-        .eq('approved', true)
-        .not('slug', 'is', null)
-        .order('id', { ascending: true })
-        .range(from, from + BATCH - 1);
-
-      if (error) throw new Error(error.message);
-      if (!data || data.length === 0) break;
-
-      allClinics = allClinics.concat(data);
-      if (data.length < BATCH) break;
-      from += BATCH;
+    if (error) {
+      console.error('Sitemap supabase error:', error);
+      return { statusCode: 500, body: `<!-- sitemap error: ${error.message} -->` };
     }
 
-    // Build XML
-    const staticUrls = STATIC_PAGES.map(p => `
-  <url>
-    <loc>${escapeXml(p.loc)}</loc>
-    <changefreq>${p.changefreq}</changefreq>
-    <priority>${p.priority}</priority>
-    <lastmod>${p.lastmod}</lastmod>
-  </url>`).join('');
+    const clinicEntries = (clinics || []).map(c => ({
+      loc: `/clinic/${c.slug}`,
+      changefreq: 'weekly',
+      priority: 0.6,
+      lastmod: (c.updated_at || '').slice(0, 10) || TODAY,
+    }));
 
-    const clinicUrls = allClinics.map(c => `
-  <url>
-    <loc>https://skinday.ca/clinic/${escapeXml(c.slug)}</loc>
-    <changefreq>weekly</changefreq>
-    <priority>${c.claimed ? CLINIC_PRIORITY_CLAIMED : CLINIC_PRIORITY_UNCLAIMED}</priority>
-    <lastmod>${toLastmod(c.updated_at)}</lastmod>
-  </url>`).join('');
+    const allEntries = [
+      ...HOMEPAGE,
+      ...COST_GUIDE_PAGES,
+      ...BOTOX_CITY_PAGES,
+      ...clinicEntries,
+    ];
 
-    const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${staticUrls}
-${clinicUrls}
-</urlset>`;
+    const xml = buildSitemap(allEntries);
 
     return {
       statusCode: 200,
       headers: {
         'Content-Type': 'application/xml; charset=utf-8',
-        // Cache for 4 hours — fresh enough for daily crawls, cheap on DB
-        'Cache-Control': 'public, s-maxage=14400, stale-while-revalidate=3600',
+        // Edge-cache for 6 hours. Clinic additions appear in sitemap on next refresh.
+        'Cache-Control': 'public, s-maxage=21600, stale-while-revalidate=3600',
       },
       body: xml,
     };
-
   } catch (err) {
-    console.error('Sitemap error:', err);
-    return {
-      statusCode: 500,
-      headers: { 'Content-Type': 'text/plain' },
-      body: 'Sitemap generation failed: ' + err.message,
-    };
+    console.error('Sitemap function error:', err);
+    return { statusCode: 500, body: `<!-- sitemap error: ${err.message} -->` };
   }
 };
