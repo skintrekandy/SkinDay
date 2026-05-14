@@ -81,7 +81,7 @@ function buildTitle(clinic) {
 function buildDescription(clinic) {
   const name = clinic.name || 'this clinic';
   const loc  = clinic.neighbourhood || clinic.area || clinic.province || 'Canada';
-  const price = clinic.price ? `Botox from $${clinic.price}/unit. ` : '';
+  const price = (clinic.price != null && clinic.price > 0) ? `Botox from $${clinic.price}/unit. ` : '';
   const rating = (clinic.rating && clinic.reviews)
     ? `Rated ${clinic.rating} from ${clinic.reviews} Google reviews. `
     : '';
@@ -118,7 +118,7 @@ function buildSeoBody(clinic) {
   const safe = (k) => escapeHtml(clinic[k]);
   const loc  = clinic.neighbourhood || clinic.area || clinic.province || '';
 
-  const priceBlock = clinic.price
+  const priceBlock = (clinic.price != null && clinic.price > 0)
     ? `<p>Botox pricing starts from $${escapeHtml(clinic.price)} per unit.</p>`
     : '';
 
@@ -140,17 +140,23 @@ function buildSeoBody(clinic) {
   // Padding-top accounts for the fixed nav (~64px). Removed by client JS
   // once hydration completes (clinic.html should call
   // document.getElementById('ssr-content')?.remove() at the end of render).
+  //
+  // CRITICAL: all CSS string values use single-quotes ('DM Sans' not "DM Sans")
+  // because this entire style block lives inside a double-quoted HTML attribute.
+  // Mixing in double-quotes inside style="..." breaks the attribute and the
+  // entire page structure collapses (the rest of <body> gets eaten by the
+  // browser's HTML recovery).
   const style = [
     'padding:120px 5% 80px',
     'text-align:center',
-    'font-family:"DM Sans",sans-serif',
+    "font-family:'DM Sans',sans-serif",
     'color:#1C1714',
     'background:#FAF7F2',
     'min-height:50vh',
   ].join(';');
 
   const headingStyle = [
-    'font-family:"Cormorant Garamond",serif',
+    "font-family:'Cormorant Garamond',serif",
     'font-size:2.2rem',
     'font-weight:400',
     'margin-bottom:0.5rem',
@@ -312,6 +318,20 @@ exports.handler = async (event) => {
             label: r.is_other ? r.other_text : r.value
           })),
         };
+      }
+    } catch (_) { /* non-fatal */ }
+
+    // Sync lowest price from clinic_prices, since clinics.price snapshot
+    // can lag behind the breakdown table (matches get-clinics.js behavior).
+    try {
+      const { data: priceRows } = await supabase
+        .from('clinic_prices')
+        .select('price')
+        .eq('clinic_id', String(clinic.id))
+        .order('price', { ascending: true })
+        .limit(1);
+      if (priceRows && priceRows.length && priceRows[0].price != null) {
+        clinic.price = priceRows[0].price;
       }
     } catch (_) { /* non-fatal */ }
 
