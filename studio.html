@@ -136,6 +136,8 @@
     .btn-dl:hover { background: var(--deep2); }
     .btn-reset { background: transparent; color: var(--muted); border: 1px solid var(--border); padding: 12px 24px; font-family: 'DM Sans', sans-serif; font-size: 0.85rem; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
     .btn-reset:hover { border-color: var(--muted); color: var(--deep); }
+    .btn-new-case { background: var(--rose); color: #fff; border: 1px solid var(--rose); padding: 12px 28px; font-family: 'DM Sans', sans-serif; font-size: 0.85rem; font-weight: 500; border-radius: 6px; cursor: pointer; transition: background 0.2s; }
+    .btn-new-case:hover { background: var(--rose-m); border-color: var(--rose-m); }
     footer { background: var(--deep); padding: 48px 5% 32px; border-top: 1px solid rgba(201,169,110,0.15); margin-top: 80px; }
     .footer-top { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 2.5rem; max-width: 1280px; margin: 0 auto 3rem; }
     .footer-brand { font-family: 'Cormorant Garamond', serif; font-size: 1.5rem; font-weight: 400; color: var(--cream); margin-bottom: 0.6rem; }
@@ -366,8 +368,7 @@
       </div>
     </div>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-      <button class="btn-reset" onclick="newCase()" style="border-color:var(--rose);color:var(--rose);">New case</button>
-      <button class="btn-reset" onclick="location.reload()">Start over</button>
+      <button class="btn-new-case" onclick="newCase()">New case</button>
       <button class="btn-reset" onclick="saveBrand()" style="border-color:var(--gold);color:var(--gold);">Save brand profile</button>
       <span id="brandSaved" style="font-size:0.75rem;color:#3D7A55;display:none;">✓ Saved</span>
     </div>
