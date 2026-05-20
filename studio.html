@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-  <title>SkinDay Studio — Free Before & After Photo Tool</title>
-  <meta name="description" content="Create professional before & after photos in seconds. Photos are processed locally in your browser — SkinDay does not upload, store, or view patient images. Free for all clinics." />
+  <title>SkinDay Studio — AI-Assisted Before & After Photo Tool for Clinics</title>
+  <meta name="description" content="AI-assisted before & after photos for aesthetic clinics. Aligned, branded, ready in seconds. Photos are processed locally in your browser — SkinDay does not upload, store, or view patient images. Free for all clinics." />
   <link rel="icon" href="/favicon.ico" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -178,8 +178,8 @@
 <div class="page">
   <div class="hero">
     <div class="eyebrow">SkinDay Studio</div>
-    <h1>Before & after photos.<br><em>Ready in seconds.</em></h1>
-    <p>Choose two photos, pick your crop, add your clinic name — download a polished image ready to post.</p>
+    <h1>AI-assisted before & after photos.<br><em>Aligned, branded, ready in seconds.</em></h1>
+    <p>Choose two photos, let Studio help align the crop, add your clinic branding, then download a polished image ready to post.</p>
   </div>
 
   <div class="step">
@@ -312,6 +312,7 @@
           <select id="logoPos">
             <option value="tr">Top right</option>
             <option value="tl">Top left</option>
+            <option value="center">Middle</option>
             <option value="br">Bottom right</option>
             <option value="bl">Bottom left</option>
           </select>
@@ -1035,10 +1036,11 @@ function drawLogo(ctx, canvasW, canvasH, logo, pos) {
   const lh = maxH;
   const margin = 24;
   let lx, ly;
-  if(pos==='tl')      { lx=margin;           ly=margin; }
-  else if(pos==='tr') { lx=canvasW-lw-margin; ly=margin; }
-  else if(pos==='bl') { lx=margin;           ly=canvasH-lh-margin; }
-  else                { lx=canvasW-lw-margin; ly=canvasH-lh-margin; }
+  if(pos==='tl')          { lx=margin;             ly=margin; }
+  else if(pos==='tr')     { lx=canvasW-lw-margin;  ly=margin; }
+  else if(pos==='bl')     { lx=margin;             ly=canvasH-lh-margin; }
+  else if(pos==='center') { lx=Math.round((canvasW-lw)/2); ly=Math.round((canvasH-lh)/2); }
+  else                    { lx=canvasW-lw-margin;  ly=canvasH-lh-margin; }
   ctx.drawImage(logo, lx, ly, lw, lh);
 }
 
