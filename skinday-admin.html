@@ -818,7 +818,7 @@
         <!-- Chain detection -->
         <div id="pi-chain-box" style="display:none;margin-bottom:1rem;padding:0.65rem 1rem;background:rgba(200,114,90,0.08);border:1px solid rgba(200,114,90,0.2);border-radius:8px;max-width:600px;">
           <label style="display:flex;align-items:center;gap:0.6rem;cursor:pointer;">
-            <input type="checkbox" id="pi-chain-all" checked style="accent-color:#C8725A;width:15px;height:15px;" />
+            <input type="checkbox" id="pi-chain-all" style="accent-color:#C8725A;width:15px;height:15px;" />
             <span style="font-size:0.82rem;color:#FAF7F2;" id="pi-chain-label"></span>
           </label>
           <div style="font-size:0.72rem;color:#8C7B6B;margin-top:0.35rem;" id="pi-chain-locations"></div>
@@ -1418,15 +1418,34 @@ function piSelect(id, name, neighbourhood, area) {
   document.querySelectorAll('#pi-creds input, #pi-langs input').forEach(cb => cb.checked = false);
 
   // Chain detection
+  // Domains shared across thousands of unrelated businesses — never a real "chain" signal.
+  const NON_CHAIN_DOMAINS = [
+    'linktr.ee','linktree.com','beacons.ai','bio.link','taplink.cc','linkin.bio',
+    'allmylinks.com','campsite.bio','msha.ke',
+    'facebook.com','fb.com','fb.me','m.facebook.com','instagram.com','tiktok.com',
+    'google.com','g.page','goo.gl','business.site','sites.google.com',
+    'wa.me','api.whatsapp.com',
+    'onrender.com','wixsite.com','squarespace.com','godaddysites.com',
+    'booksy.com','fresha.com','vagaro.com','janeapp.com','noterro.com',
+    'setmore.com','square.site','schedulicity.com','mindbodyonline.com'
+  ];
+  const getDomain = (url) => url.replace(/https?:\/\/(www\.)?/,'').split('/')[0].toLowerCase();
+  const isRealChainDomain = (domain) => domain && !NON_CHAIN_DOMAINS.some(bad => domain === bad || domain.endsWith('.' + bad));
+
   const selectedClinic = piAllClinics.find(c => String(c.id) == String(id));
   const chainBox = document.getElementById('pi-chain-box');
-  if (selectedClinic && selectedClinic.website) {
-    const domain = selectedClinic.website.replace(/https?:\/\/(www\.)?/,'').split('/')[0].toLowerCase();
-    const chainClinics = piAllClinics.filter(c => String(c.id) != String(id) && c.website && c.website.replace(/https?:\/\/(www\.)?/,'').split('/')[0].toLowerCase() === domain);
+  const selDomain = selectedClinic && selectedClinic.website ? getDomain(selectedClinic.website) : null;
+  if (selDomain && isRealChainDomain(selDomain)) {
+    const chainClinics = piAllClinics.filter(c =>
+      String(c.id) != String(id) &&
+      c.website &&
+      getDomain(c.website) === selDomain
+    );
     if (chainClinics.length > 0) {
       piChainIds = chainClinics.map(c => c.id);
-      document.getElementById('pi-chain-label').textContent = `Chain detected — apply prices to all ${chainClinics.length + 1} locations`;
-      document.getElementById('pi-chain-locations').textContent = chainClinics.map(c => c.name.replace(/^.*?-\s*/,'')).join(', ');
+      document.getElementById('pi-chain-all').checked = false; // never default-on; this is a destructive multi-write
+      document.getElementById('pi-chain-label').textContent = `Possible chain via ${selDomain} — apply prices to all ${chainClinics.length + 1} locations`;
+      document.getElementById('pi-chain-locations').textContent = chainClinics.map(c => `${c.name.replace(/^.*?-\s*/,'')} (${c.neighbourhood || '?'})`).join(', ');
       chainBox.style.display = 'block';
     } else { piChainIds = []; chainBox.style.display = 'none'; }
   } else { piChainIds = []; chainBox.style.display = 'none'; }
