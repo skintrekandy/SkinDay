@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
   <title>SkinDay Studio — Free Before & After Photo Tool</title>
-  <meta name="description" content="Create professional before & after photos in seconds. Free for all clinics." />
+  <meta name="description" content="Create professional before & after photos in seconds. Photos are processed locally in your browser — SkinDay does not upload, store, or view patient images. Free for all clinics." />
   <link rel="icon" href="/favicon.ico" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -73,6 +73,8 @@
     .change-input { position: absolute; top: 8px; right: 8px; z-index: 4; opacity: 0; width: 60px; height: 24px; cursor: pointer; display: none; }
     .upload-zone.filled .change-input { display: block; }
     .status { display: flex; align-items: center; gap: 10px; padding: 11px 15px; background: #fff; border: 1px solid var(--border); border-radius: 6px; font-size: 0.83rem; color: var(--muted); margin-top: 14px; }
+    .privacy-note { display: flex; align-items: flex-start; gap: 8px; padding: 10px 14px; background: rgba(201,169,110,0.06); border: 1px solid rgba(201,169,110,0.18); border-radius: 6px; font-size: 0.78rem; color: var(--muted); line-height: 1.5; margin-top: 12px; }
+    .privacy-icon { flex-shrink: 0; font-size: 0.9rem; line-height: 1.5; opacity: 0.7; }
     .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border); flex-shrink: 0; transition: background 0.3s; }
     .dot.spin { background: var(--gold); animation: blink 1s infinite; }
     .dot.ok { background: #3D7A55; }
@@ -118,8 +120,13 @@
     .wm-pos-icon { font-size: 14px; }
 
     .gen-wrap { display: flex; justify-content: center; margin: 8px 0 28px; }
-    .btn-gen { background: var(--rose); color: #fff; border: none; padding: 14px 52px; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; font-weight: 500; letter-spacing: 0.06em; border-radius: 6px; cursor: pointer; transition: background 0.2s; }
-    .btn-gen:hover { background: var(--rose-m); }
+    .btn-gen { background: var(--rose); color: #fff; border: none; padding: 14px 52px; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; font-weight: 500; letter-spacing: 0.06em; border-radius: 6px; cursor: pointer; transition: background 0.2s, opacity 0.2s; }
+    .btn-gen:hover:not(:disabled) { background: var(--rose-m); }
+    .btn-gen:disabled { background: var(--dim); cursor: not-allowed; opacity: 0.6; }
+    .consent-row { background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 14px 16px; margin-bottom: 16px; }
+    .consent-label { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 0.8rem; color: var(--muted); line-height: 1.55; }
+    .consent-checkbox { flex-shrink: 0; margin-top: 2px; width: 16px; height: 16px; accent-color: var(--rose); cursor: pointer; }
+    .consent-label:hover { color: var(--deep); }
     .output { display: none; }
     .output.visible { display: block; }
     .output-wrap { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--deep); }
@@ -172,11 +179,11 @@
   <div class="hero">
     <div class="eyebrow">SkinDay Studio</div>
     <h1>Before & after photos.<br><em>Ready in seconds.</em></h1>
-    <p>Upload two photos, pick your crop, add your clinic name — download a polished image ready to post.</p>
+    <p>Choose two photos, pick your crop, add your clinic name — download a polished image ready to post.</p>
   </div>
 
   <div class="step">
-    <div class="step-num">Step 1 — Upload your photos</div>
+    <div class="step-num">Step 1 — Choose your photos</div>
     <div class="upload-row">
       <div class="upload-zone" id="zone-before">
         <div class="upload-plus">+</div>
@@ -195,7 +202,11 @@
         <input type="file" accept="image/*" class="change-input" id="change-after"/>
       </div>
     </div>
-    <div class="status"><div class="dot" id="dot"></div><span id="statusText">Upload a before and after photo to begin</span></div>
+    <div class="privacy-note">
+      <span class="privacy-icon" aria-hidden="true">🔒</span>
+      <span>Photos are processed locally in your browser. SkinDay does not upload, store, or view patient images.</span>
+    </div>
+    <div class="status"><div class="dot" id="dot"></div><span id="statusText">Choose a before and after photo to begin</span></div>
     <div class="progress" id="progressBar"><div class="progress-fill" id="progressFill"></div></div>
   </div>
 
@@ -325,7 +336,13 @@
         <span id="saveMsg" style="font-size:0.75rem;color:#3D7A55;"></span>
         <button onclick="saveSettings()" style="background:transparent;border:1px solid var(--border);color:var(--muted);padding:8px 18px;font-family:'DM Sans',sans-serif;font-size:0.72rem;letter-spacing:.1em;text-transform:uppercase;border-radius:4px;cursor:pointer;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--deep)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">Save settings</button>
       </div>
-      <div class="gen-wrap"><button class="btn-gen" onclick="generate()">Generate image</button></div>
+      <div class="consent-row">
+        <label class="consent-label">
+          <input type="checkbox" id="consentCheck" class="consent-checkbox"/>
+          <span>I have patient consent to use these images for marketing or social media. SkinDay Studio formats images for you, but obtaining appropriate consent before sharing remains the clinic's responsibility.</span>
+        </label>
+      </div>
+      <div class="gen-wrap"><button class="btn-gen" id="genBtn" onclick="generate()" disabled>Generate image</button></div>
     </div>
   </div>
 
@@ -348,6 +365,7 @@
       </div>
     </div>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <button class="btn-reset" onclick="newCase()" style="border-color:var(--rose);color:var(--rose);">New case</button>
       <button class="btn-reset" onclick="location.reload()">Start over</button>
       <button class="btn-reset" onclick="saveBrand()" style="border-color:var(--gold);color:var(--gold);">Save brand profile</button>
       <span id="brandSaved" style="font-size:0.75rem;color:#3D7A55;display:none;">✓ Saved</span>
@@ -437,7 +455,7 @@ function loadFile(file,which){
       const th=document.createElement('img'); th.className='thumb'; th.src=ev.target.result;
       zone.insertBefore(th,zone.querySelector('.zone-tag'));
       if(S.beforeImg&&S.afterImg) runDetect();
-      else setSt(which==='before'?'Before loaded — now upload the after photo.':'After loaded — now upload the before photo.','warn');
+      else setSt(which==='before'?'Before loaded — now choose the after photo.':'After loaded — now choose the before photo.','warn');
     };
     img.src=ev.target.result;
   };
@@ -632,8 +650,12 @@ function renderPreviews(){
 }
 
 // Setup drag-to-pan on a preview canvas
+// Guards against attaching duplicate listeners if called multiple times
+// (runDetect() runs on every photo change — without this guard, listeners stack up)
 function setupDrag(canvasId, which){
   const cv=document.getElementById(canvasId);
+  if(cv.dataset.dragInit==='1') return;
+  cv.dataset.dragInit='1';
   let drag=null;
   const start=e=>{
     e.preventDefault();
@@ -743,6 +765,9 @@ function sharpen(ctx, w, h) {
   const src = ctx.getImageData(0,0,w,h);
   const dst = ctx.createImageData(w,h);
   const sd = src.data, dd = dst.data;
+  // Copy source to destination first so edge pixels (which the convolution loop
+  // below skips) are preserved instead of being left transparent/black.
+  dd.set(sd);
   for(let y=1;y<h-1;y++){
     for(let x=1;x<w-1;x++){
       for(let c=0;c<3;c++){
@@ -831,34 +856,6 @@ function generate(){
   const aM=document.getElementById('afterMonth').value,  aY=document.getElementById('afterYear').value;
   const beforeDate=[bM,bY].filter(Boolean).join(' ');
   const afterDate=[aM,aY].filter(Boolean).join(' ');
-
-  function drawLabel(ox,oy,panelW,panelH,label,date){
-    const gradH = treatment ? 110 : 80;
-    const g=ctx.createLinearGradient(ox,oy+panelH-gradH,ox,oy+panelH);
-    g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.85)');
-    ctx.fillStyle=g;ctx.fillRect(ox,oy+panelH-gradH,panelW,gradH);
-    ctx.fillStyle='rgba(250,247,242,.92)';
-    ctx.font='500 28px "DM Sans",sans-serif';
-    ctx.fillText(label,ox+24,oy+panelH-22);
-    if(date){
-      ctx.font='300 20px "DM Sans",sans-serif';
-      ctx.fillStyle='rgba(250,247,242,.65)';
-      ctx.fillText(date,ox+24,oy+panelH-56);
-    }
-    // Treatment label — top left of panel
-    if(treatment && label==='BEFORE'){
-      ctx.fillStyle='rgba(28,23,20,0.62)';
-      ctx.font='400 22px "DM Sans",sans-serif';
-      const tw=ctx.measureText(treatment).width;
-      const tx=ox+20, ty=oy+20, tpad=12;
-      if(ctx.roundRect) ctx.roundRect(tx,ty,tw+tpad*2,38,5); else ctx.rect(tx,ty,tw+tpad*2,38);
-      ctx.fill();
-      ctx.fillStyle='rgba(250,247,242,.9)';
-      ctx.textBaseline='top';
-      ctx.fillText(treatment,tx+tpad,ty+8);
-      ctx.textBaseline='alphabetic';
-    }
-  }
 
   // Draw composite onto output canvas (with letterbox offset if formatted)
   const compCanvas=document.createElement('canvas');
@@ -958,25 +955,6 @@ function generate(){
   document.getElementById('outputSection').classList.add('visible');
   document.getElementById('outputSection').scrollIntoView({behavior:'smooth'});
   setSt('Done — your image is ready to download.','ok');
-}
-
-// ── Treatment label ──────────────────────────────────────────
-function drawTreatmentLabel(ctx, cW, cH, label) {
-  if(!label) return;
-  const fs = Math.max(18, Math.round(cH * 0.018));
-  ctx.font = `500 ${fs}px 'DM Sans',sans-serif`;
-  const tw = ctx.measureText(label).width;
-  const px = 20, py = 10;
-  const bw = tw + px*2, bh = fs + py*2;
-  const bx = cW/2 - bw/2, by = 28;
-  ctx.fillStyle = 'rgba(201,169,110,0.92)';
-  if(ctx.roundRect) ctx.roundRect(bx, by, bw, bh, 20);
-  else ctx.rect(bx, by, bw, bh);
-  ctx.fill();
-  ctx.fillStyle = '#1C1714';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(label, bx+px, by+bh/2);
-  ctx.textBaseline = 'alphabetic';
 }
 
 // ── Multi-format export ───────────────────────────────────────
@@ -1086,6 +1064,51 @@ function saveSettings(){
 // Keep saveBrand as alias
 const saveBrand = saveSettings;
 
+// New case — clears photos, treatment label, and dates, but preserves brand profile
+// (clinic name, injector, logo, layout, format, watermark position, enhancement, etc.)
+function newCase(){
+  // Clear image state
+  S.beforeImg=null; S.afterImg=null;
+  S.bLm=null; S.aLm=null;
+  S.bZoom=1.0; S.aZoom=1.0;
+  S.bPan={x:0,y:0}; S.aPan={x:0,y:0};
+
+  // Reset upload zones
+  ['before','after'].forEach(w=>{
+    const zone=document.getElementById('zone-'+w);
+    zone.classList.remove('filled');
+    const thumb=zone.querySelector('img.thumb');
+    if(thumb) thumb.remove();
+    const input=document.getElementById('input-'+w);
+    if(input) input.value='';
+    const changeInput=document.getElementById('change-'+w);
+    if(changeInput) changeInput.value='';
+  });
+
+  // Clear treatment + dates (case-specific, shouldn't carry over)
+  const treatment=document.getElementById('treatmentLabel');
+  if(treatment) treatment.value='';
+  ['beforeMonth','beforeYear','afterMonth','afterYear'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.value='';
+  });
+
+  // Reset zoom sliders to 100%
+  const zB=document.getElementById('zoomB'); if(zB) zB.value=100;
+  const zA=document.getElementById('zoomA'); if(zA) zA.value=100;
+  const zBVal=document.getElementById('zoomBVal'); if(zBVal) zBVal.textContent='100%';
+  const zAVal=document.getElementById('zoomAVal'); if(zAVal) zAVal.textContent='100%';
+
+  // Hide crop and output sections
+  document.getElementById('cropSection').classList.remove('visible');
+  document.getElementById('outputSection').classList.remove('visible');
+
+  // Reset status and scroll to top of page
+  setSt('Choose a before and after photo to begin','idle');
+  setProg(0);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
 function loadSettings(){
   try{
     const raw=localStorage.getItem('skinday_studio'); if(!raw)return;
@@ -1117,6 +1140,26 @@ document.addEventListener('DOMContentLoaded', () => {
       img.src = savedLogo;
     }
   } catch(e) {}
+
+  // Wire up consent checkbox to enable/disable Generate button
+  const consent = document.getElementById('consentCheck');
+  const genBtn = document.getElementById('genBtn');
+  if(consent && genBtn) {
+    // Restore session consent so clinics aren't re-prompted every case
+    try {
+      if(sessionStorage.getItem('skinday_consent') === '1') {
+        consent.checked = true;
+        genBtn.disabled = false;
+      }
+    } catch(e) {}
+    consent.addEventListener('change', () => {
+      genBtn.disabled = !consent.checked;
+      try {
+        if(consent.checked) sessionStorage.setItem('skinday_consent','1');
+        else sessionStorage.removeItem('skinday_consent');
+      } catch(e) {}
+    });
+  }
 });
 </script>
 </body>
