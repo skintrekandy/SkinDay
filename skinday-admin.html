@@ -1384,11 +1384,33 @@ function piLoadClinics() {
     .catch(() => { piAllClinics = []; });
 }
 
-function piSearch(query) {
+async function piSearch(query) {
   const resultsEl = document.getElementById('pi-results');
   if (!query || query.length < 2) { resultsEl.style.display = 'none'; return; }
   if (!piClinicsLoaded) { setTimeout(() => piSearch(query), 300); return; }
   const q = query.toLowerCase();
+
+  // Live DB lookup so clinics outside the cached index (e.g. recently added,
+  // or beyond the index payload) are still findable. Merge any new rows into
+  // piAllClinics so downstream chain detection and lookups keep working.
+  // Falls back silently to the client-side array if the live query fails.
+  try {
+    const enc = encodeURIComponent('*' + query + '*');
+    const res = await fetch(
+      `${SUPABASE_URL_ADMIN}/rest/v1/clinics?select=id,name,neighbourhood,area,website&approved=eq.true&name=ilike.${enc}&limit=20`,
+      { headers: { apikey: SUPABASE_KEY_ADMIN, Authorization: `Bearer ${SUPABASE_KEY_ADMIN}` } }
+    );
+    if (res.ok) {
+      const live = await res.json();
+      if (Array.isArray(live)) {
+        live.forEach(o => {
+          o.id = Number(o.id) || o.id;
+          if (!piAllClinics.some(c => String(c.id) === String(o.id))) piAllClinics.push(o);
+        });
+      }
+    }
+  } catch (_) { /* fall back to client-side array */ }
+
   const matches = piAllClinics.filter(c => c.name.toLowerCase().includes(q)).slice(0, 8);
   if (!matches.length) { resultsEl.style.display = 'none'; return; }
   resultsEl.innerHTML = matches.map(c => `
@@ -1590,11 +1612,31 @@ function pracLoadClinics() {
     .catch(() => { pracAllClinics = []; });
 }
 
-function pracSearch(query) {
+async function pracSearch(query) {
   const resultsEl = document.getElementById('prac-results');
   if (!query || query.length < 2) { resultsEl.style.display = 'none'; return; }
   if (!pracClinicsLoaded) { setTimeout(() => pracSearch(query), 300); return; }
   const q = query.toLowerCase();
+
+  // Live DB lookup so clinics outside the cached index are findable.
+  // Merge new rows into pracAllClinics; fall back to client array on failure.
+  try {
+    const enc = encodeURIComponent('*' + query + '*');
+    const res = await fetch(
+      `${SUPABASE_URL_ADMIN}/rest/v1/clinics?select=id,name,neighbourhood,area,website&approved=eq.true&name=ilike.${enc}&limit=20`,
+      { headers: { apikey: SUPABASE_KEY_ADMIN, Authorization: `Bearer ${SUPABASE_KEY_ADMIN}` } }
+    );
+    if (res.ok) {
+      const live = await res.json();
+      if (Array.isArray(live)) {
+        live.forEach(o => {
+          o.id = Number(o.id) || o.id;
+          if (!pracAllClinics.some(c => String(c.id) === String(o.id))) pracAllClinics.push(o);
+        });
+      }
+    }
+  } catch (_) { /* fall back to client-side array */ }
+
   const matches = pracAllClinics.filter(c => c.name.toLowerCase().includes(q)).slice(0, 8);
   if (!matches.length) { resultsEl.style.display = 'none'; return; }
   resultsEl.innerHTML = matches.map(c => `
