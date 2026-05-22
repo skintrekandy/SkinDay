@@ -1397,7 +1397,7 @@ async function piSearch(query) {
   try {
     const enc = encodeURIComponent('*' + query + '*');
     const res = await fetch(
-      `${SUPABASE_URL_ADMIN}/rest/v1/clinics?select=id,name,neighbourhood,area,website&approved=eq.true&name=ilike.${enc}&limit=20`,
+      `${SUPABASE_URL_ADMIN}/rest/v1/clinics?select=id,name,neighbourhood,area,website&approved=eq.true&name=ilike.${enc}&limit=50`,
       { headers: { apikey: SUPABASE_KEY_ADMIN, Authorization: `Bearer ${SUPABASE_KEY_ADMIN}` } }
     );
     if (res.ok) {
@@ -1411,7 +1411,18 @@ async function piSearch(query) {
     }
   } catch (_) { /* fall back to client-side array */ }
 
-  const matches = piAllClinics.filter(c => c.name.toLowerCase().includes(q)).slice(0, 8);
+  const matches = piAllClinics
+    .filter(c => c.name && c.name.toLowerCase().includes(q))
+    .sort((a, b) => {
+      const an = a.name.toLowerCase(), bn = b.name.toLowerCase();
+      // Exact name first, then names that start with the query, then by length (shorter = closer match)
+      const aExact = an === q ? 0 : 1, bExact = bn === q ? 0 : 1;
+      if (aExact !== bExact) return aExact - bExact;
+      const aStarts = an.startsWith(q) ? 0 : 1, bStarts = bn.startsWith(q) ? 0 : 1;
+      if (aStarts !== bStarts) return aStarts - bStarts;
+      return an.length - bn.length;
+    })
+    .slice(0, 20);
   if (!matches.length) { resultsEl.style.display = 'none'; return; }
   resultsEl.innerHTML = matches.map(c => `
     <div data-clinic-id="${c.id}" style="padding:0.65rem 1rem;cursor:pointer;border-bottom:1px solid rgba(234,226,216,0.06);transition:background 0.15s;" onmouseover="this.style.background='rgba(234,226,216,0.07)'" onmouseout="this.style.background=''">
@@ -1623,7 +1634,7 @@ async function pracSearch(query) {
   try {
     const enc = encodeURIComponent('*' + query + '*');
     const res = await fetch(
-      `${SUPABASE_URL_ADMIN}/rest/v1/clinics?select=id,name,neighbourhood,area,website&approved=eq.true&name=ilike.${enc}&limit=20`,
+      `${SUPABASE_URL_ADMIN}/rest/v1/clinics?select=id,name,neighbourhood,area,website&approved=eq.true&name=ilike.${enc}&limit=50`,
       { headers: { apikey: SUPABASE_KEY_ADMIN, Authorization: `Bearer ${SUPABASE_KEY_ADMIN}` } }
     );
     if (res.ok) {
@@ -1637,7 +1648,17 @@ async function pracSearch(query) {
     }
   } catch (_) { /* fall back to client-side array */ }
 
-  const matches = pracAllClinics.filter(c => c.name.toLowerCase().includes(q)).slice(0, 8);
+  const matches = pracAllClinics
+    .filter(c => c.name && c.name.toLowerCase().includes(q))
+    .sort((a, b) => {
+      const an = a.name.toLowerCase(), bn = b.name.toLowerCase();
+      const aExact = an === q ? 0 : 1, bExact = bn === q ? 0 : 1;
+      if (aExact !== bExact) return aExact - bExact;
+      const aStarts = an.startsWith(q) ? 0 : 1, bStarts = bn.startsWith(q) ? 0 : 1;
+      if (aStarts !== bStarts) return aStarts - bStarts;
+      return an.length - bn.length;
+    })
+    .slice(0, 20);
   if (!matches.length) { resultsEl.style.display = 'none'; return; }
   resultsEl.innerHTML = matches.map(c => `
     <div data-clinic-id="${c.id}" style="padding:0.65rem 1rem;cursor:pointer;border-bottom:1px solid rgba(234,226,216,0.06);transition:background 0.15s;" onmouseover="this.style.background='rgba(234,226,216,0.07)'" onmouseout="this.style.background=''">
