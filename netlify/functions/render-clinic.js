@@ -263,25 +263,46 @@ exports.handler = async (event) => {
     // Mirror get-clinics.js slug-mode shape so SEO output matches what
     // the client-side renderer ultimately shows. Keep this minimal —
     // we only need fields used in title/desc/body, not the full payload.
+    //
+    // NOTE: we deliberately do NOT filter by approved here. We need to
+    // distinguish three cases:
+    //   (a) approved clinic        → render the page
+    //   (b) exists but unapproved  → 301 to "/" (recovers any accrued SEO
+    //                                 signal; avoids a dead end for users
+    //                                 clicking an old Google result)
+    //   (c) slug not in DB at all  → real 404 (genuine garbage URL)
     const { data: clinic, error } = await supabase
       .from('clinics')
       .select(`
         id, name, slug, neighbourhood, area, province,
-        rating, reviews, price, injector_credentials, logo_url
+        rating, reviews, price, injector_credentials, logo_url, approved
       `)
-      .eq('approved', true)
       .eq('slug', slug)
       .limit(1)
       .single();
 
+    // Case (c): slug not found at all → real 404.
     if (error || !clinic) {
-      // Render 404 — Google needs a real 404, not a soft one.
       return {
         statusCode: 404,
         headers: { 'Content-Type': 'text/html; charset=utf-8' },
-        body: '<!DOCTYPE html><html><head><title>Clinic not found · SkinDay</title><meta name="robots" content="noindex" /></head><body><h1>Clinic not found</h1><p>This clinic profile may have been removed. <a href="/">Browse other clinics on SkinDay</a>.</p></body></html>',
+        body: '<!DOCTYPE html><html><head><title>Clinic not found · SkinDay</title><meta name="robots" content="noindex" /></head><body><h1>Clinic not found</h1><p>We couldn\'t find a clinic matching this address. <a href="/">Browse clinics on SkinDay</a>.</p></body></html>',
       };
     }
+
+    // Case (b): clinic exists but is no longer approved (removed in cleanup,
+    // non-cosmetic, etc.) → permanent redirect to the directory. A 301 passes
+    // any accumulated ranking signal to the homepage and gives users who land
+    // here from an old search result somewhere useful to go.
+    if (clinic.approved !== true) {
+      return {
+        statusCode: 301,
+        headers: { 'Location': '/' },
+        body: '',
+      };
+    }
+
+    // Case (a): approved → fall through and render normally.
 
     // Optional: attach expertise for richer SEO body
     try {
