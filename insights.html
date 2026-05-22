@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SkinDay Insights — Canada Botox Market Data</title>
-  <meta name="description" content="Explore Canada's most comprehensive cosmetic clinic dataset. Clinics across Ontario, Quebec, Alberta and BC. Price ranges, credential breakdowns, and density leaders." />
+  <meta name="description" content="Canada's cosmetic clinic market in real numbers — clinic density by province, Botox price ranges, injector credentials, and brand share. Independent data from SkinDay." />
   <meta property="og:title" content="SkinDay Insights — Canada Botox Market Data" />
   <meta property="og:description" content="Canada's most comprehensive cosmetic clinic dataset. Clinic counts by province, price ranges by market, credential breakdowns, and density leaders." />
   <meta property="og:url" content="https://skinday.ca/insights" />
@@ -356,7 +356,8 @@
     }
     .cred-count {
       font-family: 'Cormorant Garamond', serif;
-      font-size: 2rem; font-weight: 400; color: var(--deep);
+      font-size: 2.8rem; font-weight: 500; color: var(--deep);
+      line-height: 1.05;
     }
     .cred-note {
       font-size: 0.7rem; color: var(--dim);
@@ -543,11 +544,11 @@
       <div class="hero-stat-label">Provinces & territories</div>
     </div>
     <div>
-      <div class="hero-stat-num">$9.95</div>
+      <div class="hero-stat-num" id="heroAvgPrice">$9.95</div>
       <div class="hero-stat-label">Avg. price / unit</div>
     </div>
     <div>
-      <div class="hero-stat-num">60.2</div>
+      <div class="hero-stat-num">53.9</div>
       <div class="hero-stat-label">Clinics per 100K</div>
       <div class="hero-stat-note">Kelowna — Canada's #1 density market</div>
     </div>
@@ -598,10 +599,10 @@
     // Top-4 card accent colors (same order regardless of which provinces lead)
     var CARD_ACCENTS = ['#C8725A', '#C9A96E', '#A07855', '#8E9E7A'];
 
-    // Fallback counts if Supabase query fails — kept current as of 2026-04-28
+    // Fallback counts if Supabase query fails — kept current as of 2026-05-22
     var FALLBACK_COUNTS = {
-      'ON': 2769, 'BC': 714, 'QC': 706, 'AB': 690, 'MB': 165,
-      'NS':   97, 'SK':  79, 'NB':  55, 'NL':  37, 'PE':  29,
+      'ON': 2439, 'BC': 659, 'QC': 576, 'AB': 617, 'MB': 162,
+      'NS':   90, 'SK':  72, 'NB':  50, 'NL':  34, 'PE':  27,
       'NT':    6, 'YT':   3, 'NU':   0
     };
 
@@ -824,7 +825,7 @@
         <div class="price-coverage-bar" id="pricedBar"></div>
       </div>
       <div class="price-coverage-text" style="color:var(--muted);margin-top:0.4rem;">
-        of clinics have verified pricing — <span id="pricedCount">—</span> clinics and growing as outreach continues
+        of clinics have verified pricing — and growing as more clinics share their rates
       </div>
     </div>
   </div>
@@ -834,7 +835,7 @@
 <section class="section">
   <div class="section-label">Market Structure</div>
   <h2 class="section-title reveal">Who controls the market</h2>
-  <p class="section-sub reveal">Clinic count alone doesn't tell the full story. Market influence concentrates around credential tier, density, and urban position. Understanding who injects — and where — is the foundation for effective channel strategy.</p>
+  <p class="section-sub reveal">Clinic count alone doesn't tell the full story. Where clinics concentrate, who's injecting, and how dense each market is all shape what patients actually encounter when they go looking. Here's who's doing the injecting — and where.</p>
 
   <div class="cred-grid reveal" style="margin-bottom:2rem;">
     <div class="cred-card">
@@ -847,15 +848,15 @@
       <div class="cred-icon">💉</div>
       <div class="cred-label">RN-led clinics</div>
       <div class="cred-count" style="font-size:1.4rem;">73%</div>
-      <div class="cred-note">of credentialed clinics are nurse-led — the dominant prescribing channel in Canada</div>
-      <div class="cred-insight" style="color:var(--rose);font-weight:600;">Primary channel</div>
+      <div class="cred-note">of credentialed clinics are nurse-led — registered nurses do most of the injecting in Canada</div>
+      <div class="cred-insight" style="color:var(--rose);font-weight:600;">Most common</div>
     </div>
     <div class="cred-card">
       <div class="cred-icon">🩺</div>
       <div class="cred-label">MD-led clinics</div>
       <div class="cred-count" style="font-size:1.4rem;">31%</div>
-      <div class="cred-note">of credentialed clinics — higher margin, higher influence, premium positioning</div>
-      <div class="cred-insight">KOL concentration</div>
+      <div class="cred-note">of credentialed clinics — typically positioned at the premium end of the market</div>
+      <div class="cred-insight">Premium tier</div>
     </div>
     <div class="cred-card">
       <div class="cred-icon">📍</div>
@@ -866,150 +867,82 @@
   </div>
 
   <div class="methodology reveal">
-    <strong>Strategic implication.</strong> Nurse-led clinics represent the highest-volume prescribing channel by count, but MD-led clinics carry disproportionate KOL influence and referral power. A dual-channel strategy — mass reach through RN networks, depth through physician relationships — reflects how the Canadian market actually works.
+    <strong>What this means.</strong> Nurse-led clinics make up the largest share of injectors by count in Canada, while physician-led clinics remain concentrated at the premium end of the market. For patients, it means most Botox in Canada is administered by registered nurses working under medical delegation — and that the injector's individual experience, not just their title, is what varies most between clinics.
   </div>
 </section>
 
 <!-- DENSITY — DUAL TABLE -->
 <section class="section">
   <div class="section-label">Geography</div>
-  <h2 class="section-title reveal">Market density</h2>
-  <p class="section-sub reveal">Two ways to read the same map. Raw clinic count shows where the volume is. Per-100K population reveals where aesthetic medicine is truly concentrated — and the results are striking.</p>
+  <h2 class="section-title reveal">Canada's largest clinic markets</h2>
+  <p class="section-sub reveal">Where the volume is. These are Canada's largest cosmetic clinic markets by total approved clinic count — a mix of major metros and dense suburban centres.</p>
 
   <div class="density-grid reveal">
 
     <!-- TABLE A: Raw count -->
     <div>
       <div class="density-table-title">By clinic count</div>
-      <div class="density-table-sub">Total approved clinics per market. Toronto and Calgary lead on volume.</div>
+      <div class="density-table-sub">Top markets by total approved clinic count. Toronto leads, with Calgary and the Quebec and Alberta metros close behind.</div>
       <div class="density-list">
         <div class="density-row">
           <div class="density-rank gold">1</div>
           <div><span class="density-name">Toronto</span><span class="density-province">ON</span></div>
           <div class="density-bar-wrap"><div class="density-bar" data-width="100"></div></div>
-          <div class="density-count">383</div>
+          <div class="density-count">319</div>
         </div>
         <div class="density-row">
           <div class="density-rank gold">2</div>
           <div><span class="density-name">Calgary</span><span class="density-province">AB</span></div>
-          <div class="density-bar-wrap"><div class="density-bar" data-width="94"></div></div>
-          <div class="density-count">287</div>
+          <div class="density-bar-wrap"><div class="density-bar" data-width="75"></div></div>
+          <div class="density-count">238</div>
         </div>
         <div class="density-row">
           <div class="density-rank gold">3</div>
           <div><span class="density-name">Montreal</span><span class="density-province">QC</span></div>
-          <div class="density-bar-wrap"><div class="density-bar" data-width="82"></div></div>
-          <div class="density-count">264</div>
+          <div class="density-bar-wrap"><div class="density-bar" data-width="59"></div></div>
+          <div class="density-count">188</div>
         </div>
         <div class="density-row">
           <div class="density-rank">4</div>
           <div><span class="density-name">Edmonton</span><span class="density-province">AB</span></div>
-          <div class="density-bar-wrap"><div class="density-bar" data-width="70"></div></div>
-          <div class="density-count">215</div>
+          <div class="density-bar-wrap"><div class="density-bar" data-width="57"></div></div>
+          <div class="density-count">183</div>
         </div>
         <div class="density-row">
           <div class="density-rank">5</div>
           <div><span class="density-name">North York</span><span class="density-province">ON</span><span style="font-size:0.65rem;color:var(--muted);display:block;margin-top:1px;">Toronto submarket</span></div>
-          <div class="density-bar-wrap"><div class="density-bar" data-width="56"></div></div>
-          <div class="density-count">197</div>
+          <div class="density-bar-wrap"><div class="density-bar" data-width="53"></div></div>
+          <div class="density-count">170</div>
         </div>
         <div class="density-row">
           <div class="density-rank">6</div>
-          <div><span class="density-name">Quebec City</span><span class="density-province">QC</span></div>
-          <div class="density-bar-wrap"><div class="density-bar" data-width="54"></div></div>
-          <div class="density-count">174</div>
+          <div><span class="density-name">Winnipeg</span><span class="density-province">MB</span></div>
+          <div class="density-bar-wrap"><div class="density-bar" data-width="51"></div></div>
+          <div class="density-count">162</div>
         </div>
         <div class="density-row">
           <div class="density-rank">7</div>
-          <div><span class="density-name">Vancouver</span><span class="density-province">BC</span></div>
-          <div class="density-bar-wrap"><div class="density-bar" data-width="52"></div></div>
-          <div class="density-count">156</div>
+          <div><span class="density-name">Brampton</span><span class="density-province">ON</span></div>
+          <div class="density-bar-wrap"><div class="density-bar" data-width="44"></div></div>
+          <div class="density-count">139</div>
         </div>
         <div class="density-row">
           <div class="density-rank">8</div>
-          <div><span class="density-name">Brampton</span><span class="density-province">ON</span></div>
-          <div class="density-bar-wrap"><div class="density-bar" data-width="44"></div></div>
-          <div class="density-count">142</div>
+          <div><span class="density-name">Vancouver</span><span class="density-province">BC</span></div>
+          <div class="density-bar-wrap"><div class="density-bar" data-width="43"></div></div>
+          <div class="density-count">138</div>
         </div>
         <div class="density-row">
           <div class="density-rank">9</div>
-          <div><span class="density-name">London</span><span class="density-province">ON</span></div>
-          <div class="density-bar-wrap"><div class="density-bar" data-width="36"></div></div>
+          <div><span class="density-name">Quebec City</span><span class="density-province">QC</span></div>
+          <div class="density-bar-wrap"><div class="density-bar" data-width="37"></div></div>
           <div class="density-count">118</div>
         </div>
         <div class="density-row">
           <div class="density-rank">10</div>
-          <div><span class="density-name">Richmond Hill</span><span class="density-province">ON</span></div>
-          <div class="density-bar-wrap"><div class="density-bar" data-width="34"></div></div>
-          <div class="density-count">114</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- TABLE B: Per 100K -->
-    <div>
-      <div class="density-table-title">By clinics per 100K population</div>
-      <div class="density-table-sub">City proper populations, 2021 Census. North York and Etobicoke use their former-municipality boundaries — they are now part of the City of Toronto. Suburban markets dominate — Toronto city proper doesn't crack the top 5.</div>
-      <div class="density-list">
-        <div class="density-row">
-          <div class="density-rank gold">1</div>
-          <div><span class="density-name">Kelowna</span><span class="density-province">BC</span></div>
-          <div class="density-bar-wrap"><div class="density-bar" data-width="100"></div></div>
-          <div class="density-count">60.2</div>
-        </div>
-        <div class="density-row">
-          <div class="density-rank gold">2</div>
-          <div><span class="density-name">Richmond Hill</span><span class="density-province">ON</span></div>
-          <div class="density-bar-wrap"><div class="density-bar" data-width="91"></div></div>
-          <div class="density-count">56.4</div>
-        </div>
-        <div class="density-row">
-          <div class="density-rank gold">3</div>
-          <div><span class="density-name">Richmond</span><span class="density-province">BC</span></div>
-          <div class="density-bar-wrap"><div class="density-bar" data-width="58"></div></div>
-          <div class="density-count">35.7</div>
-        </div>
-        <div class="density-row">
-          <div class="density-rank">4</div>
-          <div><span class="density-name">Etobicoke</span><span class="density-province">ON</span><span style="font-size:0.65rem;color:var(--muted);display:block;margin-top:1px;">Toronto submarket</span></div>
-          <div class="density-bar-wrap"><div class="density-bar" data-width="48"></div></div>
-          <div class="density-count">29.3</div>
-        </div>
-        <div class="density-row">
-          <div class="density-rank">5</div>
-          <div><span class="density-name">North York</span><span class="density-province">ON</span><span style="font-size:0.65rem;color:var(--muted);display:block;margin-top:1px;">Toronto submarket</span></div>
-          <div class="density-bar-wrap"><div class="density-bar" data-width="47"></div></div>
-          <div class="density-count">28.8</div>
-        </div>
-        <div class="density-row">
-          <div class="density-rank">6</div>
-          <div><span class="density-name">Vancouver</span><span class="density-province">BC</span></div>
-          <div class="density-bar-wrap"><div class="density-bar" data-width="43"></div></div>
-          <div class="density-count">23.6</div>
-        </div>
-        <div class="density-row">
-          <div class="density-rank">7</div>
-          <div><span class="density-name">Markham</span><span class="density-province">ON</span></div>
-          <div class="density-bar-wrap"><div class="density-bar" data-width="40"></div></div>
-          <div class="density-count">24.6</div>
-        </div>
-        <div class="density-row">
-          <div class="density-rank">8</div>
-          <div><span class="density-name">Calgary</span><span class="density-province">AB</span></div>
-          <div class="density-bar-wrap"><div class="density-bar" data-width="39"></div></div>
-          <div class="density-count">21.5</div>
-        </div>
-        <div class="density-row">
-          <div class="density-rank">9</div>
-          <div><span class="density-name">Edmonton</span><span class="density-province">AB</span></div>
-          <div class="density-bar-wrap"><div class="density-bar" data-width="34"></div></div>
-          <div class="density-count">21.3</div>
-        </div>
-        <div class="density-row">
-          <div class="density-rank">10</div>
-          <div><span class="density-name">Quebec City</span><span class="density-province">QC</span></div>
-          <div class="density-bar-wrap"><div class="density-bar" data-width="30"></div></div>
-          <div class="density-count">31.7</div>
+          <div><span class="density-name">London</span><span class="density-province">ON</span></div>
+          <div class="density-bar-wrap"><div class="density-bar" data-width="33"></div></div>
+          <div class="density-count">105</div>
         </div>
       </div>
     </div>
@@ -1017,7 +950,7 @@
   </div>
 
   <div class="methodology reveal">
-    <strong>Population sources.</strong> City proper populations from Statistics Canada 2021 Census. North York and Etobicoke are former municipalities now amalgamated within the City of Toronto — populations reflect their historical boundaries for density comparison purposes. Kelowna: 144,576 (60.2/100K) · Richmond Hill: 202,022 (56.4/100K) · Richmond BC: 209,937 (35.7/100K) · Etobicoke: 368,530 · North York: 659,670 · Vancouver: 662,248 · Markham: 353,230 · Calgary: 1,336,000 · Edmonton: 1,010,899 · Quebec City: 549,459 · Toronto (city proper): 2,794,356 · Greater Toronto CMA: 6,200,000+.
+    <strong>About this data.</strong> Counts reflect approved cosmetic clinics in the SkinDay directory by neighbourhood or city. North York and Etobicoke are shown separately as distinct submarkets, though both are now part of the City of Toronto. On a per-capita basis, smaller markets like Kelowna, BC actually lead the country in clinic density — see the hero figure above.
   </div>
 </section>
 
@@ -1025,45 +958,45 @@
 <section class="section" style="background:var(--warm);">
   <div class="section-label">Credentials</div>
   <h2 class="section-title reveal">Injector credential breakdown</h2>
-  <p class="section-sub reveal">Among clinics that have disclosed credentials through the SkinDay portal or direct outreach. RN-led clinics dominate by count — but credential mix varies significantly by region, with BC showing higher ND representation and Ontario showing more IMG injectors. Sample size is 275 clinics; coverage grows continuously.</p>
+  <p class="section-sub reveal">Among clinics that have disclosed credentials through the SkinDay portal or direct outreach. RN-led clinics are by far the most common — but the mix varies by region, with BC showing higher ND representation and Ontario showing more IMG injectors. Coverage grows continuously as more clinics disclose credentials.</p>
 
   <div class="cred-grid reveal">
     <div class="cred-card">
       <div class="cred-icon">💉</div>
       <div class="cred-label">RN / RPN / LPN</div>
-      <div class="cred-count">200</div>
-      <div class="cred-note">73% of credentialed clinics</div>
+      <div class="cred-count" style="color:var(--rose);">73%</div>
+      <div class="cred-note">of credentialed clinics</div>
       <div class="cred-insight" style="color:var(--rose);font-weight:600;">#1 most common</div>
     </div>
     <div class="cred-card">
       <div class="cred-icon">🩺</div>
       <div class="cred-label">MD / Physician</div>
-      <div class="cred-count">85</div>
-      <div class="cred-note">31% of credentialed clinics</div>
+      <div class="cred-count">31%</div>
+      <div class="cred-note">of credentialed clinics</div>
     </div>
     <div class="cred-card">
       <div class="cred-icon">🏥</div>
       <div class="cred-label">Nurse Practitioner</div>
-      <div class="cred-count">39</div>
-      <div class="cred-note">14% of credentialed clinics</div>
+      <div class="cred-count">14%</div>
+      <div class="cred-note">of credentialed clinics</div>
     </div>
     <div class="cred-card">
       <div class="cred-icon">🌍</div>
       <div class="cred-label">IMG</div>
-      <div class="cred-count">27</div>
-      <div class="cred-note">10% of credentialed clinics</div>
+      <div class="cred-count">10%</div>
+      <div class="cred-note">of credentialed clinics</div>
       <div class="cred-insight">Higher in Ontario</div>
     </div>
     <div class="cred-card">
       <div class="cred-icon">🌿</div>
       <div class="cred-label">ND / Naturopath</div>
-      <div class="cred-count">11</div>
-      <div class="cred-note">4% of credentialed clinics</div>
+      <div class="cred-count">4%</div>
+      <div class="cred-note">of credentialed clinics</div>
       <div class="cred-insight">Concentrated in BC</div>
     </div>
   </div>
   <p style="font-size:0.75rem;color:var(--muted);margin-top:1rem;font-style:italic;" class="reveal">
-    Based on 275 clinics with disclosed credentials. A clinic may list multiple types — percentages reflect share of credentialed clinics, not the full directory.
+    Based on clinics that have disclosed credentials. A clinic may list multiple types — percentages reflect share of credentialed clinics, not the full directory.
   </p>
 
   <div class="methodology reveal">
@@ -1075,32 +1008,32 @@
 <section class="section">
   <div class="section-label">Trends & Risks</div>
   <h2 class="section-title reveal">Emerging market signals</h2>
-  <p class="section-sub reveal">Four structural shifts are reshaping the Canadian aesthetic market. Each carries implications for brand positioning, channel strategy, and pricing integrity.</p>
+  <p class="section-sub reveal">Four structural shifts are reshaping the Canadian aesthetic market — and each one changes what patients should pay attention to when choosing a clinic.</p>
 
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.5rem;margin:2rem 0;" class="reveal">
 
     <div style="border:1px solid rgba(28,23,20,0.12);border-radius:12px;padding:1.5rem;background:var(--cream);">
       <div style="font-size:0.7rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--rose);margin-bottom:0.75rem;">Price Compression</div>
       <div style="font-size:1.05rem;font-weight:500;color:var(--deep);margin-bottom:0.5rem;line-height:1.4;">32% of clinics are pricing below $7/unit</div>
-      <div style="font-size:0.82rem;color:var(--muted);line-height:1.6;">The budget segment is growing, particularly in suburban Ontario and new-entrant markets. Aggressive discounting puts pressure on mid-market pricing integrity across all brands.</div>
+      <div style="font-size:0.82rem;color:var(--muted);line-height:1.6;">The budget segment is growing, particularly in suburban Ontario and newer markets. For patients, very low pricing can reflect a genuine high-volume, accessibility-first model — or it can mean fewer units and weaker results. The price alone doesn't tell you which.</div>
     </div>
 
     <div style="border:1px solid rgba(28,23,20,0.12);border-radius:12px;padding:1.5rem;background:var(--cream);">
       <div style="font-size:0.7rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--rose);margin-bottom:0.75rem;">Rating Inflation</div>
-      <div style="font-size:1.05rem;font-weight:500;color:var(--deep);margin-bottom:0.5rem;line-height:1.4;">61% of clinics are rated 4.9–5.0 on Google</div>
-      <div style="font-size:0.82rem;color:var(--muted);line-height:1.6;">Selective review solicitation has compressed ratings into an artificially narrow band. Ratings no longer differentiate clinics — credential and pricing transparency are becoming the real competitive signals.</div>
+      <div style="font-size:1.05rem;font-weight:500;color:var(--deep);margin-bottom:0.5rem;line-height:1.4;">63% of clinics are rated 4.9–5.0 on Google</div>
+      <div style="font-size:0.82rem;color:var(--muted);line-height:1.6;">Selective review solicitation has compressed ratings into an artificially narrow band. When nearly every clinic sits at 4.9–5.0, the star rating no longer helps patients tell clinics apart — which is exactly why pricing and credential transparency matter.</div>
     </div>
 
     <div style="border:1px solid rgba(28,23,20,0.12);border-radius:12px;padding:1.5rem;background:var(--cream);">
       <div style="font-size:0.7rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:0.75rem;">Market Expansion</div>
       <div style="font-size:1.05rem;font-weight:500;color:var(--deep);margin-bottom:0.5rem;line-height:1.4;">Rapid clinic density growth outside the GTA</div>
-      <div style="font-size:0.82rem;color:var(--muted);line-height:1.6;">Secondary markets — Halifax, Winnipeg, Saskatoon — are emerging as meaningful clinic populations. National distribution coverage built around Ontario alone will increasingly miss volume.</div>
+      <div style="font-size:0.82rem;color:var(--muted);line-height:1.6;">Secondary markets — Halifax, Winnipeg, Saskatoon — are emerging as meaningful clinic populations. Patients outside the major metros increasingly have real local options rather than having to travel to Toronto or Vancouver.</div>
     </div>
 
     <div style="border:1px solid rgba(28,23,20,0.12);border-radius:12px;padding:1.5rem;background:var(--cream);">
       <div style="font-size:0.7rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:0.75rem;">Channel Shift</div>
       <div style="font-size:1.05rem;font-weight:500;color:var(--deep);margin-bottom:0.5rem;line-height:1.4;">Non-physician injectors now dominate by volume</div>
-      <div style="font-size:0.82rem;color:var(--muted);line-height:1.6;">RN and NP-led clinics represent 73% of the credentialed market. Brand education and rep coverage strategies designed around physician channels are reaching a shrinking share of active injectors.</div>
+      <div style="font-size:0.82rem;color:var(--muted);line-height:1.6;">RN and NP-led clinics make up most of the credentialed market. For patients, this means the registered nurse injecting you is the norm, not the exception — and asking about their specific injectable experience matters more than whether the clinic is "physician-led."</div>
     </div>
 
   </div>
@@ -1125,11 +1058,11 @@
       <text x="150" y="162" text-anchor="middle" font-family="DM Sans, sans-serif" font-size="11" fill="rgba(28,23,20,0.5)">Brands</text>
     </svg>
     <div style="display:flex;flex-direction:column;gap:10px;min-width:180px;font-size:0.85rem;color:var(--deep);">
-      <div style="display:flex;align-items:center;gap:8px;"><span style="width:10px;height:10px;border-radius:2px;background:#C9A96E;flex-shrink:0;display:inline-block;"></span><span>Botox</span><span style="margin-left:auto;font-weight:500;">43%</span><span style="color:rgba(28,23,20,0.45);font-size:0.78rem;">(284)</span></div>
-      <div style="display:flex;align-items:center;gap:8px;"><span style="width:10px;height:10px;border-radius:2px;background:#7DB88A;flex-shrink:0;display:inline-block;"></span><span>Dysport</span><span style="margin-left:auto;font-weight:500;">36%</span><span style="color:rgba(28,23,20,0.45);font-size:0.78rem;">(238)</span></div>
-      <div style="display:flex;align-items:center;gap:8px;"><span style="width:10px;height:10px;border-radius:2px;background:#5B8DB8;flex-shrink:0;display:inline-block;"></span><span>Xeomin</span><span style="margin-left:auto;font-weight:500;">12%</span><span style="color:rgba(28,23,20,0.45);font-size:0.78rem;">(76)</span></div>
-      <div style="display:flex;align-items:center;gap:8px;"><span style="width:10px;height:10px;border-radius:2px;background:#C8725A;flex-shrink:0;display:inline-block;"></span><span>Nuceiva</span><span style="margin-left:auto;font-weight:500;">8%</span><span style="color:rgba(28,23,20,0.45);font-size:0.78rem;">(53)</span></div>
-      <div style="display:flex;align-items:center;gap:8px;"><span style="width:10px;height:10px;border-radius:2px;background:#9AC4D4;flex-shrink:0;display:inline-block;"></span><span>Letybo</span><span style="margin-left:auto;font-weight:500;">1%</span><span style="color:rgba(28,23,20,0.45);font-size:0.78rem;">(7)</span></div>
+      <div style="display:flex;align-items:center;gap:8px;"><span style="width:10px;height:10px;border-radius:2px;background:#C9A96E;flex-shrink:0;display:inline-block;"></span><span>Botox</span><span style="margin-left:auto;font-weight:500;">43%</span></div>
+      <div style="display:flex;align-items:center;gap:8px;"><span style="width:10px;height:10px;border-radius:2px;background:#7DB88A;flex-shrink:0;display:inline-block;"></span><span>Dysport</span><span style="margin-left:auto;font-weight:500;">36%</span></div>
+      <div style="display:flex;align-items:center;gap:8px;"><span style="width:10px;height:10px;border-radius:2px;background:#5B8DB8;flex-shrink:0;display:inline-block;"></span><span>Xeomin</span><span style="margin-left:auto;font-weight:500;">12%</span></div>
+      <div style="display:flex;align-items:center;gap:8px;"><span style="width:10px;height:10px;border-radius:2px;background:#C8725A;flex-shrink:0;display:inline-block;"></span><span>Nuceiva</span><span style="margin-left:auto;font-weight:500;">8%</span></div>
+      <div style="display:flex;align-items:center;gap:8px;"><span style="width:10px;height:10px;border-radius:2px;background:#9AC4D4;flex-shrink:0;display:inline-block;"></span><span>Letybo</span><span style="margin-left:auto;font-weight:500;">1%</span></div>
     </div>
   </div>
 
@@ -1209,7 +1142,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
       }
     );
 
-    let pricedCount = 293; // fallback
+    let pricedCount = 442; // fallback — update if RPC count_priced_clinics is unavailable
     if (pricedDistinct.ok) {
       const pricedData = await pricedDistinct.json();
       if (typeof pricedData === 'number') pricedCount = pricedData;
@@ -1218,7 +1151,6 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
     if (total && pricedCount) {
       const pct = ((pricedCount / total) * 100).toFixed(1);
       document.getElementById('pricedPct').textContent = pct + '%';
-      document.getElementById('pricedCount').textContent = pricedCount.toLocaleString('en-CA');
       setTimeout(() => {
         const bar = document.getElementById('pricedBar');
         if (bar) bar.style.width = Math.min(pct, 100) + '%';
@@ -1227,12 +1159,11 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
   } catch(e) {
     // Fallback values already in HTML
-    document.getElementById('heroTotalCount').innerHTML = '5,350<span>+</span>';
-    document.getElementById('pricedPct').textContent = '7.5%';
-    document.getElementById('pricedCount').textContent = '293';
+    document.getElementById('heroTotalCount').innerHTML = '4,700<span>+</span>';
+    document.getElementById('pricedPct').textContent = '9.3%';
     setTimeout(() => {
       const bar = document.getElementById('pricedBar');
-      if (bar) bar.style.width = '7.5%';
+      if (bar) bar.style.width = '9.3%';
     }, 600);
   }
 })();
