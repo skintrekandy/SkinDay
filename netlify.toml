@@ -11,6 +11,15 @@
   included_files = ["clinic.html"]
 
 
+# ── CANONICAL HOMEPAGE ───────────────────────────────────────────
+# Redirect /index.html to / so the duplicate path stops competing in search.
+[[redirects]]
+  from   = "/index.html"
+  to     = "/"
+  status = 301
+  force  = true
+
+
 # ── API FUNCTIONS ────────────────────────────────────────────────
 [[redirects]]
   from   = "/api/get-clinics"
@@ -80,10 +89,18 @@
 # BOTOX_CITY_PAGES in netlify/functions/sitemap.js.
 
 # Ontario
+# /botox-toronto consolidated into the guide (was a weak duplicate competing on the same queries)
 [[redirects]]
   from   = "/botox-toronto"
-  to     = "/botox-toronto.html"
-  status = 200
+  to     = "/guide/botox-cost-toronto"
+  status = 301
+  force  = true
+
+[[redirects]]
+  from   = "/botox-toronto.html"
+  to     = "/guide/botox-cost-toronto"
+  status = 301
+  force  = true
 
 [[redirects]]
   from   = "/botox-north-york"
