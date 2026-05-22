@@ -764,7 +764,7 @@
 <body>
 
 <nav>
-  <a href="/index.html" class="nav-logo">Skin<span>Day</span></a>
+  <a href="/" class="nav-logo">Skin<span>Day</span></a>
   <ul class="nav-links">
     <li><a href="/claim2.html" class="nav-cta">Claim Your Clinic</a></li>
     <li><a href="/editor.html" class="nav-cta" style="margin-left:4px;">Clinic Portal</a></li>
@@ -1086,7 +1086,7 @@ function renderClinic(clinic) {
     </div>` : '';
 
   wrap.innerHTML = `
-    <a href="/index.html" class="back-link animate">
+    <a href="/" class="back-link animate">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M19 12H5M12 5l-7 7 7 7"/>
       </svg>
@@ -1189,7 +1189,7 @@ function renderNotFound(slug) {
     <div class="not-found">
       <h2>Clinic not found</h2>
       <p>We couldn't find a clinic matching "<strong>${slug}</strong>".</p>
-      <a href="/index.html">← Browse all clinics</a>
+      <a href="/">← Browse all clinics</a>
     </div>
   `;
 }
