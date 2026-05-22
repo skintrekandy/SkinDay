@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-  <title>SkinDay — Canada's Botox Price Directory · 5,300+ Cosmetic Clinics</title>
-  <meta name="description" content="Compare Botox prices and treatment options across 5,300+ cosmetic clinics in Canada. Researched pricing from Toronto, Vancouver, Calgary, Montreal, and more." />
+  <title>SkinDay — Canada's Botox Price Directory · 4,700+ Cosmetic Clinics</title>
+  <meta name="description" content="Compare Botox prices and treatment options across 4,700+ cosmetic clinics in Canada. Researched pricing from Toronto, Vancouver, Calgary, Montreal, and more." />
 
   <!-- OpenGraph -->
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://skinday.ca/" />
-  <meta property="og:title" content="SkinDay — Canada's Botox Price Directory · 5,300+ Cosmetic Clinics" />
-  <meta property="og:description" content="Compare Botox prices, clinic information, and treatment options across Canada. Researched pricing from 5,300+ cosmetic clinics." />
+  <meta property="og:title" content="SkinDay — Canada's Botox Price Directory · 4,700+ Cosmetic Clinics" />
+  <meta property="og:description" content="Compare Botox prices, clinic information, and treatment options across Canada. Researched pricing from 4,700+ cosmetic clinics." />
   <meta property="og:image" content="https://skinday.ca/og-image.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
@@ -18,8 +18,8 @@
 
   <!-- Twitter/X -->
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="SkinDay — Canada's Botox Price Directory · 5,300+ Cosmetic Clinics" />
-  <meta name="twitter:description" content="Compare Botox prices, clinic information, and treatment options across Canada. Researched pricing from 5,300+ cosmetic clinics." />
+  <meta name="twitter:title" content="SkinDay — Canada's Botox Price Directory · 4,700+ Cosmetic Clinics" />
+  <meta name="twitter:description" content="Compare Botox prices, clinic information, and treatment options across Canada. Researched pricing from 4,700+ cosmetic clinics." />
   <meta name="twitter:image" content="https://skinday.ca/og-image.jpg" />
   <link rel="canonical" href="https://skinday.ca/" />
   <meta name="google-site-verification" content="_Ug0tqzwO8eda09chcefdvbgqKWMIR8ZBaakXaz26FQ" />
@@ -2951,12 +2951,12 @@
       // Last-known fallback (2026-04-29) — used only if Supabase fetch fails.
       // Order matches sort-by-count-desc so render order is consistent.
       var FALLBACK = {
-        provinces:      [{abbr:'ON',count:2769},{abbr:'BC',count:714},{abbr:'QC',count:706},{abbr:'AB',count:690},{abbr:'MB',count:165}],
-        total:          5318,
-        ratedHighPct:   72,
-        kelownaCount:   87,
-        torontoCount:   383,
-        avgReviews:     117
+        provinces:      [{abbr:'ON',count:2439},{abbr:'BC',count:659},{abbr:'QC',count:576},{abbr:'AB',count:617},{abbr:'MB',count:162}],
+        total:          4754,
+        ratedHighPct:   75,
+        kelownaCount:   78,
+        torontoCount:   319,
+        avgReviews:     111
       };
 
       var SB_URL = 'https://vefldlqtyxdywbzdjuia.supabase.co';
@@ -3080,6 +3080,7 @@
         setText('stat-ontario-pct',  ontarioPct + '%');
         setText('stat-toronto',      data.torontoCount.toLocaleString() + '+');
         setText('stat-avg-reviews',  data.avgReviews.toLocaleString());
+        setText('trustClinicCount',  data.total.toLocaleString() + '+');
       }
 
       function renderAll() {
@@ -3130,12 +3131,12 @@
     <!-- Review score inflation chart -->
     <div style="margin-top:2.5rem;padding-top:2rem;border-top:1px solid rgba(28,23,20,0.1);">
       <div style="font-size:0.72rem;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-bottom:0.5rem;text-align:center;">Why ratings can't be trusted alone</div>
-      <div style="font-size:1.05rem;font-weight:500;color:var(--deep);text-align:center;margin-bottom:0.3rem;">61% of Canadian cosmetic clinics are rated 4.9–5.0 ★</div>
+      <div style="font-size:1.05rem;font-weight:500;color:var(--deep);text-align:center;margin-bottom:0.3rem;">63% of Canadian cosmetic clinics are rated 4.9–5.0 ★</div>
       <div style="font-size:0.82rem;color:var(--muted);text-align:center;margin-bottom:1.5rem;">A normal distribution would form a bell curve. This doesn't.</div>
       <div style="position:relative;width:100%;max-width:680px;margin:0 auto;height:220px;">
-        <canvas id="reviewDistChart" role="img" aria-label="Histogram showing 61% of Canadian cosmetic clinics cluster at 4.9-5.0 Google review scores across 5,166 clinics.">Rating distribution: 1.0-2.0: 19, 2.0-3.0: 39, 3.0-3.5: 50, 3.5-4.0: 86, 4.0-4.5: 375, 4.5-4.7: 377, 4.7-4.8: 315, 4.8-4.9: 509, 4.9-5.0: 3155.</canvas>
+        <canvas id="reviewDistChart" role="img" aria-label="Histogram showing 63% of Canadian cosmetic clinics cluster at 4.9-5.0 Google review scores across 4,589 clinics.">Rating distribution: 1.0-2.0: 17, 2.0-3.0: 32, 3.0-3.5: 33, 3.5-4.0: 82, 4.0-4.5: 337, 4.5-4.7: 359, 4.7-4.8: 308, 4.8-4.9: 527, 4.9-5.0: 2894.</canvas>
       </div>
-      <div style="font-size:0.75rem;color:var(--muted);text-align:center;margin-top:0.75rem;font-style:italic;">Based on 5,166 clinics with Google ratings across Canada · SkinDay 2026</div>
+      <div style="font-size:0.75rem;color:var(--muted);text-align:center;margin-top:0.75rem;font-style:italic;">Based on 4,589 clinics with Google ratings across Canada · SkinDay 2026</div>
     </div>
 
     <!-- Cardinal facts -->
@@ -3171,7 +3172,7 @@
 <script>
 (function() {
   var labels = ['1.0–2.0','2.0–3.0','3.0–3.5','3.5–4.0','4.0–4.5','4.5–4.7','4.7–4.8','4.8–4.9','4.9–5.0'];
-  var counts = [19, 39, 50, 86, 375, 377, 315, 509, 3155];
+  var counts = [17, 32, 33, 82, 337, 359, 308, 527, 2894];
   var total = counts.reduce(function(a,b){return a+b;},0);
   var bgColors = counts.map(function(_,i){ return i===8 ? '#C8725A' : 'rgba(28,23,20,0.15)'; });
   var borderColors = counts.map(function(_,i){ return i===8 ? '#9a4f38' : 'rgba(28,23,20,0.25)'; });
