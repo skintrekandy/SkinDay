@@ -157,7 +157,7 @@ exports.handler = async (event) => {
 
   // ── SET CLINIC INFO (credentials + languages) ────────────────────────────────
   if (action === 'set-clinic-info') {
-    const { clinic_id, injector_credentials, languages } = body;
+    const { clinic_id, injector_credentials, languages, categories } = body;
 
     if (!clinic_id) {
       return { statusCode: 400, headers, body: JSON.stringify({ error: 'clinic_id required' }) };
@@ -166,6 +166,7 @@ exports.handler = async (event) => {
     const update = {};
     if (injector_credentials !== undefined) update.injector_credentials = injector_credentials;
     if (languages !== undefined) update.languages = languages;
+    if (categories !== undefined) update.categories = categories;
 
     if (!Object.keys(update).length) {
       return { statusCode: 400, headers, body: JSON.stringify({ error: 'Nothing to update' }) };
@@ -200,17 +201,18 @@ exports.handler = async (event) => {
       return { statusCode: 500, headers, body: JSON.stringify({ error: error.message }) };
     }
 
-    // Also get credentials/languages from clinics table
+    // Also get credentials/languages/categories from clinics table
     const { data: clinicData } = await supabase
       .from('clinics')
-      .select('injector_credentials, languages')
+      .select('injector_credentials, languages, categories')
       .eq('id', String(clinic_id))
       .maybeSingle();
 
     return { statusCode: 200, headers, body: JSON.stringify({
       prices: data || [],
       injector_credentials: clinicData?.injector_credentials || [],
-      languages: clinicData?.languages || []
+      languages: clinicData?.languages || [],
+      categories: clinicData?.categories || []
     })};
   }
 

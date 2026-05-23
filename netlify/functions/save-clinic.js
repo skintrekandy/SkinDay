@@ -420,7 +420,7 @@ exports.handler = async (event) => {
 
       // Only allow safe fields to be updated on the clinics table
       const safePayload = {};
-      const allowedFields = ['phone', 'email', 'website', 'booking_url', 'promo', 'promo_text', 'consult_free', 'hours', 'photos', 'logo_url', 'injector_credentials', 'languages'];
+      const allowedFields = ['phone', 'email', 'website', 'booking_url', 'promo', 'promo_text', 'consult_free', 'hours', 'photos', 'logo_url', 'injector_credentials', 'languages', 'categories'];
       for (const field of allowedFields) {
         if (payload[field] !== undefined) safePayload[field] = payload[field];
       }

@@ -97,7 +97,7 @@ const CARD_FIELDS = `
   rating, reviews, place_id, maps_url, rank,
   phone, website, booking_url, logo_url, email,
   claimed, approved, promo, promo_text, consult_free,
-  toxin_type, injector_credentials, languages,
+  toxin_type, injector_credentials, languages, categories,
   price, price_source, price_date,
   practitioners (id, name, designation, display_order)
 `;
@@ -353,7 +353,7 @@ exports.handler = async (event) => {
       'rating','reviews','place_id','maps_url','rank',
       'phone','website','booking_url','logo_url','email',
       'claimed','approved','promo','promo_text',
-      'toxin_type','injector_credentials','languages','consult_free',
+      'toxin_type','injector_credentials','languages','categories','consult_free',
       'price','price_source','price_date',
     ];
 
