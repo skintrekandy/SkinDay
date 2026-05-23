@@ -878,6 +878,16 @@
           <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-size:0.82rem;color:#FAF7F2;background:rgba(234,226,216,0.05);border:1px solid rgba(234,226,216,0.12);border-radius:6px;padding:0.4rem 0.75rem;"><input type="checkbox" value="portuguese" style="accent-color:#C9A96E;" /> Portuguese</label>
         </div>
 
+        <!-- Treatment Categories -->
+        <div class="form-section-label" style="margin-top:1.25rem;">Treatment Categories</div>
+        <div style="display:flex;flex-wrap:wrap;gap:0.6rem;max-width:600px;" id="pi-categories">
+          <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-size:0.82rem;color:#FAF7F2;background:rgba(234,226,216,0.05);border:1px solid rgba(234,226,216,0.12);border-radius:6px;padding:0.4rem 0.75rem;"><input type="checkbox" value="injectables" style="accent-color:#C9A96E;" /> Injectables</label>
+          <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-size:0.82rem;color:#FAF7F2;background:rgba(234,226,216,0.05);border:1px solid rgba(234,226,216,0.12);border-radius:6px;padding:0.4rem 0.75rem;"><input type="checkbox" value="lasers_ipl" style="accent-color:#C9A96E;" /> Lasers/IPL</label>
+          <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-size:0.82rem;color:#FAF7F2;background:rgba(234,226,216,0.05);border:1px solid rgba(234,226,216,0.12);border-radius:6px;padding:0.4rem 0.75rem;"><input type="checkbox" value="rf_hifu" style="accent-color:#C9A96E;" /> RF/HIFU</label>
+          <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-size:0.82rem;color:#FAF7F2;background:rgba(234,226,216,0.05);border:1px solid rgba(234,226,216,0.12);border-radius:6px;padding:0.4rem 0.75rem;"><input type="checkbox" value="facials" style="accent-color:#C9A96E;" /> Skin &amp; Facials</label>
+          <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-size:0.82rem;color:#FAF7F2;background:rgba(234,226,216,0.05);border:1px solid rgba(234,226,216,0.12);border-radius:6px;padding:0.4rem 0.75rem;"><input type="checkbox" value="body" style="accent-color:#C9A96E;" /> Body</label>
+        </div>
+
         <!-- Save button -->
         <div style="margin-top:1.5rem;display:flex;gap:0.75rem;align-items:center;">
           <button class="btn-submit-clinic" onclick="piSaveAll()">Save All →</button>
@@ -1486,7 +1496,7 @@ function piSelect(id, name, neighbourhood, area) {
   // Load existing data
   apiCall({ action: 'get-clinic-prices', clinic_id: id }).then(res => {
     if (!res.ok) return;
-    const { prices, injector_credentials, languages } = res.data;
+    const { prices, injector_credentials, languages, categories } = res.data;
     const existingEl = document.getElementById('pi-existing-prices');
     const existingList = document.getElementById('pi-existing-list');
     const credMap = { physician:'MD / Physician', np:'NP', rn:'RN/RPN/LPN', img:'IMG', nd:'ND' };
@@ -1509,6 +1519,9 @@ function piSelect(id, name, neighbourhood, area) {
     if (languages && languages.length) {
       document.querySelectorAll('#pi-langs input').forEach(cb => { cb.checked = languages.includes(cb.value); });
     }
+    const cats = Array.isArray(categories) ? categories : [];
+    window._piLoadedCats = cats.slice();
+    document.querySelectorAll('#pi-categories input').forEach(cb => { cb.checked = cats.includes(cb.value); });
   });
 }
 
@@ -1554,7 +1567,11 @@ async function piSaveAll() {
   const rows = piGetRows();
   const creds = [...document.querySelectorAll('#pi-creds input:checked')].map(cb => cb.value);
   const langs = [...document.querySelectorAll('#pi-langs input:checked')].map(cb => cb.value);
-  if (!rows.length && !creds.length && !langs.length) { piStatus('error', 'Enter at least one price, credential, or language.'); return; }
+  const cats  = [...document.querySelectorAll('#pi-categories input:checked')].map(cb => cb.value);
+  // Categories load from DB on select; detect a real change (including clearing) by comparing to the loaded set.
+  const loadedCats = (window._piLoadedCats || []).slice().sort();
+  const catsChanged = JSON.stringify(cats.slice().sort()) !== JSON.stringify(loadedCats);
+  if (!rows.length && !creds.length && !langs.length && !catsChanged) { piStatus('error', 'Enter at least one price, credential, language, or category.'); return; }
 
   const applyAll = document.getElementById('pi-chain-all')?.checked;
   const allIds = applyAll && piChainIds.length ? [piSelectedId, ...piChainIds] : [piSelectedId];
@@ -1565,10 +1582,11 @@ async function piSaveAll() {
       const res = await apiCall({ action: 'set-prices', clinic_id: cid, prices: rows });
       if (!res.ok || !res.data.success) errors.push(res.data?.error || 'Save failed');
     }
-    if (creds.length || langs.length) {
+    if (creds.length || langs.length || catsChanged) {
       await apiCall({ action: 'set-clinic-info', clinic_id: cid,
         ...(creds.length ? { injector_credentials: creds } : {}),
-        ...(langs.length ? { languages: langs } : {}) });
+        ...(langs.length ? { languages: langs } : {}),
+        ...(catsChanged ? { categories: cats } : {}) });
     }
   }
 
@@ -1579,6 +1597,8 @@ async function piSaveAll() {
     if (rows.length) parts.push(`${rows.length} price${rows.length>1?'s':''} saved${allIds.length>1?` × ${allIds.length} locations`:''}`);
     if (creds.length) parts.push('credentials updated');
     if (langs.length) parts.push('languages updated');
+    if (catsChanged) parts.push('categories updated');
+    window._piLoadedCats = cats.slice();
     piStatus('success', '✓ ' + parts.join(' · '));
     piSelect(piSelectedId, document.getElementById('pi-clinic-name').textContent, document.getElementById('pi-clinic-meta').textContent, '');
   }

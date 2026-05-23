@@ -817,6 +817,32 @@
       color: #8A6830;
       border: 1px solid rgba(201,169,110,0.28);
     }
+    /* Treatment category chips — soft consistent chip, colored dot carries the distinction */
+    .card-categories {
+      display: flex; gap: 0.35rem; flex-wrap: wrap; margin-top: 0.5rem;
+    }
+    .cat-chip {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 0.67rem; font-weight: 600; letter-spacing: 0.03em;
+      padding: 2px 8px 2px 7px; border-radius: 100px;
+      white-space: nowrap;
+      background: #F4EEE6;
+      color: var(--ink, #1C1714);
+      border: 1px solid #E6DACB;
+    }
+    .cat-chip .cat-dot {
+      width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+    }
+    .cat-dot-injectables { background: #8AA67E; }                        /* sage green */
+    .cat-dot-lasers_ipl  { background: #C9A96E; }                        /* warm gold */
+    .cat-dot-rf_hifu     { background: #C8725A; }                        /* clay/terracotta */
+    .cat-dot-facials     { background: #D89B94; }                        /* blush rose */
+    .cat-dot-body        { background: #9B8E7E; }                        /* muted taupe */
+    .cat-chip-more {
+      background: transparent;
+      border: 1px solid #E6DACB;
+      color: var(--muted, #8A7E72);
+    }
     .clinic-name {
       font-family: 'Cormorant Garamond', serif;
       font-size: 1.25rem; font-weight: 500;
@@ -3372,6 +3398,11 @@ function normaliseClinic(o) {
     }
     if (!Array.isArray(o[field])) o[field] = [];
   });
+  // categories is a native text[] — REST returns a real array, but guard anyway
+  if (typeof o.categories === 'string') {
+    try { o.categories = JSON.parse(o.categories); } catch(e) { o.categories = []; }
+  }
+  if (!Array.isArray(o.categories)) o.categories = [];
   o.id = Number(o.id) || o.id;
   return o;
 }
@@ -3545,6 +3576,15 @@ function renderPageCards(clinicsData, append) {
     const credPills = (c.injector_credentials || []).map(v => `<span class="pill pill-cred">${credMap[v] || v.toUpperCase()}</span>`).join('');
     const langPills = (c.languages || []).map(v => `<span class="pill pill-lang">${langMap[v] || v}</span>`).join('');
     const pillsHTML = (credPills || langPills) ? `<div class="card-pills">${credPills}${langPills}</div>` : '';
+    const catLabelMap = { injectables:'Injectables', lasers_ipl:'Lasers/IPL', rf_hifu:'RF/HIFU', facials:'Skin & Facials', body:'Body' };
+    const catOrder = ['injectables','lasers_ipl','rf_hifu','facials','body'];
+    const cats = (c.categories || []).filter(v => catLabelMap[v]).sort((a,b) => catOrder.indexOf(a) - catOrder.indexOf(b));
+    const catShown = cats.slice(0, 3);
+    const catOverflow = cats.length - catShown.length;
+    const catChips = catShown.map(v => `<span class="cat-chip"><span class="cat-dot cat-dot-${v}"></span>${catLabelMap[v]}</span>`).join('');
+    const categoriesHTML = cats.length
+      ? `<div class="card-categories">${catChips}${catOverflow > 0 ? `<span class="cat-chip cat-chip-more">+${catOverflow}</span>` : ''}</div>`
+      : '';
     return `
       <div class="clinic-card${hasPrice ? '' : ' no-price'}" data-id="${c.id}">
         <div class="card-corner-actions">
@@ -3573,6 +3613,7 @@ function renderPageCards(clinicsData, append) {
           </div>
           <div class="review-count">${(c.reviews || 0).toLocaleString()} Google reviews</div>
           ${pillsHTML}
+          ${categoriesHTML}
         </div>
         ${priceBlockHTML}
         <div class="card-visit-row">

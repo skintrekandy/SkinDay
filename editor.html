@@ -1854,6 +1854,33 @@
           </label>
         </div>
       </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div class="card-title">Treatment Categories</div>
+        <div class="card-desc">What does your clinic offer? These appear as quick tags on your listing so patients can tell at a glance. Select all that apply.</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px;">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:0.9rem;color:var(--bark);">
+            <input type="checkbox" id="cat-injectables" value="injectables" onchange="markDirty()" style="width:16px;height:16px;accent-color:var(--rose);cursor:pointer;" />
+            Injectables
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:0.9rem;color:var(--bark);">
+            <input type="checkbox" id="cat-lasers_ipl" value="lasers_ipl" onchange="markDirty()" style="width:16px;height:16px;accent-color:var(--rose);cursor:pointer;" />
+            Lasers/IPL
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:0.9rem;color:var(--bark);">
+            <input type="checkbox" id="cat-rf_hifu" value="rf_hifu" onchange="markDirty()" style="width:16px;height:16px;accent-color:var(--rose);cursor:pointer;" />
+            RF/HIFU
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:0.9rem;color:var(--bark);">
+            <input type="checkbox" id="cat-facials" value="facials" onchange="markDirty()" style="width:16px;height:16px;accent-color:var(--rose);cursor:pointer;" />
+            Skin &amp; Facials
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:0.9rem;color:var(--bark);">
+            <input type="checkbox" id="cat-body" value="body" onchange="markDirty()" style="width:16px;height:16px;accent-color:var(--rose);cursor:pointer;" />
+            Body
+          </label>
+        </div>
+      </div>
     </div>
 
     <!-- ─── TAB: HOURS ─── -->
@@ -2299,6 +2326,11 @@
       }
       if (!Array.isArray(c[field])) c[field] = [];
     });
+    // categories is a native text[]; guard for string/null too
+    if (typeof c.categories === 'string') {
+      try { c.categories = JSON.parse(c.categories); } catch(e) { c.categories = []; }
+    }
+    if (!Array.isArray(c.categories)) c.categories = [];
 
     // Load prices from clinic_prices via get-clinics data
     portalLoadPrices(c);
@@ -2391,6 +2423,14 @@
       if (el) el.checked = savedLangs.includes(v);
     });
 
+    // Treatment category checkboxes
+    const allCats = ['injectables','lasers_ipl','rf_hifu','facials','body'];
+    const savedCats = Array.isArray(c.categories) ? c.categories : [];
+    allCats.forEach(v => {
+      const el = document.getElementById('cat-' + v);
+      if (el) el.checked = savedCats.includes(v);
+    });
+
     // M25: populate Clinic Identity tab
     identityPopulateFromClinic(c);
 
@@ -2408,6 +2448,7 @@
       photos: [...photos],
       injector_credentials: [...savedCreds],
       languages: [...savedLangs],
+      categories: [...savedCats],
       // M25: snapshot identity for discard-changes
       expertise: JSON.parse(JSON.stringify(identityState.expertise)),
       concerns:  JSON.parse(JSON.stringify(identityState.concerns))
@@ -2701,6 +2742,11 @@
     ['english','mandarin','cantonese','farsi','french','korean','hindi','arabic','punjabi','portuguese'].forEach(v => {
       const el = document.getElementById('lang-' + v);
       if (el) el.checked = (c.languages || []).includes(v);
+    });
+    // Restore treatment categories
+    ['injectables','lasers_ipl','rf_hifu','facials','body'].forEach(v => {
+      const el = document.getElementById('cat-' + v);
+      if (el) el.checked = (c.categories || []).includes(v);
     });
 
     // Restore practitioners
@@ -3201,6 +3247,7 @@
         logo_url: logoUrl,
         injector_credentials: ['physician','np','rn','img','nd'].filter(v => document.getElementById('cred-' + v)?.checked),
         languages: ['english','mandarin','cantonese','farsi','french','korean','hindi','arabic','punjabi','portuguese'].filter(v => document.getElementById('lang-' + v)?.checked),
+        categories: ['injectables','lasers_ipl','rf_hifu','facials','body'].filter(v => document.getElementById('cat-' + v)?.checked),
         // M25: include identity arrays for the current clinic
         ...identityGetPayload()
       };
@@ -3217,7 +3264,8 @@
         price_source: payload.price_source,
         price_date: payload.price_date,
         injector_credentials: payload.injector_credentials,
-        languages: payload.languages
+        languages: payload.languages,
+        categories: payload.categories
       };
 
       // Save to all target locations
@@ -3236,7 +3284,7 @@
 
       // ── Core save succeeded — show success now ────────────────
       Object.assign(currentClinic, payload);
-      originalData = { ...payload, photos: photos.map(p => ({ url: p.url })), injector_credentials: [...payload.injector_credentials], languages: [...payload.languages] };
+      originalData = { ...payload, photos: photos.map(p => ({ url: p.url })), injector_credentials: [...payload.injector_credentials], languages: [...payload.languages], categories: [...payload.categories] };
       identityOriginal.expertise = JSON.parse(JSON.stringify(identityState.expertise));
       identityOriginal.concerns  = JSON.parse(JSON.stringify(identityState.concerns));
       isDirty = false;
