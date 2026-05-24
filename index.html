@@ -847,7 +847,8 @@
     }
     .cm-categories {
       display: flex; flex-wrap: wrap; gap: 0.4rem;
-      margin: 0 0 4px;
+      padding: 0 24px 16px;
+      align-items: center;
     }
     .clinic-name {
       font-family: 'Cormorant Garamond', serif;
@@ -3582,7 +3583,7 @@ function renderPageCards(clinicsData, append) {
     const credPills = (c.injector_credentials || []).map(v => `<span class="pill pill-cred">${credMap[v] || v.toUpperCase()}</span>`).join('');
     const langPills = (c.languages || []).map(v => `<span class="pill pill-lang">${langMap[v] || v}</span>`).join('');
     const pillsHTML = (credPills || langPills) ? `<div class="card-pills">${credPills}${langPills}</div>` : '';
-    const catLabelMap = { injectables:'Injectables', lasers_ipl:'Lasers/IPL', rf_hifu:'RF/HIFU', facials:'Skin & Facials', body:'Body', plastic_surgery:'Plastic Surgery', iv_drips:'IV Drips' };
+    const catLabelMap = { injectables:'Injectables', lasers_ipl:'Lasers/IPL', rf_hifu:'RF/HIFU', facials:'Skin & Facials', body:'Body Contouring', plastic_surgery:'Plastic Surgery', iv_drips:'IV Drips' };
     const catOrder = ['injectables','lasers_ipl','rf_hifu','facials','body','plastic_surgery','iv_drips'];
     const cats = (c.categories || []).filter(v => catLabelMap[v]).sort((a,b) => catOrder.indexOf(a) - catOrder.indexOf(b));
     const catShown = cats.slice(0, 3);
@@ -5579,7 +5580,7 @@ window.openClinicModal = async function openClinicModal(clinicId) {
   document.getElementById('cm-rating-link').href = clinic.maps_url || (clinic.lat && clinic.lng ? `https://www.google.com/maps/search/?api=1&query=${clinic.lat},${clinic.lng}` : '#');
 
   // Treatment categories
-  const cmCatLabels = { injectables:'Injectables', lasers_ipl:'Lasers/IPL', rf_hifu:'RF/HIFU', facials:'Skin & Facials', body:'Body', plastic_surgery:'Plastic Surgery', iv_drips:'IV Drips' };
+  const cmCatLabels = { injectables:'Injectables', lasers_ipl:'Lasers/IPL', rf_hifu:'RF/HIFU', facials:'Skin & Facials', body:'Body Contouring', plastic_surgery:'Plastic Surgery', iv_drips:'IV Drips' };
   const cmCatOrder = ['injectables','lasers_ipl','rf_hifu','facials','body','plastic_surgery','iv_drips'];
   const cmCats = (clinic.categories || []).filter(v => cmCatLabels[v]).sort((a,b) => cmCatOrder.indexOf(a) - cmCatOrder.indexOf(b));
   const cmCatEl = document.getElementById('cm-categories');

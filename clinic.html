@@ -1062,7 +1062,7 @@ function renderClinic(clinic) {
   const hasTierA = isClaimed && clinic.photo_filenames && clinic.photo_filenames.length > 0;
 
   // Treatment category chips
-  const catLabelMap = { injectables:'Injectables', lasers_ipl:'Lasers/IPL', rf_hifu:'RF/HIFU', facials:'Skin & Facials', body:'Body', plastic_surgery:'Plastic Surgery', iv_drips:'IV Drips' };
+  const catLabelMap = { injectables:'Injectables', lasers_ipl:'Lasers/IPL', rf_hifu:'RF/HIFU', facials:'Skin & Facials', body:'Body Contouring', plastic_surgery:'Plastic Surgery', iv_drips:'IV Drips' };
   const catOrder = ['injectables','lasers_ipl','rf_hifu','facials','body','plastic_surgery','iv_drips'];
   const profileCats = (clinic.categories || []).filter(v => catLabelMap[v]).sort((a,b) => catOrder.indexOf(a) - catOrder.indexOf(b));
   const categoriesCardHTML = profileCats.length ? `
