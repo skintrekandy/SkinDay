@@ -1879,6 +1879,14 @@
             <input type="checkbox" id="cat-body" value="body" onchange="markDirty()" style="width:16px;height:16px;accent-color:var(--rose);cursor:pointer;" />
             Body
           </label>
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:0.9rem;color:var(--bark);">
+            <input type="checkbox" id="cat-plastic_surgery" value="plastic_surgery" onchange="markDirty()" style="width:16px;height:16px;accent-color:var(--rose);cursor:pointer;" />
+            Plastic Surgery
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:0.9rem;color:var(--bark);">
+            <input type="checkbox" id="cat-iv_drips" value="iv_drips" onchange="markDirty()" style="width:16px;height:16px;accent-color:var(--rose);cursor:pointer;" />
+            IV Drips
+          </label>
         </div>
       </div>
     </div>
@@ -2424,7 +2432,7 @@
     });
 
     // Treatment category checkboxes
-    const allCats = ['injectables','lasers_ipl','rf_hifu','facials','body'];
+    const allCats = ['injectables','lasers_ipl','rf_hifu','facials','body','plastic_surgery','iv_drips'];
     const savedCats = Array.isArray(c.categories) ? c.categories : [];
     allCats.forEach(v => {
       const el = document.getElementById('cat-' + v);
@@ -2744,7 +2752,7 @@
       if (el) el.checked = (c.languages || []).includes(v);
     });
     // Restore treatment categories
-    ['injectables','lasers_ipl','rf_hifu','facials','body'].forEach(v => {
+    ['injectables','lasers_ipl','rf_hifu','facials','body','plastic_surgery','iv_drips'].forEach(v => {
       const el = document.getElementById('cat-' + v);
       if (el) el.checked = (c.categories || []).includes(v);
     });
@@ -3247,7 +3255,7 @@
         logo_url: logoUrl,
         injector_credentials: ['physician','np','rn','img','nd'].filter(v => document.getElementById('cred-' + v)?.checked),
         languages: ['english','mandarin','cantonese','farsi','french','korean','hindi','arabic','punjabi','portuguese'].filter(v => document.getElementById('lang-' + v)?.checked),
-        categories: ['injectables','lasers_ipl','rf_hifu','facials','body'].filter(v => document.getElementById('cat-' + v)?.checked),
+        categories: ['injectables','lasers_ipl','rf_hifu','facials','body','plastic_surgery','iv_drips'].filter(v => document.getElementById('cat-' + v)?.checked),
         // M25: include identity arrays for the current clinic
         ...identityGetPayload()
       };

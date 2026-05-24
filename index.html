@@ -838,10 +838,16 @@
     .cat-dot-rf_hifu     { background: #C8725A; }                        /* clay/terracotta */
     .cat-dot-facials     { background: #D89B94; }                        /* blush rose */
     .cat-dot-body        { background: #9B8E7E; }                        /* muted taupe */
+    .cat-dot-plastic_surgery { background: #8E6F8C; }                    /* muted plum */
+    .cat-dot-iv_drips    { background: #7E94A6; }                        /* slate blue */
     .cat-chip-more {
       background: transparent;
       border: 1px solid #E6DACB;
       color: var(--muted, #8A7E72);
+    }
+    .cm-categories {
+      display: flex; flex-wrap: wrap; gap: 0.4rem;
+      margin: 0 0 4px;
     }
     .clinic-name {
       font-family: 'Cormorant Garamond', serif;
@@ -3576,8 +3582,8 @@ function renderPageCards(clinicsData, append) {
     const credPills = (c.injector_credentials || []).map(v => `<span class="pill pill-cred">${credMap[v] || v.toUpperCase()}</span>`).join('');
     const langPills = (c.languages || []).map(v => `<span class="pill pill-lang">${langMap[v] || v}</span>`).join('');
     const pillsHTML = (credPills || langPills) ? `<div class="card-pills">${credPills}${langPills}</div>` : '';
-    const catLabelMap = { injectables:'Injectables', lasers_ipl:'Lasers/IPL', rf_hifu:'RF/HIFU', facials:'Skin & Facials', body:'Body' };
-    const catOrder = ['injectables','lasers_ipl','rf_hifu','facials','body'];
+    const catLabelMap = { injectables:'Injectables', lasers_ipl:'Lasers/IPL', rf_hifu:'RF/HIFU', facials:'Skin & Facials', body:'Body', plastic_surgery:'Plastic Surgery', iv_drips:'IV Drips' };
+    const catOrder = ['injectables','lasers_ipl','rf_hifu','facials','body','plastic_surgery','iv_drips'];
     const cats = (c.categories || []).filter(v => catLabelMap[v]).sort((a,b) => catOrder.indexOf(a) - catOrder.indexOf(b));
     const catShown = cats.slice(0, 3);
     const catOverflow = cats.length - catShown.length;
@@ -5234,6 +5240,9 @@ function maybeShowVisitPrompt() {
         <span class="cm-promo-badge" id="cm-promo" style="display:none">Promo Available</span>
       </div>
 
+      <!-- Treatment categories -->
+      <div class="cm-categories" id="cm-categories" style="display:none"></div>
+
       <!-- Vote block -->
       <div class="cm-vote-block" id="cm-vote-block">
         <div class="cm-vote-label">Been here?</div>
@@ -5568,6 +5577,21 @@ window.openClinicModal = async function openClinicModal(clinicId) {
   document.getElementById('cm-rating-num').textContent = clinic.rating.toFixed(1);
   document.getElementById('cm-review-count').textContent = (clinic.reviews || 0).toLocaleString();
   document.getElementById('cm-rating-link').href = clinic.maps_url || (clinic.lat && clinic.lng ? `https://www.google.com/maps/search/?api=1&query=${clinic.lat},${clinic.lng}` : '#');
+
+  // Treatment categories
+  const cmCatLabels = { injectables:'Injectables', lasers_ipl:'Lasers/IPL', rf_hifu:'RF/HIFU', facials:'Skin & Facials', body:'Body', plastic_surgery:'Plastic Surgery', iv_drips:'IV Drips' };
+  const cmCatOrder = ['injectables','lasers_ipl','rf_hifu','facials','body','plastic_surgery','iv_drips'];
+  const cmCats = (clinic.categories || []).filter(v => cmCatLabels[v]).sort((a,b) => cmCatOrder.indexOf(a) - cmCatOrder.indexOf(b));
+  const cmCatEl = document.getElementById('cm-categories');
+  if (cmCatEl) {
+    if (cmCats.length) {
+      cmCatEl.innerHTML = cmCats.map(v => `<span class="cat-chip"><span class="cat-dot cat-dot-${v}"></span>${cmCatLabels[v]}</span>`).join('');
+      cmCatEl.style.display = 'flex';
+    } else {
+      cmCatEl.innerHTML = '';
+      cmCatEl.style.display = 'none';
+    }
+  }
 
   // Promo
   const promoEl = document.getElementById('cm-promo');

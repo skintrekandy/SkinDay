@@ -158,6 +158,26 @@
       display: flex; align-items: center; gap: 0.5rem;
       flex-wrap: wrap; margin-bottom: 0.85rem;
     }
+    .profile-categories {
+      display: flex; flex-wrap: wrap; gap: 0.5rem;
+    }
+    .profile-categories .cat-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 0.8rem; font-weight: 600; letter-spacing: 0.02em;
+      padding: 5px 12px 5px 10px; border-radius: 100px;
+      background: #F4EEE6; color: var(--ink, #1C1714);
+      border: 1px solid #E6DACB;
+    }
+    .profile-categories .cat-dot {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+    }
+    .cat-dot-injectables    { background: #8AA67E; }
+    .cat-dot-lasers_ipl     { background: #C9A96E; }
+    .cat-dot-rf_hifu        { background: #C8725A; }
+    .cat-dot-facials        { background: #D89B94; }
+    .cat-dot-body           { background: #9B8E7E; }
+    .cat-dot-plastic_surgery{ background: #8E6F8C; }
+    .cat-dot-iv_drips       { background: #7E94A6; }
     .pill {
       display: inline-flex; align-items: center; gap: 0.3rem;
       padding: 0.25rem 0.75rem;
@@ -1041,16 +1061,25 @@ function renderClinic(clinic) {
   // Tier A: claimed + photos → immersive hero. Tier B: dark card.
   const hasTierA = isClaimed && clinic.photo_filenames && clinic.photo_filenames.length > 0;
 
+  // Treatment category chips
+  const catLabelMap = { injectables:'Injectables', lasers_ipl:'Lasers/IPL', rf_hifu:'RF/HIFU', facials:'Skin & Facials', body:'Body', plastic_surgery:'Plastic Surgery', iv_drips:'IV Drips' };
+  const catOrder = ['injectables','lasers_ipl','rf_hifu','facials','body','plastic_surgery','iv_drips'];
+  const profileCats = (clinic.categories || []).filter(v => catLabelMap[v]).sort((a,b) => catOrder.indexOf(a) - catOrder.indexOf(b));
+  const categoriesCardHTML = profileCats.length ? `
+    <div class="card animate animate-delay-1">
+      <div class="card-section">
+        <div class="section-label">Treatments Offered</div>
+        <div class="profile-categories">
+          ${profileCats.map(v => `<span class="cat-chip"><span class="cat-dot cat-dot-${v}"></span>${catLabelMap[v]}</span>`).join('')}
+        </div>
+      </div>
+    </div>` : '';
+
   const tierAHero = hasTierA ? `
     <div class="profile-hero-photo animate" id="profile-hero-photo">
       <img id="hero-main-img" src="" alt="${clinic.name}" loading="eager" onerror="this.parentElement.classList.add('hero-img-failed')" />
       <div class="hero-gradient"></div>
       <div class="hero-meta">
-        <div class="profile-pills" style="margin-bottom:0.6rem;">
-          <span class="pill pill-neighbourhood">${clinic.neighbourhood}</span>
-          ${isClaimed ? `<span class="pill pill-verified">Verified listing</span>` : ''}
-          ${(clinic.promo && clinic.promo_text) ? `<span class="promo-badge">🎉 Promo</span>` : ''}
-        </div>
         <h1 class="profile-name" style="display:flex;align-items:center;gap:10px;margin-bottom:0.6rem;">
           ${clinic.logo_url ? `<img src="${clinic.logo_url}" alt="" style="width:32px;height:32px;border-radius:5px;object-fit:contain;background:rgba(255,255,255,0.12);flex-shrink:0;">` : ''}
           ${clinic.name}
@@ -1095,6 +1124,9 @@ function renderClinic(clinic) {
 
     ${tierAHero}
     ${tierBHero}
+
+    <!-- TREATMENT CATEGORIES -->
+    ${categoriesCardHTML}
 
     <!-- PROMO (above pricing, only when promo text exists) -->
     ${promoHTML}
@@ -1336,6 +1368,11 @@ async function initFromDB() {
       }
       if (!Array.isArray(clinic[field])) clinic[field] = [];
     });
+    // categories is a native text[]; guard for string/null
+    if (typeof clinic.categories === 'string') {
+      try { clinic.categories = JSON.parse(clinic.categories); } catch { clinic.categories = []; }
+    }
+    if (!Array.isArray(clinic.categories)) clinic.categories = [];
 
     // Normalise photo_filenames
     if (typeof clinic.photo_filenames === 'string') {
