@@ -3528,14 +3528,14 @@ function renderPageCards(clinicsData, append) {
     });
   } else if (currentSort === 'rating') {
     clinicsData.sort((a, b) => {
-      const s = c => c.claimed ? 2 : (c.price != null ? 1 : 0);
+      const s = c => (c.price != null ? 2 : 0) + (c.claimed ? 1 : 0);
       const tier = s(b) - s(a);
       if (tier !== 0) return tier;
       return (b.rating || 0) - (a.rating || 0);
     });
   } else if (currentSort === 'reviews') {
     clinicsData.sort((a, b) => {
-      const s = c => c.claimed ? 2 : (c.price != null ? 1 : 0);
+      const s = c => (c.price != null ? 2 : 0) + (c.claimed ? 1 : 0);
       const tier = s(b) - s(a);
       if (tier !== 0) return tier;
       return (b.reviews || 0) - (a.reviews || 0);
