@@ -2749,8 +2749,8 @@
   <div class="filter-wrap">
     <span class="filter-label">Sort</span>
     <select class="sort-select" onchange="sortCards(this.value)" id="mainSortSelect">
-      <option value="rating" selected>Highest Rated</option>
-      <option value="reviews">Most Reviews</option>
+      <option value="rating">Highest Rated</option>
+      <option value="reviews" selected>Most Reviews</option>
       <option value="price-high">Price: High → Low</option>
       <option value="price-low">Price: Low → High</option>
       <option value="nearest">Nearest</option>
@@ -3332,7 +3332,7 @@ let isLoading = false;
 
 // Filter / sort state
 let currentFilter = 'all';
-let currentSort = 'rating';
+let currentSort = 'reviews';
 let currentNameQuery = '';
 let currentInjectorFilter = 'all';
 let userLocation = null;
