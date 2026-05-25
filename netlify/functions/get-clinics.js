@@ -197,7 +197,7 @@ exports.handler = async (event) => {
 
     // ── PARAMS ───────────────────────────────────────────────
     const page          = Math.max(0, parseInt(params.page || '0', 10));
-    const sort          = params.sort || 'rating';
+    const sort          = params.sort || 'reviews';
     const province      = params.province || '';
     const neighbourhood = params.neighbourhood || '';
     const injector      = params.injector || '';
@@ -263,29 +263,59 @@ exports.handler = async (event) => {
       };
     }
 
+    // ── RESOLVE PRICED CLINIC IDS FROM clinic_prices ─────────
+    // The grid displays price from clinic_prices (the clinics.price snapshot
+    // can lag), so ranking must use the same source. Fetch the set of clinic
+    // ids that have any clinic_prices row, and bucket on membership in it.
+    const pricedIdsRes = await supabase
+      .from('clinic_prices')
+      .select('clinic_id')
+      .range(0, 29999);
+
+    if (pricedIdsRes.error) {
+      console.error('Supabase error (priced ids):', pricedIdsRes.error);
+      return { statusCode: 500, body: JSON.stringify({ error: pricedIdsRes.error.message }) };
+    }
+    const pricedIdSet  = new Set((pricedIdsRes.data || []).map(r => String(r.clinic_id)));
+    const pricedIdList = [...pricedIdSet];
+    const hasPricedIds = pricedIdList.length > 0;
+
     // ── FOUR-BUCKET FETCH (price-first, claimed as tiebreaker) ─────
-    // Price-first: any clinic with a Botox price surfaces above any without.
+    // Price-first: any clinic with a price (in clinic_prices) surfaces above any without.
     // Within each price tier, claimed clinics rank above unclaimed.
-    const [pricedClaimedRes, pricedUnclaimedRes, unpricedClaimedRes, unpricedUnclaimedRes, countRes] = await Promise.all([
-      applySort(buildBase().not('price', 'is', null).eq('claimed', true)).range(0, needed - 1),
-      applySort(buildBase().not('price', 'is', null).eq('claimed', false)).range(0, needed - 1),
-      applySort(buildBase().is('price', null).eq('claimed', true)).range(0, needed - 1),
-      applySort(buildBase().is('price', null).eq('claimed', false)).range(0, needed - 1),
+    //
+    // Priced buckets use a bounded .in() on the priced id set.
+    // Unpriced buckets are fetched normally then partitioned in JS (drop any
+    // member of the priced set) — this avoids a NOT-IN string that grows with
+    // the priced list and could eventually overflow the request URL.
+    // Unpriced buckets fetch with headroom equal to the priced-set size, so that
+    // filtering out priced members in JS can never leave the page slice short.
+    const unpricedNeeded = needed + pricedIdList.length;
+    const emptyPriced = { data: [], error: null };
+    const [pricedClaimedRes, pricedUnclaimedRes, claimedAllRes, unclaimedAllRes, countRes] = await Promise.all([
+      hasPricedIds ? applySort(buildBase().eq('claimed', true).in('id', pricedIdList)).range(0, needed - 1)  : Promise.resolve(emptyPriced),
+      hasPricedIds ? applySort(buildBase().eq('claimed', false).in('id', pricedIdList)).range(0, needed - 1) : Promise.resolve(emptyPriced),
+      applySort(buildBase().eq('claimed', true)).range(0, unpricedNeeded - 1),
+      applySort(buildBase().eq('claimed', false)).range(0, unpricedNeeded - 1),
       buildBase().select('id', { count: 'exact', head: true }).range(0, 0),
     ]);
 
-    if (pricedClaimedRes.error || pricedUnclaimedRes.error || unpricedClaimedRes.error || unpricedUnclaimedRes.error) {
-      const err = pricedClaimedRes.error || pricedUnclaimedRes.error || unpricedClaimedRes.error || unpricedUnclaimedRes.error;
+    if (pricedClaimedRes.error || pricedUnclaimedRes.error || claimedAllRes.error || unclaimedAllRes.error) {
+      const err = pricedClaimedRes.error || pricedUnclaimedRes.error || claimedAllRes.error || unclaimedAllRes.error;
       console.error('Supabase error:', err);
       return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
     }
+
+    // Unpriced = the claimed/unclaimed sets minus anyone in the priced set.
+    const unpricedClaimed   = (claimedAllRes.data   || []).filter(c => !pricedIdSet.has(String(c.id)));
+    const unpricedUnclaimed = (unclaimedAllRes.data || []).filter(c => !pricedIdSet.has(String(c.id)));
 
     // Merge buckets then slice the requested page
     const pool = [
       ...(pricedClaimedRes.data   || []),
       ...(pricedUnclaimedRes.data || []),
-      ...(unpricedClaimedRes.data || []),
-      ...(unpricedUnclaimedRes.data || []),
+      ...unpricedClaimed,
+      ...unpricedUnclaimed,
     ];
 
     // ── FOUNDER BIAS MITIGATION ───────────────────────────────
