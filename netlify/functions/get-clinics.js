@@ -263,27 +263,29 @@ exports.handler = async (event) => {
       };
     }
 
-    // ── THREE-BUCKET FETCH (claimed → priced → unpriced) ─────
-    // Three parallel queries, each applying all filters.
-    // Claimed clinics always surface first regardless of rating.
-    const [claimedRes, pricedRes, unpricedRes, countRes] = await Promise.all([
-      applySort(buildBase().eq('claimed', true)).range(0, needed - 1),
-      applySort(buildBase().eq('claimed', false).not('price', 'is', null)).range(0, needed - 1),
-      applySort(buildBase().eq('claimed', false).is('price', null)).range(0, needed - 1),
+    // ── FOUR-BUCKET FETCH (price-first, claimed as tiebreaker) ─────
+    // Price-first: any clinic with a Botox price surfaces above any without.
+    // Within each price tier, claimed clinics rank above unclaimed.
+    const [pricedClaimedRes, pricedUnclaimedRes, unpricedClaimedRes, unpricedUnclaimedRes, countRes] = await Promise.all([
+      applySort(buildBase().not('price', 'is', null).eq('claimed', true)).range(0, needed - 1),
+      applySort(buildBase().not('price', 'is', null).eq('claimed', false)).range(0, needed - 1),
+      applySort(buildBase().is('price', null).eq('claimed', true)).range(0, needed - 1),
+      applySort(buildBase().is('price', null).eq('claimed', false)).range(0, needed - 1),
       buildBase().select('id', { count: 'exact', head: true }).range(0, 0),
     ]);
 
-    if (claimedRes.error || pricedRes.error || unpricedRes.error) {
-      const err = claimedRes.error || pricedRes.error || unpricedRes.error;
+    if (pricedClaimedRes.error || pricedUnclaimedRes.error || unpricedClaimedRes.error || unpricedUnclaimedRes.error) {
+      const err = pricedClaimedRes.error || pricedUnclaimedRes.error || unpricedClaimedRes.error || unpricedUnclaimedRes.error;
       console.error('Supabase error:', err);
       return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
     }
 
     // Merge buckets then slice the requested page
     const pool = [
-      ...(claimedRes.data  || []),
-      ...(pricedRes.data   || []),
-      ...(unpricedRes.data || []),
+      ...(pricedClaimedRes.data   || []),
+      ...(pricedUnclaimedRes.data || []),
+      ...(unpricedClaimedRes.data || []),
+      ...(unpricedUnclaimedRes.data || []),
     ];
 
     // ── FOUNDER BIAS MITIGATION ───────────────────────────────
