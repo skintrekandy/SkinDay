@@ -3562,13 +3562,13 @@ function renderPageCards(clinicsData, append) {
     const priceSourceLabel = c.price_source === 'clinic'
       ? `<span class="trust-badge trust-badge-clinic"><svg width="8" height="8" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 6 5 9 10 3"/></svg>Managed by clinic · ${formatPriceDate(c.price_date)}</span>`
       : c.price_source === 'inquiry'
-      ? `<span class="trust-badge trust-badge-inquiry">Verified via inquiry · ${formatPriceDate(c.price_date)}</span>`
+      ? `<span class="trust-badge trust-badge-inquiry">Checked by inquiry · ${formatPriceDate(c.price_date)}</span>`
       : null;
     const priceBlockHTML = hasPrice
       ? `<div class="card-price">
           <div class="price-label">${toxinLabel} — per unit</div>
           <div class="price-main">
-           <span class="price-from">from</span><span class="price-tooltip-wrap"><span class="price-amount">$${c.price}</span>${priceSourceLabel ? `<span class="price-tooltip">${c.price_source === 'clinic' ? '✓ Managed by clinic' : 'Verified via inquiry'} · ${formatPriceDate(c.price_date)}</span>` : ''}</span>
+           <span class="price-from">from</span><span class="price-tooltip-wrap"><span class="price-amount">$${c.price}</span>${priceSourceLabel ? `<span class="price-tooltip">${c.price_source === 'clinic' ? '✓ Managed by clinic' : 'Checked by inquiry'} · ${formatPriceDate(c.price_date)}</span>` : ''}</span>
            <span class="price-unit">/ unit · ${toxinLabel}</span>
          </div>
         </div>`
@@ -4743,7 +4743,7 @@ async function openCompareModal() {
   const priceCells = selected.map((c, i) => {
     const isWinner = c.price !== null && c.price === lowestPrice && withPrices.length > 1 && unique(withPrices.map(x => x.price), lowestPrice);
     const srcLabel = c.price_source === 'inquiry'
-      ? `Verified via inquiry · ${formatPriceDate(c.price_date)}`
+      ? `Checked by inquiry · ${formatPriceDate(c.price_date)}`
       : c.price_source === 'clinic'
       ? `Managed by clinic · ${formatPriceDate(c.price_date)}`
       : null;
@@ -5211,7 +5211,7 @@ function maybeShowVisitPrompt() {
         <div class="cm-header-meta">
           <span class="cm-neighbourhood-pill" id="cm-neighbourhood"></span>
           <span class="cm-status-pill claimed" id="cm-status-claimed"><span class="cm-status-dot"></span>Verified listing</span>
-          <span class="cm-status-pill unclaimed" id="cm-status-unclaimed" style="display:none"><span class="cm-status-dot"></span>Unverified listing</span>
+          <span class="cm-status-pill unclaimed" id="cm-status-unclaimed" style="display:none"><span class="cm-status-dot"></span>Unclaimed profile</span>
         </div>
         <div class="cm-name-row">
           <div class="cm-header-logo" id="cm-header-logo" style="display:none">
@@ -5227,7 +5227,7 @@ function maybeShowVisitPrompt() {
         <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/>
         </svg>
-        This listing hasn't been claimed. Information is sourced from Google and may be outdated.
+        Unclaimed profile · details from public sources. Pricing is source-labelled where available.
       </div>
 
       <!-- Rating row -->
@@ -5643,7 +5643,7 @@ window.openClinicModal = async function openClinicModal(clinicId) {
     }
 
     const srcLabel = lowest.price_source === 'inquiry'
-      ? `Verified via inquiry · ${formatPriceDate(lowest.price_date)}`
+      ? `Checked by inquiry · ${formatPriceDate(lowest.price_date)}`
       : lowest.price_source === 'clinic'
       ? `Managed by clinic · ${formatPriceDate(lowest.price_date)}`
       : null;
