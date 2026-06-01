@@ -95,7 +95,14 @@
     .output.visible { display:block; }
     .result-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
     .result-card { border:1px solid var(--border); border-radius:8px; background:var(--deep); overflow:hidden; position:relative; aspect-ratio:4/5; }
-    .result-card img { display:block; width:100%; height:100%; object-fit:cover; }
+    .result-card img { display:block; width:100%; height:100%; object-fit:cover; transform-origin:center center; }
+    .result-card.zoomable { cursor:grab; }
+    .result-card.panning { cursor:grabbing; }
+    .zoom-bar { display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:12px; }
+    .zoom-btn { width:34px; height:34px; border:1px solid var(--border); background:#fff; border-radius:6px; font-size:1.2rem; line-height:1; cursor:pointer; color:var(--deep); }
+    .zoom-btn:hover { border-color:var(--gold); }
+    #zoomLabel { font-size:.8rem; color:var(--muted); min-width:48px; text-align:center; }
+    .zoom-reset { border:none; background:transparent; color:var(--muted); font-size:.78rem; cursor:pointer; text-decoration:underline; padding:4px; }
     .result-tag { position:absolute; bottom:0; left:0; right:0; padding:9px 12px; background:linear-gradient(transparent,rgba(28,23,20,.75)); font-size:.66rem; letter-spacing:.12em; text-transform:uppercase; color:rgba(250,247,242,.9); }
     .result-tag.sim { background:linear-gradient(transparent,rgba(200,114,90,.92)); font-weight:600; }
     .regen-note { font-size:.72rem; color:var(--muted); text-align:center; margin-top:12px; }
@@ -271,6 +278,12 @@
   <!-- Output -->
   <section class="output" id="outputSection">
     <div class="step-num">Your consultation preview</div>
+    <div class="zoom-bar">
+      <button class="zoom-btn" id="zoomOut" type="button" aria-label="Zoom out">−</button>
+      <span id="zoomLabel">100%</span>
+      <button class="zoom-btn" id="zoomIn" type="button" aria-label="Zoom in">+</button>
+      <button class="zoom-reset" id="zoomReset" type="button">Reset</button>
+    </div>
     <div class="result-grid">
       <div class="result-card"><img id="originalResult" alt="Original photo" /><div class="result-tag">Original</div></div>
       <div class="result-card"><img id="aiResult" alt="AI simulated treatment preview" /><div class="result-tag sim" id="simTag">Simulated — AI Visualization</div></div>
@@ -644,6 +657,7 @@ async function runGeneration(isRegen){
     state.lastGenAt = Date.now();
     document.getElementById('originalResult').src = state.originalDataUrl;
     document.getElementById('aiResult').src = state.resultDataUrl;
+    resetZoom();
     document.getElementById('simTag').textContent = 'Simulated — AI Visualization' + (state.type === 'biostim' ? ' · ' + state.projection : '');
     state.insights = buildInsights();
     insightsPanel.style.display = 'none';
@@ -674,6 +688,48 @@ function updateRegenNote(){
   }
 }
 
+/* ───────── Synchronized zoom + pan (both panels together) ───────── */
+const zoomState = { zoom:1, panX:0, panY:0, dragging:false, sx:0, sy:0 };
+const zoomImgs = [document.getElementById('originalResult'), document.getElementById('aiResult')];
+const zoomCards = [...document.querySelectorAll('#outputSection .result-card')];
+
+function applyZoom(){
+  const t = `translate(${zoomState.panX}px, ${zoomState.panY}px) scale(${zoomState.zoom})`;
+  zoomImgs.forEach(img => { img.style.transform = t; });
+  document.getElementById('zoomLabel').textContent = Math.round(zoomState.zoom * 100) + '%';
+  zoomCards.forEach(c => c.classList.toggle('zoomable', zoomState.zoom > 1));
+}
+function clampPan(){
+  const card = zoomCards[0]; if(!card) return;
+  const maxX = card.clientWidth  * (zoomState.zoom - 1) / 2;
+  const maxY = card.clientHeight * (zoomState.zoom - 1) / 2;
+  zoomState.panX = Math.max(-maxX, Math.min(maxX, zoomState.panX));
+  zoomState.panY = Math.max(-maxY, Math.min(maxY, zoomState.panY));
+}
+function setZoom(z){
+  zoomState.zoom = Math.max(1, Math.min(3, Math.round(z * 100) / 100));
+  if(zoomState.zoom === 1){ zoomState.panX = 0; zoomState.panY = 0; }
+  clampPan(); applyZoom();
+}
+function resetZoom(){ setZoom(1); }
+
+document.getElementById('zoomIn').addEventListener('click', () => setZoom(zoomState.zoom + 0.5));
+document.getElementById('zoomOut').addEventListener('click', () => setZoom(zoomState.zoom - 0.5));
+document.getElementById('zoomReset').addEventListener('click', resetZoom);
+
+function startDrag(x, y){ if(zoomState.zoom <= 1) return; zoomState.dragging = true; zoomState.sx = x - zoomState.panX; zoomState.sy = y - zoomState.panY; zoomCards.forEach(c => c.classList.add('panning')); }
+function moveDrag(x, y){ if(!zoomState.dragging) return; zoomState.panX = x - zoomState.sx; zoomState.panY = y - zoomState.sy; clampPan(); applyZoom(); }
+function endDrag(){ zoomState.dragging = false; zoomCards.forEach(c => c.classList.remove('panning')); }
+
+zoomCards.forEach(card => {
+  card.addEventListener('mousedown', e => { startDrag(e.clientX, e.clientY); e.preventDefault(); });
+  card.addEventListener('touchstart', e => { const t = e.touches[0]; startDrag(t.clientX, t.clientY); }, { passive:true });
+});
+window.addEventListener('mousemove', e => moveDrag(e.clientX, e.clientY));
+window.addEventListener('touchmove', e => { if(zoomState.dragging){ const t = e.touches[0]; moveDrag(t.clientX, t.clientY); e.preventDefault(); } }, { passive:false });
+window.addEventListener('mouseup', endDrag);
+window.addEventListener('touchend', endDrag);
+
 /* ───────── Export (canvas) ───────── */
 async function drawExport(includeText=true){
   const before = await loadImage(state.originalDataUrl);
@@ -681,8 +737,10 @@ async function drawExport(includeText=true){
   const canvas = document.getElementById('exportCanvas');
   const ctx = canvas.getContext('2d');
   const panelW = 900, panelH = 1125, gap = 6;
+  const clinic = includeText ? document.getElementById('clinicName').value.trim() : '';
+  const footerH = includeText ? (clinic ? 132 : 104) : 0;
   canvas.width = panelW * 2 + gap;
-  canvas.height = panelH + (includeText ? 96 : 0);
+  canvas.height = panelH + footerH;
   ctx.fillStyle = '#1C1714'; ctx.fillRect(0,0,canvas.width,canvas.height);
 
   function cover(img, x, y, w, h){
@@ -707,12 +765,25 @@ async function drawExport(includeText=true){
   if(includeText){
     label(0, 'ORIGINAL', false);
     label(panelW + gap, 'SIMULATED — AI VISUALIZATION', true);
-    const clinic = document.getElementById('clinicName').value.trim();
-    ctx.fillStyle = '#1C1714'; ctx.fillRect(0,panelH,canvas.width,96);
-    ctx.font = '300 22px DM Sans, sans-serif'; ctx.fillStyle = 'rgba(250,247,242,.80)';
+    ctx.fillStyle = '#1C1714'; ctx.fillRect(0, panelH, canvas.width, footerH);
     ctx.textAlign = 'center';
-    ctx.fillText('AI-generated visualization for consultation purposes only. Not a prediction of actual results.', canvas.width/2, panelH + 38);
-    if(clinic){ ctx.font = '500 22px DM Sans, sans-serif'; ctx.fillText(clinic, canvas.width/2, panelH + 70); }
+    ctx.font = '300 22px DM Sans, sans-serif'; ctx.fillStyle = 'rgba(250,247,242,.80)';
+    ctx.fillText('AI-generated visualization for consultation purposes only. Not a prediction of actual results.', canvas.width/2, panelH + 36);
+    let brandY = panelH + 74;
+    if(clinic){
+      ctx.font = '500 23px DM Sans, sans-serif'; ctx.fillStyle = 'rgba(250,247,242,.92)';
+      ctx.fillText(clinic, canvas.width/2, panelH + 72);
+      brandY = panelH + 108;
+    }
+    // "Powered by SkinDay Visualize" — two-tone, centered
+    const pre = 'Powered by ', brand = 'SkinDay Visualize';
+    ctx.font = '500 19px DM Sans, sans-serif';
+    const preW = ctx.measureText(pre).width, brandW = ctx.measureText(brand).width;
+    const startX = (canvas.width - (preW + brandW)) / 2;
+    ctx.textAlign = 'left';
+    ctx.fillStyle = 'rgba(181,168,159,.85)'; ctx.fillText(pre, startX, brandY);
+    ctx.fillStyle = '#C9A96E'; ctx.fillText(brand, startX + preW, brandY);
+    ctx.textAlign = 'center';
   }
   return canvas;
 }
@@ -739,6 +810,7 @@ document.getElementById('newBtn').addEventListener('click', () => {
   state.insights = null;
   insightsPanel.style.display = 'none';
   insightsBtn.textContent = 'Show insights';
+  resetZoom();
   document.getElementById('outputSection').classList.remove('visible');
   syncGenerateBtn();
   setStatus('Choose a photo to begin', 'idle');
