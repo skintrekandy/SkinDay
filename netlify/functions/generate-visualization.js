@@ -96,7 +96,8 @@ exports.handler = async (event) => {
       model: 'gpt-image-1',
       image: file,
       prompt,
-      size: '1024x1024'
+      size: 'auto',
+      input_fidelity: 'high'
     });
 
     const b64 = result.data && result.data[0] && result.data[0].b64_json;
