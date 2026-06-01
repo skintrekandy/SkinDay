@@ -129,11 +129,28 @@ exports.handler = async (event) => {
       body: JSON.stringify({ image: `data:image/jpeg;base64,${b64}` })
     };
   } catch (err) {
-    console.error(err);
+    const status = err && (err.status || err.statusCode);
+    const code = err && (err.code || (err.error && err.error.code));
+    const msg = (err && err.message) || '';
+    console.error('generate-visualization failed:', JSON.stringify({ status, code, msg }));
+
+    // The image EDIT endpoint applies strict moderation that cannot be lowered.
+    // Lip edits on a real face are a common trigger. Surface this clearly.
+    const blocked = code === 'moderation_blocked' || /safety system|moderation|not allowed/i.test(msg);
+    if (blocked) {
+      return {
+        statusCode: 422,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          error: 'The AI provider blocked this specific edit under its safety system (the image-edit endpoint is strict and this cannot be turned down). Lip edits are a frequent trigger. Try a different area, or adjust the wording of the custom note.',
+          code: 'moderation_blocked'
+        })
+      };
+    }
     return {
       statusCode: 500,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: err.message || 'Image generation failed' })
+      body: JSON.stringify({ error: msg || 'Image generation failed', code: code || 'error' })
     };
   }
 };
