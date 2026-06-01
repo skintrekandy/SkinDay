@@ -39,6 +39,7 @@
     .step { margin-bottom:32px; }
     .step-num { font-size:.68rem; font-weight:600; letter-spacing:.16em; text-transform:uppercase; color:var(--dim); margin-bottom:14px; }
     .grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+    .flow { display:flex; flex-direction:column; gap:18px; max-width:560px; margin:0 auto; }
     .card { background:#fff; border:1px solid var(--border); border-radius:10px; padding:18px; }
     .upload-zone { border:1.5px dashed var(--border); border-radius:8px; aspect-ratio:4/5; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; position:relative; overflow:hidden; background:var(--warm); transition:border-color .2s; cursor:pointer; }
     .upload-zone:hover { border-color:var(--gold); }
@@ -58,6 +59,9 @@
     .type-btn { border:1.5px solid var(--border); background:#fff; border-radius:8px; padding:12px 10px; cursor:pointer; text-align:left; transition:.2s; }
     .type-btn:hover { border-color:var(--gold); }
     .type-btn.active { border-color:var(--rose); background:#fdf1ee; }
+    .type-btn.soon { opacity:.5; cursor:not-allowed; }
+    .type-btn.soon:hover { border-color:var(--border); }
+    .soon-tag { display:block; margin-top:5px; font-size:.58rem; letter-spacing:.12em; text-transform:uppercase; color:var(--gold); font-style:normal; font-weight:600; }
     .type-btn strong { display:block; font-size:.84rem; margin-bottom:3px; }
     .type-btn span { font-size:.69rem; color:var(--muted); line-height:1.35; display:block; }
     .area-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
@@ -67,6 +71,7 @@
     .area-chip .tick { width:15px; height:15px; border:1.5px solid var(--border); border-radius:4px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:10px; color:#fff; }
     .area-chip.active .tick { background:var(--rose); border-color:var(--rose); }
     .pill-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:9px; }
+    .pill-grid.three { grid-template-columns:repeat(3,1fr); }
     .pill { border:1.5px solid var(--border); background:#fff; border-radius:8px; padding:11px 10px; cursor:pointer; text-align:left; transition:.2s; }
     .pill:hover { border-color:var(--gold); background:var(--warm); }
     .pill.active { border-color:var(--rose); background:#fdf1ee; }
@@ -174,29 +179,21 @@
     <button class="tab active" type="button">Visualize</button>
   </div>
 
-  <section class="grid">
-    <!-- Upload -->
+  <section class="flow">
+    <!-- Step 1: choose treatment type -->
     <div class="card">
-      <div class="step-num">Step 1 — Upload consultation photo</div>
-      <label class="upload-zone" id="uploadZone">
-        <div class="upload-plus">+</div>
-        <div class="upload-txt">Upload patient photo</div>
-        <input type="file" accept="image/*" id="photoInput" />
-        <div class="zone-tag">Original</div>
-      </label>
-      <div class="photo-guide"><strong>Best results:</strong> well-lit, neutral expression, hair off the face, no glasses, one clear face filling the frame. Front, three-quarter (45°), or profile (90°) all work. If you plan to compare angles, shoot each one consistently.</div>
-      <div class="privacy-note"><span>🔒</span><span>The photo stays in this browser until you press Generate. Generating sends the photo to the AI image provider (OpenAI) for that single request only. It is not used to train the model. You must have the patient's consent before uploading.</span></div>
-      <div class="status"><div class="dot" id="dot"></div><span id="statusText">Choose a photo to begin</span></div>
+      <div class="step-num">Step 1 — What do you want to visualize?</div>
+      <div class="type-toggle quad" id="typeToggle">
+        <button class="type-btn active" data-type="filler" type="button"><strong>HA Fillers</strong></button>
+        <button class="type-btn" data-type="biostim" type="button"><strong>Biostimulation</strong></button>
+        <button class="type-btn soon" data-type="neurotoxin" type="button" disabled><strong>Neurotoxin</strong><em class="soon-tag">Coming soon</em></button>
+        <button class="type-btn soon" data-type="laser" type="button" disabled><strong>Skin &amp; Laser</strong><em class="soon-tag">Coming soon</em></button>
+      </div>
     </div>
 
-    <!-- Treatment -->
+    <!-- Step 2: treatment details -->
     <div class="card">
-      <div class="step-num">Step 2 — Select treatment</div>
-
-      <div class="type-toggle" id="typeToggle">
-        <button class="type-btn active" data-type="filler" type="button"><strong>Filler</strong><span>HA filler — chin, jawline, nose, lips, cheeks, tear trough.</span></button>
-        <button class="type-btn" data-type="biostim" type="button"><strong>Biostimulation</strong><span>Sculptra, hyperdilute Radiesse — gradual collagen result.</span></button>
-      </div>
+      <div class="step-num">Step 2 — Treatment details</div>
 
       <!-- FILLER controls -->
       <div id="fillerControls">
@@ -224,9 +221,9 @@
         <div class="field">
           <label>Intensity</label>
           <div class="pill-grid" id="fillerIntensity">
-            <button class="pill active" data-intensity="natural" type="button"><strong>Natural</strong><span>Subtle correction, conservative volume.</span></button>
-            <button class="pill" data-intensity="moderate" type="button"><strong>Moderate</strong><span>Visible improvement, still realistic.</span></button>
-            <button class="pill" data-intensity="enhanced" type="button"><strong>Enhanced</strong><span>Stronger contour, still clinic-realistic.</span></button>
+            <button class="pill active" data-intensity="natural" type="button"><strong>Natural</strong></button>
+            <button class="pill" data-intensity="moderate" type="button"><strong>Moderate</strong></button>
+            <button class="pill" data-intensity="enhanced" type="button"><strong>Enhanced</strong></button>
           </div>
         </div>
       </div>
@@ -236,27 +233,48 @@
         <div class="field">
           <label>Product</label>
           <div class="pill-grid" id="biostimProduct">
-            <button class="pill active" data-product="sculptra" type="button"><strong>Sculptra</strong><span>Poly-L-lactic acid. Gradual collagen volumization.</span></button>
-            <button class="pill" data-product="hdr" type="button"><strong>Hyperdilute Radiesse</strong><span>Diffuse skin firming and quality.</span></button>
+            <button class="pill active" data-product="sculptra" type="button"><strong>Sculptra</strong></button>
+            <button class="pill" data-product="hdr" type="button"><strong>Hyperdilute Radiesse</strong></button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Timeline — collagen builds over months</label>
+          <div class="pill-grid three" id="biostimTimeline">
+            <button class="pill" data-timeline="3" type="button"><strong>3 months</strong></button>
+            <button class="pill active" data-timeline="6" type="button"><strong>6 months</strong></button>
+            <button class="pill" data-timeline="12" type="button"><strong>12 months</strong></button>
           </div>
         </div>
         <div class="field">
           <label>Projection — generate each to show the range</label>
-          <div class="pill-grid" id="biostimProjection">
-            <button class="pill active" data-projection="expected" type="button"><strong>Expected</strong><span>What most patients in range achieve.</span></button>
-            <button class="pill" data-projection="conservative" type="button"><strong>Conservative</strong><span>The cautious, lower end of response.</span></button>
-            <button class="pill" data-projection="optimistic" type="button"><strong>Optimistic</strong><span>Strong collagen response, upper end.</span></button>
+          <div class="pill-grid three" id="biostimProjection">
+            <button class="pill" data-projection="conservative" type="button"><strong>Conservative</strong></button>
+            <button class="pill active" data-projection="expected" type="button"><strong>Expected</strong></button>
+            <button class="pill" data-projection="optimistic" type="button"><strong>Optimistic</strong></button>
           </div>
         </div>
-        <div class="privacy-note"><span>ℹ️</span><span>Biostimulation results build gradually and vary by collagen response, age, vial count, and skin quality. Generate Conservative, Expected, and Optimistic to show the patient an honest range rather than a single promise.</span></div>
+        <div class="privacy-note"><span>ℹ️</span><span>Results build over months and vary by patient. Generate across the range to set honest expectations.</span></div>
       </div>
 
       <div class="field" style="margin-top:14px;">
         <label>Custom note optional</label>
         <textarea id="customNote" placeholder="e.g. preserve facial identity, focus on chin projection, keep lips subtle"></textarea>
       </div>
+    </div>
 
-      <div class="field">
+    <!-- Step 3: upload & generate -->
+    <div class="card">
+      <div class="step-num">Step 3 — Upload &amp; generate</div>
+      <div class="photo-guide" id="photoGuide"><strong>Best photo:</strong> Three-quarter (45°) or side profile (90°) for lower-face contour. Well-lit, neutral expression, hair off the face.</div>
+      <label class="upload-zone" id="uploadZone">
+        <div class="upload-plus">+</div>
+        <div class="upload-txt">Upload patient photo</div>
+        <input type="file" accept="image/*" id="photoInput" />
+        <div class="zone-tag">Original</div>
+      </label>
+      <div class="privacy-note"><span>🔒</span><span>The photo stays in this browser until you press Generate. Generating sends the photo to the AI image provider (OpenAI) for that single request only. It is not used to train the model. You must have the patient's consent before uploading.</span></div>
+
+      <div class="field" style="margin-top:14px;">
         <label>Clinic name optional — appears on export</label>
         <input id="clinicName" placeholder="Your clinic name" maxlength="60" />
       </div>
@@ -267,6 +285,8 @@
       </label>
 
       <div class="disclaimer"><span>⚠️</span><span>Every export is labelled and carries a permanent consultation-only disclaimer. Outputs are simulations for communication, never a guaranteed result or medical prediction.</span></div>
+
+      <div class="status"><div class="dot" id="dot"></div><span id="statusText">Choose a treatment, then upload a photo</span></div>
 
       <div class="btn-row"><button class="btn btn-primary" id="generateBtn" disabled>Generate simulated preview</button></div>
     </div>
@@ -316,7 +336,7 @@ const FREE_REGEN_MS = 60000;
 const state = {
   file:null, originalDataUrl:null, resultDataUrl:null,
   type:'filler', areas:['chin'], intensity:'natural',
-  product:'sculptra', projection:'expected',
+  product:'sculptra', projection:'expected', timeline:'6',
   lastGenAt:0
 };
 
@@ -442,19 +462,43 @@ consentChk.addEventListener('change', () => {
 /* ───────── Treatment type toggle ───────── */
 document.querySelectorAll('#typeToggle .type-btn').forEach(btn => {
   btn.addEventListener('click', () => {
+    if(btn.disabled || btn.classList.contains('soon')) return;
     document.querySelectorAll('#typeToggle .type-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     state.type = btn.dataset.type;
     document.getElementById('fillerControls').classList.toggle('hidden', state.type !== 'filler');
     document.getElementById('biostimControls').classList.toggle('hidden', state.type !== 'biostim');
+    updatePhotoGuide();
   });
 });
+
+/* ───────── Treatment-specific photo guidance ───────── */
+function updatePhotoGuide(){
+  const el = document.getElementById('photoGuide');
+  if(!el) return;
+  const base = 'Well-lit, neutral expression, hair off the face.';
+  let angle;
+  if(state.type === 'biostim'){
+    angle = 'Front-facing or three-quarter (45°), same angle each visit to compare the timeline.';
+  } else {
+    const a = state.areas || [];
+    if(a.includes('nose')){
+      angle = 'Side profile (90°) or three-quarter (45°) for the nasal bridge.';
+    } else if(a.includes('jawline') || a.includes('chin')){
+      angle = 'Three-quarter (45°) or side profile (90°) for lower-face contour.';
+    } else {
+      angle = 'Front-facing or three-quarter (45°).';
+    }
+  }
+  el.innerHTML = '<strong>Best photo:</strong> ' + angle + ' ' + base;
+}
 
 /* ───────── Filler: areas (multi) ───────── */
 document.querySelectorAll('#areaGrid .area-chip').forEach(chip => {
   chip.addEventListener('click', () => {
     chip.classList.toggle('active');
     state.areas = [...document.querySelectorAll('#areaGrid .area-chip.active')].map(c => c.dataset.area);
+    updatePhotoGuide();
   });
 });
 
@@ -464,13 +508,15 @@ function wirePills(containerId, key){
     btn.addEventListener('click', () => {
       document.querySelectorAll('#'+containerId+' .pill').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      state[key] = btn.dataset[key === 'intensity' ? 'intensity' : (key === 'product' ? 'product' : 'projection')];
+      state[key] = btn.dataset[key];
     });
   });
 }
 wirePills('fillerIntensity', 'intensity');
 wirePills('biostimProduct', 'product');
+wirePills('biostimTimeline', 'timeline');
 wirePills('biostimProjection', 'projection');
+updatePhotoGuide();
 
 /* ───────── Prompt builder ───────── */
 const AREA_TEXT = {
@@ -502,6 +548,11 @@ const PROJECTION_TEXT = {
   expected:'Show the typical change most patients in range would see, modest and realistic.',
   optimistic:'Show the optimistic upper end for a strong responder, still physiologically plausible.'
 };
+const TIMELINE_TEXT = {
+  '3':'Show the result at about 3 months: an early, partial, still-incomplete build.',
+  '6':'Show the result at about 6 months: a clearly developed result.',
+  '12':'Show the result at about 12 months: the fuller, settled result.'
+};
 
 // Non-negotiable constraints are ALSO enforced server-side; kept here for clarity.
 const SAFETY = "CRITICAL: this is a medical consultation photograph, not a beauty image. Apply ONLY the single localized change described above and change nothing else. Do not smooth or retouch skin, remove or soften wrinkles, even out skin tone, brighten, raise contrast, slim the face, enlarge the eyes, lift the brows, change the hairstyle, or apply any beautifying, younger-looking, or filter-like effect. Keep the apparent age and ALL age-appropriate skin texture (pores, fine lines, folds) exactly as in the original. Preserve unchanged: identity, ethnicity and ethnic features, bone structure, hair, clothing, jewellery, expression, head angle and pose, camera framing and crop, lighting, and background. The result must read as the SAME photograph with only the treated area subtly adjusted. No added text, labels, or watermarks.";
@@ -515,7 +566,7 @@ function buildPrompt(){
     const goal = document.getElementById('goal').value;
     core = `Make ONLY this change to the photo: add hyaluronic acid filler to ${areaList}. ${GOAL_TEXT[goal]} ${INTENSITY_TEXT[state.intensity]}`;
   } else {
-    core = `Make ONLY this change to the photo: ${PRODUCT_TEXT[state.product]} ${PROJECTION_TEXT[state.projection]}`;
+    core = `Make ONLY this change to the photo: ${PRODUCT_TEXT[state.product]} ${TIMELINE_TEXT[state.timeline] || TIMELINE_TEXT['6']} ${PROJECTION_TEXT[state.projection]}`;
   }
   return `${core} ${SAFETY} ${note}`.trim();
 }
@@ -592,6 +643,7 @@ async function runGeneration(isRegen){
       form.append('intensity', state.intensity);
     } else {
       form.append('product', state.product);
+      form.append('timeline', state.timeline);
       form.append('projection', state.projection);
     }
     const note = document.getElementById('customNote').value.trim();
@@ -615,7 +667,7 @@ async function runGeneration(isRegen){
     document.getElementById('originalResult').src = state.originalDataUrl;
     document.getElementById('aiResult').src = state.resultDataUrl;
     resetZoom();
-    document.getElementById('simTag').textContent = 'Simulated — AI Visualization' + (state.type === 'biostim' ? ' · ' + state.projection : '');
+    document.getElementById('simTag').textContent = 'Simulated — AI Visualization' + (state.type === 'biostim' ? ' · ' + (state.timeline === '12' ? '12 months' : state.timeline + ' months') + ' · ' + state.projection : '');
     state.insights = buildInsights();
     insightsPanel.style.display = 'none';
     insightsBtn.textContent = 'Show insights';
@@ -769,8 +821,9 @@ document.getElementById('newBtn').addEventListener('click', () => {
   insightsBtn.textContent = 'Show insights';
   resetZoom();
   document.getElementById('outputSection').classList.remove('visible');
+  updatePhotoGuide();
   syncGenerateBtn();
-  setStatus('Choose a photo to begin', 'idle');
+  setStatus('Choose a treatment, then upload a photo', 'idle');
   window.scrollTo({ top:0, behavior:'smooth' });
 });
 </script>
