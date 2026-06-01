@@ -91,8 +91,8 @@
     .output { display:none; margin-top:34px; }
     .output.visible { display:block; }
     .result-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
-    .result-card { border:1px solid var(--border); border-radius:8px; background:var(--deep); overflow:hidden; position:relative; }
-    .result-card img { display:block; width:100%; }
+    .result-card { border:1px solid var(--border); border-radius:8px; background:var(--deep); overflow:hidden; position:relative; aspect-ratio:4/5; }
+    .result-card img { display:block; width:100%; height:100%; object-fit:cover; }
     .result-tag { position:absolute; bottom:0; left:0; right:0; padding:9px 12px; background:linear-gradient(transparent,rgba(28,23,20,.75)); font-size:.66rem; letter-spacing:.12em; text-transform:uppercase; color:rgba(250,247,242,.9); }
     .result-tag.sim { background:linear-gradient(transparent,rgba(200,114,90,.92)); font-weight:600; }
     .regen-note { font-size:.72rem; color:var(--muted); text-align:center; margin-top:12px; }
@@ -156,7 +156,7 @@
 
   <div class="tabs" aria-label="SkinDay tools">
     <a class="tab" href="/studio.html" style="text-decoration:none;">Before &amp; After Builder</a>
-    <button class="tab active" type="button">Visualize AI</button>
+    <button class="tab active" type="button">Visualize</button>
   </div>
 
   <section class="grid">
@@ -169,7 +169,7 @@
         <input type="file" accept="image/*" id="photoInput" />
         <div class="zone-tag">Original</div>
       </label>
-      <div class="photo-guide"><strong>Best results:</strong> front-facing, well-lit, neutral expression, hair off the face, no glasses. One clear face fills the frame.</div>
+      <div class="photo-guide"><strong>Best results:</strong> well-lit, neutral expression, hair off the face, no glasses, one clear face filling the frame. Front, three-quarter (45°), or profile (90°) all work. If you plan to compare angles, shoot each one consistently.</div>
       <div class="privacy-note"><span>🔒</span><span>The photo stays in this browser until you press Generate. Generating sends the photo to the AI image provider (OpenAI) for that single request only. It is not used to train the model. You must have the patient's consent before uploading.</span></div>
       <div class="status"><div class="dot" id="dot"></div><span id="statusText">Choose a photo to begin</span></div>
     </div>
@@ -447,48 +447,48 @@ wirePills('biostimProjection', 'projection');
 
 /* ───────── Prompt builder ───────── */
 const AREA_TEXT = {
-  chin:'the chin (projection and mentolabial balance)',
-  jawline:'the jawline (mandibular definition and prejowl support)',
-  nose:'the nasal bridge and profile via liquid rhinoplasty technique',
-  lips:'the lips (gentle hydration and balanced volume, preserved lip anatomy)',
-  cheeks:'the cheeks (midface support and natural projection)',
-  tear_trough:'the tear troughs (softening the under-eye hollow)'
+  chin:'the chin, adding only a small, conservative increase in chin projection',
+  jawline:'the jawline, adding only subtle definition along the mandibular border',
+  nose:'the nasal bridge, smoothing only a small dorsal irregularity (liquid rhinoplasty)',
+  lips:'the lips, adding only a small, conservative increase in volume while keeping the natural lip shape',
+  cheeks:'the cheeks, adding only subtle midface support',
+  tear_trough:'the tear troughs, only slightly softening the under-eye hollow'
 };
 const GOAL_TEXT = {
-  natural_refinement:'a natural refinement that keeps the face recognisably the same',
-  facial_balancing:'improved overall facial balance and proportion',
-  masculinization:'a more defined, masculine contour',
-  feminization:'a softer, more feminine contour',
-  rejuvenation:'a refreshed, less tired appearance without changing the person\'s age'
+  natural_refinement:'Keep the overall effect minimal and natural.',
+  facial_balancing:'Aim only for slightly improved proportion between the treated areas.',
+  masculinization:'Bias the treated areas toward a more angular, defined contour.',
+  feminization:'Bias the treated areas toward a softer contour.',
+  rejuvenation:'Aim for a slightly rested look produced ONLY by the selected filler areas. Do not change skin texture, skin tone, or apparent age.'
 };
 const INTENSITY_TEXT = {
-  natural:'very subtle and conservative, the kind of result a cautious injector would deliver',
-  moderate:'a clearly visible but still realistic improvement, not overfilled',
-  enhanced:'a stronger but still anatomically realistic correction, never exaggerated'
+  natural:'Make the change very subtle, the most conservative version a cautious injector would do.',
+  moderate:'Make the change clearly visible but still conservative and realistic.',
+  enhanced:'Make the change more pronounced but still anatomically realistic, never exaggerated.'
 };
 const PRODUCT_TEXT = {
-  sculptra:'a Sculptra (poly-L-lactic acid) biostimulation result: gradual, diffuse improvement in skin firmness, mild restoration of facial volume and contour, and overall skin quality',
-  hdr:'a hyperdilute Radiesse result: diffuse skin tightening, improved skin quality and a subtle firming of the treated area'
+  sculptra:'a subtle Sculptra biostimulation effect: a slight, diffuse improvement in firmness and contour of the treated area only. Do not change skin texture detail or apparent age.',
+  hdr:'a subtle hyperdilute Radiesse effect: a slight firming of the treated area only. Do not change skin texture detail or apparent age.'
 };
 const PROJECTION_TEXT = {
-  conservative:'Show the conservative, lower end of the expected response: a modest, easily-believable change.',
-  expected:'Show the typical result most patients in this range achieve: a clear but realistic change.',
-  optimistic:'Show the optimistic upper end of response for a strong responder, while staying within what is physiologically plausible.'
+  conservative:'Show the conservative, lower end of the response, a barely-there change.',
+  expected:'Show the typical change most patients in range would see, modest and realistic.',
+  optimistic:'Show the optimistic upper end for a strong responder, still physiologically plausible.'
 };
 
 // Non-negotiable constraints are ALSO enforced server-side; kept here for clarity.
-const SAFETY = "Preserve the person's identity, age, ethnicity and ethnic features, bone structure, hairstyle, skin texture appropriate to their age, clothing, expression, head angle, lighting, and background. Do not de-age the person and do not smooth age-appropriate skin texture beyond the stated treatment. Do not Westernise features. Do not change makeup, jewellery, or pose, and do not add any text, labels, or arrows. Output one clean photographic portrait. Keep the change subtle and clinically realistic; under-promise rather than over-promise.";
+const SAFETY = "CRITICAL: this is a medical consultation photograph, not a beauty image. Apply ONLY the single localized change described above and change nothing else. Do not smooth or retouch skin, remove or soften wrinkles, even out skin tone, brighten, raise contrast, slim the face, enlarge the eyes, lift the brows, change the hairstyle, or apply any beautifying, younger-looking, or filter-like effect. Keep the apparent age and ALL age-appropriate skin texture (pores, fine lines, folds) exactly as in the original. Preserve unchanged: identity, ethnicity and ethnic features, bone structure, hair, clothing, jewellery, expression, head angle and pose, camera framing and crop, lighting, and background. The result must read as the SAME photograph with only the treated area subtly adjusted. No added text, labels, or watermarks.";
 
 function buildPrompt(){
   const note = document.getElementById('customNote').value.trim();
   let core;
   if(state.type === 'filler'){
     const areas = state.areas.length ? state.areas : ['chin'];
-    const areaList = areas.map(a => AREA_TEXT[a]).join(', ');
+    const areaList = areas.map(a => AREA_TEXT[a]).join('; ');
     const goal = document.getElementById('goal').value;
-    core = `Simulate HA dermal filler in ${areaList}. Aim for ${GOAL_TEXT[goal]}. The result should be ${INTENSITY_TEXT[state.intensity]}.`;
+    core = `Make ONLY this change to the photo: add hyaluronic acid filler to ${areaList}. ${GOAL_TEXT[goal]} ${INTENSITY_TEXT[state.intensity]}`;
   } else {
-    core = `Simulate ${PRODUCT_TEXT[state.product]}. ${PROJECTION_TEXT[state.projection]} The change must look like a natural biostimulation outcome, not dermal filler and not surgery.`;
+    core = `Make ONLY this change to the photo: ${PRODUCT_TEXT[state.product]} ${PROJECTION_TEXT[state.projection]}`;
   }
   return `${core} ${SAFETY} ${note}`.trim();
 }
