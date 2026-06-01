@@ -7,6 +7,7 @@
 const OpenAI = require('openai');
 const Busboy = require('busboy');
 const { Readable } = require('stream');
+const { buildCorePrompt } = require('./prompts');
 
 // Non-negotiable constraints appended to EVERY prompt server-side, so a tampered
 // client cannot strip identity/ethnicity preservation or push the model to over-promise.
@@ -86,8 +87,24 @@ exports.handler = async (event) => {
       return { statusCode: 400, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Missing image file' }) };
     }
 
-    const clientPrompt = fields.prompt || 'Create a subtle, realistic aesthetic treatment visualization.';
-    const prompt = clientPrompt + SERVER_SAFETY;
+    // Prompt is assembled SERVER-SIDE from the clinician's selections (the
+    // treatment library lives in prompts.js). Falls back to a legacy pre-built
+    // prompt field if an older client posts during a deploy window.
+    let core;
+    if (fields.type) {
+      core = buildCorePrompt({
+        type: fields.type,
+        areas: fields.areas,
+        goal: fields.goal,
+        intensity: fields.intensity,
+        product: fields.product,
+        projection: fields.projection,
+        note: fields.note
+      });
+    } else {
+      core = fields.prompt || 'Create a subtle, realistic aesthetic treatment visualization.';
+    }
+    const prompt = core + SERVER_SAFETY;
 
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const file = await OpenAI.toFile(imageFile.buffer, imageFile.filename, { type: imageFile.mimeType });
