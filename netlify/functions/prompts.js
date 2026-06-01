@@ -89,10 +89,18 @@ const PROJECTION = {
   optimistic:   'Magnitude: the optimistic upper end for a strong responder, still physiologically plausible.'
 };
 
+// ---- Biostimulation: timeline = how far the collagen build has progressed (v1)
+// Layered on top of projection: projection = how strong a responder, timeline = how far along.
+const TIMELINE = {
+  '3':  'Timeframe: about 3 months in. Collagen is still building, so show an early, partial, deliberately incomplete result, clearly less than the final outcome.',
+  '6':  'Timeframe: about 6 months in. Show a clearly developed result as the collagen response matures.',
+  '12': 'Timeframe: about 12 months in. Show the fuller, settled result after the collagen response has largely completed.'
+};
+
 // Version log so we know which prompt produced which result during tuning.
 const VERSIONS = {
   base: 'v1', chin: 'v1', jawline: 'v1', nose: 'v1', lips: 'v1',
-  cheeks: 'v1', tear_trough: 'v1', sculptra: 'v1', hdr: 'v1'
+  cheeks: 'v1', tear_trough: 'v1', sculptra: 'v1', hdr: 'v1', timeline: 'v1'
 };
 
 function sanitizeNote(note) {
@@ -109,8 +117,9 @@ function buildCorePrompt(sel) {
   if (sel_.type === 'biostim') {
     const product = BIOSTIM[sel_.product] ? sel_.product : 'sculptra';
     const m = BIOSTIM[product];
+    const tp = TIMELINE[sel_.timeline] || TIMELINE['6'];
     const mag = PROJECTION[sel_.projection] || PROJECTION.expected;
-    return `${BASE_FRAMING} Make ONLY this change: ${m.expected}. Avoid: ${m.avoid}. ${mag}${note}`;
+    return `${BASE_FRAMING} Make ONLY this change: ${m.expected}. Avoid: ${m.avoid}. ${tp} ${mag}${note}`;
   }
 
   // default: filler

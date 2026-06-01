@@ -99,6 +99,7 @@ exports.handler = async (event) => {
         intensity: fields.intensity,
         product: fields.product,
         projection: fields.projection,
+        timeline: fields.timeline,
         note: fields.note
       });
     } else {
