@@ -50,8 +50,6 @@
     .zone-tag { position:absolute; bottom:0; left:0; right:0; padding:9px 12px; background:linear-gradient(transparent,rgba(28,23,20,.72)); font-size:.7rem; letter-spacing:.12em; text-transform:uppercase; color:rgba(250,247,242,.86); pointer-events:none; }
     .photo-guide { font-size:.72rem; color:var(--muted); line-height:1.5; margin-top:10px; padding:9px 12px; background:var(--warm); border-radius:6px; }
     .photo-guide strong { color:var(--deep); font-weight:600; }
-    .bg-toggle { display:flex; gap:9px; align-items:flex-start; margin-top:10px; font-size:.76rem; color:var(--muted); line-height:1.45; cursor:pointer; }
-    .bg-toggle input { margin-top:2px; width:15px; height:15px; flex-shrink:0; accent-color:var(--rose); cursor:pointer; }
     .field { display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
     .field label { font-size:.68rem; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--dim); }
     .field input, .field select, .field textarea { background:#fff; border:1px solid var(--border); color:var(--deep); padding:10px 12px; font-size:.88rem; font-family:'DM Sans',sans-serif; border-radius:6px; outline:none; width:100%; }
@@ -187,7 +185,6 @@
         <div class="zone-tag">Original</div>
       </label>
       <div class="photo-guide"><strong>Best results:</strong> well-lit, neutral expression, hair off the face, no glasses, one clear face filling the frame. Front, three-quarter (45°), or profile (90°) all work. If you plan to compare angles, shoot each one consistently.</div>
-      <label class="bg-toggle"><input type="checkbox" id="blackBgChk" checked /><span>Replace background with solid black for a clean, consistent consultation image (recommended).</span></label>
       <div class="privacy-note"><span>🔒</span><span>The photo stays in this browser until you press Generate. Generating sends the photo to the AI image provider (OpenAI) for that single request only. It is not used to train the model. You must have the patient's consent before uploading.</span></div>
       <div class="status"><div class="dot" id="dot"></div><span id="statusText">Choose a photo to begin</span></div>
     </div>
@@ -423,67 +420,17 @@ async function resizeToUpload(dataUrl){
 }
 
 /* ───────── Upload ───────── */
-let bgRemover = null;
-async function getBgRemover(){
-  if(!bgRemover){
-    const mod = await import('https://esm.sh/@imgly/background-removal');
-    bgRemover = mod.removeBackground;
-  }
-  return bgRemover;
-}
-
-async function toBlackBackground(dataUrl){
-  const remove = await getBgRemover();
-  const cutout = await remove(dataUrl);               // RGBA cutout blob
-  const url = URL.createObjectURL(cutout);
-  const img = await loadImage(url);
-  const canvas = document.createElement('canvas');
-  canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
-  const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.drawImage(img, 0, 0);
-  URL.revokeObjectURL(url);
-  return canvas.toDataURL('image/jpeg', .92);
-}
-
-function renderUploadPreview(){
-  let old = zone.querySelector('img'); if(old) old.remove();
-  const img = document.createElement('img'); img.src = state.originalDataUrl;
-  zone.appendChild(img); zone.classList.add('filled');
-}
-
-// Loads the file, optionally swaps the background to black. Returns true if no error.
-async function processUpload(){
-  state.originalDataUrl = await fileToDataUrl(state.file);
-  renderUploadPreview();
-  if(document.getElementById('blackBgChk').checked){
-    setStatus('Removing background… first run downloads a small model.', 'spin');
-    try {
-      state.originalDataUrl = await toBlackBackground(state.originalDataUrl);
-      renderUploadPreview();
-    } catch(err){
-      console.error(err);
-      setStatus('Could not remove the background automatically; using the original photo.', 'warn');
-      return false;
-    }
-  }
-  return true;
-}
-
 input.addEventListener('change', async e => {
   const file = e.target.files[0];
   if(!file) return;
   if(!file.type.startsWith('image/')) { setStatus('Please upload an image file.', 'warn'); return; }
   state.file = file;
-  const ok = await processUpload();
+  state.originalDataUrl = await fileToDataUrl(file);
+  let old = zone.querySelector('img'); if(old) old.remove();
+  const img = document.createElement('img'); img.src = state.originalDataUrl;
+  zone.appendChild(img); zone.classList.add('filled');
   syncGenerateBtn();
-  if(ok) setStatus(consentChk.checked ? 'Photo ready — choose treatment and generate.' : 'Photo ready — confirm patient consent to enable Generate.', 'ok');
-});
-
-document.getElementById('blackBgChk').addEventListener('change', async () => {
-  if(!state.file) return;
-  const ok = await processUpload();
-  if(ok) setStatus('Photo updated.', 'ok');
+  setStatus(consentChk.checked ? 'Photo ready — choose treatment and generate.' : 'Photo ready — confirm patient consent to enable Generate.', 'ok');
 });
 
 consentChk.addEventListener('change', () => {
