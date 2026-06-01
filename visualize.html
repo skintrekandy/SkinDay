@@ -72,6 +72,8 @@
     .area-chip.active .tick { background:var(--rose); border-color:var(--rose); }
     .pill-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:9px; }
     .pill-grid.three { grid-template-columns:repeat(3,1fr); }
+    .bg-toggle { display:flex; gap:9px; align-items:flex-start; margin-top:12px; font-size:.78rem; color:var(--muted); line-height:1.45; cursor:pointer; }
+    .bg-toggle input { margin-top:2px; width:15px; height:15px; flex-shrink:0; accent-color:var(--rose); cursor:pointer; }
     .pill { border:1.5px solid var(--border); background:#fff; border-radius:8px; padding:11px 10px; cursor:pointer; text-align:left; transition:.2s; }
     .pill:hover { border-color:var(--gold); background:var(--warm); }
     .pill.active { border-color:var(--rose); background:#fdf1ee; }
@@ -272,6 +274,7 @@
         <input type="file" accept="image/*" id="photoInput" />
         <div class="zone-tag">Original</div>
       </label>
+      <label class="bg-toggle"><input type="checkbox" id="blackBgChk" checked /><span>Replace background with black on the generated image.</span></label>
       <div class="privacy-note"><span>🔒</span><span>The photo stays in this browser until you press Generate. Generating sends the photo to the AI image provider (OpenAI) for that single request only. It is not used to train the model. You must have the patient's consent before uploading.</span></div>
 
       <div class="field" style="margin-top:14px;">
@@ -337,6 +340,7 @@ const state = {
   file:null, originalDataUrl:null, resultDataUrl:null,
   type:'filler', areas:['chin'], intensity:'natural',
   product:'sculptra', projection:'expected', timeline:'6',
+  blackBg:true, beforeDataUrl:null, blackBgCache:null,
   lastGenAt:0
 };
 
@@ -439,6 +443,29 @@ async function resizeToUpload(dataUrl){
   return new Promise(resolve => canvas.toBlob(b => resolve(b), 'image/jpeg', .9));
 }
 
+// Background removal, used ONLY at generation time (never on upload).
+let bgRemover = null;
+async function getBgRemover(){
+  if(!bgRemover){
+    const mod = await import('https://esm.sh/@imgly/background-removal');
+    bgRemover = mod.removeBackground;
+  }
+  return bgRemover;
+}
+async function toBlackBackground(dataUrl){
+  const remove = await getBgRemover();
+  const cutout = await remove(dataUrl);
+  const url = URL.createObjectURL(cutout);
+  const img = await loadImage(url);
+  const canvas = document.createElement('canvas');
+  canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(img, 0, 0);
+  URL.revokeObjectURL(url);
+  return canvas.toDataURL('image/jpeg', .92);
+}
+
 /* ───────── Upload ───────── */
 input.addEventListener('change', async e => {
   const file = e.target.files[0];
@@ -446,6 +473,7 @@ input.addEventListener('change', async e => {
   if(!file.type.startsWith('image/')) { setStatus('Please upload an image file.', 'warn'); return; }
   state.file = file;
   state.originalDataUrl = await fileToDataUrl(file);
+  state.blackBgCache = null; state.beforeDataUrl = null;
   let old = zone.querySelector('img'); if(old) old.remove();
   const img = document.createElement('img'); img.src = state.originalDataUrl;
   zone.appendChild(img); zone.classList.add('filled');
@@ -517,6 +545,10 @@ wirePills('biostimProduct', 'product');
 wirePills('biostimTimeline', 'timeline');
 wirePills('biostimProjection', 'projection');
 updatePhotoGuide();
+
+document.getElementById('blackBgChk').addEventListener('change', e => {
+  state.blackBg = e.target.checked;
+});
 
 /* ───────── Prompt builder ───────── */
 const AREA_TEXT = {
@@ -633,7 +665,23 @@ async function runGeneration(isRegen){
   setStatus(isRegen ? 'Re-generating…' : 'Generating AI preview… this may take 20–60 seconds.', 'spin');
   generateBtn.disabled = true; regenBtn.disabled = true;
   try {
-    const blob = await resizeToUpload(state.originalDataUrl);
+    // Black background is applied HERE, at generation, never on upload.
+    // We black out the original and use it as both the model input and the
+    // "before" panel, so before and after share the same clean backdrop.
+    let beforeDataUrl = state.originalDataUrl;
+    if(state.blackBg){
+      if(!state.blackBgCache){
+        setStatus('Preparing image… isolating the subject (first run downloads a small model).', 'spin');
+        try { state.blackBgCache = await toBlackBackground(state.originalDataUrl); }
+        catch(err){ console.error(err); state.blackBgCache = null; }
+      }
+      if(state.blackBgCache){ beforeDataUrl = state.blackBgCache; }
+      else { setStatus('Could not isolate the background; using the original photo.', 'warn'); }
+    }
+    state.beforeDataUrl = beforeDataUrl;
+    setStatus(isRegen ? 'Re-generating…' : 'Generating AI preview… this may take 20–60 seconds.', 'spin');
+
+    const blob = await resizeToUpload(beforeDataUrl);
     const form = new FormData();
     form.append('image', blob, 'patient.jpg');
     form.append('type', state.type);
@@ -659,12 +707,12 @@ async function runGeneration(isRegen){
     const raw = await response.text();
     let data;
     try { data = JSON.parse(raw); }
-    catch { throw new Error('The server returned an unexpected response. The image may have been too large or the request timed out. Try a smaller photo, or Natural or Moderate intensity.'); }
+    catch { throw new Error('The server did not return a valid response (HTTP ' + response.status + '). A timeout looks like this — try Natural or Moderate, or a smaller photo.'); }
     if(!response.ok) throw new Error(data.error || 'Generation failed');
 
     state.resultDataUrl = data.image;
     state.lastGenAt = Date.now();
-    document.getElementById('originalResult').src = state.originalDataUrl;
+    document.getElementById('originalResult').src = state.beforeDataUrl || state.originalDataUrl;
     document.getElementById('aiResult').src = state.resultDataUrl;
     resetZoom();
     document.getElementById('simTag').textContent = 'Simulated — AI Visualization' + (state.type === 'biostim' ? ' · ' + (state.timeline === '12' ? '12 months' : state.timeline + ' months') + ' · ' + state.projection : '');
@@ -741,7 +789,7 @@ window.addEventListener('touchend', endDrag);
 
 /* ───────── Export (canvas) ───────── */
 async function drawExport(includeText=true){
-  const before = await loadImage(state.originalDataUrl);
+  const before = await loadImage(state.beforeDataUrl || state.originalDataUrl);
   const after = await loadImage(state.resultDataUrl);
   const canvas = document.getElementById('exportCanvas');
   const ctx = canvas.getContext('2d');
@@ -811,6 +859,7 @@ document.getElementById('plainBtn').addEventListener('click', () => downloadExpo
 /* ───────── New case (proper reset, no reload) ───────── */
 document.getElementById('newBtn').addEventListener('click', () => {
   state.file = null; state.originalDataUrl = null; state.resultDataUrl = null; state.lastGenAt = 0;
+  state.blackBgCache = null; state.beforeDataUrl = null;
   input.value = '';
   const oldImg = zone.querySelector('img'); if(oldImg) oldImg.remove();
   zone.classList.remove('filled');
