@@ -585,10 +585,20 @@ async function runGeneration(isRegen){
     const blob = await resizeToUpload(state.originalDataUrl);
     const form = new FormData();
     form.append('image', blob, 'patient.jpg');
-    form.append('prompt', buildPrompt());
     form.append('type', state.type);
-    form.append('treatment', state.type === 'filler' ? state.areas.join('+') : state.product);
-    form.append('intensity', state.type === 'filler' ? state.intensity : state.projection);
+    if(state.type === 'filler'){
+      form.append('areas', (state.areas.length ? state.areas : ['chin']).join(','));
+      form.append('goal', document.getElementById('goal').value);
+      form.append('intensity', state.intensity);
+    } else {
+      form.append('product', state.product);
+      form.append('projection', state.projection);
+    }
+    const note = document.getElementById('customNote').value.trim();
+    if(note) form.append('note', note);
+    // Legacy fallback: the server now builds the prompt from the fields above
+    // and ignores this when 'type' is present. Kept only for deploy-window safety.
+    form.append('prompt', buildPrompt());
 
     const response = await fetch('/.netlify/functions/generate-visualization', {
       method:'POST', headers:{ 'x-beta-key':key }, body:form
