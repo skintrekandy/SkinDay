@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>SkinDay Visualize — AI Treatment Preview for Clinics</title>
+  <meta name="description" content="Create AI-generated treatment previews for consultation purposes. Not a prediction of actual treatment results." />
+  <link rel="icon" href="/favicon.ico" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --cream:#FAF7F2; --warm:#F4EDE4; --deep:#1C1714; --deep2:#241E1A;
+      --rose:#C8725A; --rose-m:#D4896E; --gold:#C9A96E;
+      --muted:#8A7B72; --dim:#B5A89F; --border:#EAE2D8;
+      --hero-border:rgba(201,169,110,.25);
+    }
+    html { scroll-behavior:smooth; overflow-x:hidden; }
+    body { font-family:'DM Sans',sans-serif; background:var(--cream); color:var(--deep); -webkit-font-smoothing:antialiased; }
+    nav { position:fixed; top:0; left:0; right:0; z-index:100; background:rgba(28,23,20,.95); backdrop-filter:blur(12px); border-bottom:1px solid var(--hero-border); padding:0 5%; display:flex; align-items:center; justify-content:space-between; height:64px; }
+    .nav-logo { font-family:'Cormorant Garamond',serif; font-size:1.6rem; font-weight:400; color:var(--cream); letter-spacing:.04em; text-decoration:none; }
+    .nav-logo span { color:var(--gold); }
+    .nav-ctas { display:flex; align-items:center; gap:.6rem; }
+    .nav-link { background:transparent; border:1px solid rgba(201,169,110,.4); color:var(--dim); padding:.3rem .75rem; border-radius:4px; font-size:.78rem; text-decoration:none; }
+    .nav-cta { background:var(--rose); color:#fff; padding:.3rem .75rem; border-radius:4px; font-size:.78rem; font-weight:500; text-decoration:none; white-space:nowrap; }
+    .page { max-width:960px; margin:0 auto; padding:88px 20px 80px; }
+    .hero { text-align:center; padding:44px 0 38px; border-bottom:1px solid var(--border); margin-bottom:38px; }
+    .eyebrow { font-size:.7rem; letter-spacing:.2em; text-transform:uppercase; color:var(--gold); margin-bottom:14px; }
+    .hero h1 { font-family:'Cormorant Garamond',serif; font-size:clamp(2rem,5vw,3.2rem); font-weight:300; line-height:1.12; margin-bottom:14px; }
+    .hero h1 em { font-style:italic; color:var(--rose); }
+    .hero p { font-size:.92rem; color:var(--muted); max-width:560px; margin:0 auto; line-height:1.7; }
+    .tabs { display:flex; gap:8px; justify-content:center; margin:0 0 28px; flex-wrap:wrap; }
+    .tab { border:1px solid var(--border); background:#fff; color:var(--muted); border-radius:999px; padding:9px 16px; font-size:.8rem; cursor:pointer; }
+    .tab.active { border-color:var(--rose); color:var(--deep); background:#fdf1ee; }
+    .step { margin-bottom:32px; }
+    .step-num { font-size:.68rem; font-weight:600; letter-spacing:.16em; text-transform:uppercase; color:var(--dim); margin-bottom:14px; }
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+    .card { background:#fff; border:1px solid var(--border); border-radius:10px; padding:18px; }
+    .upload-zone { border:1.5px dashed var(--border); border-radius:8px; aspect-ratio:4/5; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; position:relative; overflow:hidden; background:var(--warm); transition:border-color .2s; cursor:pointer; }
+    .upload-zone:hover { border-color:var(--gold); }
+    .upload-zone.filled { border-style:solid; }
+    .upload-zone img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+    .upload-zone input { position:absolute; inset:0; opacity:0; cursor:pointer; }
+    .upload-plus { width:34px; height:34px; border:1.5px solid var(--border); border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:18px; }
+    .upload-txt { font-size:.78rem; color:var(--muted); }
+    .zone-tag { position:absolute; bottom:0; left:0; right:0; padding:9px 12px; background:linear-gradient(transparent,rgba(28,23,20,.72)); font-size:.7rem; letter-spacing:.12em; text-transform:uppercase; color:rgba(250,247,242,.86); pointer-events:none; }
+    .photo-guide { font-size:.72rem; color:var(--muted); line-height:1.5; margin-top:10px; padding:9px 12px; background:var(--warm); border-radius:6px; }
+    .photo-guide strong { color:var(--deep); font-weight:600; }
+    .field { display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
+    .field label { font-size:.68rem; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--dim); }
+    .field input, .field select, .field textarea { background:#fff; border:1px solid var(--border); color:var(--deep); padding:10px 12px; font-size:.88rem; font-family:'DM Sans',sans-serif; border-radius:6px; outline:none; width:100%; }
+    .field textarea { min-height:64px; resize:vertical; line-height:1.45; }
+    .type-toggle { display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-bottom:16px; }
+    .type-btn { border:1.5px solid var(--border); background:#fff; border-radius:8px; padding:12px 10px; cursor:pointer; text-align:left; transition:.2s; }
+    .type-btn:hover { border-color:var(--gold); }
+    .type-btn.active { border-color:var(--rose); background:#fdf1ee; }
+    .type-btn strong { display:block; font-size:.84rem; margin-bottom:3px; }
+    .type-btn span { font-size:.69rem; color:var(--muted); line-height:1.35; display:block; }
+    .area-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
+    .area-chip { border:1.5px solid var(--border); background:#fff; border-radius:8px; padding:10px 12px; cursor:pointer; font-size:.82rem; user-select:none; transition:.2s; display:flex; align-items:center; gap:8px; }
+    .area-chip:hover { border-color:var(--gold); }
+    .area-chip.active { border-color:var(--rose); background:#fdf1ee; }
+    .area-chip .tick { width:15px; height:15px; border:1.5px solid var(--border); border-radius:4px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:10px; color:#fff; }
+    .area-chip.active .tick { background:var(--rose); border-color:var(--rose); }
+    .pill-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:9px; }
+    .pill { border:1.5px solid var(--border); background:#fff; border-radius:8px; padding:11px 10px; cursor:pointer; text-align:left; transition:.2s; }
+    .pill:hover { border-color:var(--gold); background:var(--warm); }
+    .pill.active { border-color:var(--rose); background:#fdf1ee; }
+    .pill strong { display:block; font-size:.82rem; margin-bottom:3px; }
+    .pill span { font-size:.69rem; color:var(--muted); line-height:1.35; display:block; }
+    .privacy-note, .disclaimer { display:flex; gap:8px; padding:11px 14px; background:rgba(201,169,110,.06); border:1px solid rgba(201,169,110,.18); border-radius:6px; font-size:.78rem; color:var(--muted); line-height:1.5; margin-top:12px; }
+    .consent { display:flex; gap:10px; align-items:flex-start; padding:12px 14px; background:#fff; border:1.5px solid var(--border); border-radius:6px; font-size:.79rem; color:var(--deep); line-height:1.5; margin-top:14px; cursor:pointer; transition:border-color .2s; }
+    .consent.checked { border-color:var(--rose); background:#fdf1ee; }
+    .consent input { margin-top:2px; width:16px; height:16px; flex-shrink:0; accent-color:var(--rose); cursor:pointer; }
+    .status { display:flex; align-items:center; gap:10px; padding:11px 15px; background:#fff; border:1px solid var(--border); border-radius:6px; font-size:.83rem; color:var(--muted); margin-top:14px; }
+    .dot { width:6px; height:6px; border-radius:50%; background:var(--border); flex-shrink:0; }
+    .dot.spin { background:var(--gold); animation:blink 1s infinite; }
+    .dot.ok { background:#3D7A55; }
+    .dot.warn { background:var(--rose); }
+    @keyframes blink { 0%,100%{opacity:1}50%{opacity:.3} }
+    .btn-row { display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin-top:18px; }
+    .btn { border:none; padding:13px 28px; font-family:'DM Sans',sans-serif; font-size:.86rem; font-weight:500; border-radius:6px; cursor:pointer; transition:.2s; }
+    .btn-primary { background:var(--rose); color:#fff; }
+    .btn-primary:hover:not(:disabled) { background:var(--rose-m); }
+    .btn-dark { background:var(--deep); color:var(--cream); }
+    .btn-light { background:transparent; color:var(--muted); border:1px solid var(--border); }
+    .btn:disabled { background:var(--dim); cursor:not-allowed; opacity:.65; }
+    .output { display:none; margin-top:34px; }
+    .output.visible { display:block; }
+    .result-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+    .result-card { border:1px solid var(--border); border-radius:8px; background:var(--deep); overflow:hidden; position:relative; }
+    .result-card img { display:block; width:100%; }
+    .result-tag { position:absolute; bottom:0; left:0; right:0; padding:9px 12px; background:linear-gradient(transparent,rgba(28,23,20,.75)); font-size:.66rem; letter-spacing:.12em; text-transform:uppercase; color:rgba(250,247,242,.9); }
+    .result-tag.sim { background:linear-gradient(transparent,rgba(200,114,90,.92)); font-weight:600; }
+    .regen-note { font-size:.72rem; color:var(--muted); text-align:center; margin-top:12px; }
+    canvas#exportCanvas { display:none; }
+    .small { font-size:.74rem; color:var(--muted); line-height:1.5; }
+    footer { background:var(--deep); padding:42px 5% 30px; margin-top:70px; color:var(--muted); text-align:center; font-size:.82rem; }
+    footer .brand { font-family:'Cormorant Garamond',serif; font-size:1.5rem; color:var(--cream); margin-bottom:.5rem; }
+    footer .brand span { color:var(--gold); }
+    /* Lock screen */
+    .lock { position:fixed; inset:0; z-index:200; background:var(--deep); display:flex; align-items:center; justify-content:center; padding:24px; }
+    .lock-card { max-width:380px; width:100%; text-align:center; }
+    .lock-eyebrow { font-size:.7rem; letter-spacing:.2em; text-transform:uppercase; color:var(--gold); margin-bottom:16px; }
+    .lock-card h1 { font-family:'Cormorant Garamond',serif; font-weight:300; font-size:2.4rem; color:var(--cream); line-height:1.1; margin-bottom:10px; }
+    .lock-card h1 span { color:var(--gold); }
+    .lock-soon { font-size:.95rem; color:var(--dim); margin-bottom:28px; }
+    .lock-form { display:flex; flex-direction:column; gap:10px; }
+    .lock-form input { background:rgba(250,247,242,.06); border:1px solid rgba(201,169,110,.3); color:var(--cream); padding:13px 14px; font-size:.9rem; font-family:'DM Sans',sans-serif; border-radius:6px; outline:none; text-align:center; }
+    .lock-form input:focus { border-color:var(--gold); }
+    .lock-form button { background:var(--rose); color:#fff; border:none; padding:13px; font-family:'DM Sans',sans-serif; font-size:.88rem; font-weight:500; border-radius:6px; cursor:pointer; }
+    .lock-form button:hover { background:var(--rose-m); }
+    .lock-err { font-size:.78rem; color:var(--rose-m); min-height:1.1em; }
+    .lock-foot { font-size:.74rem; color:var(--muted); margin-top:24px; line-height:1.6; }
+    .lock-foot a { color:var(--gold); text-decoration:none; }
+    .hidden { display:none !important; }
+    @media(max-width:720px){ .grid,.result-grid{grid-template-columns:1fr;} .page{padding-left:16px;padding-right:16px;} .pill-grid,.area-grid,.type-toggle{grid-template-columns:1fr;} .nav-link{display:none;} }
+  </style>
+</head>
+<body>
+
+<!-- ───────── PASSWORD GATE ───────── -->
+<div class="lock" id="lockScreen">
+  <div class="lock-card">
+    <div class="lock-eyebrow">SkinDay</div>
+    <h1>Visualize <span>·</span> Coming&nbsp;Soon</h1>
+    <p class="lock-soon">A private beta for trusted SkinDay clinics. Access by invitation.</p>
+    <div class="lock-form">
+      <input type="password" id="betaKey" placeholder="Beta access password" autocomplete="off" />
+      <button id="unlockBtn" type="button">Enter beta</button>
+      <div class="lock-err" id="lockErr"></div>
+    </div>
+    <div class="lock-foot">Want beta access for your clinic? Email <a href="mailto:hello@skinday.ca">hello@skinday.ca</a>.</div>
+  </div>
+</div>
+
+<!-- ───────── APP ───────── -->
+<div id="app" class="hidden">
+<nav>
+  <a href="/" class="nav-logo">Skin<span>Day</span></a>
+  <div class="nav-ctas">
+    <a href="/studio.html" class="nav-link">Before &amp; After</a>
+    <a href="/editor.html" class="nav-cta">Clinic Portal</a>
+  </div>
+</nav>
+
+<div class="page">
+  <section class="hero">
+    <div class="eyebrow">SkinDay Visualize Beta</div>
+    <h1>AI treatment previews for consultation.<br><em>Visualize direction, not promises.</em></h1>
+    <p>Upload one consultation photo, choose a treatment, and generate a before / simulated-after preview to help patients understand what a treatment is working toward.</p>
+  </section>
+
+  <div class="tabs" aria-label="SkinDay tools">
+    <a class="tab" href="/studio.html" style="text-decoration:none;">Before &amp; After Builder</a>
+    <button class="tab active" type="button">Visualize AI</button>
+  </div>
+
+  <section class="grid">
+    <!-- Upload -->
+    <div class="card">
+      <div class="step-num">Step 1 — Upload consultation photo</div>
+      <label class="upload-zone" id="uploadZone">
+        <div class="upload-plus">+</div>
+        <div class="upload-txt">Upload patient photo</div>
+        <input type="file" accept="image/*" id="photoInput" />
+        <div class="zone-tag">Original</div>
+      </label>
+      <div class="photo-guide"><strong>Best results:</strong> front-facing, well-lit, neutral expression, hair off the face, no glasses. One clear face fills the frame.</div>
+      <div class="privacy-note"><span>🔒</span><span>The photo stays in this browser until you press Generate. Generating sends the photo to the AI image provider (OpenAI) for that single request only. It is not used to train the model. You must have the patient's consent before uploading.</span></div>
+      <div class="status"><div class="dot" id="dot"></div><span id="statusText">Choose a photo to begin</span></div>
+    </div>
+
+    <!-- Treatment -->
+    <div class="card">
+      <div class="step-num">Step 2 — Select treatment</div>
+
+      <div class="type-toggle" id="typeToggle">
+        <button class="type-btn active" data-type="filler" type="button"><strong>Filler</strong><span>HA filler — chin, jawline, nose, lips, cheeks, tear trough.</span></button>
+        <button class="type-btn" data-type="biostim" type="button"><strong>Biostimulation</strong><span>Sculptra, hyperdilute Radiesse — gradual collagen result.</span></button>
+      </div>
+
+      <!-- FILLER controls -->
+      <div id="fillerControls">
+        <div class="field">
+          <label>Areas — select one or more</label>
+          <div class="area-grid" id="areaGrid">
+            <div class="area-chip active" data-area="chin"><span class="tick">✓</span>Chin</div>
+            <div class="area-chip" data-area="jawline"><span class="tick">✓</span>Jawline</div>
+            <div class="area-chip" data-area="nose"><span class="tick">✓</span>Nose</div>
+            <div class="area-chip" data-area="lips"><span class="tick">✓</span>Lips</div>
+            <div class="area-chip" data-area="cheeks"><span class="tick">✓</span>Cheeks</div>
+            <div class="area-chip" data-area="tear_trough"><span class="tick">✓</span>Tear trough</div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Goal</label>
+          <select id="goal">
+            <option value="natural_refinement">Natural refinement</option>
+            <option value="facial_balancing">Facial balancing</option>
+            <option value="masculinization">Masculinization</option>
+            <option value="feminization">Feminization</option>
+            <option value="rejuvenation">Rejuvenation</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Intensity</label>
+          <div class="pill-grid" id="fillerIntensity">
+            <button class="pill active" data-intensity="natural" type="button"><strong>Natural</strong><span>Subtle correction, conservative volume.</span></button>
+            <button class="pill" data-intensity="moderate" type="button"><strong>Moderate</strong><span>Visible improvement, still realistic.</span></button>
+            <button class="pill" data-intensity="enhanced" type="button"><strong>Enhanced</strong><span>Stronger contour, still clinic-realistic.</span></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- BIOSTIM controls -->
+      <div id="biostimControls" class="hidden">
+        <div class="field">
+          <label>Product</label>
+          <div class="pill-grid" id="biostimProduct">
+            <button class="pill active" data-product="sculptra" type="button"><strong>Sculptra</strong><span>Poly-L-lactic acid. Gradual collagen volumization.</span></button>
+            <button class="pill" data-product="hdr" type="button"><strong>Hyperdilute Radiesse</strong><span>Diffuse skin firming and quality.</span></button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Projection — generate each to show the range</label>
+          <div class="pill-grid" id="biostimProjection">
+            <button class="pill active" data-projection="expected" type="button"><strong>Expected</strong><span>What most patients in range achieve.</span></button>
+            <button class="pill" data-projection="conservative" type="button"><strong>Conservative</strong><span>The cautious, lower end of response.</span></button>
+            <button class="pill" data-projection="optimistic" type="button"><strong>Optimistic</strong><span>Strong collagen response, upper end.</span></button>
+          </div>
+        </div>
+        <div class="privacy-note"><span>ℹ️</span><span>Biostimulation results build gradually and vary by collagen response, age, vial count, and skin quality. Generate Conservative, Expected, and Optimistic to show the patient an honest range rather than a single promise.</span></div>
+      </div>
+
+      <div class="field" style="margin-top:14px;">
+        <label>Custom note optional</label>
+        <textarea id="customNote" placeholder="e.g. preserve facial identity, focus on chin projection, keep lips subtle"></textarea>
+      </div>
+
+      <div class="field">
+        <label>Clinic name optional — appears on export</label>
+        <input id="clinicName" placeholder="Your clinic name" maxlength="60" />
+      </div>
+
+      <label class="consent" id="consentBox">
+        <input type="checkbox" id="consentChk" />
+        <span>I have this patient's consent to upload their photo to an AI image provider for consultation visualization purposes.</span>
+      </label>
+
+      <div class="disclaimer"><span>⚠️</span><span>Every export is labelled and carries a permanent consultation-only disclaimer. Outputs are simulations for communication, never a guaranteed result or medical prediction.</span></div>
+
+      <div class="btn-row"><button class="btn btn-primary" id="generateBtn" disabled>Generate simulated preview</button></div>
+    </div>
+  </section>
+
+  <!-- Output -->
+  <section class="output" id="outputSection">
+    <div class="step-num">Your consultation preview</div>
+    <div class="result-grid">
+      <div class="result-card"><img id="originalResult" alt="Original photo" /><div class="result-tag">Original</div></div>
+      <div class="result-card"><img id="aiResult" alt="AI simulated treatment preview" /><div class="result-tag sim" id="simTag">Simulated — AI Visualization</div></div>
+    </div>
+    <div class="small" style="margin-top:10px;">AI-generated visualization for consultation purposes only. Not a prediction of actual treatment results. Results vary by anatomy, product, technique, healing, and clinical judgment.</div>
+    <canvas id="exportCanvas"></canvas>
+    <div class="regen-note" id="regenNote"></div>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="regenBtn">Re-generate</button>
+      <button class="btn btn-dark" id="downloadBtn">Download side-by-side</button>
+      <button class="btn btn-light" id="plainBtn">Download plain photos</button>
+      <button class="btn btn-light" id="newBtn">New case</button>
+    </div>
+  </section>
+</div>
+
+<footer>
+  <div class="brand">Skin<span>Day</span></div>
+  <div>Visualize AI Beta · Consultation previews only · AI-generated, not a prediction of results</div>
+</footer>
+</div><!-- /#app -->
+
+<script>
+const KEY_STORE = 'sd_visualize_key';
+const FREE_REGEN_MS = 60000;
+
+const state = {
+  file:null, originalDataUrl:null, resultDataUrl:null,
+  type:'filler', areas:['chin'], intensity:'natural',
+  product:'sculptra', projection:'expected',
+  lastGenAt:0
+};
+
+/* ───────── Lock screen ───────── */
+const lockScreen = document.getElementById('lockScreen');
+const app = document.getElementById('app');
+const betaKey = document.getElementById('betaKey');
+const unlockBtn = document.getElementById('unlockBtn');
+const lockErr = document.getElementById('lockErr');
+
+async function verifyKey(key){
+  const res = await fetch('/.netlify/functions/generate-visualization', {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json', 'x-beta-key':key },
+    body: JSON.stringify({ action:'verify' })
+  });
+  return res.ok;
+}
+
+function unlock(){
+  lockScreen.classList.add('hidden');
+  app.classList.remove('hidden');
+}
+
+async function attemptUnlock(){
+  const key = betaKey.value.trim();
+  if(!key){ lockErr.textContent = 'Enter the beta password.'; return; }
+  unlockBtn.disabled = true; lockErr.textContent = 'Checking…';
+  try {
+    if(await verifyKey(key)){
+      sessionStorage.setItem(KEY_STORE, key);
+      lockErr.textContent = '';
+      unlock();
+    } else {
+      lockErr.textContent = 'That password is not recognised.';
+    }
+  } catch(e){
+    lockErr.textContent = 'Could not reach the server. Try again.';
+  } finally {
+    unlockBtn.disabled = false;
+  }
+}
+unlockBtn.addEventListener('click', attemptUnlock);
+betaKey.addEventListener('keydown', e => { if(e.key === 'Enter') attemptUnlock(); });
+
+(async function initLock(){
+  const saved = sessionStorage.getItem(KEY_STORE);
+  if(saved && await verifyKey(saved).catch(()=>false)){ unlock(); }
+})();
+
+/* ───────── Helpers ───────── */
+const input = document.getElementById('photoInput');
+const zone = document.getElementById('uploadZone');
+const generateBtn = document.getElementById('generateBtn');
+const regenBtn = document.getElementById('regenBtn');
+const statusText = document.getElementById('statusText');
+const dot = document.getElementById('dot');
+const consentChk = document.getElementById('consentChk');
+const consentBox = document.getElementById('consentBox');
+
+function setStatus(text, type='idle'){
+  statusText.textContent = text;
+  dot.className = 'dot' + (type !== 'idle' ? ' ' + type : '');
+}
+
+function syncGenerateBtn(){
+  generateBtn.disabled = !(state.file && consentChk.checked);
+}
+
+function fileToDataUrl(file){
+  return new Promise((resolve,reject)=>{
+    const reader = new FileReader();
+    reader.onload = e => resolve(e.target.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function loadImage(src){
+  return new Promise((resolve,reject)=>{
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+// Resize the longest edge to <=1024 to keep uploads small. Returns a Blob.
+async function resizeToUpload(dataUrl){
+  const img = await loadImage(dataUrl);
+  const max = 1024;
+  let { width:w, height:h } = img;
+  if(Math.max(w,h) > max){
+    const scale = max / Math.max(w,h);
+    w = Math.round(w*scale); h = Math.round(h*scale);
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+  return new Promise(resolve => canvas.toBlob(b => resolve(b), 'image/png', .95));
+}
+
+/* ───────── Upload ───────── */
+input.addEventListener('change', async e => {
+  const file = e.target.files[0];
+  if(!file) return;
+  if(!file.type.startsWith('image/')) { setStatus('Please upload an image file.', 'warn'); return; }
+  state.file = file;
+  state.originalDataUrl = await fileToDataUrl(file);
+  let old = zone.querySelector('img'); if(old) old.remove();
+  const img = document.createElement('img'); img.src = state.originalDataUrl;
+  zone.appendChild(img); zone.classList.add('filled');
+  syncGenerateBtn();
+  setStatus(consentChk.checked ? 'Photo loaded — choose treatment and generate.' : 'Photo loaded — confirm patient consent to enable Generate.', 'ok');
+});
+
+consentChk.addEventListener('change', () => {
+  consentBox.classList.toggle('checked', consentChk.checked);
+  syncGenerateBtn();
+  if(state.file) setStatus(consentChk.checked ? 'Ready — choose treatment and generate.' : 'Confirm patient consent to enable Generate.', consentChk.checked ? 'ok' : 'warn');
+});
+
+/* ───────── Treatment type toggle ───────── */
+document.querySelectorAll('#typeToggle .type-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#typeToggle .type-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.type = btn.dataset.type;
+    document.getElementById('fillerControls').classList.toggle('hidden', state.type !== 'filler');
+    document.getElementById('biostimControls').classList.toggle('hidden', state.type !== 'biostim');
+  });
+});
+
+/* ───────── Filler: areas (multi) ───────── */
+document.querySelectorAll('#areaGrid .area-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    chip.classList.toggle('active');
+    state.areas = [...document.querySelectorAll('#areaGrid .area-chip.active')].map(c => c.dataset.area);
+  });
+});
+
+/* ───────── Pill selectors ───────── */
+function wirePills(containerId, key){
+  document.querySelectorAll('#'+containerId+' .pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#'+containerId+' .pill').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state[key] = btn.dataset[key === 'intensity' ? 'intensity' : (key === 'product' ? 'product' : 'projection')];
+    });
+  });
+}
+wirePills('fillerIntensity', 'intensity');
+wirePills('biostimProduct', 'product');
+wirePills('biostimProjection', 'projection');
+
+/* ───────── Prompt builder ───────── */
+const AREA_TEXT = {
+  chin:'the chin (projection and mentolabial balance)',
+  jawline:'the jawline (mandibular definition and prejowl support)',
+  nose:'the nasal bridge and profile via liquid rhinoplasty technique',
+  lips:'the lips (gentle hydration and balanced volume, preserved lip anatomy)',
+  cheeks:'the cheeks (midface support and natural projection)',
+  tear_trough:'the tear troughs (softening the under-eye hollow)'
+};
+const GOAL_TEXT = {
+  natural_refinement:'a natural refinement that keeps the face recognisably the same',
+  facial_balancing:'improved overall facial balance and proportion',
+  masculinization:'a more defined, masculine contour',
+  feminization:'a softer, more feminine contour',
+  rejuvenation:'a refreshed, less tired appearance without changing the person\'s age'
+};
+const INTENSITY_TEXT = {
+  natural:'very subtle and conservative, the kind of result a cautious injector would deliver',
+  moderate:'a clearly visible but still realistic improvement, not overfilled',
+  enhanced:'a stronger but still anatomically realistic correction, never exaggerated'
+};
+const PRODUCT_TEXT = {
+  sculptra:'a Sculptra (poly-L-lactic acid) biostimulation result: gradual, diffuse improvement in skin firmness, mild restoration of facial volume and contour, and overall skin quality',
+  hdr:'a hyperdilute Radiesse result: diffuse skin tightening, improved skin quality and a subtle firming of the treated area'
+};
+const PROJECTION_TEXT = {
+  conservative:'Show the conservative, lower end of the expected response: a modest, easily-believable change.',
+  expected:'Show the typical result most patients in this range achieve: a clear but realistic change.',
+  optimistic:'Show the optimistic upper end of response for a strong responder, while staying within what is physiologically plausible.'
+};
+
+// Non-negotiable constraints are ALSO enforced server-side; kept here for clarity.
+const SAFETY = "Preserve the person's identity, age, ethnicity and ethnic features, bone structure, hairstyle, skin texture appropriate to their age, clothing, expression, head angle, lighting, and background. Do not de-age the person and do not smooth age-appropriate skin texture beyond the stated treatment. Do not Westernise features. Do not change makeup, jewellery, or pose, and do not add any text, labels, or arrows. Output one clean photographic portrait. Keep the change subtle and clinically realistic; under-promise rather than over-promise.";
+
+function buildPrompt(){
+  const note = document.getElementById('customNote').value.trim();
+  let core;
+  if(state.type === 'filler'){
+    const areas = state.areas.length ? state.areas : ['chin'];
+    const areaList = areas.map(a => AREA_TEXT[a]).join(', ');
+    const goal = document.getElementById('goal').value;
+    core = `Simulate HA dermal filler in ${areaList}. Aim for ${GOAL_TEXT[goal]}. The result should be ${INTENSITY_TEXT[state.intensity]}.`;
+  } else {
+    core = `Simulate ${PRODUCT_TEXT[state.product]}. ${PROJECTION_TEXT[state.projection]} The change must look like a natural biostimulation outcome, not dermal filler and not surgery.`;
+  }
+  return `${core} ${SAFETY} ${note}`.trim();
+}
+
+/* ───────── Generate ───────── */
+async function runGeneration(isRegen){
+  if(!state.file) return;
+  const key = sessionStorage.getItem(KEY_STORE) || '';
+  setStatus(isRegen ? 'Re-generating…' : 'Generating AI preview… this may take 20–60 seconds.', 'spin');
+  generateBtn.disabled = true; regenBtn.disabled = true;
+  try {
+    const blob = await resizeToUpload(state.originalDataUrl);
+    const form = new FormData();
+    form.append('image', blob, 'patient.png');
+    form.append('prompt', buildPrompt());
+    form.append('type', state.type);
+    form.append('treatment', state.type === 'filler' ? state.areas.join('+') : state.product);
+    form.append('intensity', state.type === 'filler' ? state.intensity : state.projection);
+
+    const response = await fetch('/.netlify/functions/generate-visualization', {
+      method:'POST', headers:{ 'x-beta-key':key }, body:form
+    });
+    const data = await response.json();
+    if(response.status === 401){ sessionStorage.removeItem(KEY_STORE); location.reload(); return; }
+    if(!response.ok) throw new Error(data.error || 'Generation failed');
+
+    state.resultDataUrl = data.image;
+    state.lastGenAt = Date.now();
+    document.getElementById('originalResult').src = state.originalDataUrl;
+    document.getElementById('aiResult').src = state.resultDataUrl;
+    document.getElementById('simTag').textContent = 'Simulated — AI Visualization' + (state.type === 'biostim' ? ' · ' + state.projection : '');
+    document.getElementById('outputSection').classList.add('visible');
+    document.getElementById('outputSection').scrollIntoView({ behavior:'smooth', block:'start' });
+    setStatus('Preview generated.', 'ok');
+    updateRegenNote();
+  } catch(err) {
+    console.error(err);
+    setStatus(err.message || 'Could not generate preview. Check the Netlify function and API key.', 'warn');
+  } finally {
+    syncGenerateBtn(); regenBtn.disabled = false;
+  }
+}
+generateBtn.addEventListener('click', () => runGeneration(false));
+regenBtn.addEventListener('click', () => runGeneration(true));
+
+function updateRegenNote(){
+  const note = document.getElementById('regenNote');
+  const elapsed = Date.now() - state.lastGenAt;
+  if(elapsed < FREE_REGEN_MS){
+    const left = Math.ceil((FREE_REGEN_MS - elapsed)/1000);
+    note.textContent = `Free re-generate for ${left}s — adjust the treatment and run again at no extra cost.`;
+    setTimeout(updateRegenNote, 1000);
+  } else {
+    note.textContent = 'Re-generate to try a different treatment, area, or projection.';
+  }
+}
+
+/* ───────── Export (canvas) ───────── */
+async function drawExport(includeText=true){
+  const before = await loadImage(state.originalDataUrl);
+  const after = await loadImage(state.resultDataUrl);
+  const canvas = document.getElementById('exportCanvas');
+  const ctx = canvas.getContext('2d');
+  const panelW = 900, panelH = 1125, gap = 6;
+  canvas.width = panelW * 2 + gap;
+  canvas.height = panelH + (includeText ? 96 : 0);
+  ctx.fillStyle = '#1C1714'; ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  function cover(img, x, y, w, h){
+    const scale = Math.max(w/img.width, h/img.height);
+    const sw = w/scale, sh = h/scale;
+    const sx = (img.width - sw)/2;
+    const sy = (img.height - sh)/2;
+    ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+  }
+  cover(before, 0, 0, panelW, panelH);
+  cover(after, panelW + gap, 0, panelW, panelH);
+
+  function label(x, text, sim){
+    const grad = ctx.createLinearGradient(x, panelH-130, x, panelH);
+    grad.addColorStop(0,'rgba(0,0,0,0)');
+    grad.addColorStop(1, sim ? 'rgba(200,114,90,.92)' : 'rgba(0,0,0,.82)');
+    ctx.fillStyle = grad; ctx.fillRect(x, panelH-130, panelW, 130);
+    ctx.font = (sim ? '600 ' : '500 ') + '30px DM Sans, sans-serif';
+    ctx.fillStyle = 'rgba(250,247,242,.96)'; ctx.letterSpacing = '2px'; ctx.textAlign = 'left';
+    ctx.fillText(text, x + 26, panelH - 28); ctx.letterSpacing = '0px';
+  }
+  if(includeText){
+    label(0, 'ORIGINAL', false);
+    label(panelW + gap, 'SIMULATED — AI VISUALIZATION', true);
+    const clinic = document.getElementById('clinicName').value.trim();
+    ctx.fillStyle = '#1C1714'; ctx.fillRect(0,panelH,canvas.width,96);
+    ctx.font = '300 22px DM Sans, sans-serif'; ctx.fillStyle = 'rgba(250,247,242,.80)';
+    ctx.textAlign = 'center';
+    ctx.fillText('AI-generated visualization for consultation purposes only. Not a prediction of actual results.', canvas.width/2, panelH + 38);
+    if(clinic){ ctx.font = '500 22px DM Sans, sans-serif'; ctx.fillText(clinic, canvas.width/2, panelH + 70); }
+  }
+  return canvas;
+}
+
+async function downloadExport(includeText){
+  if(!state.resultDataUrl) return;
+  const canvas = await drawExport(includeText);
+  const link = document.createElement('a');
+  link.download = includeText ? 'skinday-visualize-consultation-preview.png' : 'skinday-visualize-plain-preview.png';
+  link.href = canvas.toDataURL('image/png', .95);
+  link.click();
+}
+document.getElementById('downloadBtn').addEventListener('click', () => downloadExport(true));
+document.getElementById('plainBtn').addEventListener('click', () => downloadExport(false));
+
+/* ───────── New case (proper reset, no reload) ───────── */
+document.getElementById('newBtn').addEventListener('click', () => {
+  state.file = null; state.originalDataUrl = null; state.resultDataUrl = null; state.lastGenAt = 0;
+  input.value = '';
+  const oldImg = zone.querySelector('img'); if(oldImg) oldImg.remove();
+  zone.classList.remove('filled');
+  consentChk.checked = false; consentBox.classList.remove('checked');
+  document.getElementById('customNote').value = '';
+  document.getElementById('outputSection').classList.remove('visible');
+  syncGenerateBtn();
+  setStatus('Choose a photo to begin', 'idle');
+  window.scrollTo({ top:0, behavior:'smooth' });
+});
+</script>
+</body>
+</html>
