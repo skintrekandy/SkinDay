@@ -97,7 +97,9 @@ exports.handler = async (event) => {
       image: file,
       prompt,
       size: 'auto',
-      input_fidelity: 'high'
+      input_fidelity: 'high',
+      output_format: 'jpeg',
+      output_compression: 85
     });
 
     const b64 = result.data && result.data[0] && result.data[0].b64_json;
@@ -106,7 +108,7 @@ exports.handler = async (event) => {
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image: `data:image/png;base64,${b64}` })
+      body: JSON.stringify({ image: `data:image/jpeg;base64,${b64}` })
     };
   } catch (err) {
     console.error(err);
