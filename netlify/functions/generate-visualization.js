@@ -11,12 +11,13 @@ const { Readable } = require('stream');
 // Non-negotiable constraints appended to EVERY prompt server-side, so a tampered
 // client cannot strip identity/ethnicity preservation or push the model to over-promise.
 const SERVER_SAFETY =
-  " Strictly preserve the person's identity, age, ethnicity and ethnic features, bone structure, " +
-  "hairstyle, age-appropriate skin texture, clothing, expression, head angle, lighting, and background. " +
-  "Do not de-age the person. Do not Westernise facial features. Do not change makeup, jewellery, or pose. " +
-  "Do not add any text, labels, watermarks, or arrows. Output a single clean photographic portrait. " +
-  "Keep the change subtle and clinically realistic; under-promise rather than over-promise. " +
-  "This is a consultation visualization, not a guaranteed result.";
+  " CRITICAL: this is a medical consultation photograph, not a beauty image. Apply ONLY the single localized change described above and change nothing else. " +
+  "Do NOT smooth or retouch skin, remove or soften wrinkles, even out skin tone, brighten the image, raise contrast, slim the face or jaw, " +
+  "enlarge the eyes, lift the brows, change the hairstyle, or apply any beautifying, younger-looking, or filter-like effect. " +
+  "Keep the apparent age and ALL age-appropriate skin texture (pores, fine lines, folds) exactly as in the original. " +
+  "Preserve unchanged: identity, ethnicity and ethnic features, bone structure, hair, clothing, jewellery, expression, head angle and pose, " +
+  "camera framing and crop, and lighting and background. The result must read as the SAME photograph with only the treated area subtly adjusted. " +
+  "Do not add text, labels, or watermarks.";
 
 function unauthorized(msg) {
   return {
