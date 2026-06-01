@@ -103,6 +103,57 @@ function formatInjectorCreds(raw) {
   return String(raw);
 }
 
+// ── INDEXABILITY GATE ─────────────────────────────────────────────
+// A clinic page with no price, no reviews, no credentials, and no listed
+// services is a near-duplicate of every other bare listing. Google rejects
+// those as "Crawled - currently not indexed". We mark them noindex until
+// they gain real data, at which point they automatically become indexable
+// again (no manual step). This is the fix for the bulk of that bucket.
+//
+// IMPORTANT: keep this rule in sync with clinicIsSubstantive() in sitemap.js
+// so the sitemap never lists a page we've told Google not to index.
+
+function hasCreds(raw) {
+  if (!raw) return false;
+  const s = String(raw).trim();
+  return s !== '' && s !== '[]' && s.toLowerCase() !== 'null';
+}
+
+function clinicIsIndexable(clinic) {
+  const hasPrice    = clinic.price != null && Number(clinic.price) > 0;
+  const hasReviews  = clinic.rating != null && clinic.reviews != null && Number(clinic.reviews) > 0;
+  const hasExpertise = !!(clinic.identity && clinic.identity.expertise && clinic.identity.expertise.length);
+  return hasPrice || hasReviews || hasExpertise || hasCreds(clinic.injector_credentials);
+}
+
+// ── STRUCTURED DATA ───────────────────────────────────────────────
+// MedicalBusiness JSON-LD for indexable clinics. Helps Google understand
+// the entity and can earn richer search listings. Deliberately conservative:
+// no aggregateRating (avoids review-snippet policy risk across thousands of
+// pages). The visible body still shows the rating for users and relevance.
+
+function buildSchema(clinic) {
+  const url = `${SITE}/clinic/${clinic.slug}`;
+  const loc = clinic.neighbourhood || clinic.area || '';
+  const schema = {
+    '@context': 'https://schema.org',
+    '@type': 'MedicalBusiness',
+    name: clinic.name || 'Cosmetic Clinic',
+    url,
+    address: {
+      '@type': 'PostalAddress',
+      addressRegion: clinic.province || 'ON',
+      addressCountry: 'CA',
+    },
+  };
+  if (loc) schema.address.addressLocality = loc;
+  if (clinic.phone)   schema.telephone = String(clinic.phone);
+  if (clinic.website) schema.sameAs = [String(clinic.website)];
+  if (clinic.price != null && clinic.price > 0) schema.priceRange = `From $${clinic.price}/unit`;
+  // Escape "<" so a clinic name containing "</script>" can't break out.
+  return JSON.stringify(schema).replace(/</g, '\\u003c');
+}
+
 // Server-rendered content block — minimal, semantic, crawler-focused.
 //
 // Goal: defeat Google's Soft 404 classification by giving the page real,
@@ -123,12 +174,12 @@ function buildSeoBody(clinic) {
   // unique words that distinguish this URL from every other clinic page.
   const paragraphs = [];
 
-  paragraphs.push(`Cosmetic clinic in ${loc}, ${province}.`);
+  paragraphs.push(`${name} is a cosmetic clinic in ${loc}, ${province}.`);
 
   if (clinic.price != null && clinic.price > 0) {
     paragraphs.push(`Botox pricing from $${escapeHtml(clinic.price)} per unit.`);
   } else {
-    paragraphs.push(`Botox and neurotoxin pricing available.`);
+    paragraphs.push(`Botox and neurotoxin pricing available on request.`);
   }
 
   if (clinic.rating && clinic.reviews) {
@@ -145,7 +196,11 @@ function buildSeoBody(clinic) {
     paragraphs.push(`Specialties: ${expertise.map(e => escapeHtml(e.label)).join(', ')}.`);
   }
 
-  paragraphs.push(`View full pricing, photos, and contact details on SkinDay.`);
+  if (clinic.phone) {
+    paragraphs.push(`Contact ${name} at ${escapeHtml(clinic.phone)}.`);
+  }
+
+  paragraphs.push(`Compare ${name}'s Botox pricing and services against other ${loc} clinics on SkinDay.`);
 
   const body = paragraphs.map(p => `  <p>${p}</p>`).join('\n');
 
@@ -222,6 +277,16 @@ function patchTemplate(html, clinic) {
   const seoBody = buildSeoBody(clinic);
   out = out.replace(/<body([^>]*)>/, `<body$1>\n${seoBody}\n`);
 
+  // Indexability gate, injected just before </head>:
+  //   - Empty stub clinics → noindex (with follow, so Google still discovers
+  //     links to richer clinic pages). Auto-reverts once the clinic has data.
+  //   - Real clinics → MedicalBusiness structured data.
+  if (!clinicIsIndexable(clinic)) {
+    out = out.replace('</head>', '  <meta name="robots" content="noindex, follow" />\n</head>');
+  } else {
+    out = out.replace('</head>', `  <script type="application/ld+json">${buildSchema(clinic)}</script>\n</head>`);
+  }
+
   return out;
 }
 
@@ -275,7 +340,8 @@ exports.handler = async (event) => {
       .from('clinics')
       .select(`
         id, name, slug, neighbourhood, area, province,
-        rating, reviews, price, injector_credentials, logo_url, approved
+        rating, reviews, price, injector_credentials, logo_url, approved,
+        phone, website
       `)
       .eq('slug', slug)
       .limit(1)
@@ -342,7 +408,8 @@ exports.handler = async (event) => {
     // show it immediately rather than us discovering it via Search Console.
     const ssrPresent = rendered.includes('id="ssr-content"');
     const titlePresent = rendered.includes(escapeHtml(clinic.name || ''));
-    console.log(`render-clinic slug=${slug} ssr_present=${ssrPresent} title_present=${titlePresent}`);
+    const indexable = clinicIsIndexable(clinic);
+    console.log(`render-clinic slug=${slug} ssr_present=${ssrPresent} title_present=${titlePresent} indexable=${indexable}`);
 
     return {
       statusCode: 200,
