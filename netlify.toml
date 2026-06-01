@@ -122,16 +122,32 @@
   to     = "/botox-etobicoke.html"
   status = 200
 
+# /botox-london-ontario consolidated into the guide (was a weak duplicate competing on the same queries)
 [[redirects]]
   from   = "/botox-london-ontario"
-  to     = "/botox-london-ontario.html"
-  status = 200
+  to     = "/guide/botox-cost-london-ontario"
+  status = 301
+  force  = true
+
+[[redirects]]
+  from   = "/botox-london-ontario.html"
+  to     = "/guide/botox-cost-london-ontario"
+  status = 301
+  force  = true
 
 # British Columbia
+# /botox-vancouver consolidated into the guide (was a weak duplicate competing on the same queries)
 [[redirects]]
   from   = "/botox-vancouver"
-  to     = "/botox-vancouver.html"
-  status = 200
+  to     = "/guide/botox-cost-vancouver"
+  status = 301
+  force  = true
+
+[[redirects]]
+  from   = "/botox-vancouver.html"
+  to     = "/guide/botox-cost-vancouver"
+  status = 301
+  force  = true
 
 [[redirects]]
   from   = "/botox-richmond"

@@ -8,6 +8,8 @@ Allow: /
 Disallow: /admin
 Disallow: /portal
 Disallow: /api/
+Disallow: /claim2.html
+Disallow: /editor.html
 
 # Sitemap
 Sitemap: https://skinday.ca/sitemap.xml
