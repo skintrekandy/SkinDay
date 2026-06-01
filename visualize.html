@@ -97,6 +97,12 @@
     .result-tag { position:absolute; bottom:0; left:0; right:0; padding:9px 12px; background:linear-gradient(transparent,rgba(28,23,20,.75)); font-size:.66rem; letter-spacing:.12em; text-transform:uppercase; color:rgba(250,247,242,.9); }
     .result-tag.sim { background:linear-gradient(transparent,rgba(200,114,90,.92)); font-weight:600; }
     .regen-note { font-size:.72rem; color:var(--muted); text-align:center; margin-top:12px; }
+    .insights { margin-top:18px; background:#fff; border:1px solid var(--border); border-radius:8px; padding:16px 18px; }
+    .insights-title { font-size:.68rem; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:var(--dim); margin-bottom:12px; }
+    .insights ul { list-style:none; display:flex; flex-direction:column; gap:9px; }
+    .insights li { font-size:.87rem; color:var(--deep); display:flex; gap:10px; align-items:flex-start; line-height:1.45; }
+    .insights li::before { content:'✓'; color:var(--rose); font-weight:600; flex-shrink:0; }
+    .insights-note { font-size:.74rem; color:var(--muted); margin-top:14px; padding-top:12px; border-top:1px solid var(--border); line-height:1.5; }
     canvas#exportCanvas { display:none; }
     .small { font-size:.74rem; color:var(--muted); line-height:1.5; }
     footer { background:var(--deep); padding:42px 5% 30px; margin-top:70px; color:var(--muted); text-align:center; font-size:.82rem; }
@@ -267,10 +273,16 @@
       <div class="result-card"><img id="aiResult" alt="AI simulated treatment preview" /><div class="result-tag sim" id="simTag">Simulated — AI Visualization</div></div>
     </div>
     <div class="small" style="margin-top:10px;">AI-generated visualization for consultation purposes only. Not a prediction of actual treatment results. Results vary by anatomy, product, technique, healing, and clinical judgment.</div>
+    <div class="insights" id="insightsPanel" style="display:none;">
+      <div class="insights-title">What this visualization is showing</div>
+      <ul id="insightsList"></ul>
+      <div class="insights-note">Illustrative only. Actual outcome depends on the patient's anatomy, product selection, technique, and healing.</div>
+    </div>
     <canvas id="exportCanvas"></canvas>
     <div class="regen-note" id="regenNote"></div>
     <div class="btn-row">
       <button class="btn btn-primary" id="regenBtn">Re-generate</button>
+      <button class="btn btn-light" id="insightsBtn">Show insights</button>
       <button class="btn btn-dark" id="downloadBtn">Download side-by-side</button>
       <button class="btn btn-light" id="plainBtn">Download plain photos</button>
       <button class="btn btn-light" id="newBtn">New case</button>
@@ -495,6 +507,61 @@ function buildPrompt(){
   return `${core} ${SAFETY} ${note}`.trim();
 }
 
+/* ───────── Insights (no AI; derived from the selected treatment) ───────── */
+const AREA_INSIGHT = {
+  chin:'Increased chin projection',
+  jawline:'More defined jawline with reduced prejowl hollowing',
+  nose:'Smoother nasal bridge and profile',
+  lips:'Subtle, balanced lip volume',
+  cheeks:'Restored midface support',
+  tear_trough:'Softened under-eye hollow'
+};
+const PRODUCT_INSIGHT = {
+  sculptra:'Gradual, collagen-based firmness and contour',
+  hdr:'Diffuse skin firming and improved quality'
+};
+const PROJECTION_INSIGHT = {
+  conservative:'Shown at the conservative end of the response range',
+  expected:'Shown at the typical response most patients see',
+  optimistic:'Shown at the optimistic end for a strong responder'
+};
+
+function buildInsights(){
+  const out = [];
+  if(state.type === 'filler'){
+    const areas = state.areas.length ? state.areas : ['chin'];
+    areas.forEach(a => { if(AREA_INSIGHT[a]) out.push(AREA_INSIGHT[a]); });
+  } else {
+    out.push(PRODUCT_INSIGHT[state.product]);
+    out.push(PROJECTION_INSIGHT[state.projection]);
+  }
+  return out;
+}
+
+function renderInsights(){
+  const list = document.getElementById('insightsList');
+  list.innerHTML = '';
+  (state.insights || []).forEach(text => {
+    const li = document.createElement('li');
+    li.textContent = text;
+    list.appendChild(li);
+  });
+}
+
+const insightsBtn = document.getElementById('insightsBtn');
+const insightsPanel = document.getElementById('insightsPanel');
+insightsBtn.addEventListener('click', () => {
+  const showing = insightsPanel.style.display !== 'none';
+  if(showing){
+    insightsPanel.style.display = 'none';
+    insightsBtn.textContent = 'Show insights';
+  } else {
+    renderInsights();
+    insightsPanel.style.display = 'block';
+    insightsBtn.textContent = 'Hide insights';
+  }
+});
+
 /* ───────── Generate ───────── */
 async function runGeneration(isRegen){
   if(!state.file) return;
@@ -522,6 +589,9 @@ async function runGeneration(isRegen){
     document.getElementById('originalResult').src = state.originalDataUrl;
     document.getElementById('aiResult').src = state.resultDataUrl;
     document.getElementById('simTag').textContent = 'Simulated — AI Visualization' + (state.type === 'biostim' ? ' · ' + state.projection : '');
+    state.insights = buildInsights();
+    insightsPanel.style.display = 'none';
+    insightsBtn.textContent = 'Show insights';
     document.getElementById('outputSection').classList.add('visible');
     document.getElementById('outputSection').scrollIntoView({ behavior:'smooth', block:'start' });
     setStatus('Preview generated.', 'ok');
@@ -610,6 +680,9 @@ document.getElementById('newBtn').addEventListener('click', () => {
   zone.classList.remove('filled');
   consentChk.checked = false; consentBox.classList.remove('checked');
   document.getElementById('customNote').value = '';
+  state.insights = null;
+  insightsPanel.style.display = 'none';
+  insightsBtn.textContent = 'Show insights';
   document.getElementById('outputSection').classList.remove('visible');
   syncGenerateBtn();
   setStatus('Choose a photo to begin', 'idle');
