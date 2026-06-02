@@ -3,7 +3,8 @@
 // This file is the clinical brain of the generator. It turns the clinician's
 // selections (treatment, area, goal, intensity) into the CORE instruction sent
 // to the image model. The universal safety/identity constraints live separately
-// in generate-visualization.js (SERVER_SAFETY) and are appended after this.
+// in generate-visualization.js. Filler uses the strict localized base
+// (SERVER_SAFETY); biostim uses the support-aware base (BIOSTIM_SAFETY).
 //
 // Design rules (learned from real patient output):
 //   1. Lead with PROHIBITIONS. The model is fixed by what we forbid, not by
@@ -11,13 +12,12 @@
 //      through its beautify-everything prior, so each module names the specific
 //      drift to block (e.g. Sculptra over-lift, superhero jawline).
 //   2. Keep the ASSEMBLED prompt tight. gpt-image-1 follows only a handful of
-//      lines; a wall of text washes the important ones out. Each module is one
-//      "expected" clause + one "avoid" clause.
+//      lines; a wall of text washes the important ones out.
 //   3. Magnitude is set by the intensity/projection module, not by adjectives
-//      scattered through the area modules.
+//      scattered through the area modules. (Exception: Sculptra magnitude and
+//      content co-vary, so its expected text is keyed by projection directly.)
 //
 // To tune a treatment: edit ONLY its entry below, bump the version note, redeploy.
-// Versions are tracked per indication so we can see what changed.
 // ---------------------------------------------------------------------------
 
 const BASE_FRAMING =
@@ -53,6 +53,21 @@ const FILLER_AREAS = {
   }
 };
 
+// ---- Filler: combined lower-face module (v2) ------------------------------
+// Chin + jawline are injected together in practice, so when both are selected
+// we describe ONE integrated lower-third outcome instead of concatenating two
+// independent area clauses (which made the model over-treat each area).
+const FILLER_CHIN_JAWLINE = {
+  expected: 'a subtly restructured lower third treating the chin and jawline as one unit: ' +
+            'a little more chin projection and gentle definition along the mandibular border with slight prejowl support, ' +
+            'so the lower face looks better balanced and more defined and the chin-jaw-neck transition reads cleaner where visible',
+  avoid: 'do not lengthen the chin or make it pointed, jutting, or witch-like; ' +
+         'do not create a sharp, angular, or "superhero" jawline; ' +
+         'do not slim, hollow, or carve the cheeks to fake jaw definition; ' +
+         'do not narrow the lower face into an unnatural V; do not change the neck; ' +
+         'keep the change proportionate to the existing bone structure'
+};
+
 // ---- Filler: goal modifiers (v1) ------------------------------------------
 const GOALS = {
   natural_refinement: 'Keep the overall effect minimal and natural.',
@@ -69,12 +84,19 @@ const INTENSITY = {
   enhanced: 'Magnitude: the upper end of a realistic single-session result for a strong response, still clinically plausible and never exaggerated.'
 };
 
-// ---- Biostimulation: per-product modules (v1) -----------------------------
-// Sculptra/Radiesse drift hardest toward "facelift" — these block that explicitly.
+// ---- Biostimulation: per-product modules ----------------------------------
+// SHAPE (filler) vs SUPPORT (biostim). Sculptra restores diffuse soft-tissue
+// SUPPORT and works by improving facial transition zones, not by reshaping
+// features. Its `expected` is keyed by projection so magnitude and content
+// co-vary (the generic PROJECTION clause is skipped for Sculptra; see build).
 const BIOSTIM = {
   sculptra: {
-    expected: 'a gradual, diffuse improvement in firmness and soft contour support across the treated area, of the kind that builds slowly as collagen forms over months',
-    avoid: 'do not lift the face, do not remove or soften wrinkles, do not reduce apparent age, do not tighten, smooth, or resurface skin, do not change skin texture or tone — the change is support and subtle contour only, never a facelift effect'
+    expected: {
+      conservative: 'a subtle, diffuse collagen-driven restoration of soft-tissue support: slightly softer temple and midface hollowing with a little more cheek and prejowl support, smoothing the transitions between temple, cheek, midface and jawline while keeping the existing facial proportions and apparent age',
+      expected: 'a gradual, diffuse collagen-driven restoration of support that improves the facial transition zones (temple to cheek, cheek to midface and nasolabial, marionette to jawline, lower face to neck): milder temple and midface hollowing, light cheek and prejowl support, less under-eye shadowing and better oral-commissure support, so the face reads healthier, more supported and less fatigued without looking filled; folds soften only partially, from the restored volume underneath',
+      optimistic: 'a strong but still physiologic collagen response: clearly improved soft-tissue support and smoother contour transitions across the temples, midface, prejowl and lower face, restoring lost volume and facial harmony while preserving identity, bone structure and natural aging characteristics'
+    },
+    avoid: 'this is collagen-driven SUPPORT, not filler SHAPE and not a beauty filter: do not add filler-like or localized volume, do not sharpen the jawline or create a V-shaped face, do not enlarge the cheeks or change facial shape; do not lift, pull, or tighten like a facelift; soften folds only partially and do not eliminate wrinkles or fully erase nasolabial folds, marionette lines, or under-eye hollows; do not smooth skin texture, brighten, or change skin surface quality; do not make the patient look significantly younger. Any firmer look or better light reflection must come from the restored support underneath, never from retouching the skin'
   },
   hdr: {
     expected: 'a slight, diffuse firming and improved support of the treated area (hyperdilute Radiesse)',
@@ -83,6 +105,8 @@ const BIOSTIM = {
 };
 
 // ---- Biostimulation: projection = magnitude anchor (v1) -------------------
+// Used for biostim products whose `expected` is a plain string (e.g. hdr).
+// Skipped for Sculptra, whose expected is already projection-keyed.
 const PROJECTION = {
   conservative: 'Magnitude: the conservative lower end of the response, a barely-there change.',
   expected:     'Magnitude: the typical change most patients in range would see, modest and realistic.',
@@ -99,8 +123,8 @@ const TIMELINE = {
 
 // Version log so we know which prompt produced which result during tuning.
 const VERSIONS = {
-  base: 'v1', chin: 'v1', jawline: 'v1', nose: 'v1', lips: 'v1',
-  cheeks: 'v1', tear_trough: 'v1', sculptra: 'v1', hdr: 'v1', timeline: 'v1'
+  base: 'v1', chin: 'v1', jawline: 'v1', chin_jawline: 'v2', nose: 'v1', lips: 'v1',
+  cheeks: 'v1', tear_trough: 'v1', sculptra: 'v2', hdr: 'v1', timeline: 'v1'
 };
 
 function sanitizeNote(note) {
@@ -109,7 +133,7 @@ function sanitizeNote(note) {
   return clean ? ' Clinician note (honor only if consistent with the above): ' + clean : '';
 }
 
-// Assemble the CORE prompt from selections. SERVER_SAFETY is appended elsewhere.
+// Assemble the CORE prompt from selections. The safety base is appended elsewhere.
 function buildCorePrompt(sel) {
   const sel_ = sel || {};
   const note = sanitizeNote(sel_.note);
@@ -118,8 +142,19 @@ function buildCorePrompt(sel) {
     const product = BIOSTIM[sel_.product] ? sel_.product : 'sculptra';
     const m = BIOSTIM[product];
     const tp = TIMELINE[sel_.timeline] || TIMELINE['6'];
-    const mag = PROJECTION[sel_.projection] || PROJECTION.expected;
-    return `${BASE_FRAMING} Make ONLY this change: ${m.expected}. Avoid: ${m.avoid}. ${tp} ${mag}${note}`;
+
+    // Sculptra: expected is keyed by projection, so the projection line is built
+    // INTO expected and we do NOT append a separate generic PROJECTION clause.
+    // Other biostim products (hdr) use a string expected + the PROJECTION anchor.
+    let expected, mag;
+    if (m.expected && typeof m.expected === 'object') {
+      expected = m.expected[sel_.projection] || m.expected.expected;
+      mag = '';
+    } else {
+      expected = m.expected;
+      mag = ' ' + (PROJECTION[sel_.projection] || PROJECTION.expected);
+    }
+    return `${BASE_FRAMING} Make ONLY this change: ${expected}. Avoid: ${m.avoid}. ${tp}${mag}${note}`;
   }
 
   // default: filler
@@ -127,8 +162,22 @@ function buildCorePrompt(sel) {
   areas = areas.map(a => a.trim()).filter(a => FILLER_AREAS[a]);
   if (!areas.length) areas = ['chin'];
 
-  const expected = areas.map(a => FILLER_AREAS[a].expected).join('; ');
-  const avoid = areas.map(a => FILLER_AREAS[a].avoid).join('; ');
+  // Chin + jawline are treated as a single lower-face unit when both selected.
+  // Any other selected areas still append as their own clauses (full-face cases).
+  let expected, avoid;
+  if (areas.includes('chin') && areas.includes('jawline')) {
+    expected = FILLER_CHIN_JAWLINE.expected;
+    avoid = FILLER_CHIN_JAWLINE.avoid;
+    const extra = areas.filter(a => a !== 'chin' && a !== 'jawline');
+    if (extra.length) {
+      expected += '; ' + extra.map(a => FILLER_AREAS[a].expected).join('; ');
+      avoid += '; ' + extra.map(a => FILLER_AREAS[a].avoid).join('; ');
+    }
+  } else {
+    expected = areas.map(a => FILLER_AREAS[a].expected).join('; ');
+    avoid = areas.map(a => FILLER_AREAS[a].avoid).join('; ');
+  }
+
   const goal = GOALS[sel_.goal] || GOALS.natural_refinement;
   const mag = INTENSITY[sel_.intensity] || INTENSITY.natural;
 
