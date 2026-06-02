@@ -202,12 +202,12 @@
         <div class="field">
           <label>Areas — select one or more</label>
           <div class="area-grid" id="areaGrid">
-            <div class="area-chip active" data-area="chin"><span class="tick">✓</span>Chin</div>
-            <div class="area-chip" data-area="jawline"><span class="tick">✓</span>Jawline</div>
+            <div class="area-chip active" data-area="chin_jawline"><span class="tick">✓</span>Chin + Jawline</div>
             <div class="area-chip" data-area="nose"><span class="tick">✓</span>Nose</div>
             <div class="area-chip" data-area="lips"><span class="tick">✓</span>Lips</div>
             <div class="area-chip" data-area="cheeks"><span class="tick">✓</span>Cheeks</div>
             <div class="area-chip" data-area="tear_trough"><span class="tick">✓</span>Tear trough</div>
+            <div class="area-chip" data-area="nasolabial_folds"><span class="tick">✓</span>Nasolabial folds</div>
           </div>
         </div>
         <div class="field">
@@ -338,7 +338,7 @@ const FREE_REGEN_MS = 60000;
 
 const state = {
   file:null, originalDataUrl:null, resultDataUrl:null,
-  type:'filler', areas:['chin'], intensity:'natural',
+  type:'filler', areas:['chin_jawline'], intensity:'natural',
   product:'sculptra', projection:'expected', timeline:'6',
   blackBg:true, beforeDataUrl:null, blackBgCache:null,
   lastGenAt:0
@@ -512,8 +512,10 @@ function updatePhotoGuide(){
     const a = state.areas || [];
     if(a.includes('nose')){
       angle = 'Side profile (90°) or three-quarter (45°) for the nasal bridge.';
-    } else if(a.includes('jawline') || a.includes('chin')){
+    } else if(a.includes('chin_jawline') || a.includes('jawline') || a.includes('chin')){
       angle = 'Three-quarter (45°) or side profile (90°) for lower-face contour.';
+    } else if(a.includes('nasolabial_folds')){
+      angle = 'Front-facing or three-quarter (45°) for the nasolabial folds.';
     } else {
       angle = 'Front-facing or three-quarter (45°).';
     }
@@ -557,7 +559,9 @@ const AREA_TEXT = {
   nose:'the nasal bridge, smoothing only a small dorsal irregularity (liquid rhinoplasty)',
   lips:'the lips, adding only a small, conservative increase in volume while keeping the natural lip shape',
   cheeks:'the cheeks, adding only subtle midface support',
-  tear_trough:'the tear troughs, only slightly softening the under-eye hollow'
+  tear_trough:'the tear troughs, only slightly softening the under-eye hollow',
+  chin_jawline:'the chin and jawline together as one lower-face unit, adding a little chin projection and subtle mandibular definition',
+  nasolabial_folds:'the nasolabial folds, only slightly softening the fold while keeping a natural crease'
 };
 const GOAL_TEXT = {
   natural_refinement:'Keep the overall effect minimal and natural.',
@@ -610,7 +614,9 @@ const AREA_INSIGHT = {
   nose:'Smoother nasal bridge and profile',
   lips:'Subtle, balanced lip volume',
   cheeks:'Restored midface support',
-  tear_trough:'Softened under-eye hollow'
+  tear_trough:'Softened under-eye hollow',
+  chin_jawline:'Balanced lower third: chin projection with jawline definition',
+  nasolabial_folds:'Softer nasolabial fold'
 };
 const PRODUCT_INSIGHT = {
   sculptra:'Gradual, collagen-based firmness and contour',
@@ -686,7 +692,9 @@ async function runGeneration(isRegen){
     form.append('image', blob, 'patient.jpg');
     form.append('type', state.type);
     if(state.type === 'filler'){
-      form.append('areas', (state.areas.length ? state.areas : ['chin']).join(','));
+      const postAreas = (state.areas.length ? state.areas : ['chin_jawline'])
+        .flatMap(a => a === 'chin_jawline' ? ['chin','jawline'] : [a]);
+      form.append('areas', postAreas.join(','));
       form.append('goal', document.getElementById('goal').value);
       form.append('intensity', state.intensity);
     } else {
