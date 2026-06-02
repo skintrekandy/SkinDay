@@ -99,9 +99,9 @@
     .output { display:none; margin-top:34px; }
     .output.visible { display:block; }
     .result-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
-    .result-card { border:1px solid var(--border); border-radius:8px; background:var(--deep); overflow:hidden; position:relative; aspect-ratio:4/5; }
+    .result-card { border:1px solid var(--border); border-radius:8px; background:var(--deep); overflow:hidden; position:relative; aspect-ratio:4/5; touch-action:pan-y; }
     .result-card img { display:block; width:100%; height:100%; object-fit:cover; transform-origin:center center; }
-    .result-card.zoomable { cursor:grab; }
+    .result-card.zoomable { cursor:grab; touch-action:none; }
     .result-card.panning { cursor:grabbing; }
     .zoom-bar { display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:12px; }
     .zoom-btn { width:34px; height:34px; border:1px solid var(--border); background:#fff; border-radius:6px; font-size:1.2rem; line-height:1; cursor:pointer; color:var(--deep); }
@@ -746,7 +746,7 @@ function updateRegenNote(){
 }
 
 /* ───────── Synchronized zoom + pan (both panels together) ───────── */
-const zoomState = { zoom:1, panX:0, panY:0, dragging:false, sx:0, sy:0 };
+const zoomState = { zoom:1, panX:0, panY:0, dragging:false, sx:0, sy:0, pinching:false, pinchStartDist:1, pinchStartZoom:1 };
 const zoomImgs = [document.getElementById('originalResult'), document.getElementById('aiResult')];
 const zoomCards = [...document.querySelectorAll('#outputSection .result-card')];
 
@@ -764,28 +764,58 @@ function clampPan(){
   zoomState.panY = Math.max(-maxY, Math.min(maxY, zoomState.panY));
 }
 function setZoom(z){
-  zoomState.zoom = Math.max(1, Math.min(3, Math.round(z * 100) / 100));
+  zoomState.zoom = Math.max(1, Math.min(6, Math.round(z * 100) / 100));
   if(zoomState.zoom === 1){ zoomState.panX = 0; zoomState.panY = 0; }
   clampPan(); applyZoom();
 }
 function resetZoom(){ setZoom(1); }
 
-document.getElementById('zoomIn').addEventListener('click', () => setZoom(zoomState.zoom + 0.5));
-document.getElementById('zoomOut').addEventListener('click', () => setZoom(zoomState.zoom - 0.5));
+document.getElementById('zoomIn').addEventListener('click', () => setZoom(zoomState.zoom * 1.5));
+document.getElementById('zoomOut').addEventListener('click', () => setZoom(zoomState.zoom / 1.5));
 document.getElementById('zoomReset').addEventListener('click', resetZoom);
 
 function startDrag(x, y){ if(zoomState.zoom <= 1) return; zoomState.dragging = true; zoomState.sx = x - zoomState.panX; zoomState.sy = y - zoomState.panY; zoomCards.forEach(c => c.classList.add('panning')); }
 function moveDrag(x, y){ if(!zoomState.dragging) return; zoomState.panX = x - zoomState.sx; zoomState.panY = y - zoomState.sy; clampPan(); applyZoom(); }
 function endDrag(){ zoomState.dragging = false; zoomCards.forEach(c => c.classList.remove('panning')); }
 
+function touchDist(a, b){ return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY); }
+function touchMid(a, b){ return { x:(a.clientX + b.clientX)/2, y:(a.clientY + b.clientY)/2 }; }
+
 zoomCards.forEach(card => {
   card.addEventListener('mousedown', e => { startDrag(e.clientX, e.clientY); e.preventDefault(); });
-  card.addEventListener('touchstart', e => { const t = e.touches[0]; startDrag(t.clientX, t.clientY); }, { passive:true });
+  card.addEventListener('touchstart', e => {
+    if(e.touches.length === 2){
+      // Two fingers: begin pinch. Cancel any single-finger drag.
+      zoomState.dragging = false;
+      zoomState.pinching = true;
+      zoomState.pinchStartDist = touchDist(e.touches[0], e.touches[1]) || 1;
+      zoomState.pinchStartZoom = zoomState.zoom;
+      const m = touchMid(e.touches[0], e.touches[1]);
+      zoomState.sx = m.x - zoomState.panX;
+      zoomState.sy = m.y - zoomState.panY;
+    } else if(e.touches.length === 1){
+      const t = e.touches[0]; startDrag(t.clientX, t.clientY);
+    }
+  }, { passive:true });
 });
 window.addEventListener('mousemove', e => moveDrag(e.clientX, e.clientY));
-window.addEventListener('touchmove', e => { if(zoomState.dragging){ const t = e.touches[0]; moveDrag(t.clientX, t.clientY); e.preventDefault(); } }, { passive:false });
+window.addEventListener('touchmove', e => {
+  if(zoomState.pinching && e.touches.length === 2){
+    const ratio = touchDist(e.touches[0], e.touches[1]) / zoomState.pinchStartDist;
+    const m = touchMid(e.touches[0], e.touches[1]);
+    zoomState.panX = m.x - zoomState.sx;          // follow the pinch centre
+    zoomState.panY = m.y - zoomState.sy;
+    setZoom(zoomState.pinchStartZoom * ratio);     // clamps + clampPan + applyZoom
+    e.preventDefault();
+  } else if(zoomState.dragging){
+    const t = e.touches[0]; moveDrag(t.clientX, t.clientY); e.preventDefault();
+  }
+}, { passive:false });
 window.addEventListener('mouseup', endDrag);
-window.addEventListener('touchend', endDrag);
+window.addEventListener('touchend', e => {
+  if(e.touches.length < 2) zoomState.pinching = false;
+  if(e.touches.length === 0) endDrag();
+});
 
 /* ───────── Export (canvas) ───────── */
 async function drawExport(includeText=true){
