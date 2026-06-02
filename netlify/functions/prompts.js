@@ -50,6 +50,10 @@ const FILLER_AREAS = {
   tear_trough: {
     expected: 'slightly soften the under-eye hollow so the area looks a little less shadowed',
     avoid: 'do not erase the hollow completely, do not puff or overfill under the eye, do not brighten, smooth, or retouch away dark circles'
+  },
+  nasolabial_folds: {
+    expected: 'soften the nasolabial fold a little so it looks shallower and less shadowed, while keeping a natural crease',
+    avoid: 'do not erase or completely fill the fold, do not build an overfilled ridge or sausage along the fold, do not flatten the midface or change the cheek, do not alter the lips or mouth, do not smooth, brighten, or retouch the surrounding skin'
   }
 };
 
@@ -124,7 +128,7 @@ const TIMELINE = {
 // Version log so we know which prompt produced which result during tuning.
 const VERSIONS = {
   base: 'v1', chin: 'v1', jawline: 'v1', chin_jawline: 'v2', nose: 'v1', lips: 'v1',
-  cheeks: 'v1', tear_trough: 'v1', sculptra: 'v2', hdr: 'v1', timeline: 'v1'
+  cheeks: 'v1', tear_trough: 'v1', nasolabial_folds: 'v1', sculptra: 'v2', hdr: 'v1', timeline: 'v1'
 };
 
 function sanitizeNote(note) {
