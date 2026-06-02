@@ -40,8 +40,8 @@ const FILLER_AREAS = {
     avoid: 'do not narrow the nostrils, do not shorten or rotate the tip, do not reduce overall nose size'
   },
   lips: {
-    expected: 'a small, even increase in lip volume that keeps the natural lip shape and proportion',
-    avoid: 'do not evert, flatten, or shelf the lip, do not create a "duck" shape, do not over-fill, do not move the lip border or cupid\'s bow'
+    expected: 'a natural-looking increase in lip body and a slightly more defined vermilion border, with at most a small, even amount of projection, keeping the existing lip shape, the natural upper-to-lower balance, and the position of the lip border and cupid\'s bow',
+    avoid: 'do not add gloss, shine, a wet look, or any lip product; do not change the lip color, redness, or pigment, and do not add lipstick; do not over-fill, evert, shelf, or roll the lips out, and do not create a "duck" or sausage shape; do not move or reshape the vermilion border or cupid\'s bow; do not invert the natural upper-to-lower proportion; do not whiten the teeth'
   },
   cheeks: {
     expected: 'subtle midface and cheekbone support restoring a little natural fullness',
@@ -127,7 +127,7 @@ const TIMELINE = {
 
 // Version log so we know which prompt produced which result during tuning.
 const VERSIONS = {
-  base: 'v1', chin: 'v1', jawline: 'v1', chin_jawline: 'v2', nose: 'v1', lips: 'v1',
+  base: 'v1', chin: 'v1', jawline: 'v1', chin_jawline: 'v2', nose: 'v1', lips: 'v2',
   cheeks: 'v1', tear_trough: 'v1', nasolabial_folds: 'v1', sculptra: 'v2', hdr: 'v1', timeline: 'v1'
 };
 
