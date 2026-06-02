@@ -22,7 +22,8 @@
 
 const BASE_FRAMING =
   'Simulate a realistic aesthetic-medicine outcome for this consultation photo, ' +
-  'consistent with a conservative real-world result from an experienced injector.';
+  'consistent with a natural-looking, tasteful result from an experienced injector, ' +
+  'at the magnitude specified below.';
 
 // ---- Filler: per-area modules (v1) ----------------------------------------
 // expected: the real change this area produces.  avoid: the drift to block.
@@ -44,8 +45,8 @@ const FILLER_AREAS = {
     avoid: 'do not add gloss, shine, a wet look, or any lip product; do not change the lip color, redness, or pigment, and do not add lipstick; do not over-fill, evert, shelf, or roll the lips out, and do not create a "duck" or sausage shape; do not move or reshape the vermilion border or cupid\'s bow; do not invert the natural upper-to-lower proportion; do not whiten the teeth'
   },
   cheeks: {
-    expected: 'subtle midface and cheekbone support restoring a little natural fullness',
-    avoid: 'do not create high, sharp, or overfilled "pillow" cheeks, do not lift the face, do not change the under-eye or smile'
+    expected: 'restore a little midface and cheekbone volume so the cheek apex and the curve from the lower lid down to the cheek (the ogee curve) look gently fuller and better supported, with a natural, restorative apex rather than an exaggerated or sculpted cheekbone',
+    avoid: 'this is volume and contour, not a skin or youth filter: do not smooth, brighten, even out tone, or reduce pigmentation anywhere on the cheek or midface, and do not reduce apparent age; do not over-fill into round "pillow" or "chipmunk" cheeks, and do not set the apex too high or too lateral (no wind-tunnel look); do not lift, pull, or tighten the face, and do not slim the lower face or jaw to exaggerate the cheeks; do not fully erase the nasolabial fold or tear trough, and do not change the eyes, brows, or smile'
   },
   tear_trough: {
     expected: 'slightly soften the under-eye hollow so the area looks a little less shadowed',
@@ -96,9 +97,9 @@ const INTENSITY = {
 const BIOSTIM = {
   sculptra: {
     expected: {
-      conservative: 'a subtle, diffuse collagen-driven restoration of soft-tissue support: slightly softer temple and midface hollowing with a little more cheek and prejowl support, smoothing the transitions between temple, cheek, midface and jawline while keeping the existing facial proportions and apparent age',
-      expected: 'a gradual, diffuse collagen-driven restoration of support that improves the facial transition zones (temple to cheek, cheek to midface and nasolabial, marionette to jawline, lower face to neck): milder temple and midface hollowing, light cheek and prejowl support, less under-eye shadowing and better oral-commissure support, so the face reads healthier, more supported and less fatigued without looking filled; folds soften only partially, from the restored volume underneath',
-      optimistic: 'a strong but still physiologic collagen response: clearly improved soft-tissue support and smoother contour transitions across the temples, midface, prejowl and lower face, restoring lost volume and facial harmony while preserving identity, bone structure and natural aging characteristics'
+      conservative: 'the just-noticeable floor of a Sculptra response: a very subtle, diffuse collagen-driven firming of soft-tissue support, so faint that without the before photo a viewer might not be sure anything changed — a touch less temple and midface hollowing and a hint more cheek and prejowl support, with facial proportions, apparent age, and skin left unchanged',
+      expected: 'a clearly visible but still moderate Sculptra response: a diffuse collagen-driven restoration of support that a layperson would notice when comparing to the before photo, improving the transition zones (temple to cheek, cheek to midface and nasolabial, marionette to jawline, lower face to neck) so the face reads healthier, more supported and less fatigued — unmistakably the same person at the same age, with folds softened only partially from the volume restored underneath, never looking filled or retouched',
+      optimistic: 'the strong end of a realistic Sculptra response (the upper 20–25% of responders): a diffuse collagen-driven improvement in soft-tissue support that is obvious at a glance, with clearly smoother contour transitions and restored harmony across the temples, midface, prejowl and lower face — the most a good responder physiologically reaches, where the extra strength shows as more contour support, never as added filler-like volume, smoothed skin, or a younger-looking face; identity, bone structure, and natural aging are preserved'
     },
     avoid: 'this is collagen-driven SUPPORT, not filler SHAPE and not a beauty filter: do not add filler-like or localized volume, do not sharpen the jawline or create a V-shaped face, do not enlarge the cheeks or change facial shape; do not lift, pull, or tighten like a facelift; soften folds only partially and do not eliminate wrinkles or fully erase nasolabial folds, marionette lines, or under-eye hollows; do not smooth skin texture, brighten, or change skin surface quality; do not make the patient look significantly younger. Any firmer look or better light reflection must come from the restored support underneath, never from retouching the skin'
   },
@@ -127,8 +128,8 @@ const TIMELINE = {
 
 // Version log so we know which prompt produced which result during tuning.
 const VERSIONS = {
-  base: 'v1', chin: 'v1', jawline: 'v1', chin_jawline: 'v2', nose: 'v1', lips: 'v2',
-  cheeks: 'v1', tear_trough: 'v1', nasolabial_folds: 'v1', sculptra: 'v2', hdr: 'v1', timeline: 'v1'
+  base: 'v2', chin: 'v1', jawline: 'v1', chin_jawline: 'v2', nose: 'v1', lips: 'v2',
+  cheeks: 'v2', tear_trough: 'v1', nasolabial_folds: 'v1', sculptra: 'v3', hdr: 'v1', timeline: 'v1'
 };
 
 function sanitizeNote(note) {
