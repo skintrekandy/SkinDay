@@ -117,6 +117,16 @@
     .insights li { font-size:.87rem; color:var(--deep); display:flex; gap:10px; align-items:flex-start; line-height:1.45; }
     .insights li::before { content:'✓'; color:var(--rose); font-weight:600; flex-shrink:0; }
     .insights-note { font-size:.74rem; color:var(--muted); margin-top:14px; padding-top:12px; border-top:1px solid var(--border); line-height:1.5; }
+    /* ── Insights: SVG annotation overlay on the simulated image ── */
+    .anno-svg { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:3; }
+    .anno-svg .anno-el { opacity:0; transition:opacity .55s ease; }
+    .anno-svg.show .anno-el { opacity:1; }
+    .anno-svg.show .anno-region { opacity:.20; }
+    .anno-arrow { stroke:var(--rose); stroke-width:1.5; fill:none; }
+    .anno-contour { stroke:var(--cream); stroke-width:1.4; fill:none; stroke-linecap:round; filter:drop-shadow(0 0 .6px rgba(0,0,0,.65)); }
+    .anno-contour.dash { stroke:rgba(250,247,242,.85); stroke-dasharray:2 2; stroke-width:1.1; }
+    .anno-region { fill:var(--gold); stroke:var(--gold); stroke-width:.4; }
+    .anno-label { font-family:'DM Sans',sans-serif; font-size:3.6px; font-weight:600; fill:var(--cream); paint-order:stroke; stroke:rgba(28,23,20,.72); stroke-width:.7px; stroke-linejoin:round; }
     canvas#exportCanvas { display:none; }
     .small { font-size:.74rem; color:var(--muted); line-height:1.5; }
     footer { background:var(--deep); padding:42px 5% 30px; margin-top:70px; color:var(--muted); text-align:center; font-size:.82rem; }
@@ -306,14 +316,9 @@
     </div>
     <div class="result-grid">
       <div class="result-card"><img id="originalResult" alt="Original photo" /><div class="result-tag">Original</div></div>
-      <div class="result-card"><img id="aiResult" alt="AI simulated treatment preview" /><div class="result-tag sim" id="simTag">Simulated — AI Visualization</div></div>
+      <div class="result-card"><img id="aiResult" alt="AI simulated treatment preview" /><svg class="anno-svg" id="annoSvg" viewBox="0 0 100 125" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg><div class="result-tag sim" id="simTag">Simulated — AI Visualization</div></div>
     </div>
     <div class="small" style="margin-top:10px;">AI-generated visualization for consultation purposes only. Not a prediction of actual treatment results. Results vary by anatomy, product, technique, healing, and clinical judgment.</div>
-    <div class="insights" id="insightsPanel" style="display:none;">
-      <div class="insights-title">What this visualization is showing</div>
-      <ul id="insightsList"></ul>
-      <div class="insights-note">Illustrative only. Actual outcome depends on the patient's anatomy, product selection, technique, and healing.</div>
-    </div>
     <canvas id="exportCanvas"></canvas>
     <div class="regen-note" id="regenNote"></div>
     <div class="btn-row">
@@ -640,26 +645,88 @@ function buildInsights(){
   return out;
 }
 
-function renderInsights(){
-  const list = document.getElementById('insightsList');
-  list.innerHTML = '';
-  (state.insights || []).forEach(text => {
-    const li = document.createElement('li');
-    li.textContent = text;
-    list.appendChild(li);
-  });
-}
+/* ───────── Insights: SVG annotation overlay on the simulated image ─────────
+   v1: hard-coded, treatment-specific coordinates in a normalized 100 x 125 space
+   (matches the 4:5 result card). Illustrative only; assumes a roughly centred
+   face. Landmark-driven precision is Phase 2 and will reuse the compositing mesh. */
+const ANNO_DEFS =
+  '<defs><marker id="annoArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">' +
+  '<path d="M0,0 L10,5 L0,10 z" fill="#C8725A"></path></marker></defs>';
 
+// primitives — coords in 0..100 (x) by 0..125 (y)
+function aArrow(x1,y1,x2,y2){ return `<line class="anno-el anno-arrow" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" marker-end="url(#annoArrow)"></line>`; }
+function aPath(d,dashed){ return `<path class="anno-el anno-contour${dashed?' dash':''}" d="${d}"></path>`; }
+function aRegion(cx,cy,rx,ry){ return `<ellipse class="anno-el anno-region" cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}"></ellipse>`; }
+function aLabel(x,y,text,anchor){ return `<text class="anno-el anno-label" x="${x}" y="${y}" text-anchor="${anchor||'middle'}">${text}</text>`; }
+
+const ANNOTATIONS = {
+  chin_jawline: [
+    aPath('M31,69 Q34,84 50,90 Q66,84 69,69', false),   // mandibular border
+    aRegion(39,80,4,3), aRegion(61,80,4,3),             // prejowl support
+    aPath('M44,87 Q50,89 56,87', true),                 // original chin (ghost)
+    aArrow(50,82,50,93),                                // chin projection
+    aLabel(50,99,'Improved chin projection'),
+    aLabel(74,66,'Jawline definition','start')
+  ],
+  lips: [
+    aPath('M41,71 Q50,68 59,71 Q50,76 41,71', false),
+    aArrow(64,71,60,71),
+    aLabel(50,82,'Added lip volume & definition')
+  ],
+  nose: [
+    aPath('M49,46 L51,62', false),
+    aArrow(44,54,49,54),
+    aLabel(32,54,'Smoother nasal profile','end')
+  ],
+  cheeks: [
+    aRegion(37,57,6,5), aRegion(63,57,6,5),
+    aLabel(50,48,'Restored midface support')
+  ],
+  tear_trough: [
+    aPath('M34,47 Q40,50 45,47', false), aPath('M55,47 Q60,50 66,47', false),
+    aLabel(50,41,'Softened under-eye hollow')
+  ],
+  nasolabial_folds: [
+    aPath('M41,60 Q39,68 42,73', false), aPath('M59,60 Q61,68 58,73', false),
+    aLabel(50,79,'Softened nasolabial folds')
+  ],
+  sculptra: [
+    aRegion(29,42,6,7), aRegion(71,42,6,7),             // temples
+    aRegion(36,57,7,6), aRegion(64,57,7,6),             // midface
+    aRegion(40,80,5,4), aRegion(60,80,5,4),             // prejowl
+    aLabel(50,29,'Collagen-supported areas'),
+    aLabel(20,42,'Temple','end'), aLabel(50,64,'Midface'), aLabel(50,88,'Prejowl')
+  ]
+};
+ANNOTATIONS.hdr = ANNOTATIONS.sculptra;
+
+const annoSvg = document.getElementById('annoSvg');
 const insightsBtn = document.getElementById('insightsBtn');
-const insightsPanel = document.getElementById('insightsPanel');
+
+function annoKeys(){
+  if(state.type === 'biostim') return [state.product || 'sculptra'];
+  return (state.areas && state.areas.length) ? state.areas : ['chin_jawline'];
+}
+function renderAnnotations(){
+  const parts = [];
+  annoKeys().forEach(k => { (ANNOTATIONS[k] || []).forEach(p => parts.push(p)); });
+  // stagger the fade-in so the annotations draw in rather than pop
+  const staggered = parts.map((p, idx) =>
+    p.replace('class="anno-el', `style="transition-delay:${(idx * 0.07).toFixed(2)}s" class="anno-el`)
+  ).join('');
+  annoSvg.innerHTML = ANNO_DEFS + staggered;
+}
+function hideAnnotations(){
+  annoSvg.classList.remove('show');
+  insightsBtn.textContent = 'Show insights';
+}
 insightsBtn.addEventListener('click', () => {
-  const showing = insightsPanel.style.display !== 'none';
-  if(showing){
-    insightsPanel.style.display = 'none';
-    insightsBtn.textContent = 'Show insights';
+  if(annoSvg.classList.contains('show')){
+    hideAnnotations();
   } else {
-    renderInsights();
-    insightsPanel.style.display = 'block';
+    setZoom(1);                                  // overlay is authored at 1x; reset so it lines up
+    renderAnnotations();
+    requestAnimationFrame(() => annoSvg.classList.add('show'));
     insightsBtn.textContent = 'Hide insights';
   }
 });
@@ -724,9 +791,7 @@ async function runGeneration(isRegen){
     document.getElementById('aiResult').src = state.resultDataUrl;
     resetZoom();
     document.getElementById('simTag').textContent = 'Simulated — AI Visualization' + (state.type === 'biostim' ? ' · ' + (state.timeline === '12' ? '12 months' : state.timeline + ' months') + ' · ' + state.projection : '');
-    state.insights = buildInsights();
-    insightsPanel.style.display = 'none';
-    insightsBtn.textContent = 'Show insights';
+    hideAnnotations();
     document.getElementById('outputSection').classList.add('visible');
     document.getElementById('outputSection').scrollIntoView({ behavior:'smooth', block:'start' });
     setStatus('Preview generated.', 'ok');
@@ -763,6 +828,7 @@ function applyZoom(){
   zoomImgs.forEach(img => { img.style.transform = t; });
   document.getElementById('zoomLabel').textContent = Math.round(zoomState.zoom * 100) + '%';
   zoomCards.forEach(c => c.classList.toggle('zoomable', zoomState.zoom > 1));
+  if(zoomState.zoom > 1 && annoSvg.classList.contains('show')) hideAnnotations();
 }
 function clampPan(){
   const card = zoomCards[0]; if(!card) return;
@@ -903,9 +969,7 @@ document.getElementById('newBtn').addEventListener('click', () => {
   zone.classList.remove('filled');
   consentChk.checked = false; consentBox.classList.remove('checked');
   document.getElementById('customNote').value = '';
-  state.insights = null;
-  insightsPanel.style.display = 'none';
-  insightsBtn.textContent = 'Show insights';
+  hideAnnotations();
   resetZoom();
   document.getElementById('outputSection').classList.remove('visible');
   updatePhotoGuide();
