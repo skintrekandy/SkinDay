@@ -773,6 +773,35 @@ compareCard.addEventListener('pointerup', () => { cmpDragging = false; });
 compareCard.addEventListener('pointercancel', () => { cmpDragging = false; });
 
 /* ───────── Generate ───────── */
+// Poll the background job until it finishes. The slow gpt-image-1 call now runs
+// in a Netlify background function (15-min budget), so this replaces the single
+// synchronous request that used to 504.
+async function pollForResult(jobId, key, isRegen){
+  const startedAt = Date.now();
+  const MAX_MS = 4 * 60 * 1000;   // hard stop after 4 minutes
+  const INTERVAL_MS = 3000;
+  while(true){
+    await new Promise(r => setTimeout(r, INTERVAL_MS));
+    const secs = Math.round((Date.now() - startedAt) / 1000);
+    setStatus((isRegen ? 'Re-generating' : 'Generating AI preview') + '… ' + secs + 's. Runs in the background; keep this tab open.', 'spin');
+
+    let res;
+    try { res = await fetch('/.netlify/functions/get-visualization?jobId=' + encodeURIComponent(jobId), { headers:{ 'x-beta-key':key } }); }
+    catch { continue; }   // transient network blip; keep polling
+    if(res.status === 401){ sessionStorage.removeItem(KEY_STORE); location.reload(); throw new Error('Session expired.'); }
+
+    let data; try { data = JSON.parse(await res.text()); } catch { data = null; }
+    if(data){
+      if(data.state === 'done' && data.image) return data.image;
+      if(data.state === 'error') throw new Error(data.error || 'Generation failed in the background.');
+      // 'pending' (or status not written yet): keep polling
+    }
+    if(Date.now() - startedAt > MAX_MS){
+      throw new Error('The simulation is taking unusually long (over 4 minutes). It may have failed — please try again.');
+    }
+  }
+}
+
 async function runGeneration(isRegen){
   if(!state.file) return;
   const key = sessionStorage.getItem(KEY_STORE) || '';
@@ -816,22 +845,22 @@ async function runGeneration(isRegen){
     // and ignores this when 'type' is present. Kept only for deploy-window safety.
     form.append('prompt', buildPrompt());
 
-    const response = await fetch('/.netlify/functions/generate-visualization', {
+    // Async generation: stash the job (start), then poll until the background
+    // worker finishes. Removes the synchronous Netlify timeout (the 504s).
+    const jobId = (window.crypto && crypto.randomUUID && crypto.randomUUID()) ||
+                  (Date.now() + '-' + Math.random().toString(36).slice(2));
+    form.append('jobId', jobId);
+
+    const startRes = await fetch('/.netlify/functions/start-visualization', {
       method:'POST', headers:{ 'x-beta-key':key }, body:form
     });
-    if(response.status === 401){ sessionStorage.removeItem(KEY_STORE); location.reload(); return; }
-    const raw = await response.text();
-    let data;
-    try { data = JSON.parse(raw); }
-    catch {
-      const timedOut = response.status === 504 || response.status === 502;
-      throw new Error(timedOut
-        ? 'The image took longer to generate than the server allows (HTTP ' + response.status + '), so the request timed out before the AI finished. Please try again. Heavier settings (Optimistic, 12 months) take the longest to generate.'
-        : 'The server did not return a valid response (HTTP ' + response.status + '). Please try again.');
+    if(startRes.status === 401){ sessionStorage.removeItem(KEY_STORE); location.reload(); return; }
+    if(!startRes.ok){
+      let e; try { e = JSON.parse(await startRes.text()); } catch {}
+      throw new Error((e && e.error) || ('Could not start generation (HTTP ' + startRes.status + ').'));
     }
-    if(!response.ok) throw new Error(data.error || 'Generation failed');
 
-    state.resultDataUrl = data.image;
+    state.resultDataUrl = await pollForResult(jobId, key, isRegen);
     state.lastGenAt = Date.now();
     document.getElementById('originalResult').src = state.beforeDataUrl || state.originalDataUrl;
     document.getElementById('aiResult').src = state.resultDataUrl;
