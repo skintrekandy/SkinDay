@@ -10,7 +10,7 @@
 // Required packages: openai, @netlify/blobs   (npm i openai @netlify/blobs)
 
 const OpenAI = require('openai');
-const { getStore } = require('@netlify/blobs');
+const { getStore, connectLambda } = require('@netlify/blobs');
 const { buildCorePrompt } = require('./prompts');
 
 // === VERBATIM from generate-visualization.js. Do not diverge this copy in isolation. ===
@@ -39,6 +39,7 @@ function checkKey(event) {
 }
 
 exports.handler = async (event) => {
+  connectLambda(event); // wire Blobs context into the classic handler signature
   let jobId;
   try { jobId = JSON.parse(event.body || '{}').jobId; } catch (e) { /* ignore */ }
   if (!jobId) return { statusCode: 400 };

@@ -7,7 +7,7 @@
 // Required env: BETA_ACCESS_PASSWORD
 // Required package: @netlify/blobs   (npm i @netlify/blobs)
 
-const { getStore } = require('@netlify/blobs');
+const { getStore, connectLambda } = require('@netlify/blobs');
 
 function checkKey(event) {
   const expected = process.env.BETA_ACCESS_PASSWORD;
@@ -19,6 +19,7 @@ function checkKey(event) {
 const json = (obj) => ({ statusCode: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(obj) });
 
 exports.handler = async (event) => {
+  connectLambda(event); // wire Blobs context into the classic handler signature
   if (!checkKey(event)) {
     return { statusCode: 401, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Invalid beta access password', code: 'INVALID_KEY' }) };
   }

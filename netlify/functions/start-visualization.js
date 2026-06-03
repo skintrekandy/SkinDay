@@ -12,7 +12,7 @@
 
 const Busboy = require('busboy');
 const { Readable } = require('stream');
-const { getStore } = require('@netlify/blobs');
+const { getStore, connectLambda } = require('@netlify/blobs');
 
 function checkKey(event) {
   const expected = process.env.BETA_ACCESS_PASSWORD;
@@ -48,6 +48,7 @@ function parseMultipart(event) {
 const FIELD_KEYS = ['type', 'areas', 'goal', 'intensity', 'product', 'projection', 'timeline', 'note', 'prompt'];
 
 exports.handler = async (event) => {
+  connectLambda(event); // wire Blobs context into the classic handler signature
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: JSON.stringify({ error: 'Method not allowed' }) };
   }
