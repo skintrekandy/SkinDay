@@ -65,7 +65,7 @@ const FILLER_AREAS = {
 const FILLER_CHIN_JAWLINE = {
   expected: 'a subtly restructured lower third treating the chin and jawline as one unit: ' +
             'a little more chin projection and gentle definition along the mandibular border with slight prejowl support, ' +
-            'so the lower face looks better balanced and more defined and the chin-jaw-neck transition reads cleaner where visible',
+            'so the lower-third contour reads more supported and the chin-jaw-neck line more continuous where visible, the change coming only from added projection and structural support',
   avoid: 'do not lengthen the chin or make it pointed, jutting, or witch-like; ' +
          'do not create a sharp, angular, or "superhero" jawline; ' +
          'do not slim, hollow, or carve the cheeks to fake jaw definition; ' +
@@ -79,7 +79,7 @@ const GOALS = {
   facial_balancing:   'Aim only for slightly improved proportion between the treated areas.',
   masculinization:    'Bias the treated areas toward a slightly more angular, defined contour.',
   feminization:       'Bias the treated areas toward a slightly softer contour.',
-  rejuvenation:       'Aim for a slightly more rested look produced ONLY by the selected filler areas; do not change skin texture, tone, or apparent age.'
+  rejuvenation:       'Aim only for the structural support the selected filler areas add; do not change skin texture, tone, under-eye shadows, or apparent age.'
 };
 
 // ---- Filler: intensity = magnitude anchor (v1) ----------------------------
@@ -121,15 +121,15 @@ const PROJECTION = {
 // ---- Biostimulation: timeline = how far the collagen build has progressed (v1)
 // Layered on top of projection: projection = how strong a responder, timeline = how far along.
 const TIMELINE = {
-  '3':  'Timeframe: about 3 months in. Collagen is still building, so show an early, partial, deliberately incomplete result, clearly less than the final outcome.',
+  '3':  'Timeframe: about 3 months in, very early in the collagen response. Show only a faint, first hint of the change, much subtler than the eventual mature result and easy to miss without the before photo. Most of the improvement has not developed yet, so keep it minimal.',
   '6':  'Timeframe: about 6 months in. Show a clearly developed result as the collagen response matures.',
   '12': 'Timeframe: about 12 months in. Show the fuller, settled result after the collagen response has largely completed.'
 };
 
 // Version log so we know which prompt produced which result during tuning.
 const VERSIONS = {
-  base: 'v2', chin: 'v1', jawline: 'v1', chin_jawline: 'v2', nose: 'v1', lips: 'v2',
-  cheeks: 'v2', tear_trough: 'v1', nasolabial_folds: 'v1', sculptra: 'v3', hdr: 'v1', timeline: 'v1'
+  base: 'v3', chin: 'v1', jawline: 'v1', chin_jawline: 'v3', nose: 'v1', lips: 'v2',
+  cheeks: 'v2', tear_trough: 'v1', nasolabial_folds: 'v1', sculptra: 'v3', hdr: 'v1', timeline: 'v2'
 };
 
 function sanitizeNote(note) {
@@ -187,7 +187,8 @@ function buildCorePrompt(sel) {
   const mag = INTENSITY[sel_.intensity] || INTENSITY.natural;
 
   return `${BASE_FRAMING} Make ONLY this change: add hyaluronic acid filler to achieve ${expected}. ` +
-         `Avoid: ${avoid}. ${goal} ${mag}${note}`;
+         `Avoid: ${avoid}. ${goal} ${mag} ` +
+         `Judge the result by facial contour alone: the added projection and support must be visible in the silhouette, while skin appearance stays exactly as photographed.${note}`;
 }
 
 module.exports = { buildCorePrompt, VERSIONS };
