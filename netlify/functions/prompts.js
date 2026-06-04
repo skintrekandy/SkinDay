@@ -101,7 +101,18 @@ const BIOSTIM = {
       expected: 'a clearly visible but still moderate Sculptra response: a diffuse collagen-driven restoration of support that a layperson would notice when comparing to the before photo, improving the transition zones (temple to cheek, cheek to midface and nasolabial, marionette to jawline, lower face to neck) so the face reads healthier, more supported and less fatigued — unmistakably the same person at the same age, with folds softened only partially from the volume restored underneath, never looking filled or retouched',
       optimistic: 'the strong end of a realistic Sculptra response (the upper 20–25% of responders): a diffuse collagen-driven improvement in soft-tissue support that is obvious at a glance, with clearly smoother contour transitions and restored harmony across the temples, midface, prejowl and lower face — the most a good responder physiologically reaches, where the extra strength shows as more contour support, never as added filler-like volume, smoothed skin, or a younger-looking face; identity, bone structure, and natural aging are preserved'
     },
-    avoid: 'this is collagen-driven SUPPORT, not filler SHAPE and not a beauty filter: do not add filler-like or localized volume, do not sharpen the jawline or create a V-shaped face, do not enlarge the cheeks or change facial shape; do not lift, pull, or tighten like a facelift; soften folds only partially and do not eliminate wrinkles or fully erase nasolabial folds, marionette lines, or under-eye hollows; do not smooth skin texture, brighten, or change skin surface quality; do not make the patient look significantly younger. Any firmer look or better light reflection must come from the restored support underneath, never from retouching the skin'
+    avoid: 'this is collagen-driven SUPPORT, not filler SHAPE and not a beauty filter, so keep every feature outside soft-tissue volume identical to the original. ' +
+           'Eyebrows: do not darken, thicken, reshape, raise, or sharpen the brows — match their original shape, density, color, and position exactly. ' +
+           'Pigment and tone: do not even out, lighten, or brighten skin, and do not fade or remove melasma, sun spots, redness, or freckles — match the original skin tone. ' +
+           'Texture: do not smooth, blur, or retouch skin — keep pores, fine lines, and surface texture. ' +
+           'Eyes: do not widen or open the eyes, do not lift the lid, and do not retouch or erase under-eye hollows, bags, or dark circles — only the upper cheek may show subtle volume-driven support. ' +
+           'Lips: do not change lip color, fullness, shape, definition, liner, or gloss. ' +
+           'Grooming: do not add or enhance makeup, lashes, or hair grooming. ' +
+           'Age: do not reduce apparent age — forehead lines, crow\'s feet, perioral lines, and the neck stay unchanged unless diffuse support naturally softens a fold. ' +
+           'Symmetry: do not correct facial symmetry beyond the volume effect. ' +
+           'Shape: do not add filler-like or localized volume, do not sharpen the jawline or create a V-shaped face, do not enlarge the cheeks or change facial shape, do not lift, pull, or tighten like a facelift; soften folds only partially and never fully erase nasolabial folds, marionette lines, or under-eye hollows. ' +
+           'Projection scaling: the ONLY thing that changes between Conservative, Expected, and Optimistic is the amount of diffuse subcutaneous soft-tissue support in the temples, midface, and prejowl — more support means more restored volume and softer folds, nothing else. Do not increase brightness, smoothness, symmetry, eye openness, brow definition, lip color, grooming, or apparent youth at any level. ' +
+           'Any firmer look or better light reflection must come from the restored support underneath, never from retouching the skin'
   },
   hdr: {
     expected: 'a slight, diffuse firming and improved support of the treated area (hyperdilute Radiesse)',
@@ -129,7 +140,7 @@ const TIMELINE = {
 // Version log so we know which prompt produced which result during tuning.
 const VERSIONS = {
   base: 'v3', chin: 'v1', jawline: 'v1', chin_jawline: 'v3', nose: 'v1', lips: 'v2',
-  cheeks: 'v2', tear_trough: 'v1', nasolabial_folds: 'v1', sculptra: 'v3', hdr: 'v1', timeline: 'v2'
+  cheeks: 'v2', tear_trough: 'v1', nasolabial_folds: 'v1', sculptra: 'v4', hdr: 'v1', timeline: 'v2'
 };
 
 function sanitizeNote(note) {
