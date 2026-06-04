@@ -104,14 +104,16 @@ const BIOSTIM = {
     avoid: 'this is collagen-driven SUPPORT, not filler SHAPE and not a beauty filter, so keep every feature outside soft-tissue volume identical to the original. ' +
            'Eyebrows: do not darken, thicken, reshape, raise, or sharpen the brows — match their original shape, density, color, and position exactly. ' +
            'Pigment and tone: do not even out, lighten, or brighten skin, and do not fade or remove melasma, sun spots, redness, or freckles — match the original skin tone. ' +
-           'Texture: do not smooth, blur, or retouch skin — keep pores, fine lines, and surface texture. ' +
-           'Eyes: do not widen or open the eyes, do not lift the lid, and do not retouch or erase under-eye hollows, bags, or dark circles — only the upper cheek may show subtle volume-driven support. ' +
+           'Texture: do not smooth skin, do not reduce pore visibility, do not reduce fine surface texture, do not apply any cosmetic-retouching or beauty-filter effect; skin texture must remain substantially unchanged. ' +
+           'Eyes: do not enlarge the eyes, do not alter eye scale or shape, do not increase iris or scleral visibility, do not raise or alter eyelid position, and do not make the eyes look larger, wider, brighter, or more youthful. ' +
+           'Under-eye: do not retouch or erase under-eye hollows, bags, or dark circles — only the upper cheek may show subtle volume-driven support. ' +
            'Lips: do not change lip color, fullness, shape, definition, liner, or gloss. ' +
            'Grooming: do not add or enhance makeup, lashes, or hair grooming. ' +
            'Age: do not reduce apparent age — forehead lines, crow\'s feet, perioral lines, and the neck stay unchanged unless diffuse support naturally softens a fold. ' +
            'Symmetry: do not correct facial symmetry beyond the volume effect. ' +
            'Shape: do not add filler-like or localized volume, do not sharpen the jawline or create a V-shaped face, do not enlarge the cheeks or change facial shape, do not lift, pull, or tighten like a facelift; soften folds only partially and never fully erase nasolabial folds, marionette lines, or under-eye hollows. ' +
            'Projection scaling: the ONLY thing that changes between Conservative, Expected, and Optimistic is the amount of diffuse subcutaneous soft-tissue support in the temples, midface, and prejowl — more support means more restored volume and softer folds, nothing else. Do not increase brightness, smoothness, symmetry, eye openness, brow definition, lip color, grooming, or apparent youth at any level. ' +
+           'Volume-deficit floor: if the face already shows good structural support with minimal temple, midface, and lower-face volume loss, the result should stay very close to the original — do not invent improvements just to produce a visible change. When little deficit exists, the correct output may be nearly indistinguishable from the original. ' +
            'Any firmer look or better light reflection must come from the restored support underneath, never from retouching the skin'
   },
   hdr: {
@@ -140,7 +142,7 @@ const TIMELINE = {
 // Version log so we know which prompt produced which result during tuning.
 const VERSIONS = {
   base: 'v3', chin: 'v1', jawline: 'v1', chin_jawline: 'v3', nose: 'v1', lips: 'v2',
-  cheeks: 'v2', tear_trough: 'v1', nasolabial_folds: 'v1', sculptra: 'v4', hdr: 'v1', timeline: 'v2'
+  cheeks: 'v2', tear_trough: 'v1', nasolabial_folds: 'v1', sculptra: 'v5', hdr: 'v1', timeline: 'v2'
 };
 
 function sanitizeNote(note) {
