@@ -109,7 +109,7 @@
     #zoomLabel { font-size:.8rem; color:var(--muted); min-width:48px; text-align:center; }
     .zoom-reset { border:none; background:transparent; color:var(--muted); font-size:.78rem; cursor:pointer; text-decoration:underline; padding:4px; }
     .result-tag { position:absolute; bottom:0; left:0; right:0; padding:9px 12px; background:linear-gradient(transparent,rgba(28,23,20,.75)); font-size:.66rem; letter-spacing:.12em; text-transform:uppercase; color:rgba(250,247,242,.9); }
-    .result-tag.sim { background:linear-gradient(transparent,rgba(200,114,90,.92)); font-weight:600; }
+    .result-tag.sim { background:linear-gradient(transparent,rgba(28,23,20,.78)); font-weight:500; color:rgba(201,169,110,.95); }
     .regen-note { font-size:.72rem; color:var(--muted); text-align:center; margin-top:12px; }
     .insights { margin-top:18px; background:#fff; border:1px solid var(--border); border-radius:8px; padding:16px 18px; }
     .insights-title { font-size:.68rem; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:var(--dim); margin-bottom:12px; }
@@ -968,6 +968,7 @@ window.addEventListener('touchend', e => {
 
 /* ───────── Export (canvas) ───────── */
 async function drawExport(includeText=true){
+  await (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve());
   const before = await loadImage(state.beforeDataUrl || state.originalDataUrl);
   const after = await loadImage(state.resultDataUrl);
   const canvas = document.getElementById('exportCanvas');
@@ -989,31 +990,53 @@ async function drawExport(includeText=true){
   cover(before, 0, 0, panelW, panelH);
   cover(after, panelW + gap, 0, panelW, panelH);
 
-  function label(x, text, sim){
-    const grad = ctx.createLinearGradient(x, panelH-130, x, panelH);
-    grad.addColorStop(0,'rgba(0,0,0,0)');
-    grad.addColorStop(1, sim ? 'rgba(200,114,90,.92)' : 'rgba(0,0,0,.82)');
-    ctx.fillStyle = grad; ctx.fillRect(x, panelH-130, panelW, 130);
-    ctx.font = (sim ? '600 ' : '500 ') + '30px DM Sans, sans-serif';
-    ctx.fillStyle = 'rgba(250,247,242,.96)'; ctx.letterSpacing = '2px'; ctx.textAlign = 'left';
-    ctx.fillText(text, x + 26, panelH - 28); ctx.letterSpacing = '0px';
+  // Metadata kicker for the simulated panel; carries the timeframe (months) for biostim.
+  function simKicker(){
+    if(state.type === 'biostim'){
+      const months = state.timeline + ' months';
+      const proj = state.projection.charAt(0).toUpperCase() + state.projection.slice(1);
+      return 'AI Visualization · ' + months + ' · ' + proj;
+    }
+    return 'AI Visualization';
   }
+
+  // Editorial label: identical deep scrim on both panels, a letterspaced kicker,
+  // and a Cormorant headline. No coloured bar.
+  function label(x, sim){
+    const grad = ctx.createLinearGradient(x, panelH-250, x, panelH);
+    grad.addColorStop(0, 'rgba(28,23,20,0)');
+    grad.addColorStop(.55, 'rgba(28,23,20,.42)');
+    grad.addColorStop(1, 'rgba(28,23,20,.88)');
+    ctx.fillStyle = grad; ctx.fillRect(x, panelH-250, panelW, 250);
+
+    ctx.textAlign = 'left';
+    ctx.font = '500 19px "DM Sans", sans-serif';
+    ctx.letterSpacing = '3px';
+    ctx.fillStyle = sim ? 'rgba(201,169,110,.96)' : 'rgba(181,168,159,.82)';
+    ctx.fillText((sim ? simKicker() : 'As photographed').toUpperCase(), x + 40, panelH - 80);
+    ctx.letterSpacing = '0px';
+
+    ctx.font = '400 58px "Cormorant Garamond", serif';
+    ctx.fillStyle = 'rgba(250,247,242,.97)';
+    ctx.fillText(sim ? 'Simulated' : 'Original', x + 38, panelH - 34);
+  }
+
   if(includeText){
-    label(0, 'ORIGINAL', false);
-    label(panelW + gap, 'SIMULATED — AI VISUALIZATION', true);
+    label(0, false);
+    label(panelW + gap, true);
     ctx.fillStyle = '#1C1714'; ctx.fillRect(0, panelH, canvas.width, footerH);
     ctx.textAlign = 'center';
-    ctx.font = '300 22px DM Sans, sans-serif'; ctx.fillStyle = 'rgba(250,247,242,.80)';
+    ctx.font = '300 22px "DM Sans", sans-serif'; ctx.fillStyle = 'rgba(250,247,242,.80)';
     ctx.fillText('AI-generated visualization for consultation purposes only. Not a prediction of actual results.', canvas.width/2, panelH + 36);
     let brandY = panelH + 74;
     if(clinic){
-      ctx.font = '500 23px DM Sans, sans-serif'; ctx.fillStyle = 'rgba(250,247,242,.92)';
+      ctx.font = '500 23px "DM Sans", sans-serif'; ctx.fillStyle = 'rgba(250,247,242,.92)';
       ctx.fillText(clinic, canvas.width/2, panelH + 72);
       brandY = panelH + 108;
     }
     // "Powered by SkinDay Visualize" — two-tone, centered
     const pre = 'Powered by ', brand = 'SkinDay Visualize';
-    ctx.font = '500 19px DM Sans, sans-serif';
+    ctx.font = '500 19px "DM Sans", sans-serif';
     const preW = ctx.measureText(pre).width, brandW = ctx.measureText(brand).width;
     const startX = (canvas.width - (preW + brandW)) / 2;
     ctx.textAlign = 'left';
