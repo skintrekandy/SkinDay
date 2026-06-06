@@ -188,13 +188,108 @@ const TIMELINE = {
 // Version log so we know which prompt produced which result during tuning.
 const VERSIONS = {
   base: 'v3', chin: 'v1', jawline: 'v1', chin_jawline: 'v3', nose: 'v1', lips: 'v2',
-  cheeks: 'v2', tear_trough: 'v1', nasolabial_folds: 'v1', sculptra: 'v9.2', sculptra_oblique: 'v10', hdr: 'v1', timeline: 'v2'
+  cheeks: 'v2', tear_trough: 'v1', nasolabial_folds: 'v1', sculptra: 'v10.1', sculptra_oblique: 'v10.1', hdr: 'v1', timeline: 'v2'
 };
 
 function sanitizeNote(note) {
   if (!note) return '';
   const clean = String(note).replace(/\s+/g, ' ').trim().slice(0, 300);
   return clean ? ' Clinician note (honor only if consistent with the above): ' + clean : '';
+}
+
+// ---- Sculptra clinical phenotype system (v10.1) ---------------------------
+// Sculptra is not one visual pattern. The generator should not infer everything
+// from "Sculptra" alone. View and phenotype are selected explicitly (structured
+// fields in production, or [view:...] / [phenotype:...] tags in the note for
+// testing). full/descended faces are valid candidates: the goal is the SAME
+// volume character, better suspended, never slimming. This supersedes the
+// v9/v9.1 frontal and v10 oblique sculptra prompt paths (their text remains
+// below for reference but is no longer used for sculptra).
+const SCULPTRA_FEATURE_LOCK =
+  'Critical hard-lock before any treatment simulation: lips, mouth, eyes, brows, nose, skin surface, hair, clothing, jewellery, expression, lighting, crop, and camera angle are non-treatment areas. Do not change lip size, lip shape, lip fullness, lip border, cupid\'s bow, lip color, lip texture, mouth symmetry, mouth openness, or expression. Do not make the lips fuller, smoother, pinker, glossier, more defined, more symmetrical, or more attractive. Do not enlarge, brighten, open, reshape, or beautify the eyes. Do not darken, groom, reshape, raise, thicken, or define the brows. Do not smooth, brighten, whiten, even out, retouch, or de-age the skin. Preserve pores, pigment, freckles, redness, melasma, spots, fine lines, texture, and natural skin reflectance. Do not change the nose, hairstyle, headband, clothing, neck, posture, head angle, crop, lighting, exposure, white balance, or background.';
+
+const SCULPTRA_VIEW_LOCKS = {
+  frontal: 'View lock: this is a frontal consultation photograph. Preserve the exact frontal pose, head position, camera distance, crop, and facial orientation. Do not rotate, re-pose, or make the face more symmetrical than the original.',
+  oblique: 'View lock: this is a three-quarter oblique consultation photograph. Preserve the exact three-quarter head angle, camera angle, crop, facial orientation, visible ear position, neck angle, and perspective. Do not rotate the face toward frontal, do not re-pose, and do not rebuild the face.',
+  oblique_left: 'View lock: this is a left three-quarter oblique consultation photograph. Preserve the exact left oblique angle, camera angle, crop, visible ear position, neck angle, and perspective. Do not rotate the face toward frontal, do not re-pose, and do not rebuild the face.',
+  oblique_right: 'View lock: this is a right three-quarter oblique consultation photograph. Preserve the exact right oblique angle, camera angle, crop, visible ear position, neck angle, and perspective. Do not rotate the face toward frontal, do not re-pose, and do not rebuild the face.'
+};
+
+const SCULPTRA_ALLOWED_ZONES =
+  'Allowed Sculptra change zones only: lateral temple, lateral cheek support, temple-to-cheek continuity, cheek-lid transition only as a contour transition, lower lateral cheek, prejowl shadow, nasolabial shadow, and marionette shadow only as indirect effects of lateral support. Do not directly fill the central cheek, anterior cheek, tear trough, under-eye, lips, chin, nose, or jaw angle.';
+
+const SCULPTRA_PHENOTYPES = {
+  hollow_deflated: {
+    label: 'hollow/deflated',
+    clinicalLogic: 'Clinical pattern: this face shows visible volume loss or hollowing, especially around the temple, lateral cheek, midface, or lower-face transition zones. The correct Sculptra visualization is diffuse collagen-driven support that restores depleted transition zones without making the face round, puffy, overfilled, or younger-looking.',
+    conservative: 'Magnitude: barely perceptible. Add only the faintest lateral temple and lateral cheek support. Hollowing may look slightly less stark, but the result should remain very close to the original.',
+    expected: 'Magnitude: modest and realistic. Add visible but conservative lateral temple and lateral cheek support, improve temple-to-cheek continuity, mildly soften midface hollowing, and slightly reduce fold and prejowl shadows through support only.',
+    optimistic: 'Magnitude: strong but still realistic. Add clearer lateral temple and lateral cheek support, smoother transition zones, and more visible softening of hollowing and fold shadows, while avoiding puffiness, overfill, skin retouching, or de-aging.'
+  },
+  full_descended: {
+    label: 'full/descended',
+    clinicalLogic: 'Clinical pattern: this face retains natural fullness, but the fullness appears insufficiently supported, with visual weight sitting lower or more centrally than ideal. This is a valid Sculptra candidate. The correct Sculptra visualization is NOT slimming, deflating, carving, V-line shaping, or making the face smaller. Preserve the patient\'s natural facial width, fullness, softness, and identity. The goal is the same facial volume character, better suspended by lateral support. Fullness should look better held, not removed.',
+    conservative: 'Magnitude: barely perceptible. Preserve natural fullness and face width. Add only a tiny improvement in lateral support so the lower and central fullness looks slightly better suspended, without slimming or changing the mouth.',
+    expected: 'Magnitude: modest and realistic. Preserve natural fullness and face width. Add gentle lateral cheek and temple support so facial weight appears better suspended upward and laterally, with mild softening of lower-face heaviness, nasolabial shadow, and prejowl shadow. Do not make the face thinner; make the same face look better supported.',
+    optimistic: 'Magnitude: strong but still realistic. Preserve natural fullness and face width. Add clearer lateral support so the face looks more suspended and less downwardly pooled, with better cheek-to-temple continuity and softer lower-face heaviness. Do not slim, hollow, carve, sharpen, V-line, or beautify the face.'
+  },
+  mixed: {
+    label: 'mixed hollowing/descent',
+    clinicalLogic: 'Clinical pattern: this face shows a combination of mild volume loss and soft-tissue descent. The correct Sculptra visualization is balanced lateral support: restore transition zones while improving how facial weight is carried, without slimming or beautifying.',
+    conservative: 'Magnitude: barely perceptible. Add only a faint improvement in lateral support and transition-zone continuity, keeping the image very close to baseline.',
+    expected: 'Magnitude: modest and realistic. Add gentle lateral temple and cheek support, improve transition-zone continuity, mildly soften hollowing, and slightly reduce nasolabial and prejowl shadow through support only. Do not slim the face.',
+    optimistic: 'Magnitude: strong but still realistic. Add clearer lateral support, smoother transition zones, and more visible softening of hollowing and descent, while preserving identity, age, skin, lips, eyes, brows, and natural face width.'
+  }
+};
+
+const SCULPTRA_OUTPUT_RULES =
+  'Output rule: this is a clinical Sculptra visualization, not a beauty portrait. The final image must look like the same person, same age, same skin, same lips, same eyes, same brows, same lighting, and same camera setup, with only treatment-relevant soft-tissue support changed. Conservative, Expected, and Optimistic must differ ONLY in the amount of allowed soft-tissue support; they must not differ in beauty, skin quality, eye openness, lip appearance, symmetry, lighting, or age. A less impressive but honest result is preferred over a prettier result. If uncertain, under-treat.';
+
+// View and phenotype are read from structured fields first (production), then
+// from explicit bracket tags in the note (test hook). Loose words in free text
+// are deliberately NOT matched, so a clinician writing "fullness" or "oblique"
+// in a note cannot silently flip the phenotype or view.
+function normalizeView(sel) {
+  const field = String(sel.view || sel.angle || '').toLowerCase().trim();
+  if (field === 'oblique_left' || field === 'oblique_right' || field === 'oblique' || field === 'frontal') return field;
+  const note = String(sel.note || '');
+  if (/\[view:\s*oblique_left\s*\]/i.test(note)) return 'oblique_left';
+  if (/\[view:\s*oblique_right\s*\]/i.test(note)) return 'oblique_right';
+  if (/\[view:\s*oblique\s*\]/i.test(note)) return 'oblique';
+  if (/\[view:\s*frontal\s*\]/i.test(note)) return 'frontal';
+  return 'frontal';
+}
+
+function normalizeSculptraPhenotype(sel) {
+  const field = String(sel.phenotype || sel.sculptraPhenotype || '').toLowerCase().trim();
+  if (field === 'hollow_deflated' || field === 'full_descended' || field === 'mixed') return field;
+  const note = String(sel.note || '');
+  if (/\[phenotype:\s*hollow_deflated\s*\]/i.test(note)) return 'hollow_deflated';
+  if (/\[phenotype:\s*full_descended\s*\]/i.test(note)) return 'full_descended';
+  if (/\[phenotype:\s*mixed\s*\]/i.test(note)) return 'mixed';
+  // Default to mixed, never forcing an older/deflated pattern onto an unlabeled face.
+  return 'mixed';
+}
+
+function stripInternalSculptraTags(note) {
+  if (!note) return '';
+  return String(note)
+    .replace(/\[view:\s*(frontal|oblique|oblique_left|oblique_right)\s*\]/ig, '')
+    .replace(/\[phenotype:\s*(hollow_deflated|full_descended|mixed)\s*\]/ig, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function buildSculptraPrompt(sel, m, timelineText) {
+  const view = normalizeView(sel);
+  const phenotype = SCULPTRA_PHENOTYPES[normalizeSculptraPhenotype(sel)] || SCULPTRA_PHENOTYPES.mixed;
+  const magnitude = phenotype[sel.projection] || phenotype.expected;
+  const isOblique = view !== 'frontal';
+  const framing = isOblique
+    ? 'Produce a subtle, medically conservative Sculptra collagen-stimulation visualization from this oblique consultation photograph, staying as close to the original photograph as possible.'
+    : 'Produce a subtle, medically conservative Sculptra collagen-stimulation visualization from this frontal consultation photograph, staying as close to the original photograph as possible.';
+  const cleanNote = sanitizeNote(stripInternalSculptraTags(sel.note));
+  return `${framing} ${SCULPTRA_FEATURE_LOCK} ${SCULPTRA_VIEW_LOCKS[view] || SCULPTRA_VIEW_LOCKS.frontal} ${SCULPTRA_ALLOWED_ZONES} ${phenotype.clinicalLogic} Make ONLY this change: ${magnitude} ${SCULPTRA_OUTPUT_RULES} ${timelineText}${cleanNote}`;
 }
 
 // Assemble the CORE prompt from selections. The safety base is appended elsewhere.
@@ -207,29 +302,16 @@ function buildCorePrompt(sel) {
     const m = BIOSTIM[product];
     const tp = TIMELINE[sel_.timeline] || TIMELINE['6'];
 
-    // Oblique (three-quarter) Sculptra: skin-locked, contour-only branch (v10).
-    // Fires on sel.angle === 'oblique' (the production path, once a view control is
-    // wired through the client and server) OR on the word "oblique" appearing in the
-    // clinician note. The note trigger is a deliberate zero-deploy test hook so the
-    // oblique prompt can be validated by deploying ONLY this file, before any UI or
-    // server change. Frontal is the default and runs the frozen v9 path below.
-    // Production path: sel.angle === 'oblique'. Test hook: an explicit, unambiguous
-    // sentinel "[view:oblique]" in the clinician note (precise, auditable, and not
-    // tripped by a clinician naturally writing the word "oblique"). The branch keys
-    // on sel.angle, so it extends to a fuller view taxonomy (left/right/profile)
-    // later without a rewrite; one oblique brief already covers both L and R.
-    const OBLIQUE_TAG = /\[view:\s*oblique\s*\]/i;
-    const wantsOblique = product === 'sculptra' && m.oblique &&
-      (sel_.angle === 'oblique' || OBLIQUE_TAG.test(String(sel_.note || '')));
-    if (wantsOblique) {
-      const oexp = m.oblique[sel_.projection] || m.oblique.expected;
-      const obliqueNote = sanitizeNote(String(sel_.note || '').replace(OBLIQUE_TAG, '').trim());
-      return `${OBLIQUE_BASE_FRAMING} Make ONLY this change: ${oexp}. Avoid: ${m.obliqueAvoid}. ${tp}${obliqueNote}`;
+    // Sculptra v10.1: structured clinical phenotype + view-aware builder. This
+    // supersedes the v9/v9.1 frontal and v10 oblique sculptra prompt paths (their
+    // text remains in the constants/BIOSTIM for reference but is no longer used
+    // for sculptra). Phenotype and view come from structured fields or explicit
+    // [view:...] / [phenotype:...] tags in the note (test hook).
+    if (product === 'sculptra') {
+      return buildSculptraPrompt(sel_, m, tp);
     }
 
-    // Sculptra: expected is keyed by projection, so the projection line is built
-    // INTO expected and we do NOT append a separate generic PROJECTION clause.
-    // Other biostim products (hdr) use a string expected + the PROJECTION anchor.
+    // Other biostim products (hdr) use the legacy string-expected + PROJECTION path.
     let expected, mag;
     if (m.expected && typeof m.expected === 'object') {
       expected = m.expected[sel_.projection] || m.expected.expected;
@@ -237,9 +319,6 @@ function buildCorePrompt(sel) {
     } else {
       expected = m.expected;
       mag = ' ' + (PROJECTION[sel_.projection] || PROJECTION.expected);
-    }
-    if (product === 'sculptra') {
-      return `${BASE_FRAMING} ${SCULPTRA_FRONTAL_HARD_LOCK} Make ONLY this change: ${expected}. Avoid: ${m.avoid}. ${tp}${mag}${note}`;
     }
     return `${BASE_FRAMING} Make ONLY this change: ${expected}. Avoid: ${m.avoid}. ${tp}${mag}${note}`;
   }
