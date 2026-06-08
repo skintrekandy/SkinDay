@@ -267,14 +267,14 @@
           </div>
         </div>
         <div class="field">
-          <label>Projection — generate each to show the range</label>
+          <label>Result strength</label>
           <div class="pill-grid three" id="biostimProjection">
-            <button class="pill" data-projection="conservative" type="button"><strong>Conservative</strong></button>
+            <button class="pill" data-projection="conservative" type="button"><strong>Subtle</strong></button>
             <button class="pill active" data-projection="expected" type="button"><strong>Expected</strong></button>
-            <button class="pill" data-projection="optimistic" type="button"><strong>Optimistic</strong></button>
+            <button class="pill" data-projection="optimistic" type="button"><strong>Strong</strong></button>
           </div>
         </div>
-        <div class="privacy-note"><span>ℹ️</span><span>Results build over months and vary by patient. Generate across the range to set honest expectations.</span></div>
+        <div class="privacy-note"><span>ℹ️</span><span>One clinical visualization, shown at the selected strength. Default is Expected; regenerate to preview a softer or stronger result.</span></div>
       </div>
 
       <div class="field" style="margin-top:14px;">
@@ -646,10 +646,14 @@ const PRODUCT_INSIGHT = {
   hdr:'Diffuse skin firming and improved quality'
 };
 const PROJECTION_INSIGHT = {
-  conservative:'Shown at the conservative end of the response range',
-  expected:'Shown at the typical response most patients see',
-  optimistic:'Shown at the optimistic end for a strong responder'
+  conservative:'Shown at a subtle strength, the lower end of the response',
+  expected:'Shown at the expected strength, the typical response most patients see',
+  optimistic:'Shown at a strong strength, the upper end for a strong responder'
 };
+// Clinician-facing label for each wire value. The wire keeps conservative/
+// expected/optimistic because buildSculptraPrompt routes on them; the UI shows
+// Subtle/Expected/Strong.
+const STRENGTH_LABEL = { conservative:'Subtle', expected:'Expected', optimistic:'Strong' };
 
 function buildInsights(){
   const out = [];
@@ -828,6 +832,24 @@ async function runGeneration(isRegen){
     const form = new FormData();
     form.append('image', blob, 'patient.jpg');
     form.append('type', state.type);
+
+    // Sculptra hybrid mask: build a treatment-region mask and post it so the AI
+    // edit is confined to it (temple, lateral cheek, prejowl, folds) and cannot
+    // beautify outside it. Generated at the same 1024px cap as the posted image
+    // so dimensions match. Fail-safe: any error (no face, model load) posts no
+    // mask, which is the current full-image behavior. Sculptra only.
+    if(state.type === 'biostim' && state.product === 'sculptra'){
+      try {
+        setStatus('Preparing treatment mask… (first run downloads a small model).', 'spin');
+        const beforeImg = await loadImage(beforeDataUrl);
+        const { buildSculptraMaskBlob } = await import('./sculptra-mask.js');
+        const maskBlob = await buildSculptraMaskBlob(beforeImg, { maxDim: 1024, scope: 'full' });
+        if(maskBlob) form.append('mask', maskBlob, 'mask.png');
+      } catch(err) {
+        console.error('Sculptra mask generation failed; proceeding without a mask.', err);
+      }
+    }
+
     if(state.type === 'filler'){
       const postAreas = (state.areas.length ? state.areas : ['chin_jawline'])
         .flatMap(a => a === 'chin_jawline' ? ['chin','jawline'] : [a]);
@@ -865,7 +887,7 @@ async function runGeneration(isRegen){
     document.getElementById('originalResult').src = state.beforeDataUrl || state.originalDataUrl;
     document.getElementById('aiResult').src = state.resultDataUrl;
     resetZoom();
-    document.getElementById('simTag').textContent = 'Simulated — AI Visualization' + (state.type === 'biostim' ? ' · ' + (state.timeline === '12' ? '12 months' : state.timeline + ' months') + ' · ' + state.projection : '');
+    document.getElementById('simTag').textContent = 'Simulated · AI Visualization' + (state.type === 'biostim' ? ' · ' + (state.timeline === '12' ? '12 months' : state.timeline + ' months') + ' · ' + (STRENGTH_LABEL[state.projection] || 'Expected') : '');
     hideAnnotations();
     document.getElementById('outputSection').classList.add('visible');
     document.getElementById('outputSection').scrollIntoView({ behavior:'smooth', block:'start' });
@@ -889,7 +911,7 @@ function updateRegenNote(){
     note.textContent = `Free re-generate for ${left}s — adjust the treatment and run again at no extra cost.`;
     setTimeout(updateRegenNote, 1000);
   } else {
-    note.textContent = 'Re-generate to try a different treatment, area, or projection.';
+    note.textContent = 'Re-generate to try a different treatment, area, or strength.';
   }
 }
 
@@ -994,7 +1016,7 @@ async function drawExport(includeText=true){
   function simKicker(){
     if(state.type === 'biostim'){
       const months = state.timeline + ' months';
-      const proj = state.projection.charAt(0).toUpperCase() + state.projection.slice(1);
+      const proj = STRENGTH_LABEL[state.projection] || 'Expected';
       return 'AI Visualization · ' + months + ' · ' + proj;
     }
     return 'AI Visualization';
