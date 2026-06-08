@@ -7,6 +7,11 @@
 // where it has a 15-minute budget instead of the 10-26s synchronous limit.
 // This is what removes the 504s.
 //
+// HYBRID MASKING (added): an optional `mask` file (a PNG whose transparent areas
+// are the treated region) is stashed alongside the image. The worker passes it
+// to images.edit so the model can only change the masked region. Optional and
+// backward compatible: no mask posted = today's exact full-image behavior.
+//
 // Required env: BETA_ACCESS_PASSWORD
 // Required packages: busboy, @netlify/blobs   (npm i busboy @netlify/blobs)
 
@@ -75,11 +80,15 @@ exports.handler = async (event) => {
 
     // Full payload for the worker (image as base64). Kept separate from the
     // small status object so the poller never has to download the image.
+    // The optional mask rides along in the same payload.
+    const maskFile = files.mask;
     await store.setJSON(jobId + ':job', {
       params,
       imageB64: imageFile.buffer.toString('base64'),
       mime: imageFile.mimeType,
-      filename: imageFile.filename
+      filename: imageFile.filename,
+      maskB64: maskFile ? maskFile.buffer.toString('base64') : null,
+      maskMime: maskFile ? maskFile.mimeType : null
     });
     await store.setJSON(jobId + ':status', { state: 'pending', createdAt: Date.now() });
 

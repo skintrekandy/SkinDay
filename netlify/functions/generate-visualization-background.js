@@ -6,6 +6,14 @@
 // from Netlify Blobs, runs the SAME gpt-image-1 edit as the original
 // synchronous function, and writes the result back to Blobs for the poller.
 //
+// HYBRID MASKING (added): if the job carries a `maskB64`, it is passed to
+// images.edit as the edit mask. gpt-image-1 then edits ONLY the transparent
+// areas of the mask and leaves everything else pixel-identical to the original.
+// This is what physically prevents the global beautification leak: with a mask
+// the model cannot smooth skin, soften the under-eye, or slim the jaw outside
+// the treated region, no matter what the prompt does. No mask = today's exact
+// full-image behavior (backward compatible).
+//
 // Required env: OPENAI_API_KEY, BETA_ACCESS_PASSWORD
 // Required packages: openai, @netlify/blobs   (npm i openai @netlify/blobs)
 
@@ -23,13 +31,13 @@ const SERVER_SAFETY =
   "camera framing and crop, and lighting and background. The result must read as the SAME photograph with only the treated area subtly adjusted. " +
   "Do not add text, labels, or watermarks.";
 
-// ⚠️ DRIFT FLAG — READ BEFORE RELYING ON SCULPTRA:
-// The generate-visualization.js you sent assembles `core + SERVER_SAFETY` for ALL
-// types, with no biostim branch. The believable Sculptra results depend on
-// BIOSTIM_SAFETY (M2), which permits partial volume-driven fold softening that
-// SERVER_SAFETY forbids. If that branch should be live, define BIOSTIM_SAFETY here
-// and change the `prompt` line below to:
-//   const prompt = core + (f.type === 'biostim' ? BIOSTIM_SAFETY : SERVER_SAFETY);
+// DRIFT FLAG (resolved below): SERVER_SAFETY is still applied to filler and hdr,
+// but NOT to Sculptra by default. For a masked Sculptra run the mask contains the
+// folds, so the model is allowed to soften them spatially, while the SERVER_SAFETY
+// text said "do NOT soften wrinkles" and "do not slim the face or jaw" - which also
+// fights the v10.1 lateral-lift design. buildSculptraPrompt is Sculptra's own, more
+// specific safety base, so the generic tail is dropped for it. The [safety:server]
+// note hook re-appends it for staging A/B. See the prompt-assembly block below.
 
 function checkKey(event) {
   const expected = process.env.BETA_ACCESS_PASSWORD;
@@ -57,22 +65,46 @@ exports.handler = async (event) => {
     if (!job) { await fail('Job payload not found (it may have expired).', 'not_found'); return { statusCode: 200 }; }
 
     const f = job.params || {};
+
+    // SERVER_SAFETY policy. Filler and hdr keep the generic safety tail. Sculptra
+    // no longer gets it by default: buildSculptraPrompt (v10.1) is its own, more
+    // specific safety base, and the generic "do NOT soften wrinkles / do not slim
+    // the face or jaw" tail fights the intended indirect fold softening and
+    // lateral lift. A/B hook for staging: putting [safety:server] in the note
+    // forces the old append back on for a Sculptra comparison run. The hook is
+    // stripped before the prompt is built so it never reaches the model.
+    const rawNote = (f.note != null) ? String(f.note) : '';
+    const forceServerSafety = /\[safety:server\]/i.test(rawNote);
+    const cleanNote = rawNote.replace(/\[safety:(server|none)\]/ig, '').replace(/\s{2,}/g, ' ').trim();
+
+    const product = (f.type === 'biostim')
+      ? (['sculptra', 'hdr'].includes(f.product) ? f.product : 'sculptra')
+      : null;
+    const isSculptra = product === 'sculptra';
+
     let core;
     if (f.type) {
       core = buildCorePrompt({
         type: f.type, areas: f.areas, goal: f.goal, intensity: f.intensity,
-        product: f.product, projection: f.projection, timeline: f.timeline, note: f.note
+        product: f.product, projection: f.projection, timeline: f.timeline, note: cleanNote
       });
     } else {
       core = f.prompt || 'Create a subtle, realistic aesthetic treatment visualization.';
     }
-    const prompt = core + SERVER_SAFETY;   // ← mirror of your file. See DRIFT FLAG above.
+
+    // Sculptra: append only when the A/B hook asks for it. Everything else: always.
+    const appendServerSafety = isSculptra ? forceServerSafety : true;
+    const prompt = core + (appendServerSafety ? SERVER_SAFETY : '');
 
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const buffer = Buffer.from(job.imageB64, 'base64');
     const file = await OpenAI.toFile(buffer, job.filename || 'image.png', { type: job.mime || 'image/png' });
 
-    const result = await client.images.edit({
+    // Optional edit mask. The client sends one only for masked treatments
+    // (Sculptra today). gpt-image-1 edits the TRANSPARENT areas of this PNG and
+    // preserves the rest. Must match the input image dimensions, which the
+    // client guarantees by rendering the mask at the same resized size.
+    const editParams = {
       model: 'gpt-image-1',
       image: file,
       prompt,
@@ -80,7 +112,13 @@ exports.handler = async (event) => {
       input_fidelity: 'high',
       output_format: 'jpeg',
       output_compression: 85
-    });
+    };
+    if (job.maskB64) {
+      const maskBuf = Buffer.from(job.maskB64, 'base64');
+      editParams.mask = await OpenAI.toFile(maskBuf, 'mask.png', { type: job.maskMime || 'image/png' });
+    }
+
+    const result = await client.images.edit(editParams);
 
     const b64 = result.data && result.data[0] && result.data[0].b64_json;
     if (!b64) throw new Error('No image returned by model');
