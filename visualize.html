@@ -884,6 +884,24 @@ async function runGeneration(isRegen){
 
     state.resultDataUrl = await pollForResult(jobId, key, isRegen);
     state.lastGenAt = Date.now();
+
+    // Sculptra deterministic guarantee: composite the original pixels back over
+    // everything outside the treatment region, so any global skin smoothing,
+    // under-eye softening, or complexion evening the model did simply cannot
+    // survive; only the temple/cheek/fold volume from inside the mask remains.
+    // Fail-safe: on any error keep the raw AI result. Sculptra only.
+    if(state.type === 'biostim' && state.product === 'sculptra'){
+      try {
+        const beforeImg = await loadImage(state.beforeDataUrl || state.originalDataUrl);
+        const aiImg = await loadImage(state.resultDataUrl);
+        const { compositeSculptra } = await import('./sculptra-mask.js');
+        const composited = await compositeSculptra(beforeImg, aiImg, { scope: 'full' });
+        if(composited) state.resultDataUrl = composited;
+      } catch(err) {
+        console.error('Sculptra composite failed; showing raw AI result.', err);
+      }
+    }
+
     document.getElementById('originalResult').src = state.beforeDataUrl || state.originalDataUrl;
     document.getElementById('aiResult').src = state.resultDataUrl;
     resetZoom();

@@ -91,6 +91,18 @@ async function ensureModel(){
   return _landmarker;
 }
 
+// Detect once per image element and memoize, so mask generation and the later
+// composite do not run the model twice on the same photo.
+let _lastDetectEl = null, _lastDetect = null;
+async function detectFace(imgEl){
+  if(_lastDetectEl === imgEl && _lastDetect) return _lastDetect;
+  const landmarker = await ensureModel();
+  const res = landmarker.detect(imgEl);
+  const out = (res && res.faceLandmarks && res.faceLandmarks.length) ? res.faceLandmarks[0] : null;
+  _lastDetectEl = imgEl; _lastDetect = out;
+  return out;
+}
+
 function buildFoldSegs(lm, p152, dirUp, dirOut, faceH, W){
   const segs=[];
   for(const s of ["r","l"]){
@@ -230,16 +242,15 @@ export async function buildSculptraMaskBlob(imgEl, opts){
   const maxDim = o.maxDim || 1024;
   const scope = o.scope || 'full';
 
-  const landmarker = await ensureModel();
-  const res = landmarker.detect(imgEl);
-  if(!res || !res.faceLandmarks || !res.faceLandmarks.length) return null;
+  const landmarks = await detectFace(imgEl);
+  if(!landmarks) return null;
 
   // target dims: identical formula to the client's resizeToUpload
   const scale = Math.min(1, maxDim / Math.max(imgEl.naturalWidth, imgEl.naturalHeight));
   const w = Math.round(imgEl.naturalWidth * scale);
   const h = Math.round(imgEl.naturalHeight * scale);
 
-  const m = buildTreatAlpha(res.faceLandmarks[0], w, h, scope);
+  const m = buildTreatAlpha(landmarks, w, h, scope);
 
   // rasterize: treated region transparent (alpha 0), protected opaque. RGB is
   // ignored by the edit endpoint; we paint white in the treated region so the
@@ -258,3 +269,42 @@ export async function buildSculptraMaskBlob(imgEl, opts){
 }
 
 export default buildSculptraMaskBlob;
+
+/**
+ * Composite the AI result against the original so that ONLY the treatment region
+ * carries the AI change and everything else is the original photo, pixel for
+ * pixel. This is the deterministic guarantee against the model beautifying skin,
+ * under-eye, complexion, or background: those pixels become the original again.
+ * @param {HTMLImageElement} beforeImg  the original photo that was sent
+ * @param {HTMLImageElement} aiImg      the AI-edited result
+ * @param {object} [opts] { scope:'full'|'temple' }
+ * @returns {Promise<string|null>} a JPEG data URL, or null if no face (caller keeps the raw AI)
+ */
+export async function compositeSculptra(beforeImg, aiImg, opts){
+  const scope = (opts && opts.scope) || 'full';
+  const landmarks = await detectFace(beforeImg);
+  if(!landmarks) return null;
+
+  // Composite at the AI result's pixel size; the AI was produced from the same
+  // framing, so the original scaled to these dims aligns with it.
+  const w = aiImg.naturalWidth, h = aiImg.naturalHeight;
+  const m = buildTreatAlpha(landmarks, w, h, scope);
+
+  const c = document.createElement("canvas"); c.width = w; c.height = h;
+  const cx = c.getContext("2d");
+
+  cx.drawImage(beforeImg, 0, 0, w, h);
+  const before = cx.getImageData(0, 0, w, h), b = before.data;
+  cx.drawImage(aiImg, 0, 0, w, h);
+  const ai = cx.getImageData(0, 0, w, h), a = ai.data;
+
+  for(let i=0,p=0;i<m.length;i++,p+=4){
+    const al = Math.min(1, m[i]);
+    a[p]   = a[p]*al   + b[p]*(1-al);
+    a[p+1] = a[p+1]*al + b[p+1]*(1-al);
+    a[p+2] = a[p+2]*al + b[p+2]*(1-al);
+    a[p+3] = 255;
+  }
+  cx.putImageData(ai, 0, 0);
+  return c.toDataURL("image/jpeg", 0.92);
+}
