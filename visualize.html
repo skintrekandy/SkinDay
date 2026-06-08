@@ -359,6 +359,11 @@
 const KEY_STORE = 'sd_visualize_key';
 const FREE_REGEN_MS = 60000;
 
+// Bump this whenever sculptra-mask.js changes, so the browser fetches the new
+// module instead of a stale disk-cached copy. Both imports below use it, so they
+// stay the same module instance (shared face-detection cache).
+const MASK_MODULE_VERSION = '2';
+
 const state = {
   file:null, originalDataUrl:null, resultDataUrl:null,
   type:'filler', areas:['chin_jawline'], intensity:'natural',
@@ -842,7 +847,7 @@ async function runGeneration(isRegen){
       try {
         setStatus('Preparing treatment mask… (first run downloads a small model).', 'spin');
         const beforeImg = await loadImage(beforeDataUrl);
-        const { buildSculptraMaskBlob } = await import('./sculptra-mask.js');
+        const { buildSculptraMaskBlob } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
         const maskBlob = await buildSculptraMaskBlob(beforeImg, { maxDim: 1024, scope: 'full' });
         if(maskBlob) form.append('mask', maskBlob, 'mask.png');
       } catch(err) {
@@ -894,7 +899,7 @@ async function runGeneration(isRegen){
       try {
         const beforeImg = await loadImage(state.beforeDataUrl || state.originalDataUrl);
         const aiImg = await loadImage(state.resultDataUrl);
-        const { compositeSculptra } = await import('./sculptra-mask.js');
+        const { compositeSculptra } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
         const composited = await compositeSculptra(beforeImg, aiImg, { scope: 'full' });
         if(composited) state.resultDataUrl = composited;
       } catch(err) {
