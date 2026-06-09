@@ -305,9 +305,9 @@
     <div id="intensityWrap" style="display:none;margin-top:14px;">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
         <label for="intensitySlider" style="font-size:13px;letter-spacing:.04em;text-transform:uppercase;opacity:.75;">Treatment intensity</label>
-        <span id="intensityValue" style="font-family:'Cormorant Garamond',serif;font-size:22px;">70%</span>
+        <span id="intensityValue" style="font-family:'Cormorant Garamond',serif;font-size:22px;">50%</span>
       </div>
-      <input type="range" id="intensitySlider" min="0" max="100" step="1" value="70" style="width:100%;margin-top:8px;accent-color:#C8725A;" />
+      <input type="range" id="intensitySlider" min="0" max="100" step="1" value="50" style="width:100%;margin-top:8px;accent-color:#C8725A;" />
       <div style="display:flex;justify-content:space-between;font-size:.68rem;letter-spacing:.04em;text-transform:uppercase;opacity:.6;margin-top:4px;">
         <span>Subtle</span><span>Expected</span><span>Enhanced</span>
       </div>
@@ -348,14 +348,14 @@ const FREE_REGEN_MS = 60000;
 // Bump this whenever sculptra-mask.js changes, so the browser fetches the new
 // module instead of a stale disk-cached copy. Both imports below use it, so they
 // stay the same module instance (shared face-detection cache).
-const MASK_MODULE_VERSION = '10';
+const MASK_MODULE_VERSION = '11';
 
 const state = {
   file:null, originalDataUrl:null, resultDataUrl:null,
   type:'filler', areas:['chin_jawline'], intensity:'enhanced', sex:'female',
   product:'sculptra', projection:'optimistic', timeline:'6',
   blackBg:true, beforeDataUrl:null, blackBgCache:null,
-  lastGenAt:0, intensityApply:null, intensityPct:70
+  lastGenAt:0, intensityApply:null, intensityPct:50
 };
 
 /* ───────── Lock screen ───────── */
@@ -1052,10 +1052,10 @@ async function drawExport(includeText=true){
   function simKicker(){
     if(state.type === 'biostim'){
       const months = state.timeline + ' months';
-      return 'AI Visualization · ' + months + ' · ' + (state.intensityPct || 70) + '% intensity';
+      return 'AI Visualization · ' + months + ' · ' + (state.intensityPct || 50) + '% intensity';
     }
     if(state.type === 'filler' && state.intensityApply){
-      return 'AI Visualization · ' + (state.intensityPct || 70) + '% intensity';
+      return 'AI Visualization · ' + (state.intensityPct || 50) + '% intensity';
     }
     return 'AI Visualization';
   }

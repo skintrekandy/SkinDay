@@ -79,6 +79,110 @@ function blurAlpha(m,w,h,r){
   return out;
 }
 
+// ---- M5.1 texture-restore composite ---------------------------------------
+// gpt-image-1's in-mask fill is low-frequency: it lands the broad volume and
+// contour but loses the skin's high-frequency texture and chroma, so at high
+// intensity the treated region reads soft. The fix keeps the AI's LOW band (the
+// volume) and restores the ORIGINAL's HIGH band (real pores, fine texture,
+// chroma micro-detail). A moved-edge guard detects where the AI shifted the
+// silhouette (chin tip, jaw) versus merely inflated stationary skin, and falls
+// back to the AI's own high band only at those moved edges, so the old outline
+// does not ghost through the new one.
+//
+// Everything collapses to out = original + alpha * delta, with delta precomputed
+// once, so the live intensity slider stays a single multiply-add per channel
+// (no extra cost vs the plain composite, and no regeneration).
+//
+// Tuning knobs (shared by HA chin/jaw and Sculptra; safe defaults below):
+//   TEX_RADIUS_FRAC  frequency cutoff as a fraction of face width W. Smaller =
+//                    restores finer detail only (more AI softness survives);
+//                    larger = restores coarser detail (can start re-imposing the
+//                    original's medium shading and fight the AI volume).
+//   TEX_STRENGTH     0..1 how much original texture to swap in. 1 = full. Drop
+//                    toward ~0.85 only if the result looks over-crisp/HDR.
+//   GUARD_EDGE_LO/HI local low-band-difference variation (luma levels) where the
+//                    moved-edge guard begins / fully falls back to AI detail.
+//                    Raise both if a real moved silhouette still shows AI soft-
+//                    ness; lower them if an old edge ghosts through.
+const TEX_RADIUS_FRAC  = 0.016;
+const TEX_BLUR_PASSES  = 2;     // box passes -> approx gaussian
+const TEX_STRENGTH     = 1.0;
+const GUARD_RADIUS_FRAC= 0.016;
+const GUARD_EDGE_LO    = 12;
+const GUARD_EDGE_HI    = 40;
+
+// repeated separable box blur on a Float32 plane -> approximate gaussian
+function blurPlane(src,w,h,r,passes){
+  if(r<=0) return src.slice();
+  let cur=src; const n=Math.max(1,passes|0);
+  for(let k=0;k<n;k++) cur=blurAlpha(cur,w,h,r);
+  return cur;
+}
+
+// Estimate face width W in pixels at (w,h) from the landmark set, using the same
+// basis as buildTreatAlpha (zygion-to-zygion projected on the lateral axis), so
+// the texture-restore radius scales with the face the same way the mask does.
+function faceWidthPx(L,w,h){
+  const a=L[10],bp=L[152],r=L[234],l=L[454];
+  if(!a||!bp||!r||!l) return 0.4*w;
+  const ux=(a.x-bp.x)*w, uy=(a.y-bp.y)*h; const ln=Math.hypot(ux,uy)||1;
+  const nx=ux/ln, ny=uy/ln; const ox=-ny, oy=nx;
+  const dx=(l.x-r.x)*w, dy=(l.y-r.y)*h;
+  return Math.abs(dx*ox+dy*oy)||(0.4*w);
+}
+
+// Precompute the per-channel delta planes for the texture-restore composite.
+// Given the original (b) and AI (a0) pixels as interleaved RGBA byte buffers and
+// the face width W, returns {dR,dG,dB} such that, for any in-mask alpha al,
+//   out_channel = original_channel + al * d_channel
+// yields: low band = lerp(originalLow, aiLow, al)  (volume dials with the slider)
+//         high band = original texture, except at AI-moved edges where it falls
+//                     back to the AI's own high band (no ghost of the old outline).
+// At al = 0 this is exactly the original; outside the mask al = 0 by construction.
+function buildTextureDelta(b,a0,w,h,W,opts){
+  const N=w*h;
+  const r       = Math.max(2, Math.round((opts.texRadiusFrac   ?? TEX_RADIUS_FRAC )*W));
+  const gr      = Math.max(2, Math.round((opts.guardRadiusFrac ?? GUARD_RADIUS_FRAC)*W));
+  const passes  = opts.texPasses ?? TEX_BLUR_PASSES;
+  const strength= (opts.texStrength==null ? TEX_STRENGTH : Math.max(0,Math.min(1,opts.texStrength)));
+  const lo      = opts.guardLo ?? GUARD_EDGE_LO;
+  const hi      = opts.guardHi ?? GUARD_EDGE_HI;
+
+  const bR=new Float32Array(N),bG=new Float32Array(N),bB=new Float32Array(N);
+  const aR=new Float32Array(N),aG=new Float32Array(N),aB=new Float32Array(N);
+  for(let i=0,p=0;i<N;i++,p+=4){
+    bR[i]=b[p];bG[i]=b[p+1];bB[i]=b[p+2];
+    aR[i]=a0[p];aG[i]=a0[p+1];aB[i]=a0[p+2];
+  }
+  const bRl=blurPlane(bR,w,h,r,passes), bGl=blurPlane(bG,w,h,r,passes), bBl=blurPlane(bB,w,h,r,passes);
+  const aRl=blurPlane(aR,w,h,r,passes), aGl=blurPlane(aG,w,h,r,passes), aBl=blurPlane(aB,w,h,r,passes);
+
+  // moved-edge guard: local variation of the low-band luma difference. A moved
+  // silhouette produces a sharp transition in (aiLow - origLow); a broad volume
+  // brightening over stationary skin does not, so dramatic-but-stationary
+  // Sculptra volume keeps full sharp texture.
+  const D=new Float32Array(N);
+  for(let i=0;i<N;i++){
+    const al=0.299*aRl[i]+0.587*aGl[i]+0.114*aBl[i];
+    const bl=0.299*bRl[i]+0.587*bGl[i]+0.114*bBl[i];
+    D[i]=al-bl;
+  }
+  const Dl=blurPlane(D,w,h,gr,1);
+
+  const dR=new Float32Array(N),dG=new Float32Array(N),dB=new Float32Array(N);
+  for(let i=0;i<N;i++){
+    const edge=Math.abs(D[i]-Dl[i]);
+    const g=(1-smoothstep(lo,hi,edge))*strength; // 1 = stationary skin -> full original texture
+    const bHr=bR[i]-bRl[i], bHg=bG[i]-bGl[i], bHb=bB[i]-bBl[i];
+    const aHr=aR[i]-aRl[i], aHg=aG[i]-aGl[i], aHb=aB[i]-aBl[i];
+    const detHr=aHr+(bHr-aHr)*g, detHg=aHg+(bHg-aHg)*g, detHb=aHb+(bHb-aHb)*g;
+    dR[i]=(aRl[i]-bRl[i])+(detHr-bHr);
+    dG[i]=(aGl[i]-bGl[i])+(detHg-bHg);
+    dB[i]=(aBl[i]-bBl[i])+(detHb-bHb);
+  }
+  return {dR,dG,dB};
+}
+
 // ---- model singleton ------------------------------------------------------
 let _landmarker = null;
 async function ensureModel(){
@@ -371,6 +475,7 @@ export default buildSculptraMaskBlob;
 export async function compositeSculptra(beforeImg, aiImg, opts){
   const scope = (opts && opts.scope) || 'full';
   const sex = (opts && opts.sex) || 'female';
+  const textureRestore = !(opts && opts.textureRestore === false);
   const intensity = (opts && typeof opts.intensity === "number") ? Math.max(0, Math.min(1, opts.intensity)) : 1;
   const landmarks = await detectFace(beforeImg);
   if(!landmarks) return null;
@@ -388,12 +493,27 @@ export async function compositeSculptra(beforeImg, aiImg, opts){
   cx.drawImage(aiImg, 0, 0, w, h);
   const ai = cx.getImageData(0, 0, w, h), a = ai.data;
 
-  for(let i=0,p=0;i<m.length;i++,p+=4){
-    const al = Math.min(1, m[i]) * intensity;
-    a[p]   = a[p]*al   + b[p]*(1-al);
-    a[p+1] = a[p+1]*al + b[p+1]*(1-al);
-    a[p+2] = a[p+2]*al + b[p+2]*(1-al);
-    a[p+3] = 255;
+  if(textureRestore){
+    // Keep the AI low band (volume), restore the original high band (texture);
+    // out = original + al * delta. Identical math to makeSculptraCompositor.
+    const a0 = new Uint8ClampedArray(a);
+    const W = faceWidthPx(landmarks, w, h);
+    const { dR, dG, dB } = buildTextureDelta(b, a0, w, h, W, opts || {});
+    for(let i=0,p=0;i<m.length;i++,p+=4){
+      const al = Math.min(1, m[i]) * intensity;
+      a[p]   = b[p]   + al*dR[i];
+      a[p+1] = b[p+1] + al*dG[i];
+      a[p+2] = b[p+2] + al*dB[i];
+      a[p+3] = 255;
+    }
+  } else {
+    for(let i=0,p=0;i<m.length;i++,p+=4){
+      const al = Math.min(1, m[i]) * intensity;
+      a[p]   = a[p]*al   + b[p]*(1-al);
+      a[p+1] = a[p+1]*al + b[p+1]*(1-al);
+      a[p+2] = a[p+2]*al + b[p+2]*(1-al);
+      a[p+3] = 255;
+    }
   }
   cx.putImageData(ai, 0, 0);
   return c.toDataURL("image/jpeg", 0.92);
@@ -410,6 +530,7 @@ export async function compositeSculptra(beforeImg, aiImg, opts){
 export async function makeSculptraCompositor(beforeImg, aiImg, opts){
   const scope = (opts && opts.scope) || 'full';
   const sex = (opts && opts.sex) || 'female';
+  const textureRestore = !(opts && opts.textureRestore === false);
   const landmarks = await detectFace(beforeImg);
   if(!landmarks) return null;
   const w = aiImg.naturalWidth, h = aiImg.naturalHeight;
@@ -418,20 +539,41 @@ export async function makeSculptraCompositor(beforeImg, aiImg, opts){
   const c = document.createElement("canvas"); c.width = w; c.height = h;
   const cx = c.getContext("2d",{willReadFrequently:true});
   cx.drawImage(beforeImg, 0, 0, w, h);
-  const b = cx.getImageData(0, 0, w, h).data;
+  const before = cx.getImageData(0, 0, w, h);
+  const b = before.data;                          // pristine original pixels
   cx.drawImage(aiImg, 0, 0, w, h);
   const out = cx.getImageData(0, 0, w, h);
-  const a0 = new Uint8ClampedArray(out.data); // pristine AI pixels as the source
+  const a0 = new Uint8ClampedArray(out.data);     // pristine AI pixels
   const o = out.data;
+
+  // M5.1: precompute the texture-restore delta once. apply() then writes
+  // out = original + al*delta, which dials the AI volume with the slider while
+  // holding the original's high-frequency texture sharp at every intensity.
+  let dR=null, dG=null, dB=null;
+  if(textureRestore){
+    const W = faceWidthPx(landmarks, w, h);
+    const d = buildTextureDelta(b, a0, w, h, W, opts || {});
+    dR=d.dR; dG=d.dG; dB=d.dB;
+  }
 
   return function apply(intensity){
     const t = Math.max(0, Math.min(1, (typeof intensity === "number" ? intensity : 1)));
-    for(let i=0,p=0;i<m.length;i++,p+=4){
-      const al = Math.min(1, m[i]) * t;
-      o[p]   = a0[p]*al   + b[p]*(1-al);
-      o[p+1] = a0[p+1]*al + b[p+1]*(1-al);
-      o[p+2] = a0[p+2]*al + b[p+2]*(1-al);
-      o[p+3] = 255;
+    if(textureRestore){
+      for(let i=0,p=0;i<m.length;i++,p+=4){
+        const al = Math.min(1, m[i]) * t;
+        o[p]   = b[p]   + al*dR[i];
+        o[p+1] = b[p+1] + al*dG[i];
+        o[p+2] = b[p+2] + al*dB[i];
+        o[p+3] = 255;
+      }
+    } else {
+      for(let i=0,p=0;i<m.length;i++,p+=4){
+        const al = Math.min(1, m[i]) * t;
+        o[p]   = a0[p]*al   + b[p]*(1-al);
+        o[p+1] = a0[p+1]*al + b[p+1]*(1-al);
+        o[p+2] = a0[p+2]*al + b[p+2]*(1-al);
+        o[p+3] = 255;
+      }
     }
     cx.putImageData(out, 0, 0);
     return c.toDataURL("image/jpeg", 0.92);
