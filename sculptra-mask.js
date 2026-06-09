@@ -148,8 +148,17 @@ const GUARD_RADIUS_FRAC= 0.016;
 const GUARD_EDGE_LO    = 12;
 const GUARD_EDGE_HI    = 40;
 const CHROMA_LOCK      = 1.0;
-const LUMA_DARK_FLOOR  = 0;     // treated skin never darker than original
+const LUMA_DARK_FLOOR  = 0;     // treated skin never darker than original (broad tone)
 const GLOW_LUMA        = 6;     // gentle lighten (Sculptra glow), luma levels at full
+// M5.4. 0..1. How much of the AI's high-frequency DARKENING is allowed through.
+// The low-band floor stops broad darkening, but where the moved-edge guard is
+// active (HA chin/jaw, which needs it to project the chin), the AI can paint a
+// sharp fake shadow at the jaw or gonial corner that the guard passes through as
+// dark detail. At 0 the composite adds no new shadow to skin: the patient's own
+// shadows stay (they live in the untouched original), the AI may brighten, but it
+// cannot deepen or invent a shadow. Raise toward ~0.3 only if you want some
+// natural contour shadow back under a strongly projected chin.
+const HIGH_DARKEN_SCALE = 0;
 
 // repeated separable box blur on a Float32 plane -> approximate gaussian
 function blurPlane(src,w,h,r,passes){
@@ -190,6 +199,7 @@ function buildTextureDelta(b,a0,w,h,W,opts){
   const clock   = (opts.chromaLock==null ? CHROMA_LOCK : Math.max(0,Math.min(1,opts.chromaLock)));
   const darkFloor = (opts.darkFloor==null ? LUMA_DARK_FLOOR : Math.max(0,opts.darkFloor));
   const glow      = (opts.glowLuma==null ? GLOW_LUMA : opts.glowLuma);
+  const highDark  = (opts.highDarkenScale==null ? HIGH_DARKEN_SCALE : Math.max(0,Math.min(1,opts.highDarkenScale)));
   // For Sculptra (inflation, no moved silhouette) the moved-edge guard is not
   // needed and is actively harmful: where the AI paints a fake submalar/cheek
   // shadow, the guard reads the sharp shadow as a moved edge and passes the AI's
@@ -254,7 +264,13 @@ function buildTextureDelta(b,a0,w,h,W,opts){
       let lowShift = aYl - oYl;
       if(lowShift < -darkFloor) lowShift = -darkFloor;
       lowShift += glow;
-      const dY = lowShift + (detY - oYh);  // glow/floored low band + original luma texture
+      // High-frequency band. Brightening passes; darkening (a fake shadow the
+      // guard would otherwise paint at the jaw/edge) is scaled down. The
+      // patient's real shadows are untouched because they live in the original
+      // (b); this only governs what the AI is allowed to ADD.
+      let highTerm = detY - oYh;
+      if(highTerm < 0) highTerm *= highDark;
+      const dY = lowShift + highTerm;  // floored+glowed low band + non-darkening high band
       dR[i]=cdR*(1-clock)+dY*clock;
       dG[i]=cdG*(1-clock)+dY*clock;
       dB[i]=cdB*(1-clock)+dY*clock;
