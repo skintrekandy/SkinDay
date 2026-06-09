@@ -241,12 +241,8 @@
           </select>
         </div>
         <div class="field">
-          <label>Intensity</label>
-          <div class="pill-grid" id="fillerIntensity">
-            <button class="pill active" data-intensity="natural" type="button"><strong>Natural</strong></button>
-            <button class="pill" data-intensity="moderate" type="button"><strong>Moderate</strong></button>
-            <button class="pill" data-intensity="enhanced" type="button"><strong>Enhanced</strong></button>
-          </div>
+          <label>Result strength</label>
+          <div class="privacy-note"><span>ℹ️</span><span>One preview is generated at a strong, realistic anchor, then you dial it up or down with a slider on the result. No need to regenerate or compare separate versions.</span></div>
         </div>
       </div>
 
@@ -314,12 +310,15 @@
       <div class="result-card"><img id="originalResult" alt="Original photo" /><div class="result-tag">Original</div></div>
       <div class="result-card"><img id="aiResult" alt="AI simulated treatment preview" /><svg class="anno-svg" id="annoSvg" viewBox="0 0 100 125" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg><div class="result-tag sim" id="simTag">Simulated — AI Visualization</div></div>
     </div>
-    <div id="sculptraIntensityWrap" style="display:none;margin-top:14px;">
+    <div id="intensityWrap" style="display:none;margin-top:14px;">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
         <label for="intensitySlider" style="font-size:13px;letter-spacing:.04em;text-transform:uppercase;opacity:.75;">Treatment intensity</label>
         <span id="intensityValue" style="font-family:'Cormorant Garamond',serif;font-size:22px;">70%</span>
       </div>
       <input type="range" id="intensitySlider" min="0" max="100" step="1" value="70" style="width:100%;margin-top:8px;accent-color:#C8725A;" />
+      <div style="display:flex;justify-content:space-between;font-size:.68rem;letter-spacing:.04em;text-transform:uppercase;opacity:.6;margin-top:4px;">
+        <span>Subtle</span><span>Expected</span><span>Enhanced</span>
+      </div>
       <div class="small" style="margin-top:6px;">Slide to preview a softer or stronger result. The simulation updates instantly.</div>
     </div>
     <div class="compare-wrap" id="compareWrap" style="display:none;">
@@ -359,12 +358,24 @@ const FREE_REGEN_MS = 60000;
 // stay the same module instance (shared face-detection cache).
 const MASK_MODULE_VERSION = '6';
 
+// HA filler: one generated anchor + a display-only intensity slider (Option 2).
+// The slider cross-fades the original photo toward the AI anchor (0% = original,
+// 70% = expected-looking, 100% = the generated anchor). It does NOT regenerate.
+//
+// Decision rule (Andy): if the cross-fade looks visually clean, ship the slider.
+// If it produces ghosting / double-contour on the chin or jawline, set this to
+// false: filler then generates one single Expected-strength result (no anchor
+// blend, no slider, never two contours) until geometry-based intensity is built.
+//   true  -> generate at the Enhanced anchor, show the cross-fade slider (default 70%)
+//   false -> generate one Expected (moderate) result, no slider, raw image only
+const FILLER_SLIDER_ENABLED = true;
+
 const state = {
   file:null, originalDataUrl:null, resultDataUrl:null,
-  type:'filler', areas:['chin_jawline'], intensity:'natural',
+  type:'filler', areas:['chin_jawline'], intensity:'enhanced',
   product:'sculptra', projection:'optimistic', timeline:'6',
   blackBg:true, beforeDataUrl:null, blackBgCache:null,
-  lastGenAt:0, sculptraApply:null, sculptraIntensityPct:70
+  lastGenAt:0, intensityApply:null, intensityPct:70
 };
 
 /* ───────── Lock screen ───────── */
@@ -449,6 +460,39 @@ async function loadImage(src){
     img.onerror = reject;
     img.src = src;
   });
+}
+
+// HA filler intensity (Option 2 MVP): a global cross-fade between the original
+// photo and the AI anchor, with NO mask and NO geometry. Draws both at the AI
+// result's pixel size, then apply(t) blends uniformly across the whole frame
+// (t=0 original, t=1 anchor). Same (0..1)->jpegDataURL contract as
+// makeSculptraCompositor, so the shared slider drives it unchanged. Because the
+// filler prompt + SERVER_SAFETY hold everything outside the lower face still, the
+// only pixels that actually differ are in the treated chin/jaw region, so a
+// uniform blend ghosts only if that contour moved a lot. If it does, flip
+// FILLER_SLIDER_ENABLED to false. Synchronous; returns null if dims are missing.
+function makeImageCrossfade(beforeImg, aiImg){
+  const w = aiImg.naturalWidth, h = aiImg.naturalHeight;
+  if(!w || !h) return null;
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const cx = c.getContext('2d', { willReadFrequently:true });
+  cx.drawImage(beforeImg, 0, 0, w, h);
+  const b = cx.getImageData(0, 0, w, h).data;
+  cx.drawImage(aiImg, 0, 0, w, h);
+  const out = cx.getImageData(0, 0, w, h);
+  const a0 = new Uint8ClampedArray(out.data); // pristine AI pixels as the source
+  const o = out.data;
+  return function apply(intensity){
+    const t = Math.max(0, Math.min(1, (typeof intensity === 'number' ? intensity : 1)));
+    for(let p=0; p<o.length; p+=4){
+      o[p]   = a0[p]*t   + b[p]*(1-t);
+      o[p+1] = a0[p+1]*t + b[p+1]*(1-t);
+      o[p+2] = a0[p+2]*t + b[p+2]*(1-t);
+      o[p+3] = 255;
+    }
+    cx.putImageData(out, 0, 0);
+    return c.toDataURL('image/jpeg', 0.92);
+  };
 }
 
 // Resize the longest edge to <=1024 to keep uploads small. Returns a Blob.
@@ -565,23 +609,24 @@ function wirePills(containerId, key){
     });
   });
 }
-wirePills('fillerIntensity', 'intensity');
 wirePills('biostimProduct', 'product');
 updatePhotoGuide();
 
-// Live Sculptra intensity slider: re-blend the cached compositor (no regeneration).
+// Live intensity slider: re-blend the cached apply() with no regeneration. Used
+// by both Sculptra (masked composite) and HA filler (global cross-fade); both set
+// state.intensityApply to a function with the same (0..1) -> jpegDataURL contract.
 (function(){
   const slider = document.getElementById('intensitySlider');
   if(!slider) return;
   let raf = 0;
   slider.addEventListener('input', () => {
     const pct = parseInt(slider.value, 10) || 0;
-    state.sculptraIntensityPct = pct;
+    state.intensityPct = pct;
     document.getElementById('intensityValue').textContent = pct + '%';
-    if(!state.sculptraApply) return;
+    if(!state.intensityApply) return;
     if(raf) cancelAnimationFrame(raf);
     raf = requestAnimationFrame(() => {
-      const url = state.sculptraApply(pct / 100);
+      const url = state.intensityApply(pct / 100);
       state.resultDataUrl = url;
       document.getElementById('aiResult').src = url;
     });
@@ -878,7 +923,10 @@ async function runGeneration(isRegen){
         .flatMap(a => a === 'chin_jawline' ? ['chin','jawline'] : [a]);
       form.append('areas', postAreas.join(','));
       form.append('goal', document.getElementById('goal').value);
-      form.append('intensity', state.intensity);
+      // One anchor only. Slider on: generate at the upper-realistic Enhanced
+      // anchor and let the slider dial down. Slider off (ghosting fallback):
+      // generate one Expected (moderate) result and show it raw.
+      form.append('intensity', FILLER_SLIDER_ENABLED ? 'enhanced' : 'moderate');
     } else {
       form.append('product', state.product);
       form.append('timeline', state.timeline);
@@ -908,13 +956,12 @@ async function runGeneration(isRegen){
     state.resultDataUrl = await pollForResult(jobId, key, isRegen);
     state.lastGenAt = Date.now();
 
-    // Sculptra hybrid: composite the original pixels back over everything
-    // outside the broad treatment region (cheek, midface, temple, folds), so the
-    // model's bold volume survives inside it while skin texture, pigment, and
-    // identity outside it stay the original photo. A reusable compositor is built
-    // once so the intensity slider can re-blend live with no regeneration.
-    // Fail-safe: on any error keep the raw AI result. Sculptra only.
-    state.sculptraApply = null;
+    // Build the intensity apply() for whichever treatment supports the live
+    // slider. Sculptra: masked composite (original preserved outside the zone).
+    // HA filler: global cross-fade original<->anchor (Option 2 MVP). Both expose
+    // the same apply(0..1)->jpegDataURL so the slider code is identical.
+    // Fail-safe: on any error keep the raw AI result with the slider hidden.
+    state.intensityApply = null;
     if(state.type === 'biostim' && state.product === 'sculptra'){
       try {
         const beforeImg = await loadImage(state.beforeDataUrl || state.originalDataUrl);
@@ -923,8 +970,8 @@ async function runGeneration(isRegen){
         const { makeSculptraCompositor } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
         const apply = await makeSculptraCompositor(beforeImg, aiImg, { scope: 'full' });
         if(apply){
-          state.sculptraApply = apply;
-          state.resultDataUrl = apply(state.sculptraIntensityPct / 100);
+          state.intensityApply = apply;
+          state.resultDataUrl = apply(state.intensityPct / 100);
           console.log('%c[Visualize] Sculptra compositor READY. Intensity slider is live; skin/identity outside the treatment zone is the original photo.', 'color:#2e7d32;font-weight:bold');
         } else {
           console.warn('[Visualize] Sculptra compositor returned null (no face); showing RAW AI, slider disabled.');
@@ -932,13 +979,28 @@ async function runGeneration(isRegen){
       } catch(err) {
         console.error('%c[Visualize] Sculptra compositor FAILED; showing RAW AI, slider disabled.', 'color:#c62828;font-weight:bold', err);
       }
+    } else if(state.type === 'filler' && FILLER_SLIDER_ENABLED){
+      try {
+        const beforeImg = await loadImage(state.beforeDataUrl || state.originalDataUrl);
+        const aiImg = await loadImage(state.resultDataUrl);
+        const apply = makeImageCrossfade(beforeImg, aiImg);
+        if(apply){
+          state.intensityApply = apply;
+          state.resultDataUrl = apply(state.intensityPct / 100);
+          console.log('%c[Visualize] HA filler cross-fade READY. Slider blends original<->anchor with no regeneration. Watch the chin/jaw contour for ghosting; if it doubles, set FILLER_SLIDER_ENABLED=false.', 'color:#2e7d32;font-weight:bold');
+        } else {
+          console.warn('[Visualize] HA filler cross-fade unavailable (no result dims); showing RAW AI, slider disabled.');
+        }
+      } catch(err) {
+        console.error('%c[Visualize] HA filler cross-fade FAILED; showing RAW AI, slider disabled.', 'color:#c62828;font-weight:bold', err);
+      }
     }
 
-    const showSlider = state.type === 'biostim' && state.product === 'sculptra' && !!state.sculptraApply;
-    document.getElementById('sculptraIntensityWrap').style.display = showSlider ? 'block' : 'none';
+    const showSlider = !!state.intensityApply;
+    document.getElementById('intensityWrap').style.display = showSlider ? 'block' : 'none';
     if(showSlider){
-      document.getElementById('intensitySlider').value = state.sculptraIntensityPct;
-      document.getElementById('intensityValue').textContent = state.sculptraIntensityPct + '%';
+      document.getElementById('intensitySlider').value = state.intensityPct;
+      document.getElementById('intensityValue').textContent = state.intensityPct + '%';
     }
 
     document.getElementById('originalResult').src = state.beforeDataUrl || state.originalDataUrl;
@@ -1073,7 +1135,10 @@ async function drawExport(includeText=true){
   function simKicker(){
     if(state.type === 'biostim'){
       const months = state.timeline + ' months';
-      return 'AI Visualization · ' + months + ' · ' + (state.sculptraIntensityPct || 70) + '% intensity';
+      return 'AI Visualization · ' + months + ' · ' + (state.intensityPct || 70) + '% intensity';
+    }
+    if(state.type === 'filler' && state.intensityApply){
+      return 'AI Visualization · ' + (state.intensityPct || 70) + '% intensity';
     }
     return 'AI Visualization';
   }
@@ -1139,7 +1204,7 @@ document.getElementById('plainBtn').addEventListener('click', () => downloadExpo
 /* ───────── New case (proper reset, no reload) ───────── */
 document.getElementById('newBtn').addEventListener('click', () => {
   state.file = null; state.originalDataUrl = null; state.resultDataUrl = null; state.lastGenAt = 0;
-  state.blackBgCache = null; state.beforeDataUrl = null;
+  state.blackBgCache = null; state.beforeDataUrl = null; state.intensityApply = null;
   input.value = '';
   const oldImg = zone.querySelector('img'); if(oldImg) oldImg.remove();
   zone.classList.remove('filled');
