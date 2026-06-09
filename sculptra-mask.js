@@ -19,18 +19,33 @@
 import { FaceLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.20/vision_bundle.mjs";
 
 // ---- geometry constants (mirror of the validator) ------------------------
-const VOL_BANDS = { temple:[0.58,0.80], cheek:[0.42,0.64], lower_cheek:[0.27,0.42] };
+// Sculptra full-scope coverage (v11 scaffold tuning). The earlier values gated
+// the scaffold zones the real-world results depend on: a band-by-band diff of
+// the oblique cases showed the temple essentially untouched and the lid-cheek
+// barely moved. These open the zones the clinician expects Sculptra to rebuild:
+//   - VOL_BANDS.lower_cheek lower bound dropped 0.27 -> 0.23 so prejowl / lower
+//     lateral face is covered for jowl lift and jawline definition.
+//   - VOL_LAT_MIN_TEMPLE 0.34 -> 0.27 so temple support reaches medially into
+//     the temporal hollow instead of only the far lateral edge.
+//   - CHEEK_UE_ROLL 0.7 -> 0.30 so the cheek mask climbs to the lid-cheek
+//     junction (the protected eye discs still guard the lid and eyeball), giving
+//     volume-driven under-eye support from below.
+//   - APEX_SIGMA_CHEEK 0.15 -> 0.17 and APEX_SIGMA_TEMPLE 0.11 -> 0.135 for
+//     broader, more convex lateral cheek and temple projection.
+// To revert the scaffold strength, restore these six numbers; nothing else here
+// changed.
+const VOL_BANDS = { temple:[0.58,0.80], cheek:[0.42,0.64], lower_cheek:[0.23,0.42] };
 const VOL_FB = 0.05;
 const VOL_LAT_RAMP = 0.06;
 const LAT_MIN = 0.12;
 const VOL_LAT_MIN_CHEEK = 0.18;
-const VOL_LAT_MIN_TEMPLE = 0.34;
-const CHEEK_UE_LO = 0.56, CHEEK_UE_HI = 0.64, CHEEK_UE_ROLL = 0.7;
+const VOL_LAT_MIN_TEMPLE = 0.27;
+const CHEEK_UE_LO = 0.56, CHEEK_UE_HI = 0.64, CHEEK_UE_ROLL = 0.30;
 
 const ZYGION = { r:234, l:454 };
 const TEMPLE_OVAL = { r:127, l:356 };
 const CHEEK_APEX_UP = 0.06, CHEEK_APEX_IN = 0.05, TEMPLE_APEX_IN = 0.06;
-const APEX_SIGMA_CHEEK = 0.15, APEX_SIGMA_TEMPLE = 0.11;
+const APEX_SIGMA_CHEEK = 0.17, APEX_SIGMA_TEMPLE = 0.135;
 
 const FOLD_SIGMA = 0.026;
 const COMMISSURE = { r:61, l:291 };
@@ -380,9 +395,9 @@ function buildTreatAlpha(L, w, h, scope, sex){
   // edit can pull it in. Sex-aware: a woman's lower face may taper (feminising);
   // a man's jaw width is preserved, so the band is mostly off. Kept below the
   // cheekbone (the topTaper above still fades it) so the mid-cheek is untouched.
-  const LF_TAPER_SIGMA=0.052*W;
+  const LF_TAPER_SIGMA=0.045*W;
   const twoSigTaper=2*LF_TAPER_SIGMA*LF_TAPER_SIGMA||1e-6;
-  const taperScale = isMale ? 0.25 : 1.0;
+  const taperScale = isMale ? 0.25 : 0.6;
   const taperSegs=[];
   if(taperScale>0){
     for(const POLY of [[365,397,288],[136,172,58]]){ // right side, left side
@@ -410,13 +425,26 @@ function buildTreatAlpha(L, w, h, scope, sex){
           let lf=Math.exp(-(dc*dc)/twoSigChin);
           for(let k=0;k<jawSegs.length;k++){ const sg=jawSegs[k]; const dd=distToSeg(x,y,sg[0],sg[1]); const g=Math.exp(-(dd*dd)/twoSigJaw); if(g>lf) lf=g; }
           for(let k=0;k<gonialPts.length;k++){ const gp=gonialPts[k]; const dx=x-gp.x, dy=y-gp.y; const g=Math.exp(-(dx*dx+dy*dy)/twoSigGonial); if(g>lf) lf=g; }
-          for(let k=0;k<taperSegs.length;k++){ const sg=taperSegs[k]; const dd=distToSeg(x,y,sg[0],sg[1]); const g=taperScale*Math.exp(-(dd*dd)/twoSigTaper); if(g>lf) lf=g; }
+          // Lateral taper, CONTAINED INSIDE the silhouette. Editing the taper band
+          // over the dark background outside the jaw was what produced the muddy
+          // dark halo (a tiny inward silhouette move the texture-restore correctly
+          // refused to sharpen). Gate it by the face oval so it can only shade the
+          // lower face inward within existing skin: a soft slim, never a contour
+          // move over background. The chin/jaw/gonial terms above are NOT gated,
+          // so genuine chin projection can still extend the outline.
+          const ovalInside = ovalA[i*4]/255;
+          let taperVal=0;
+          for(let k=0;k<taperSegs.length;k++){ const sg=taperSegs[k]; const dd=distToSeg(x,y,sg[0],sg[1]); const g=taperScale*Math.exp(-(dd*dd)/twoSigTaper); if(g>taperVal) taperVal=g; }
+          taperVal*=ovalInside;
+          if(taperVal>lf) lf=taperVal;
           const topTaper=1-smoothstep(LF_TOP,LF_TOP+0.08,hF);
           // Downward allowance depends on laterality: directly under the chin
           // (central) the mask extends down so the chin can lengthen; toward the
           // jaw and sides it stops at the jawline so the neck is never opened.
+          // The central extension is eased (0.12 -> 0.09) so chin elongation does
+          // not push a crescent down over the submental shadow.
           const central=1-smoothstep(0.10,0.22,alat);     // 1 under the chin, 0 at the jaw/sides
-          const floor=-0.02 - 0.12*central;               // jaw cuts at -0.02; chin column extends to ~-0.14
+          const floor=-0.02 - 0.09*central;               // jaw cuts at -0.02; chin column extends to ~-0.11
           const neckTaper=smoothstep(floor, floor+0.05, hF);
           m[i]=Math.min(1, lf*topTaper*neckTaper*protOnly);
         }
