@@ -119,12 +119,22 @@ function blurAlpha(m,w,h,r){
 //                    moved-edge guard begins / fully falls back to AI detail.
 //                    Raise both if a real moved silhouette still shows AI soft-
 //                    ness; lower them if an old edge ghosts through.
+//   CHROMA_LOCK      M5.2. 0..1. The AI restores volume as LUMINANCE (highlights,
+//                    softened shadows), but it also invents skin COLOR inside the
+//                    mask: at high intensity that surfaces as a warm brown cloud
+//                    over the treated cheek/lower face. At 1.0 the composite keeps
+//                    the AI luminance and locks chroma to the patient's original,
+//                    so the volume shows but no pigment is invented. Mechanically
+//                    this adds a single luminance delta equally to R,G,B, which
+//                    cannot shift hue. Drop toward ~0.8 only if the restored
+//                    volume looks flat or grey and you want a little AI warmth back.
 const TEX_RADIUS_FRAC  = 0.016;
 const TEX_BLUR_PASSES  = 2;     // box passes -> approx gaussian
 const TEX_STRENGTH     = 1.0;
 const GUARD_RADIUS_FRAC= 0.016;
 const GUARD_EDGE_LO    = 12;
 const GUARD_EDGE_HI    = 40;
+const CHROMA_LOCK      = 1.0;
 
 // repeated separable box blur on a Float32 plane -> approximate gaussian
 function blurPlane(src,w,h,r,passes){
@@ -162,6 +172,7 @@ function buildTextureDelta(b,a0,w,h,W,opts){
   const strength= (opts.texStrength==null ? TEX_STRENGTH : Math.max(0,Math.min(1,opts.texStrength)));
   const lo      = opts.guardLo ?? GUARD_EDGE_LO;
   const hi      = opts.guardHi ?? GUARD_EDGE_HI;
+  const clock   = (opts.chromaLock==null ? CHROMA_LOCK : Math.max(0,Math.min(1,opts.chromaLock)));
 
   const bR=new Float32Array(N),bG=new Float32Array(N),bB=new Float32Array(N);
   const aR=new Float32Array(N),aG=new Float32Array(N),aB=new Float32Array(N);
@@ -191,9 +202,29 @@ function buildTextureDelta(b,a0,w,h,W,opts){
     const bHr=bR[i]-bRl[i], bHg=bG[i]-bGl[i], bHb=bB[i]-bBl[i];
     const aHr=aR[i]-aRl[i], aHg=aG[i]-aGl[i], aHb=aB[i]-aBl[i];
     const detHr=aHr+(bHr-aHr)*g, detHg=aHg+(bHg-aHg)*g, detHb=aHb+(bHb-aHb)*g;
-    dR[i]=(aRl[i]-bRl[i])+(detHr-bHr);
-    dG[i]=(aGl[i]-bGl[i])+(detHg-bHg);
-    dB[i]=(aBl[i]-bBl[i])+(detHb-bHb);
+    // per-channel (M5.1) delta: AI low band + guarded original texture, per RGB
+    const cdR=(aRl[i]-bRl[i])+(detHr-bHr);
+    const cdG=(aGl[i]-bGl[i])+(detHg-bHg);
+    const cdB=(aBl[i]-bBl[i])+(detHb-bHb);
+    if(clock<=0){
+      dR[i]=cdR; dG[i]=cdG; dB[i]=cdB;
+    } else {
+      // M5.2 chroma-locked delta: the LUMINANCE version of the same frequency-
+      // separation, added equally to R,G,B. Adding an equal scalar to all three
+      // channels preserves Cb/Cr exactly, so the patient's skin colour is held
+      // while the AI's volume (a luminance effect) still shows. (aLowLuma -
+      // bLowLuma) is exactly D[i], already computed for the guard.
+      const oYl=0.299*bRl[i]+0.587*bGl[i]+0.114*bBl[i];
+      const aYl=0.299*aRl[i]+0.587*aGl[i]+0.114*aBl[i];
+      const oY =0.299*bR[i] +0.587*bG[i] +0.114*bB[i];
+      const aY =0.299*aR[i] +0.587*aG[i] +0.114*aB[i];
+      const oYh=oY-oYl, aYh=aY-aYl;
+      const detY=aYh+(oYh-aYh)*g;
+      const dY=(aYl-oYl)+(detY-oYh);     // == D[i] + (detY - oYh)
+      dR[i]=cdR*(1-clock)+dY*clock;
+      dG[i]=cdG*(1-clock)+dY*clock;
+      dB[i]=cdB*(1-clock)+dY*clock;
+    }
   }
   return {dR,dG,dB};
 }
