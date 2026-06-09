@@ -362,7 +362,7 @@ const FREE_REGEN_MS = 60000;
 // Bump this whenever sculptra-mask.js changes, so the browser fetches the new
 // module instead of a stale disk-cached copy. Both imports below use it, so they
 // stay the same module instance (shared face-detection cache).
-const MASK_MODULE_VERSION = '3';
+const MASK_MODULE_VERSION = '4';
 
 const state = {
   file:null, originalDataUrl:null, resultDataUrl:null,
@@ -847,11 +847,17 @@ async function runGeneration(isRegen){
       try {
         setStatus('Preparing treatment mask… (first run downloads a small model).', 'spin');
         const beforeImg = await loadImage(beforeDataUrl);
+        console.log('%c[Visualize] Sculptra mask v' + MASK_MODULE_VERSION + ': loading module + MediaPipe…', 'color:#C8725A');
         const { buildSculptraMaskBlob } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
         const maskBlob = await buildSculptraMaskBlob(beforeImg, { maxDim: 1024, scope: 'temple_fold' });
-        if(maskBlob) form.append('mask', maskBlob, 'mask.png');
+        if(maskBlob){
+          form.append('mask', maskBlob, 'mask.png');
+          console.log('%c[Visualize] Sculptra mask BUILT and attached to request (scope temple_fold, ' + Math.round(maskBlob.size/1024) + ' kB).', 'color:#2e7d32;font-weight:bold');
+        } else {
+          console.warn('[Visualize] Sculptra mask returned empty; sending request WITHOUT a mask (raw AI).');
+        }
       } catch(err) {
-        console.error('Sculptra mask generation failed; proceeding without a mask.', err);
+        console.error('%c[Visualize] Sculptra mask FAILED; sending request WITHOUT a mask (raw AI). This is why the result may be globally beautified.', 'color:#c62828;font-weight:bold', err);
       }
     }
 
@@ -899,11 +905,17 @@ async function runGeneration(isRegen){
       try {
         const beforeImg = await loadImage(state.beforeDataUrl || state.originalDataUrl);
         const aiImg = await loadImage(state.resultDataUrl);
+        console.log('%c[Visualize] Sculptra composite v' + MASK_MODULE_VERSION + ': restoring original outside temple/fold…', 'color:#C8725A');
         const { compositeSculptra } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
         const composited = await compositeSculptra(beforeImg, aiImg, { scope: 'temple_fold' });
-        if(composited) state.resultDataUrl = composited;
+        if(composited){
+          state.resultDataUrl = composited;
+          console.log('%c[Visualize] Sculptra composite APPLIED. Skin/colour outside temple+folds is now the original photo.', 'color:#2e7d32;font-weight:bold');
+        } else {
+          console.warn('[Visualize] Sculptra composite returned empty; showing RAW AI (globally beautified).');
+        }
       } catch(err) {
-        console.error('Sculptra composite failed; showing raw AI result.', err);
+        console.error('%c[Visualize] Sculptra composite FAILED; showing RAW AI (globally beautified). This is why protected zones look smoothed.', 'color:#c62828;font-weight:bold', err);
       }
     }
 
