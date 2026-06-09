@@ -44,8 +44,8 @@ const CHEEK_UE_LO = 0.56, CHEEK_UE_HI = 0.64, CHEEK_UE_ROLL = 0.30;
 
 const ZYGION = { r:234, l:454 };
 const TEMPLE_OVAL = { r:127, l:356 };
-const CHEEK_APEX_UP = 0.06, CHEEK_APEX_IN = 0.05, TEMPLE_APEX_IN = 0.06;
-const APEX_SIGMA_CHEEK = 0.17, APEX_SIGMA_TEMPLE = 0.135;
+const CHEEK_APEX_UP = 0.03, CHEEK_APEX_IN = 0.02, TEMPLE_APEX_IN = 0.06;
+const APEX_SIGMA_CHEEK = 0.20, APEX_SIGMA_TEMPLE = 0.135;
 
 const FOLD_SIGMA = 0.026;
 const COMMISSURE = { r:61, l:291 };
@@ -128,6 +128,19 @@ function blurAlpha(m,w,h,r){
 //                    this adds a single luminance delta equally to R,G,B, which
 //                    cannot shift hue. Drop toward ~0.8 only if the restored
 //                    volume looks flat or grey and you want a little AI warmth back.
+//   LUMA_DARK_FLOOR  M5.3. Max levels the treated skin's broad tone may DARKEN.
+//                    Real Sculptra lightens skin (the glow); it does not darken it,
+//                    so this is 0 (treated skin is never broadly darker than the
+//                    original). Skin texture and pigment spots are carried from the
+//                    original separately, so they stay; only the broad tone is
+//                    floored. Raise a few levels only if you want some contour
+//                    shadow back under restored volume.
+//   GLOW_LUMA        M5.3. Gentle luminance lift across the treated zone at full
+//                    strength (the Sculptra glow), in luma levels. Chroma stays
+//                    locked and texture/pigment are untouched, so this brightens
+//                    without smoothing or evening out the skin. Scaled by mask and
+//                    intensity, so at the 50% default it is about half this. Lower
+//                    toward 0 to remove the glow, raise for a stronger one.
 const TEX_RADIUS_FRAC  = 0.016;
 const TEX_BLUR_PASSES  = 2;     // box passes -> approx gaussian
 const TEX_STRENGTH     = 1.0;
@@ -135,6 +148,8 @@ const GUARD_RADIUS_FRAC= 0.016;
 const GUARD_EDGE_LO    = 12;
 const GUARD_EDGE_HI    = 40;
 const CHROMA_LOCK      = 1.0;
+const LUMA_DARK_FLOOR  = 0;     // treated skin never darker than original
+const GLOW_LUMA        = 6;     // gentle lighten (Sculptra glow), luma levels at full
 
 // repeated separable box blur on a Float32 plane -> approximate gaussian
 function blurPlane(src,w,h,r,passes){
@@ -173,6 +188,17 @@ function buildTextureDelta(b,a0,w,h,W,opts){
   const lo      = opts.guardLo ?? GUARD_EDGE_LO;
   const hi      = opts.guardHi ?? GUARD_EDGE_HI;
   const clock   = (opts.chromaLock==null ? CHROMA_LOCK : Math.max(0,Math.min(1,opts.chromaLock)));
+  const darkFloor = (opts.darkFloor==null ? LUMA_DARK_FLOOR : Math.max(0,opts.darkFloor));
+  const glow      = (opts.glowLuma==null ? GLOW_LUMA : opts.glowLuma);
+  // For Sculptra (inflation, no moved silhouette) the moved-edge guard is not
+  // needed and is actively harmful: where the AI paints a fake submalar/cheek
+  // shadow, the guard reads the sharp shadow as a moved edge and passes the AI's
+  // dark high-frequency through, darkening skin the low-band floor cannot catch.
+  // Forcing the guard fully open (texture always from the original) means the AI
+  // can no longer inject any darkening via the high band; combined with the
+  // low-band dark floor, Sculptra skin can only hold or brighten. HA chin/jaw
+  // keeps the guard (it has genuine moved edges) by leaving this false.
+  const forceOrig = !!opts.forceOriginalTexture;
 
   const bR=new Float32Array(N),bG=new Float32Array(N),bB=new Float32Array(N);
   const aR=new Float32Array(N),aG=new Float32Array(N),aB=new Float32Array(N);
@@ -198,7 +224,7 @@ function buildTextureDelta(b,a0,w,h,W,opts){
   const dR=new Float32Array(N),dG=new Float32Array(N),dB=new Float32Array(N);
   for(let i=0;i<N;i++){
     const edge=Math.abs(D[i]-Dl[i]);
-    const g=(1-smoothstep(lo,hi,edge))*strength; // 1 = stationary skin -> full original texture
+    const g=forceOrig ? strength : (1-smoothstep(lo,hi,edge))*strength; // 1 = stationary skin -> full original texture
     const bHr=bR[i]-bRl[i], bHg=bG[i]-bGl[i], bHb=bB[i]-bBl[i];
     const aHr=aR[i]-aRl[i], aHg=aG[i]-aGl[i], aHb=aB[i]-aBl[i];
     const detHr=aHr+(bHr-aHr)*g, detHg=aHg+(bHg-aHg)*g, detHb=aHb+(bHb-aHb)*g;
@@ -220,7 +246,15 @@ function buildTextureDelta(b,a0,w,h,W,opts){
       const aY =0.299*aR[i] +0.587*aG[i] +0.114*aB[i];
       const oYh=oY-oYl, aYh=aY-aYl;
       const detY=aYh+(oYh-aYh)*g;
-      const dY=(aYl-oYl)+(detY-oYh);     // == D[i] + (detY - oYh)
+      // Broad tone change from the AI volume. Real Sculptra lightens skin (glow)
+      // and does not darken it, so floor any darkening of the broad tone and add
+      // a gentle uniform glow lift. Texture (the high-band term below) and chroma
+      // are untouched, so spots, pores, and pigment all stay; only the broad
+      // luminance moves, and only upward.
+      let lowShift = aYl - oYl;
+      if(lowShift < -darkFloor) lowShift = -darkFloor;
+      lowShift += glow;
+      const dY = lowShift + (detY - oYh);  // glow/floored low band + original luma texture
       dR[i]=cdR*(1-clock)+dY*clock;
       dG[i]=cdG*(1-clock)+dY*clock;
       dB[i]=cdB*(1-clock)+dY*clock;
@@ -617,7 +651,8 @@ export async function compositeSculptra(beforeImg, aiImg, opts){
     // out = original + al * delta. Identical math to makeSculptraCompositor.
     const a0 = new Uint8ClampedArray(a);
     const W = faceWidthPx(landmarks, w, h);
-    const { dR, dG, dB } = buildTextureDelta(b, a0, w, h, W, opts || {});
+    const tdOpts = Object.assign({ forceOriginalTexture: scope !== 'chin_jaw' }, opts || {});
+    const { dR, dG, dB } = buildTextureDelta(b, a0, w, h, W, tdOpts);
     for(let i=0,p=0;i<m.length;i++,p+=4){
       const al = Math.min(1, m[i]) * intensity;
       a[p]   = b[p]   + al*dR[i];
@@ -671,7 +706,8 @@ export async function makeSculptraCompositor(beforeImg, aiImg, opts){
   let dR=null, dG=null, dB=null;
   if(textureRestore){
     const W = faceWidthPx(landmarks, w, h);
-    const d = buildTextureDelta(b, a0, w, h, W, opts || {});
+    const tdOpts = Object.assign({ forceOriginalTexture: scope !== 'chin_jaw' }, opts || {});
+    const d = buildTextureDelta(b, a0, w, h, W, tdOpts);
     dR=d.dR; dG=d.dG; dB=d.dB;
   }
 
