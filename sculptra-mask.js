@@ -141,6 +141,16 @@ function buildTreatAlpha(L, w, h, scope){
   const rDisc=0.020*W;
   for(const idx of PROTECTED){ const p=lm[idx]; if(!p) continue;
     pctx.beginPath(); pctx.arc(p.x,p.y,rDisc,0,7); pctx.fill(); }
+  // Perioral protection: the cutaneous upper lip / philtrum sits in a gap
+  // between the nose-base discs and the vermilion discs, and the nasolabial fold
+  // tubes bleed into it, which lets the model smear that strip into a faint
+  // shadow. Protect it explicitly with a filled band from the alar bases and
+  // subnasale down to the central upper vermilion, kept medial of the mouth
+  // corners so the lateral fold softening is preserved.
+  pctx.beginPath();
+  [98,2,327,270,267,0,37,40].forEach((idx,k)=>{ const p=lm[idx]; if(!p) return; if(k===0) pctx.moveTo(p.x,p.y); else pctx.lineTo(p.x,p.y); });
+  pctx.closePath(); pctx.fill();
+  { const pf=lm[164]; if(pf){ pctx.beginPath(); pctx.arc(pf.x,pf.y,rDisc,0,7); pctx.fill(); } }
   pctx.filter="blur("+(0.028*W)+"px)"; pctx.drawImage(pc,0,0); pctx.filter="none";
   const protA=pctx.getImageData(0,0,w,h).data;
 
