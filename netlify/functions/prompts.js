@@ -80,19 +80,25 @@ const FILLER_AREAS = {
   }
 };
 
-// ---- Filler: combined lower-face module (v2) ------------------------------
+// ---- Filler: combined lower-face module (v3) ------------------------------
 // Chin + jawline are injected together in practice, so when both are selected
 // we describe ONE integrated lower-third outcome instead of concatenating two
-// independent area clauses (which made the model over-treat each area).
+// independent area clauses (which made the model over-treat each area). v3: the
+// PRIMARY frontal change is vertical chin elongation (lengthening the lower
+// third), which is what chin filler reads as from the front; earlier wording
+// forbade lengthening and so produced almost no visible frontal change.
 const FILLER_CHIN_JAWLINE = {
-  expected: 'a subtly restructured lower third treating the chin and jawline as one unit: ' +
-            'a little more chin projection and gentle definition along the mandibular border with slight prejowl support, ' +
-            'so the lower-third contour reads more supported and the chin-jaw-neck line more continuous where visible, the change coming only from added projection and structural support',
-  avoid: 'do not lengthen the chin or make it pointed, jutting, or witch-like; ' +
+  expected: 'a subtly restructured, better-balanced lower third treating the chin and jawline as one unit. ' +
+            'The main change, clearly visible from the front, is gentle vertical lengthening and projection of the chin: ' +
+            'bring the chin point a little lower and forward so the lower third of the face looks longer and more balanced and the face reads more oval, ' +
+            'with cleaner definition along the mandibular border and slight prejowl support so the chin-to-jaw line is more continuous. ' +
+            'The change comes only from added chin volume and structural support',
+  avoid: 'do not over-lengthen into a long, narrow, pointed, jutting, or witch-like chin, and keep the chin width natural; ' +
          'do not create a sharp, angular, or "superhero" jawline; ' +
          'do not slim, hollow, or carve the cheeks to fake jaw definition; ' +
-         'do not narrow the lower face into an unnatural V; do not change the neck; ' +
-         'keep the change proportionate to the existing bone structure'
+         'do not narrow the lower face into an unnatural V; ' +
+         'do not add a double chin and do not alter the neck below the new chin point; ' +
+         'keep the change proportionate to the patient\'s bone structure and sex (a male chin can be a little longer, squarer, and more projected; a female chin softer, more tapered, and slightly shorter)'
 };
 
 // ---- Filler: goal modifiers (v1) ------------------------------------------
@@ -187,7 +193,7 @@ const TIMELINE = {
 
 // Version log so we know which prompt produced which result during tuning.
 const VERSIONS = {
-  base: 'v3', chin: 'v1', jawline: 'v1', chin_jawline: 'v3', nose: 'v1', lips: 'v2',
+  base: 'v3', chin: 'v1', jawline: 'v1', chin_jawline: 'v4', nose: 'v1', lips: 'v2',
   cheeks: 'v2', tear_trough: 'v1', nasolabial_folds: 'v1', sculptra: 'v10.1', sculptra_oblique: 'v10.1', hdr: 'v1', timeline: 'v2'
 };
 
