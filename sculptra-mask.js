@@ -183,13 +183,15 @@ function buildTreatAlpha(L, w, h, scope){
   const foldSegs=buildFoldSegs(lm, p152, dirUp, dirOut, faceH, W);
   const twoSigFold=2*(FOLD_SIGMA*W)*(FOLD_SIGMA*W);
 
-  // HA filler lower-face anchors (chin pad + mandibular border). Mirrors the
-  // calibrated validator chin_jaw scope: chin radius 0.10W, jaw tube 0.035W,
-  // upper reach 0.32 faceH, chin anchor 0.07 faceH above the menton.
-  const LF_CHIN_SIGMA=0.10*W, LF_JAW_SIGMA=0.035*W, LF_TOP=0.32;
+  // HA filler lower-face anchors (chin pad + mandibular border). v2: the chin
+  // anchor sits lower and slightly larger, and the central column below the chin
+  // is reopened (see the neck floor below) so the AI can lengthen the chin
+  // downward, which is the primary frontal change. The jaw stays cut at the
+  // jawline so the neck/submandibular region is never opened.
+  const LF_CHIN_SIGMA=0.12*W, LF_JAW_SIGMA=0.035*W, LF_TOP=0.32;
   const twoSigChin=2*LF_CHIN_SIGMA*LF_CHIN_SIGMA||1e-6;
   const twoSigJaw=2*LF_JAW_SIGMA*LF_JAW_SIGMA||1e-6;
-  const chinC=add(p152, mul(dirUp, 0.07*faceH));
+  const chinC=add(p152, mul(dirUp, 0.02*faceH)); // near the menton, biased toward the chin point and the elongation column
   const JAW_POLY=[397,365,379,378,400,377,152,148,176,149,150,136,172]; // right gonion -> chin -> left gonion
   const jawSegs=[];
   for(let k=0;k+1<JAW_POLY.length;k++){ const A=lm[JAW_POLY[k]], B=lm[JAW_POLY[k+1]]; if(A&&B) jawSegs.push([A,B]); }
@@ -208,12 +210,17 @@ function buildTreatAlpha(L, w, h, scope){
       // Protected buffer keeps lips/nose/eyes/brows out; tapers give a hard stop
       // at the jaw (no neck/submental) and a fade toward the mid-cheek above.
       if(scope==="chin_jaw"){
-        if(hF <= LF_TOP+0.12 && hF >= -0.06){
+        if(hF <= LF_TOP+0.12 && hF >= -0.16){
           const protOnly=1-(protA[i*4]/255);
           let lf=Math.exp(-(((x-chinC.x)*(x-chinC.x))+((y-chinC.y)*(y-chinC.y)))/twoSigChin);
           for(let k=0;k<jawSegs.length;k++){ const sg=jawSegs[k]; const dd=distToSeg(x,y,sg[0],sg[1]); const g=Math.exp(-(dd*dd)/twoSigJaw); if(g>lf) lf=g; }
           const topTaper=1-smoothstep(LF_TOP,LF_TOP+0.08,hF);
-          const neckTaper=smoothstep(-0.02,0.03,hF);
+          // Downward allowance depends on laterality: directly under the chin
+          // (central) the mask extends down so the chin can lengthen; toward the
+          // jaw and sides it stops at the jawline so the neck is never opened.
+          const central=1-smoothstep(0.10,0.22,alat);     // 1 under the chin, 0 at the jaw/sides
+          const floor=-0.02 - 0.12*central;               // jaw cuts at -0.02; chin column extends to ~-0.14
+          const neckTaper=smoothstep(floor, floor+0.05, hF);
           m[i]=Math.min(1, lf*topTaper*neckTaper*protOnly);
         }
         continue;
