@@ -122,7 +122,9 @@ function buildFoldSegs(lm, p152, dirUp, dirOut, faceH, W){
 }
 
 // Build the feathered treatment-region alpha (0..1, 1 = fully editable).
-// scope: 'full' = temple+cheek+lower+folds+apex; 'temple' = fossa + temporal apex only.
+// scope: 'full' = temple+cheek+lower+folds+apex; 'temple_fold' = temporal fossa +
+// temporal apex + nasolabial/marionette folds only (cheeks/midface/under-eye stay
+// original); 'temple' = fossa + temporal apex only.
 function buildTreatAlpha(L, w, h, scope){
   const lm = L.map(p=>({x:p.x*w, y:p.y*h}));
   const p152 = lm[152];
@@ -133,7 +135,7 @@ function buildTreatAlpha(L, w, h, scope){
 
   // protected exclusion: discs over protected landmarks, blurred
   const pc=document.createElement("canvas"); pc.width=w; pc.height=h;
-  const pctx=pc.getContext("2d");
+  const pctx=pc.getContext("2d",{willReadFrequently:true});
   pctx.fillStyle="#000"; pctx.fillRect(0,0,w,h);
   pctx.fillStyle="#fff";
   const rDisc=0.020*W;
@@ -144,7 +146,7 @@ function buildTreatAlpha(L, w, h, scope){
 
   // face-oval containment
   const oc=document.createElement("canvas"); oc.width=w; oc.height=h;
-  const octx=oc.getContext("2d");
+  const octx=oc.getContext("2d",{willReadFrequently:true});
   octx.fillStyle="#000"; octx.fillRect(0,0,w,h);
   octx.fillStyle="#fff"; octx.beginPath();
   FACE_OVAL.forEach((idx,k)=>{ const p=lm[idx]; if(k===0) octx.moveTo(p.x,p.y); else octx.lineTo(p.x,p.y); });
@@ -184,8 +186,8 @@ function buildTreatAlpha(L, w, h, scope){
       if(base<=0.003) continue;
 
       let templeFrac=0;
-      if(scope==="temple"){
-        // fossa membership only
+      if(scope==="temple" || scope==="temple_fold"){
+        // fossa membership
         const lo=VOL_BANDS.temple[0], hi=VOL_BANDS.temple[1];
         const band=smoothstep(lo-VOL_FB,lo,hF)*(1-smoothstep(hi,hi+VOL_FB,hF));
         if(band>0){
@@ -196,6 +198,12 @@ function buildTreatAlpha(L, w, h, scope){
         // temporal apex
         let axt=0; for(let k=0;k<cT.length;k++){ const dx=x-cT[k].x, dy=y-cT[k].y; const g=Math.exp(-(dx*dx+dy*dy)/twoSigT); if(g>axt) axt=g; }
         const t=axt*base; if(t>v) v=t;
+        // nasolabial / marionette fold tubes (temple_fold only); cheeks stay original
+        if(scope==="temple_fold"){
+          let fw=0;
+          for(let k=0;k<foldSegs.length;k++){ const sg=foldSegs[k]; const dd=distToSeg(x,y,sg[0],sg[1]); const g=Math.exp(-(dd*dd)/twoSigFold); if(g>fw) fw=g; }
+          fw*=base; if(fw>v) v=fw;
+        }
         m[i]=Math.min(1,v);
         continue;
       }
@@ -291,7 +299,7 @@ export async function compositeSculptra(beforeImg, aiImg, opts){
   const m = buildTreatAlpha(landmarks, w, h, scope);
 
   const c = document.createElement("canvas"); c.width = w; c.height = h;
-  const cx = c.getContext("2d");
+  const cx = c.getContext("2d",{willReadFrequently:true});
 
   cx.drawImage(beforeImg, 0, 0, w, h);
   const before = cx.getImageData(0, 0, w, h), b = before.data;
