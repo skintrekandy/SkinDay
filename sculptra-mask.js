@@ -208,6 +208,24 @@ function buildTreatAlpha(L, w, h, scope, sex){
   const jawSegs=[];
   for(let k=0;k+1<JAW_POLY.length;k++){ const A=lm[JAW_POLY[k]], B=lm[JAW_POLY[k+1]]; if(A&&B) jawSegs.push([A,B]); }
 
+  // Lateral lower-face taper. As the chin lengthens and projects, the soft lower
+  // third follows it down and the lateral contour tapers slightly inward; locking
+  // that contour makes the chin look stretched rather than refined. Unlock a
+  // feathered band straddling the lower-lateral silhouette (jaw-near-chin ->
+  // gonion -> jaw angle), wide enough to sit a little outside the outline so the
+  // edit can pull it in. Sex-aware: a woman's lower face may taper (feminising);
+  // a man's jaw width is preserved, so the band is mostly off. Kept below the
+  // cheekbone (the topTaper above still fades it) so the mid-cheek is untouched.
+  const LF_TAPER_SIGMA=0.052*W;
+  const twoSigTaper=2*LF_TAPER_SIGMA*LF_TAPER_SIGMA||1e-6;
+  const taperScale = isMale ? 0.25 : 1.0;
+  const taperSegs=[];
+  if(taperScale>0){
+    for(const POLY of [[365,397,288],[136,172,58]]){ // right side, left side
+      for(let k=0;k+1<POLY.length;k++){ const A=lm[POLY[k]], B=lm[POLY[k+1]]; if(A&&B) taperSegs.push([A,B]); }
+    }
+  }
+
   const N=w*h, m=new Float32Array(N);
   for(let y=0,i=0;y<h;y++){
     for(let x=0;x<w;x++,i++){
@@ -228,6 +246,7 @@ function buildTreatAlpha(L, w, h, scope, sex){
           let lf=Math.exp(-(dc*dc)/twoSigChin);
           for(let k=0;k<jawSegs.length;k++){ const sg=jawSegs[k]; const dd=distToSeg(x,y,sg[0],sg[1]); const g=Math.exp(-(dd*dd)/twoSigJaw); if(g>lf) lf=g; }
           for(let k=0;k<gonialPts.length;k++){ const gp=gonialPts[k]; const dx=x-gp.x, dy=y-gp.y; const g=Math.exp(-(dx*dx+dy*dy)/twoSigGonial); if(g>lf) lf=g; }
+          for(let k=0;k<taperSegs.length;k++){ const sg=taperSegs[k]; const dd=distToSeg(x,y,sg[0],sg[1]); const g=taperScale*Math.exp(-(dd*dd)/twoSigTaper); if(g>lf) lf=g; }
           const topTaper=1-smoothstep(LF_TOP,LF_TOP+0.08,hF);
           // Downward allowance depends on laterality: directly under the chin
           // (central) the mask extends down so the chin can lengthen; toward the
