@@ -356,19 +356,7 @@ const FREE_REGEN_MS = 60000;
 // Bump this whenever sculptra-mask.js changes, so the browser fetches the new
 // module instead of a stale disk-cached copy. Both imports below use it, so they
 // stay the same module instance (shared face-detection cache).
-const MASK_MODULE_VERSION = '6';
-
-// HA filler: one generated anchor + a display-only intensity slider (Option 2).
-// The slider cross-fades the original photo toward the AI anchor (0% = original,
-// 70% = expected-looking, 100% = the generated anchor). It does NOT regenerate.
-//
-// Decision rule (Andy): if the cross-fade looks visually clean, ship the slider.
-// If it produces ghosting / double-contour on the chin or jawline, set this to
-// false: filler then generates one single Expected-strength result (no anchor
-// blend, no slider, never two contours) until geometry-based intensity is built.
-//   true  -> generate at the Enhanced anchor, show the cross-fade slider (default 70%)
-//   false -> generate one Expected (moderate) result, no slider, raw image only
-const FILLER_SLIDER_ENABLED = true;
+const MASK_MODULE_VERSION = '7';
 
 const state = {
   file:null, originalDataUrl:null, resultDataUrl:null,
@@ -460,39 +448,6 @@ async function loadImage(src){
     img.onerror = reject;
     img.src = src;
   });
-}
-
-// HA filler intensity (Option 2 MVP): a global cross-fade between the original
-// photo and the AI anchor, with NO mask and NO geometry. Draws both at the AI
-// result's pixel size, then apply(t) blends uniformly across the whole frame
-// (t=0 original, t=1 anchor). Same (0..1)->jpegDataURL contract as
-// makeSculptraCompositor, so the shared slider drives it unchanged. Because the
-// filler prompt + SERVER_SAFETY hold everything outside the lower face still, the
-// only pixels that actually differ are in the treated chin/jaw region, so a
-// uniform blend ghosts only if that contour moved a lot. If it does, flip
-// FILLER_SLIDER_ENABLED to false. Synchronous; returns null if dims are missing.
-function makeImageCrossfade(beforeImg, aiImg){
-  const w = aiImg.naturalWidth, h = aiImg.naturalHeight;
-  if(!w || !h) return null;
-  const c = document.createElement('canvas'); c.width = w; c.height = h;
-  const cx = c.getContext('2d', { willReadFrequently:true });
-  cx.drawImage(beforeImg, 0, 0, w, h);
-  const b = cx.getImageData(0, 0, w, h).data;
-  cx.drawImage(aiImg, 0, 0, w, h);
-  const out = cx.getImageData(0, 0, w, h);
-  const a0 = new Uint8ClampedArray(out.data); // pristine AI pixels as the source
-  const o = out.data;
-  return function apply(intensity){
-    const t = Math.max(0, Math.min(1, (typeof intensity === 'number' ? intensity : 1)));
-    for(let p=0; p<o.length; p+=4){
-      o[p]   = a0[p]*t   + b[p]*(1-t);
-      o[p+1] = a0[p+1]*t + b[p+1]*(1-t);
-      o[p+2] = a0[p+2]*t + b[p+2]*(1-t);
-      o[p+3] = 255;
-    }
-    cx.putImageData(out, 0, 0);
-    return c.toDataURL('image/jpeg', 0.92);
-  };
 }
 
 // Resize the longest edge to <=1024 to keep uploads small. Returns a Blob.
@@ -613,8 +568,8 @@ wirePills('biostimProduct', 'product');
 updatePhotoGuide();
 
 // Live intensity slider: re-blend the cached apply() with no regeneration. Used
-// by both Sculptra (masked composite) and HA filler (global cross-fade); both set
-// state.intensityApply to a function with the same (0..1) -> jpegDataURL contract.
+// by both Sculptra and HA filler; both set state.intensityApply to a masked
+// compositor with the same (0..1) -> jpegDataURL contract.
 (function(){
   const slider = document.getElementById('intensitySlider');
   if(!slider) return;
@@ -895,26 +850,30 @@ async function runGeneration(isRegen){
     form.append('image', blob, 'patient.jpg');
     form.append('type', state.type);
 
-    // Sculptra hybrid mask: build a treatment-region mask and post it so the AI
-    // edit is confined to it (temple, lateral cheek, prejowl, folds) and cannot
-    // beautify outside it. Generated at the same 1024px cap as the posted image
-    // so dimensions match. Fail-safe: any error (no face, model load) posts no
-    // mask, which is the current full-image behavior. Sculptra only.
-    if(state.type === 'biostim' && state.product === 'sculptra'){
+    // Hybrid mask: build a treatment-region mask and post it so the AI edit is
+    // confined to it and cannot beautify outside it. Sculptra uses the full
+    // lateral scope; HA filler uses the chin_jaw scope (chin pad + mandibular
+    // border, everything else protected). Generated at the same 1024px cap as the
+    // posted image so dimensions match. Fail-safe: any error (no face, model load)
+    // posts no mask, falling back to a full-image edit.
+    const maskScope = (state.type === 'biostim' && state.product === 'sculptra') ? 'full'
+                    : (state.type === 'filler') ? 'chin_jaw'
+                    : null;
+    if(maskScope){
       try {
         setStatus('Preparing treatment mask… (first run downloads a small model).', 'spin');
         const beforeImg = await loadImage(beforeDataUrl);
-        console.log('%c[Visualize] Sculptra mask v' + MASK_MODULE_VERSION + ': loading module + MediaPipe…', 'color:#C8725A');
+        console.log('%c[Visualize] Mask v' + MASK_MODULE_VERSION + ' (scope ' + maskScope + '): loading module + MediaPipe…', 'color:#C8725A');
         const { buildSculptraMaskBlob } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
-        const maskBlob = await buildSculptraMaskBlob(beforeImg, { maxDim: 1024, scope: 'full' });
+        const maskBlob = await buildSculptraMaskBlob(beforeImg, { maxDim: 1024, scope: maskScope });
         if(maskBlob){
           form.append('mask', maskBlob, 'mask.png');
-          console.log('%c[Visualize] Sculptra mask BUILT and attached to request (scope temple_fold, ' + Math.round(maskBlob.size/1024) + ' kB).', 'color:#2e7d32;font-weight:bold');
+          console.log('%c[Visualize] Mask BUILT and attached (scope ' + maskScope + ', ' + Math.round(maskBlob.size/1024) + ' kB).', 'color:#2e7d32;font-weight:bold');
         } else {
-          console.warn('[Visualize] Sculptra mask returned empty; sending request WITHOUT a mask (raw AI).');
+          console.warn('[Visualize] Mask returned empty (no face); sending request WITHOUT a mask (raw AI).');
         }
       } catch(err) {
-        console.error('%c[Visualize] Sculptra mask FAILED; sending request WITHOUT a mask (raw AI). This is why the result may be globally beautified.', 'color:#c62828;font-weight:bold', err);
+        console.error('%c[Visualize] Mask FAILED; sending request WITHOUT a mask (raw AI). The result may be globally beautified.', 'color:#c62828;font-weight:bold', err);
       }
     }
 
@@ -923,10 +882,9 @@ async function runGeneration(isRegen){
         .flatMap(a => a === 'chin_jawline' ? ['chin','jawline'] : [a]);
       form.append('areas', postAreas.join(','));
       form.append('goal', document.getElementById('goal').value);
-      // One anchor only. Slider on: generate at the upper-realistic Enhanced
-      // anchor and let the slider dial down. Slider off (ghosting fallback):
-      // generate one Expected (moderate) result and show it raw.
-      form.append('intensity', FILLER_SLIDER_ENABLED ? 'enhanced' : 'moderate');
+      // One masked anchor. Generate at the upper-realistic Enhanced strength; the
+      // composite slider dials the in-mask intensity down from there.
+      form.append('intensity', 'enhanced');
     } else {
       form.append('product', state.product);
       form.append('timeline', state.timeline);
@@ -956,43 +914,32 @@ async function runGeneration(isRegen){
     state.resultDataUrl = await pollForResult(jobId, key, isRegen);
     state.lastGenAt = Date.now();
 
-    // Build the intensity apply() for whichever treatment supports the live
-    // slider. Sculptra: masked composite (original preserved outside the zone).
-    // HA filler: global cross-fade original<->anchor (Option 2 MVP). Both expose
-    // the same apply(0..1)->jpegDataURL so the slider code is identical.
+    // Build the live intensity slider via the masked compositor: AI inside the
+    // treatment mask, the original photo everywhere else, pixel for pixel. Sculptra
+    // uses the full lateral scope; HA filler uses the chin_jaw scope. Both expose
+    // the same apply(0..1)->jpegDataURL, so the slider code is identical and there
+    // is no ghosting (outside the mask is the original by construction).
     // Fail-safe: on any error keep the raw AI result with the slider hidden.
     state.intensityApply = null;
-    if(state.type === 'biostim' && state.product === 'sculptra'){
+    const compScope = (state.type === 'biostim' && state.product === 'sculptra') ? 'full'
+                    : (state.type === 'filler') ? 'chin_jaw'
+                    : null;
+    if(compScope){
       try {
         const beforeImg = await loadImage(state.beforeDataUrl || state.originalDataUrl);
         const aiImg = await loadImage(state.resultDataUrl);
-        console.log('%c[Visualize] Sculptra composite v' + MASK_MODULE_VERSION + ': building compositor (scope full)…', 'color:#C8725A');
+        console.log('%c[Visualize] Composite v' + MASK_MODULE_VERSION + ' (scope ' + compScope + '): building compositor…', 'color:#C8725A');
         const { makeSculptraCompositor } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
-        const apply = await makeSculptraCompositor(beforeImg, aiImg, { scope: 'full' });
+        const apply = await makeSculptraCompositor(beforeImg, aiImg, { scope: compScope });
         if(apply){
           state.intensityApply = apply;
           state.resultDataUrl = apply(state.intensityPct / 100);
-          console.log('%c[Visualize] Sculptra compositor READY. Intensity slider is live; skin/identity outside the treatment zone is the original photo.', 'color:#2e7d32;font-weight:bold');
+          console.log('%c[Visualize] Compositor READY (scope ' + compScope + '). Slider is live; everything outside the treatment zone is the original photo.', 'color:#2e7d32;font-weight:bold');
         } else {
-          console.warn('[Visualize] Sculptra compositor returned null (no face); showing RAW AI, slider disabled.');
+          console.warn('[Visualize] Compositor returned null (no face); showing RAW AI, slider disabled.');
         }
       } catch(err) {
-        console.error('%c[Visualize] Sculptra compositor FAILED; showing RAW AI, slider disabled.', 'color:#c62828;font-weight:bold', err);
-      }
-    } else if(state.type === 'filler' && FILLER_SLIDER_ENABLED){
-      try {
-        const beforeImg = await loadImage(state.beforeDataUrl || state.originalDataUrl);
-        const aiImg = await loadImage(state.resultDataUrl);
-        const apply = makeImageCrossfade(beforeImg, aiImg);
-        if(apply){
-          state.intensityApply = apply;
-          state.resultDataUrl = apply(state.intensityPct / 100);
-          console.log('%c[Visualize] HA filler cross-fade READY. Slider blends original<->anchor with no regeneration. Watch the chin/jaw contour for ghosting; if it doubles, set FILLER_SLIDER_ENABLED=false.', 'color:#2e7d32;font-weight:bold');
-        } else {
-          console.warn('[Visualize] HA filler cross-fade unavailable (no result dims); showing RAW AI, slider disabled.');
-        }
-      } catch(err) {
-        console.error('%c[Visualize] HA filler cross-fade FAILED; showing RAW AI, slider disabled.', 'color:#c62828;font-weight:bold', err);
+        console.error('%c[Visualize] Compositor FAILED; showing RAW AI, slider disabled.', 'color:#c62828;font-weight:bold', err);
       }
     }
 

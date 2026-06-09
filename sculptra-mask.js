@@ -124,7 +124,8 @@ function buildFoldSegs(lm, p152, dirUp, dirOut, faceH, W){
 // Build the feathered treatment-region alpha (0..1, 1 = fully editable).
 // scope: 'full' = temple+cheek+lower+folds+apex; 'temple_fold' = temporal fossa +
 // temporal apex + nasolabial/marionette folds only (cheeks/midface/under-eye stay
-// original); 'temple' = fossa + temporal apex only.
+// original); 'temple' = fossa + temporal apex only; 'chin_jaw' = HA filler chin pad
+// + mandibular border only (lips/nose/eyes/brows/cheeks/midface/neck protected).
 function buildTreatAlpha(L, w, h, scope){
   const lm = L.map(p=>({x:p.x*w, y:p.y*h}));
   const p152 = lm[152];
@@ -182,6 +183,17 @@ function buildTreatAlpha(L, w, h, scope){
   const foldSegs=buildFoldSegs(lm, p152, dirUp, dirOut, faceH, W);
   const twoSigFold=2*(FOLD_SIGMA*W)*(FOLD_SIGMA*W);
 
+  // HA filler lower-face anchors (chin pad + mandibular border). Mirrors the
+  // calibrated validator chin_jaw scope: chin radius 0.10W, jaw tube 0.035W,
+  // upper reach 0.32 faceH, chin anchor 0.07 faceH above the menton.
+  const LF_CHIN_SIGMA=0.10*W, LF_JAW_SIGMA=0.035*W, LF_TOP=0.32;
+  const twoSigChin=2*LF_CHIN_SIGMA*LF_CHIN_SIGMA||1e-6;
+  const twoSigJaw=2*LF_JAW_SIGMA*LF_JAW_SIGMA||1e-6;
+  const chinC=add(p152, mul(dirUp, 0.07*faceH));
+  const JAW_POLY=[397,365,379,378,400,377,152,148,176,149,150,136,172]; // right gonion -> chin -> left gonion
+  const jawSegs=[];
+  for(let k=0;k+1<JAW_POLY.length;k++){ const A=lm[JAW_POLY[k]], B=lm[JAW_POLY[k+1]]; if(A&&B) jawSegs.push([A,B]); }
+
   const N=w*h, m=new Float32Array(N);
   for(let y=0,i=0;y<h;y++){
     for(let x=0;x<w;x++,i++){
@@ -189,6 +201,23 @@ function buildTreatAlpha(L, w, h, scope){
       const along=relx*dirUp.x+rely*dirUp.y;
       const latd =relx*dirOut.x+rely*dirOut.y;
       const hF=along/faceH, alat=Math.abs(latd)/W;
+
+      // HA filler chin_jaw scope: chin pad + mandibular border only. Computed
+      // before the oval early-out so it can sit on and just beyond the lower
+      // silhouette (chin projection extends the outline; Sculptra zones never do).
+      // Protected buffer keeps lips/nose/eyes/brows out; tapers give a hard stop
+      // at the jaw (no neck/submental) and a fade toward the mid-cheek above.
+      if(scope==="chin_jaw"){
+        if(hF <= LF_TOP+0.12 && hF >= -0.06){
+          const protOnly=1-(protA[i*4]/255);
+          let lf=Math.exp(-(((x-chinC.x)*(x-chinC.x))+((y-chinC.y)*(y-chinC.y)))/twoSigChin);
+          for(let k=0;k<jawSegs.length;k++){ const sg=jawSegs[k]; const dd=distToSeg(x,y,sg[0],sg[1]); const g=Math.exp(-(dd*dd)/twoSigJaw); if(g>lf) lf=g; }
+          const topTaper=1-smoothstep(LF_TOP,LF_TOP+0.08,hF);
+          const neckTaper=smoothstep(-0.02,0.03,hF);
+          m[i]=Math.min(1, lf*topTaper*neckTaper*protOnly);
+        }
+        continue;
+      }
 
       const oval=ovalA[i*4]/255;
       const prot=1-(protA[i*4]/255);
