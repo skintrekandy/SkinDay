@@ -126,7 +126,7 @@ function buildFoldSegs(lm, p152, dirUp, dirOut, faceH, W){
 // temporal apex + nasolabial/marionette folds only (cheeks/midface/under-eye stay
 // original); 'temple' = fossa + temporal apex only; 'chin_jaw' = HA filler chin pad
 // + mandibular border only (lips/nose/eyes/brows/cheeks/midface/neck protected).
-function buildTreatAlpha(L, w, h, scope){
+function buildTreatAlpha(L, w, h, scope, sex){
   const lm = L.map(p=>({x:p.x*w, y:p.y*h}));
   const p152 = lm[152];
   const dirUp = norm(sub(lm[10], lm[152]));
@@ -183,15 +183,27 @@ function buildTreatAlpha(L, w, h, scope){
   const foldSegs=buildFoldSegs(lm, p152, dirUp, dirOut, faceH, W);
   const twoSigFold=2*(FOLD_SIGMA*W)*(FOLD_SIGMA*W);
 
-  // HA filler lower-face anchors (chin pad + mandibular border). v2: the chin
-  // anchor sits lower and slightly larger, and the central column below the chin
-  // is reopened (see the neck floor below) so the AI can lengthen the chin
-  // downward, which is the primary frontal change. The jaw stays cut at the
-  // jawline so the neck/submandibular region is never opened.
-  const LF_CHIN_SIGMA=0.12*W, LF_JAW_SIGMA=0.035*W, LF_TOP=0.32;
-  const twoSigChin=2*LF_CHIN_SIGMA*LF_CHIN_SIGMA||1e-6;
+  // HA filler lower-face anchors (chin + mandibular border), sex-aware.
+  // Female: chin tapers to a narrow central point at alar width, gonial angle
+  // stays closed (never widen/lower a woman's jaw, the common masculinising
+  // error). Male: wider, squarer chin at oral-commissure width, and the gonial
+  // angle is opened so the jaw can be widened/straightened from the front. The
+  // central column below the chin is reopened for vertical lengthening either way.
+  const isMale = sex === 'male';
+  const LF_JAW_SIGMA=0.035*W, LF_TOP=0.32;
   const twoSigJaw=2*LF_JAW_SIGMA*LF_JAW_SIGMA||1e-6;
   const chinC=add(p152, mul(dirUp, 0.02*faceH)); // near the menton, biased toward the chin point and the elongation column
+  // chin width by landmark: female ~ alar (nostril) width, male ~ oral-commissure width
+  const alaHalf = (lm[ALA.l]&&lm[ALA.r]) ? Math.abs(dot(sub(lm[ALA.l], lm[ALA.r]), dirOut))/2 : 0.08*W;
+  const comHalf = (lm[COMMISSURE.l]&&lm[COMMISSURE.r]) ? Math.abs(dot(sub(lm[COMMISSURE.l], lm[COMMISSURE.r]), dirOut))/2 : 0.14*W;
+  const chinHalf = isMale ? comHalf*0.95 : alaHalf*0.45; // male: square flat bottom; female: taper to near-central point
+  const chinA = sub(chinC, mul(dirOut, chinHalf));
+  const chinB = add(chinC, mul(dirOut, chinHalf));
+  const LF_CHIN_SIGMA=(isMale?0.11:0.12)*W;
+  const twoSigChin=2*LF_CHIN_SIGMA*LF_CHIN_SIGMA||1e-6;
+  // male only: open the gonial angle for jaw width; empty for female
+  const twoSigGonial=2*(0.065*W)*(0.065*W)||1e-6;
+  const gonialPts = isMale ? [lm[172], lm[397]].filter(Boolean) : [];
   const JAW_POLY=[397,365,379,378,400,377,152,148,176,149,150,136,172]; // right gonion -> chin -> left gonion
   const jawSegs=[];
   for(let k=0;k+1<JAW_POLY.length;k++){ const A=lm[JAW_POLY[k]], B=lm[JAW_POLY[k+1]]; if(A&&B) jawSegs.push([A,B]); }
@@ -212,8 +224,10 @@ function buildTreatAlpha(L, w, h, scope){
       if(scope==="chin_jaw"){
         if(hF <= LF_TOP+0.12 && hF >= -0.16){
           const protOnly=1-(protA[i*4]/255);
-          let lf=Math.exp(-(((x-chinC.x)*(x-chinC.x))+((y-chinC.y)*(y-chinC.y)))/twoSigChin);
+          const dc=distToSeg(x,y,chinA,chinB);
+          let lf=Math.exp(-(dc*dc)/twoSigChin);
           for(let k=0;k<jawSegs.length;k++){ const sg=jawSegs[k]; const dd=distToSeg(x,y,sg[0],sg[1]); const g=Math.exp(-(dd*dd)/twoSigJaw); if(g>lf) lf=g; }
+          for(let k=0;k<gonialPts.length;k++){ const gp=gonialPts[k]; const dx=x-gp.x, dy=y-gp.y; const g=Math.exp(-(dx*dx+dy*dy)/twoSigGonial); if(g>lf) lf=g; }
           const topTaper=1-smoothstep(LF_TOP,LF_TOP+0.08,hF);
           // Downward allowance depends on laterality: directly under the chin
           // (central) the mask extends down so the chin can lengthen; toward the
@@ -295,6 +309,7 @@ export async function buildSculptraMaskBlob(imgEl, opts){
   const o = opts || {};
   const maxDim = o.maxDim || 1024;
   const scope = o.scope || 'full';
+  const sex = o.sex || 'female';
 
   const landmarks = await detectFace(imgEl);
   if(!landmarks) return null;
@@ -304,7 +319,7 @@ export async function buildSculptraMaskBlob(imgEl, opts){
   const w = Math.round(imgEl.naturalWidth * scale);
   const h = Math.round(imgEl.naturalHeight * scale);
 
-  const m = buildTreatAlpha(landmarks, w, h, scope);
+  const m = buildTreatAlpha(landmarks, w, h, scope, sex);
 
   // rasterize: treated region transparent (alpha 0), protected opaque. RGB is
   // ignored by the edit endpoint; we paint white in the treated region so the
@@ -336,6 +351,7 @@ export default buildSculptraMaskBlob;
  */
 export async function compositeSculptra(beforeImg, aiImg, opts){
   const scope = (opts && opts.scope) || 'full';
+  const sex = (opts && opts.sex) || 'female';
   const intensity = (opts && typeof opts.intensity === "number") ? Math.max(0, Math.min(1, opts.intensity)) : 1;
   const landmarks = await detectFace(beforeImg);
   if(!landmarks) return null;
@@ -343,7 +359,7 @@ export async function compositeSculptra(beforeImg, aiImg, opts){
   // Composite at the AI result's pixel size; the AI was produced from the same
   // framing, so the original scaled to these dims aligns with it.
   const w = aiImg.naturalWidth, h = aiImg.naturalHeight;
-  const m = buildTreatAlpha(landmarks, w, h, scope);
+  const m = buildTreatAlpha(landmarks, w, h, scope, sex);
 
   const c = document.createElement("canvas"); c.width = w; c.height = h;
   const cx = c.getContext("2d",{willReadFrequently:true});
@@ -374,10 +390,11 @@ export async function compositeSculptra(beforeImg, aiImg, opts){
  */
 export async function makeSculptraCompositor(beforeImg, aiImg, opts){
   const scope = (opts && opts.scope) || 'full';
+  const sex = (opts && opts.sex) || 'female';
   const landmarks = await detectFace(beforeImg);
   if(!landmarks) return null;
   const w = aiImg.naturalWidth, h = aiImg.naturalHeight;
-  const m = buildTreatAlpha(landmarks, w, h, scope);
+  const m = buildTreatAlpha(landmarks, w, h, scope, sex);
 
   const c = document.createElement("canvas"); c.width = w; c.height = h;
   const cx = c.getContext("2d",{willReadFrequently:true});

@@ -231,14 +231,11 @@
           </div>
         </div>
         <div class="field">
-          <label>Goal</label>
-          <select id="goal">
-            <option value="natural_refinement">Natural refinement</option>
-            <option value="facial_balancing">Facial balancing</option>
-            <option value="masculinization">Masculinization</option>
-            <option value="feminization">Feminization</option>
-            <option value="rejuvenation">Rejuvenation</option>
-          </select>
+          <label>Patient (sets chin and jaw shape)</label>
+          <div class="pill-grid" id="fillerSex">
+            <button class="pill active" data-sex="female" type="button"><strong>Female</strong></button>
+            <button class="pill" data-sex="male" type="button"><strong>Male</strong></button>
+          </div>
         </div>
         <div class="field">
           <label>Result strength</label>
@@ -258,11 +255,6 @@
           <label>Result strength</label>
           <div class="privacy-note"><span>ℹ️</span><span>Your preview is generated at full strength, then you dial the intensity up or down with a slider on the result. No need to regenerate.</span></div>
         </div>
-      </div>
-
-      <div class="field" style="margin-top:14px;">
-        <label>Custom note optional</label>
-        <textarea id="customNote" placeholder="e.g. preserve facial identity, focus on chin projection, keep lips subtle"></textarea>
       </div>
     </div>
 
@@ -356,11 +348,11 @@ const FREE_REGEN_MS = 60000;
 // Bump this whenever sculptra-mask.js changes, so the browser fetches the new
 // module instead of a stale disk-cached copy. Both imports below use it, so they
 // stay the same module instance (shared face-detection cache).
-const MASK_MODULE_VERSION = '8';
+const MASK_MODULE_VERSION = '9';
 
 const state = {
   file:null, originalDataUrl:null, resultDataUrl:null,
-  type:'filler', areas:['chin_jawline'], intensity:'enhanced',
+  type:'filler', areas:['chin_jawline'], intensity:'enhanced', sex:'female',
   product:'sculptra', projection:'optimistic', timeline:'6',
   blackBg:true, beforeDataUrl:null, blackBgCache:null,
   lastGenAt:0, intensityApply:null, intensityPct:70
@@ -565,6 +557,7 @@ function wirePills(containerId, key){
   });
 }
 wirePills('biostimProduct', 'product');
+wirePills('fillerSex', 'sex');
 updatePhotoGuide();
 
 // Live intensity slider: re-blend the cached apply() with no regeneration. Used
@@ -629,23 +622,6 @@ const TIMELINE_TEXT = {
   '6':'Show the result at about 6 months: a clearly developed result.',
   '12':'Show the result at about 12 months: the fuller, settled result.'
 };
-
-// Non-negotiable constraints are ALSO enforced server-side; kept here for clarity.
-const SAFETY = "CRITICAL: this is a medical consultation photograph, not a beauty image. Apply ONLY the single localized change described above and change nothing else. Do not smooth or retouch skin, remove or soften wrinkles, even out skin tone, brighten, raise contrast, slim the face, enlarge the eyes, lift the brows, change the hairstyle, or apply any beautifying, younger-looking, or filter-like effect. Keep the apparent age and ALL age-appropriate skin texture (pores, fine lines, folds) exactly as in the original. Preserve unchanged: identity, ethnicity and ethnic features, bone structure, hair, clothing, jewellery, expression, head angle and pose, camera framing and crop, lighting, and background. The result must read as the SAME photograph with only the treated area subtly adjusted. No added text, labels, or watermarks.";
-
-function buildPrompt(){
-  const note = document.getElementById('customNote').value.trim();
-  let core;
-  if(state.type === 'filler'){
-    const areas = state.areas.length ? state.areas : ['chin'];
-    const areaList = areas.map(a => AREA_TEXT[a]).join('; ');
-    const goal = document.getElementById('goal').value;
-    core = `Make ONLY this change to the photo: add hyaluronic acid filler to ${areaList}. ${GOAL_TEXT[goal]} ${INTENSITY_TEXT[state.intensity]}`;
-  } else {
-    core = `Make ONLY this change to the photo: ${PRODUCT_TEXT[state.product]} ${TIMELINE_TEXT[state.timeline] || TIMELINE_TEXT['6']} ${PROJECTION_TEXT[state.projection]}`;
-  }
-  return `${core} ${SAFETY} ${note}`.trim();
-}
 
 /* ───────── Insights (no AI; derived from the selected treatment) ───────── */
 const AREA_INSIGHT = {
@@ -865,7 +841,7 @@ async function runGeneration(isRegen){
         const beforeImg = await loadImage(beforeDataUrl);
         console.log('%c[Visualize] Mask v' + MASK_MODULE_VERSION + ' (scope ' + maskScope + '): loading module + MediaPipe…', 'color:#C8725A');
         const { buildSculptraMaskBlob } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
-        const maskBlob = await buildSculptraMaskBlob(beforeImg, { maxDim: 1024, scope: maskScope });
+        const maskBlob = await buildSculptraMaskBlob(beforeImg, { maxDim: 1024, scope: maskScope, sex: state.sex });
         if(maskBlob){
           form.append('mask', maskBlob, 'mask.png');
           console.log('%c[Visualize] Mask BUILT and attached (scope ' + maskScope + ', ' + Math.round(maskBlob.size/1024) + ' kB).', 'color:#2e7d32;font-weight:bold');
@@ -881,7 +857,6 @@ async function runGeneration(isRegen){
       const postAreas = (state.areas.length ? state.areas : ['chin_jawline'])
         .flatMap(a => a === 'chin_jawline' ? ['chin','jawline'] : [a]);
       form.append('areas', postAreas.join(','));
-      form.append('goal', document.getElementById('goal').value);
       // One masked anchor. Generate at the upper-realistic Enhanced strength; the
       // composite slider dials the in-mask intensity down from there.
       form.append('intensity', 'enhanced');
@@ -890,11 +865,6 @@ async function runGeneration(isRegen){
       form.append('timeline', state.timeline);
       form.append('projection', state.projection);
     }
-    const note = document.getElementById('customNote').value.trim();
-    if(note) form.append('note', note);
-    // Legacy fallback: the server now builds the prompt from the fields above
-    // and ignores this when 'type' is present. Kept only for deploy-window safety.
-    form.append('prompt', buildPrompt());
 
     // Async generation: stash the job (start), then poll until the background
     // worker finishes. Removes the synchronous Netlify timeout (the 504s).
@@ -930,7 +900,7 @@ async function runGeneration(isRegen){
         const aiImg = await loadImage(state.resultDataUrl);
         console.log('%c[Visualize] Composite v' + MASK_MODULE_VERSION + ' (scope ' + compScope + '): building compositor…', 'color:#C8725A');
         const { makeSculptraCompositor } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
-        const apply = await makeSculptraCompositor(beforeImg, aiImg, { scope: compScope });
+        const apply = await makeSculptraCompositor(beforeImg, aiImg, { scope: compScope, sex: state.sex });
         if(apply){
           state.intensityApply = apply;
           state.resultDataUrl = apply(state.intensityPct / 100);
@@ -1156,7 +1126,6 @@ document.getElementById('newBtn').addEventListener('click', () => {
   const oldImg = zone.querySelector('img'); if(oldImg) oldImg.remove();
   zone.classList.remove('filled');
   consentChk.checked = false; consentBox.classList.remove('checked');
-  document.getElementById('customNote').value = '';
   hideAnnotations();
   resetZoom();
   document.getElementById('outputSection').classList.remove('visible');
