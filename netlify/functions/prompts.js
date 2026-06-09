@@ -92,13 +92,16 @@ const FILLER_CHIN_JAWLINE = {
             'The main change, clearly visible from the front, is gentle vertical lengthening and projection of the chin: ' +
             'bring the chin point a little lower and forward so the lower third of the face looks longer and more balanced and the face reads more oval, ' +
             'with cleaner definition along the mandibular border and slight prejowl support so the chin-to-jaw line is more continuous. ' +
+            'As the chin lengthens and projects, the soft tissue of the lower face follows it, so the lateral lower-face contour (below the cheekbone, along the jowl and jaw) tapers slightly inward and the lower third reads more refined and defined, not just longer. ' +
+            'For a female face let this inward taper read a little more (softer, more tapered lower face); for a male face keep the jaw width and strength and let the change come mostly from chin length and projection. ' +
+            'The mid-cheek width and cheekbones are unchanged; only the lower face follows the chin. ' +
             'The change comes only from added chin volume and structural support',
   avoid: 'do not over-lengthen into a long, narrow, pointed, jutting, or witch-like chin, and keep the chin width natural; ' +
          'do not create a sharp, angular, or "superhero" jawline; ' +
-         'do not slim, hollow, or carve the cheeks to fake jaw definition; ' +
-         'do not narrow the lower face into an unnatural V; ' +
+         'do not slim, hollow, or carve the cheeks or cheekbones to fake jaw definition; ' +
+         'a slight, soft inward taper of the lower face as the chin lengthens is expected and good, but do not over-narrow or carve the lower face into a hard, artificial, sharply pointed V-line, and do not widen the lower face; ' +
          'do not add a double chin and do not alter the neck below the new chin point; ' +
-         'keep the change proportionate to the patient\'s bone structure and sex (a male chin can be a little longer, squarer, and more projected; a female chin softer, more tapered, and slightly shorter)'
+         'keep the change proportionate to the patient\'s bone structure and sex (a male chin can be a little longer, squarer, and more projected with the jaw width preserved; a female chin softer, more tapered, slightly shorter, with the lower face allowed to taper)'
 };
 
 // ---- Filler: goal modifiers (v1) ------------------------------------------
@@ -193,7 +196,7 @@ const TIMELINE = {
 
 // Version log so we know which prompt produced which result during tuning.
 const VERSIONS = {
-  base: 'v3', chin: 'v1', jawline: 'v1', chin_jawline: 'v4', nose: 'v1', lips: 'v2',
+  base: 'v3', chin: 'v1', jawline: 'v1', chin_jawline: 'v5', nose: 'v1', lips: 'v2',
   cheeks: 'v2', tear_trough: 'v1', nasolabial_folds: 'v1', sculptra: 'v10.1', sculptra_oblique: 'v10.1', hdr: 'v1', timeline: 'v2'
 };
 
