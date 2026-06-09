@@ -259,14 +259,6 @@
           </div>
         </div>
         <div class="field">
-          <label>Timeline — collagen builds over months</label>
-          <div class="pill-grid three" id="biostimTimeline">
-            <button class="pill" data-timeline="3" type="button"><strong>3 months</strong></button>
-            <button class="pill active" data-timeline="6" type="button"><strong>6 months</strong></button>
-            <button class="pill" data-timeline="12" type="button"><strong>12 months</strong></button>
-          </div>
-        </div>
-        <div class="field">
           <label>Result strength</label>
           <div class="privacy-note"><span>ℹ️</span><span>Your preview is generated at full strength, then you dial the intensity up or down with a slider on the result. No need to regenerate.</span></div>
         </div>
@@ -575,7 +567,6 @@ function wirePills(containerId, key){
 }
 wirePills('fillerIntensity', 'intensity');
 wirePills('biostimProduct', 'product');
-wirePills('biostimTimeline', 'timeline');
 updatePhotoGuide();
 
 // Live Sculptra intensity slider: re-blend the cached compositor (no regeneration).
