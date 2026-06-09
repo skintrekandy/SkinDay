@@ -348,7 +348,7 @@ const FREE_REGEN_MS = 60000;
 // Bump this whenever sculptra-mask.js changes, so the browser fetches the new
 // module instead of a stale disk-cached copy. Both imports below use it, so they
 // stay the same module instance (shared face-detection cache).
-const MASK_MODULE_VERSION = '11';
+const MASK_MODULE_VERSION = '12';
 
 const state = {
   file:null, originalDataUrl:null, resultDataUrl:null,
@@ -839,8 +839,34 @@ async function runGeneration(isRegen){
       try {
         setStatus('Preparing treatment mask… (first run downloads a small model).', 'spin');
         const beforeImg = await loadImage(beforeDataUrl);
+        const mod = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
+        const { buildSculptraMaskBlob, detectPose } = mod;
+
+        // M-obl spike: head-pose readout on the same image element (shares the
+        // memoized face detection, so no extra model run). Logs yaw, view, and
+        // near side for the oblique shakedown, and hard-rejects > 50 degrees with
+        // photo guidance so a steep angle never burns an API call this milestone.
+        let pose = null;
+        try {
+          pose = await detectPose(beforeImg);
+          if(pose && pose.view){
+            console.log('%c[Visualize] Pose: view=' + pose.view + ' yaw≈' + Math.round(pose.yawDeg) + '° (' + pose.source + ')'
+              + ' nearSide=' + pose.nearSide
+              + ' [matrix=' + (pose.matrixYawDeg==null?'n/a':Math.round(pose.matrixYawDeg)+'°')
+              + ' proxy=' + Math.round(pose.proxyYawDeg) + '°]',
+              'color:#C8725A;font-weight:bold');
+          } else {
+            console.warn('[Visualize] Pose: no face detected for pose readout; proceeding (mask fail-safe applies).');
+          }
+        } catch(perr){
+          console.warn('[Visualize] Pose readout failed; proceeding without the angle gate.', perr);
+        }
+        if(pose && pose.view === 'out_of_range'){
+          setStatus('This photo is turned too far (about ' + Math.round(pose.yawDeg) + '°). For now, use a front-facing or gentle three-quarter angle, roughly within 50 degrees. Steeper profiles are not supported yet.', 'warn');
+          return;
+        }
+
         console.log('%c[Visualize] Mask v' + MASK_MODULE_VERSION + ' (scope ' + maskScope + '): loading module + MediaPipe…', 'color:#C8725A');
-        const { buildSculptraMaskBlob } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
         const maskBlob = await buildSculptraMaskBlob(beforeImg, { maxDim: 1024, scope: maskScope, sex: state.sex });
         if(maskBlob){
           form.append('mask', maskBlob, 'mask.png');

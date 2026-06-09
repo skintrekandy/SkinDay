@@ -190,21 +190,81 @@ async function ensureModel(){
   const fileset = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.20/wasm");
   _landmarker = await FaceLandmarker.createFromOptions(fileset, {
     baseOptions:{ modelAssetPath:"https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task" },
-    runningMode:"IMAGE", numFaces:1
+    runningMode:"IMAGE", numFaces:1, outputFacialTransformationMatrixes:true
   });
   return _landmarker;
 }
 
 // Detect once per image element and memoize, so mask generation and the later
-// composite do not run the model twice on the same photo.
-let _lastDetectEl = null, _lastDetect = null;
+// composite do not run the model twice on the same photo. We also memoize the
+// facial transformation matrix (column-major 4x4) for pose readout.
+let _lastDetectEl = null, _lastDetect = null, _lastMatrix = null;
 async function detectFace(imgEl){
   if(_lastDetectEl === imgEl && _lastDetect) return _lastDetect;
   const landmarker = await ensureModel();
   const res = landmarker.detect(imgEl);
   const out = (res && res.faceLandmarks && res.faceLandmarks.length) ? res.faceLandmarks[0] : null;
-  _lastDetectEl = imgEl; _lastDetect = out;
+  const mtx = (res && res.facialTransformationMatrixes && res.facialTransformationMatrixes.length)
+            ? res.facialTransformationMatrixes[0].data : null;
+  _lastDetectEl = imgEl; _lastDetect = out; _lastMatrix = mtx;
   return out;
+}
+
+// ---- M-obl spike: head-pose readout --------------------------------------
+// Classifies the view as frontal / three_quarter / out_of_range and reports the
+// near (camera-facing) side, so the oblique-Sculptra shakedown can confirm pose
+// and near-side detection with no change to the mask math. Shares detectFace's
+// memoized result, so it adds no extra model run on a photo already masked.
+//
+// Yaw magnitude: primary source is the facial transformation matrix (the
+// horizontal tilt of the face-forward axis, taken as a magnitude so it is robust
+// to the canonical model's forward-sign convention). If the matrix is missing we
+// fall back to a 2D half-width-ratio proxy. Near side: always the 2D rule (the
+// wider projected half-face is the one turned toward the camera), unambiguous in
+// image space; we do not trust the matrix sign for side. Both yaw figures are
+// returned so the shakedown can confirm the matrix path agrees with the proxy
+// before HA-oblique leans on the matrix for the projection axis.
+const VIEW_FRONTAL_MAX_DEG = 15;   // |yaw| at or below this = frontal
+const VIEW_TQ_MAX_DEG      = 50;   // frontal..this = three_quarter; above = out_of_range
+
+export async function detectPose(imgEl){
+  const lm = await detectFace(imgEl);
+  if(!lm) return { ok:false, reason:'no_face', view:null, yawDeg:null, nearSide:null, matrixYawDeg:null, proxyYawDeg:null, source:null };
+
+  // 2D half-width proxy + near side (normalized coords; the ratio is scale-free).
+  const up = norm(sub(lm[10], lm[152]));
+  const out = { x:-up.y, y:up.x };
+  const latOf = p => p.x*out.x + p.y*out.y;
+  const mid = latOf(lm[168]);                    // nose-bridge lateral position
+  const halfR = Math.abs(latOf(lm[234]) - mid);  // right zygion to midline
+  const halfL = Math.abs(latOf(lm[454]) - mid);  // left zygion to midline
+  const lo = Math.min(halfR, halfL), hi = Math.max(halfR, halfL) || 1e-6;
+  const proxyYawDeg = Math.acos(Math.max(0, Math.min(1, lo/hi))) * 180/Math.PI;
+  const nearSide = halfL >= halfR ? 'left' : 'right'; // wider half = camera-facing
+
+  // Matrix yaw: horizontal tilt of the rotated face-forward axis (3rd column of
+  // the rotation), as a magnitude in [0,90] so the forward-sign convention does
+  // not flip a frontal face to 180 degrees.
+  let matrixYawDeg = null;
+  if(_lastMatrix && _lastMatrix.length >= 11){
+    const fx = _lastMatrix[8], fz = _lastMatrix[10];
+    matrixYawDeg = Math.atan2(Math.abs(fx), Math.abs(fz)) * 180/Math.PI;
+  }
+
+  const source = (matrixYawDeg != null) ? 'matrix' : 'proxy';
+  const yawDeg = (matrixYawDeg != null) ? matrixYawDeg : proxyYawDeg;
+  let view;
+  if(yawDeg <= VIEW_FRONTAL_MAX_DEG) view = 'frontal';
+  else if(yawDeg <= VIEW_TQ_MAX_DEG) view = 'three_quarter';
+  else view = 'out_of_range';
+
+  return {
+    ok: view !== 'out_of_range',
+    reason: view === 'out_of_range' ? ('yaw_gt_' + VIEW_TQ_MAX_DEG) : 'ok',
+    view, yawDeg, source,
+    nearSide: view === 'frontal' ? 'center' : nearSide,
+    matrixYawDeg, proxyYawDeg
+  };
 }
 
 function buildFoldSegs(lm, p152, dirUp, dirOut, faceH, W){
