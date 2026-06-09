@@ -268,13 +268,8 @@
         </div>
         <div class="field">
           <label>Result strength</label>
-          <div class="pill-grid three" id="biostimProjection">
-            <button class="pill" data-projection="conservative" type="button"><strong>Subtle</strong></button>
-            <button class="pill active" data-projection="expected" type="button"><strong>Expected</strong></button>
-            <button class="pill" data-projection="optimistic" type="button"><strong>Strong</strong></button>
-          </div>
+          <div class="privacy-note"><span>ℹ️</span><span>Your preview is generated at full strength, then you dial the intensity up or down with a slider on the result. No need to regenerate.</span></div>
         </div>
-        <div class="privacy-note"><span>ℹ️</span><span>One clinical visualization, shown at the selected strength. Default is Expected; regenerate to preview a softer or stronger result.</span></div>
       </div>
 
       <div class="field" style="margin-top:14px;">
@@ -327,6 +322,14 @@
       <div class="result-card"><img id="originalResult" alt="Original photo" /><div class="result-tag">Original</div></div>
       <div class="result-card"><img id="aiResult" alt="AI simulated treatment preview" /><svg class="anno-svg" id="annoSvg" viewBox="0 0 100 125" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg><div class="result-tag sim" id="simTag">Simulated — AI Visualization</div></div>
     </div>
+    <div id="sculptraIntensityWrap" style="display:none;margin-top:14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <label for="intensitySlider" style="font-size:13px;letter-spacing:.04em;text-transform:uppercase;opacity:.75;">Treatment intensity</label>
+        <span id="intensityValue" style="font-family:'Cormorant Garamond',serif;font-size:22px;">70%</span>
+      </div>
+      <input type="range" id="intensitySlider" min="0" max="100" step="1" value="70" style="width:100%;margin-top:8px;accent-color:#C8725A;" />
+      <div class="small" style="margin-top:6px;">Slide to preview a softer or stronger result. The simulation updates instantly.</div>
+    </div>
     <div class="compare-wrap" id="compareWrap" style="display:none;">
       <div class="compare-card" id="compareCard">
         <img id="cmpAfter" class="cmp-img" alt="Simulated treatment preview" />
@@ -362,14 +365,14 @@ const FREE_REGEN_MS = 60000;
 // Bump this whenever sculptra-mask.js changes, so the browser fetches the new
 // module instead of a stale disk-cached copy. Both imports below use it, so they
 // stay the same module instance (shared face-detection cache).
-const MASK_MODULE_VERSION = '4';
+const MASK_MODULE_VERSION = '5';
 
 const state = {
   file:null, originalDataUrl:null, resultDataUrl:null,
   type:'filler', areas:['chin_jawline'], intensity:'natural',
-  product:'sculptra', projection:'expected', timeline:'6',
+  product:'sculptra', projection:'optimistic', timeline:'6',
   blackBg:true, beforeDataUrl:null, blackBgCache:null,
-  lastGenAt:0
+  lastGenAt:0, sculptraApply:null, sculptraIntensityPct:70
 };
 
 /* ───────── Lock screen ───────── */
@@ -573,8 +576,26 @@ function wirePills(containerId, key){
 wirePills('fillerIntensity', 'intensity');
 wirePills('biostimProduct', 'product');
 wirePills('biostimTimeline', 'timeline');
-wirePills('biostimProjection', 'projection');
 updatePhotoGuide();
+
+// Live Sculptra intensity slider: re-blend the cached compositor (no regeneration).
+(function(){
+  const slider = document.getElementById('intensitySlider');
+  if(!slider) return;
+  let raf = 0;
+  slider.addEventListener('input', () => {
+    const pct = parseInt(slider.value, 10) || 0;
+    state.sculptraIntensityPct = pct;
+    document.getElementById('intensityValue').textContent = pct + '%';
+    if(!state.sculptraApply) return;
+    if(raf) cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(() => {
+      const url = state.sculptraApply(pct / 100);
+      state.resultDataUrl = url;
+      document.getElementById('aiResult').src = url;
+    });
+  });
+})();
 
 document.getElementById('blackBgChk').addEventListener('change', e => {
   state.blackBg = e.target.checked;
@@ -849,7 +870,7 @@ async function runGeneration(isRegen){
         const beforeImg = await loadImage(beforeDataUrl);
         console.log('%c[Visualize] Sculptra mask v' + MASK_MODULE_VERSION + ': loading module + MediaPipe…', 'color:#C8725A');
         const { buildSculptraMaskBlob } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
-        const maskBlob = await buildSculptraMaskBlob(beforeImg, { maxDim: 1024, scope: 'temple_fold' });
+        const maskBlob = await buildSculptraMaskBlob(beforeImg, { maxDim: 1024, scope: 'full' });
         if(maskBlob){
           form.append('mask', maskBlob, 'mask.png');
           console.log('%c[Visualize] Sculptra mask BUILT and attached to request (scope temple_fold, ' + Math.round(maskBlob.size/1024) + ' kB).', 'color:#2e7d32;font-weight:bold');
@@ -896,33 +917,43 @@ async function runGeneration(isRegen){
     state.resultDataUrl = await pollForResult(jobId, key, isRegen);
     state.lastGenAt = Date.now();
 
-    // Sculptra deterministic guarantee: composite the original pixels back over
-    // everything outside the treatment region, so any global skin smoothing,
-    // under-eye softening, or complexion evening the model did simply cannot
-    // survive; only the temple/cheek/fold volume from inside the mask remains.
+    // Sculptra hybrid: composite the original pixels back over everything
+    // outside the broad treatment region (cheek, midface, temple, folds), so the
+    // model's bold volume survives inside it while skin texture, pigment, and
+    // identity outside it stay the original photo. A reusable compositor is built
+    // once so the intensity slider can re-blend live with no regeneration.
     // Fail-safe: on any error keep the raw AI result. Sculptra only.
+    state.sculptraApply = null;
     if(state.type === 'biostim' && state.product === 'sculptra'){
       try {
         const beforeImg = await loadImage(state.beforeDataUrl || state.originalDataUrl);
         const aiImg = await loadImage(state.resultDataUrl);
-        console.log('%c[Visualize] Sculptra composite v' + MASK_MODULE_VERSION + ': restoring original outside temple/fold…', 'color:#C8725A');
-        const { compositeSculptra } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
-        const composited = await compositeSculptra(beforeImg, aiImg, { scope: 'temple_fold' });
-        if(composited){
-          state.resultDataUrl = composited;
-          console.log('%c[Visualize] Sculptra composite APPLIED. Skin/colour outside temple+folds is now the original photo.', 'color:#2e7d32;font-weight:bold');
+        console.log('%c[Visualize] Sculptra composite v' + MASK_MODULE_VERSION + ': building compositor (scope full)…', 'color:#C8725A');
+        const { makeSculptraCompositor } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
+        const apply = await makeSculptraCompositor(beforeImg, aiImg, { scope: 'full' });
+        if(apply){
+          state.sculptraApply = apply;
+          state.resultDataUrl = apply(state.sculptraIntensityPct / 100);
+          console.log('%c[Visualize] Sculptra compositor READY. Intensity slider is live; skin/identity outside the treatment zone is the original photo.', 'color:#2e7d32;font-weight:bold');
         } else {
-          console.warn('[Visualize] Sculptra composite returned empty; showing RAW AI (globally beautified).');
+          console.warn('[Visualize] Sculptra compositor returned null (no face); showing RAW AI, slider disabled.');
         }
       } catch(err) {
-        console.error('%c[Visualize] Sculptra composite FAILED; showing RAW AI (globally beautified). This is why protected zones look smoothed.', 'color:#c62828;font-weight:bold', err);
+        console.error('%c[Visualize] Sculptra compositor FAILED; showing RAW AI, slider disabled.', 'color:#c62828;font-weight:bold', err);
       }
+    }
+
+    const showSlider = state.type === 'biostim' && state.product === 'sculptra' && !!state.sculptraApply;
+    document.getElementById('sculptraIntensityWrap').style.display = showSlider ? 'block' : 'none';
+    if(showSlider){
+      document.getElementById('intensitySlider').value = state.sculptraIntensityPct;
+      document.getElementById('intensityValue').textContent = state.sculptraIntensityPct + '%';
     }
 
     document.getElementById('originalResult').src = state.beforeDataUrl || state.originalDataUrl;
     document.getElementById('aiResult').src = state.resultDataUrl;
     resetZoom();
-    document.getElementById('simTag').textContent = 'Simulated · AI Visualization' + (state.type === 'biostim' ? ' · ' + (state.timeline === '12' ? '12 months' : state.timeline + ' months') + ' · ' + (STRENGTH_LABEL[state.projection] || 'Expected') : '');
+    document.getElementById('simTag').textContent = 'Simulated · AI Visualization' + (state.type === 'biostim' ? ' · ' + (state.timeline === '12' ? '12 months' : state.timeline + ' months') : '');
     hideAnnotations();
     document.getElementById('outputSection').classList.add('visible');
     document.getElementById('outputSection').scrollIntoView({ behavior:'smooth', block:'start' });
@@ -1051,8 +1082,7 @@ async function drawExport(includeText=true){
   function simKicker(){
     if(state.type === 'biostim'){
       const months = state.timeline + ' months';
-      const proj = STRENGTH_LABEL[state.projection] || 'Expected';
-      return 'AI Visualization · ' + months + ' · ' + proj;
+      return 'AI Visualization · ' + months + ' · ' + (state.sculptraIntensityPct || 70) + '% intensity';
     }
     return 'AI Visualization';
   }

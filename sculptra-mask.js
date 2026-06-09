@@ -285,11 +285,12 @@ export default buildSculptraMaskBlob;
  * under-eye, complexion, or background: those pixels become the original again.
  * @param {HTMLImageElement} beforeImg  the original photo that was sent
  * @param {HTMLImageElement} aiImg      the AI-edited result
- * @param {object} [opts] { scope:'full'|'temple' }
+ * @param {object} [opts] { scope:'full'|'temple_fold'|'temple', intensity:0..1 }
  * @returns {Promise<string|null>} a JPEG data URL, or null if no face (caller keeps the raw AI)
  */
 export async function compositeSculptra(beforeImg, aiImg, opts){
   const scope = (opts && opts.scope) || 'full';
+  const intensity = (opts && typeof opts.intensity === "number") ? Math.max(0, Math.min(1, opts.intensity)) : 1;
   const landmarks = await detectFace(beforeImg);
   if(!landmarks) return null;
 
@@ -307,7 +308,7 @@ export async function compositeSculptra(beforeImg, aiImg, opts){
   const ai = cx.getImageData(0, 0, w, h), a = ai.data;
 
   for(let i=0,p=0;i<m.length;i++,p+=4){
-    const al = Math.min(1, m[i]);
+    const al = Math.min(1, m[i]) * intensity;
     a[p]   = a[p]*al   + b[p]*(1-al);
     a[p+1] = a[p+1]*al + b[p+1]*(1-al);
     a[p+2] = a[p+2]*al + b[p+2]*(1-al);
@@ -315,4 +316,42 @@ export async function compositeSculptra(beforeImg, aiImg, opts){
   }
   cx.putImageData(ai, 0, 0);
   return c.toDataURL("image/jpeg", 0.92);
+}
+
+/**
+ * Build a reusable Sculptra compositor. Runs the expensive face detection,
+ * mask build, and pixel reads ONCE, then returns an apply(intensity) function
+ * that only re-blends, so an intensity slider can update the image live with no
+ * regeneration and no MediaPipe re-run. intensity scales the in-mask alpha:
+ * 0 returns the original photo, 1 returns the full treatment-region AI volume.
+ * @returns {Promise<((intensity:number)=>string)|null>} apply fn, or null if no face.
+ */
+export async function makeSculptraCompositor(beforeImg, aiImg, opts){
+  const scope = (opts && opts.scope) || 'full';
+  const landmarks = await detectFace(beforeImg);
+  if(!landmarks) return null;
+  const w = aiImg.naturalWidth, h = aiImg.naturalHeight;
+  const m = buildTreatAlpha(landmarks, w, h, scope);
+
+  const c = document.createElement("canvas"); c.width = w; c.height = h;
+  const cx = c.getContext("2d",{willReadFrequently:true});
+  cx.drawImage(beforeImg, 0, 0, w, h);
+  const b = cx.getImageData(0, 0, w, h).data;
+  cx.drawImage(aiImg, 0, 0, w, h);
+  const out = cx.getImageData(0, 0, w, h);
+  const a0 = new Uint8ClampedArray(out.data); // pristine AI pixels as the source
+  const o = out.data;
+
+  return function apply(intensity){
+    const t = Math.max(0, Math.min(1, (typeof intensity === "number" ? intensity : 1)));
+    for(let i=0,p=0;i<m.length;i++,p+=4){
+      const al = Math.min(1, m[i]) * t;
+      o[p]   = a0[p]*al   + b[p]*(1-al);
+      o[p+1] = a0[p+1]*al + b[p+1]*(1-al);
+      o[p+2] = a0[p+2]*al + b[p+2]*(1-al);
+      o[p+3] = 255;
+    }
+    cx.putImageData(out, 0, 0);
+    return c.toDataURL("image/jpeg", 0.92);
+  };
 }
