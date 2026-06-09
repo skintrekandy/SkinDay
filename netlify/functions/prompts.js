@@ -197,7 +197,7 @@ const TIMELINE = {
 // Version log so we know which prompt produced which result during tuning.
 const VERSIONS = {
   base: 'v3', chin: 'v1', jawline: 'v1', chin_jawline: 'v5', nose: 'v1', lips: 'v2',
-  cheeks: 'v2', tear_trough: 'v1', nasolabial_folds: 'v1', sculptra: 'v11', sculptra_oblique: 'v11', hdr: 'v1', timeline: 'v2'
+  cheeks: 'v2', tear_trough: 'v1', nasolabial_folds: 'v1', sculptra: 'v12', sculptra_oblique: 'v12', hdr: 'v1', timeline: 'v2'
 };
 
 function sanitizeNote(note) {
@@ -225,7 +225,7 @@ const SCULPTRA_VIEW_LOCKS = {
 };
 
 const SCULPTRA_ALLOWED_ZONES =
-  'Allowed Sculptra change zones: the lateral temple and temporal hollow, the lateral cheek and zygomatic body, the temple-to-cheek transition, the lid-cheek junction and upper medial cheek as volume-driven support from below so the under-eye to cheek transition looks better supported, the lower lateral cheek and prejowl, and the nasolabial, marionette, and jowl shadows as they soften from restored lateral support. The jowl should clearly lighten and the jawline read cleaner and more defined as the jowl is lifted and supported. Do NOT carve, sharpen into a hard angular, V-line, or superhero jaw, do not directly fill the jaw angle, do not inflate the central anterior cheek into a pillow, do not paint over or fill under-eye bags or dark circles, and do not deposit filler-like volume into the tear trough: the under-eye improves only because the midface beneath it is better supported. Do not touch the lips, chin, nose, or the eye itself.';
+  'Allowed Sculptra change zones: the lateral temple and temporal hollow, the lateral cheek and zygomatic body, the temple-to-cheek transition, the lid-cheek junction and upper medial cheek as volume-driven support from below so the under-eye to cheek transition looks better supported, the lower lateral cheek and prejowl, and the nasolabial, marionette, and jowl shadows as they soften from restored lateral support. Project the lateral cheek and zygomatic body FORWARD as a fuller, lighter convexity: the lateral cheek and the area just in front of the ear must look filled, lifted, and supported, never darkened, hollowed, recessed, or shadowed to imitate a cheekbone. The jowl should clearly lighten and the lower mandibular border (jawline) read cleaner, firmer, and more defined as the jowl is lifted and the prejowl is supported. Do NOT carve, sharpen into a hard angular, V-line, or superhero jaw, do not directly fill the jaw angle, do not inflate the central anterior cheek into a pillow, do not paint over or fill under-eye bags or dark circles, and do not deposit filler-like volume into the tear trough: the under-eye improves only because the midface beneath it is better supported. Do not touch the lips, chin, nose, or the eye itself.';
 
 const SCULPTRA_PHENOTYPES = {
   hollow_deflated: {
@@ -252,7 +252,7 @@ const SCULPTRA_PHENOTYPES = {
 };
 
 const SCULPTRA_OUTPUT_RULES =
-  'Output rule: this is a clinical Sculptra visualization, not a beauty portrait, and it should show a confident, real structural result rather than a timid one. Per-patient conservatism is applied afterward by a separate intensity control, so at full strength restore the scaffold clearly and let that control dial it back. The image must remain the same person, same age, same skin character, same lips, eyes, brows, lighting, and camera setup; only treatment-relevant soft-tissue support and volume change. The failure modes to avoid are beautification and skin retouching (smoothing, brightening, added glow, de-aging), central pillow fill, jaw carving, and identity drift, NOT insufficient volume. Conservative, Expected, and Optimistic differ ONLY in the amount of soft-tissue support, never in beauty, skin quality, or age. Do not increase glow or surface smoothing at any level; if the face looks better lit, it must be because the structure beneath it was restored.';
+  'Output rule: this is a clinical Sculptra visualization, not a beauty portrait, and it should show a confident, real structural result rather than a timid one. Support must read as added volume and light (the treated areas look filled, lifted, and slightly brighter), never as new shadows, hollows, or darkened skin: do not darken or recess the lateral cheek, the submalar area, or the jaw to fake structure, because real Sculptra adds volume and a glow and never makes the skin darker. Per-patient conservatism is applied afterward by a separate intensity control, so at full strength restore the scaffold clearly and let that control dial it back. The image must remain the same person, same age, same skin character, same lips, eyes, brows, lighting, and camera setup; only treatment-relevant soft-tissue support and volume change. The failure modes to avoid are beautification and skin retouching (smoothing, brightening into a filter, evening out tone, de-aging), central pillow fill, jaw carving, and identity drift, NOT insufficient volume. Conservative, Expected, and Optimistic differ ONLY in the amount of soft-tissue support, never in beauty, skin quality, or age.';
 
 // View and phenotype are read from structured fields first (production), then
 // from explicit bracket tags in the note (test hook). Loose words in free text
