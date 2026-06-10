@@ -3234,7 +3234,9 @@
       uploadedResults.forEach((r, i) => {
         if (photos[i]) { photos[i].url = r.url; photos[i].filename = r.filename; photos[i].file = undefined; }
       });
-      const allPhotoUrls = uploadedResults.map(r => r.url);
+      const allPhotoUrls = uploadedResults
+        .map(r => r.url)
+        .filter(url => url && !url.startsWith('blob:'));
 
       // Upload logo if changed
       const logoUrl = await uploadLogo(token);
@@ -3359,7 +3361,11 @@
         },
         body: p.file
       });
-      if (!res.ok) return { url: p.url, filename: p.filename }; // fallback
+      if (!res.ok) {
+        const errText = await res.text().catch(() => '');
+        console.error('Photo upload failed:', res.status, errText);
+        throw new Error(`Photo upload failed for "${p.file.name}" — please try again.`);
+      }
       const url = `${SUPABASE_URL}/storage/v1/object/public/clinic-photos/${storageFilename}`;
       return { url, filename: bareFilename };
     }));
