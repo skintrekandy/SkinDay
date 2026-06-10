@@ -589,6 +589,24 @@ function buildTreatAlpha(L, w, h, scope, sex){
   return blurAlpha(m, w, h, 3);
 }
 
+// Texture-delta profile by scope. HA chin/jaw stays clean and shadow-free (the
+// jaw must not gain an invented shadow). Sculptra is BOLD: it allows real 3D form
+// by letting the broad luminance darken on the underside of restored volume (the
+// shadow that makes a filled cheek read as projecting rather than just brighter).
+// Colour stays locked at all times, so allowing this luminance shadow cannot
+// bring back the brown discoloration; that was a chroma problem and the chroma
+// lock handles it independently. SCULPTRA_DARK_FLOOR is the single lever for how
+// much 3D form the volume is allowed: raise for bolder projection, lower toward 0
+// if a case ever reads hollow instead of full.
+const SCULPTRA_DARK_FLOOR = 24;
+function sculptraTexOpts(scope, opts){
+  const isHA = (scope === 'chin_jaw');
+  const profile = isHA
+    ? { forceOriginalTexture:false, darkFloor:0,                 highDarkenScale:0 }
+    : { forceOriginalTexture:true,  darkFloor:SCULPTRA_DARK_FLOOR, highDarkenScale:0 };
+  return Object.assign(profile, opts || {});
+}
+
 /**
  * Build the Sculptra edit-mask PNG for a photo.
  * @param {HTMLImageElement} imgEl  loaded image (the exact photo being posted)
@@ -667,7 +685,7 @@ export async function compositeSculptra(beforeImg, aiImg, opts){
     // out = original + al * delta. Identical math to makeSculptraCompositor.
     const a0 = new Uint8ClampedArray(a);
     const W = faceWidthPx(landmarks, w, h);
-    const tdOpts = Object.assign({ forceOriginalTexture: scope !== 'chin_jaw' }, opts || {});
+    const tdOpts = sculptraTexOpts(scope, opts);
     const { dR, dG, dB } = buildTextureDelta(b, a0, w, h, W, tdOpts);
     for(let i=0,p=0;i<m.length;i++,p+=4){
       const al = Math.min(1, m[i]) * intensity;
@@ -722,7 +740,7 @@ export async function makeSculptraCompositor(beforeImg, aiImg, opts){
   let dR=null, dG=null, dB=null;
   if(textureRestore){
     const W = faceWidthPx(landmarks, w, h);
-    const tdOpts = Object.assign({ forceOriginalTexture: scope !== 'chin_jaw' }, opts || {});
+    const tdOpts = sculptraTexOpts(scope, opts);
     const d = buildTextureDelta(b, a0, w, h, W, tdOpts);
     dR=d.dR; dG=d.dG; dB=d.dB;
   }
