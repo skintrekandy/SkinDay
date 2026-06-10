@@ -7,6 +7,13 @@
 // background). gpt-image-1's edit endpoint edits only the transparent region, so
 // this physically prevents the global beautification leak.
 //
+// M6 (v22): this module now also hosts the geometry engine. The compositors
+// apply a landmark-driven LIFT WARP to the frontal Sculptra base (jowl and
+// midface re-drape using the patient's own pixels) before adding the AI's
+// chroma-locked luminance delta. Geometry for displacement, AI for light. See
+// the M6 section below for the gating (frontal + 'full' scope only) and the
+// fail-safe (anything else is exactly the M5 pipeline).
+//
 // The PNG is generated at the SAME pixel size the client posts the photo at
 // (long edge capped at maxDim), so image and mask dimensions match, which the
 // edit endpoint requires.
@@ -277,6 +284,202 @@ function buildTextureDelta(b,a0,w,h,W,opts){
     }
   }
   return {dR,dG,dB};
+}
+
+// ---- M6 geometry engine: frontal lift warp ---------------------------------
+// First slice of the M6 warp-first geometry engine. Sculptra's most credible
+// frontal change is a LIFT (reversal of descent): the jowl and lower lateral
+// face re-drape upward and the midface regains support. A lift is pure 2D
+// displacement, so it is done by moving the patient's OWN pixels: texture,
+// pores, pigment, and the photo's real lighting travel with the tissue, which
+// is the photographic credibility no painted or AI-invented shading can
+// guarantee. Light and convexity (temple, glow, projection shading) remain the
+// masked AI's job via the chroma-locked luminance delta; the warp only moves
+// what already exists. Geometry for displacement, AI for light.
+//
+// Scope and gating (this slice):
+//   - Sculptra 'full' scope only, FRONTAL view only (detectPose gate). Oblique
+//     and HA chin/jaw keep M5 behavior untouched.
+//   - Applied to the COMPOSITE BASE, not the image sent to the AI. The AI still
+//     edits the unwarped photo; its smooth luminance delta is added on top. The
+//     delta is low-frequency, so the few-pixel offset between the warped base
+//     and the unwarped delta is invisible.
+//   - The slider scales the warp and the AI delta together: one response
+//     control dials geometry and light as a unit, and 0 is exactly the original.
+//   - The face silhouette NEVER moves: displacement fades to zero inside the
+//     face-oval edge band, so no background is ever pulled into the face and
+//     the outline stays pixel-identical (M5b export alignment is preserved).
+//   - Fail-safe everywhere: any error, missing landmark, or non-frontal pose
+//     disables the warp and the pipeline behaves exactly as M5.
+//
+// Tuning (the clinical correction loop; magnitudes are at FULL strength, and
+// the UI slider cap of 70 means the strongest reachable lift is 0.7 of these):
+//   WARP_JOWL_LIFT     upward jowl/prejowl re-drape, fraction of face height.
+//   WARP_JOWL_IN       inward (toward midline) component at the jowl, fraction
+//                      of face width: the lift-and-narrow read. Keep small.
+//   WARP_MIDFACE_LIFT  upward midface/submalar re-drape, fraction of face height.
+//   WARP_*_SIGMA       kernel breadth, fraction of face width.
+//   WARP_EDGE_FADE     band inside the face oval over which displacement fades
+//                      to zero, fraction of face width.
+const WARP_JOWL_LIFT     = 0.016;
+const WARP_JOWL_IN       = 0.006;
+const WARP_JOWL_SIGMA    = 0.085;
+const WARP_MIDFACE_LIFT  = 0.009;
+const WARP_MIDFACE_SIGMA = 0.12;
+const WARP_EDGE_FADE     = 0.06;
+
+// Jowl kernel anchor landmarks: gonion and prejowl per side; the kernel sits
+// between them, nudged up onto the jowl pad itself.
+const GONION  = { r:172, l:397 };
+const PREJOWL = { r:176, l:400 };
+
+// Build the lift sample-offset field at FULL strength.
+// Returns { sx, sy, x0, y0, x1, y1, maxPx } or null if landmarks are missing or
+// the field is empty. sx/sy are BACKWARD-map offsets: the warped image at (x,y)
+// samples the original at (x + sx*t, y + sy*t). Tissue moving up by v means the
+// content came from below, so the offset is the inverse of the forward
+// displacement (exact enough at these few-pixel magnitudes).
+function buildLiftField(L, w, h){
+  const lm = L.map(p=>({x:p.x*w, y:p.y*h}));
+  const p10=lm[10], p152=lm[152], zr=lm[ZYGION.r], zl=lm[ZYGION.l];
+  if(!p10||!p152||!zr||!zl) return null;
+  const dirUp = norm(sub(p10, p152));
+  const dirOut = { x:-dirUp.y, y:dirUp.x };
+  const W = Math.abs(dot(sub(zl, zr), dirOut)) || 1;
+  const faceH = (dot(sub(p10, p152), dirUp)) || 1;
+
+  // Silhouette guard: filled face oval, blurred by the edge-fade band, so the
+  // displacement is full in the interior and exactly zero at and beyond the
+  // outline. The outline therefore cannot move.
+  const fadePx = Math.max(2, WARP_EDGE_FADE*W);
+  const oc=document.createElement("canvas"); oc.width=w; oc.height=h;
+  const octx=oc.getContext("2d",{willReadFrequently:true});
+  octx.fillStyle="#000"; octx.fillRect(0,0,w,h);
+  octx.fillStyle="#fff"; octx.beginPath();
+  FACE_OVAL.forEach((idx,k)=>{ const p=lm[idx]; if(!p) return; if(k===0) octx.moveTo(p.x,p.y); else octx.lineTo(p.x,p.y); });
+  octx.closePath(); octx.fill();
+  octx.filter="blur("+fadePx+"px)"; octx.drawImage(oc,0,0); octx.filter="none";
+  const ovalA=octx.getImageData(0,0,w,h).data;
+
+  // Feature guard: eyes, brows, nose, and lips must not be dragged by the lift.
+  // Slightly larger discs and a wider blur than the mask's protection, because
+  // a moved feature is worse than a slightly smaller lift footprint.
+  const pc=document.createElement("canvas"); pc.width=w; pc.height=h;
+  const pctx=pc.getContext("2d",{willReadFrequently:true});
+  pctx.fillStyle="#000"; pctx.fillRect(0,0,w,h);
+  pctx.fillStyle="#fff";
+  const rDisc=0.026*W;
+  for(const idx of PROTECTED){ const p=lm[idx]; if(!p) continue;
+    pctx.beginPath(); pctx.arc(p.x,p.y,rDisc,0,7); pctx.fill(); }
+  pctx.filter="blur("+(0.05*W)+"px)"; pctx.drawImage(pc,0,0); pctx.filter="none";
+  const protA=pctx.getImageData(0,0,w,h).data;
+
+  // Displacement kernels, both sides. Each kernel is a Gaussian bump carrying a
+  // fixed displacement vector; the field is their sum, attenuated by the guards.
+  const kernels=[];
+  for(const s of ["r","l"]){
+    const g=lm[GONION[s]], pj=lm[PREJOWL[s]], zy=lm[ZYGION[s]];
+    if(!g||!pj||!zy) continue;
+    const sgn=Math.sign(dot(sub(zy,p152),dirOut)) || (s==="r"?-1:1);
+    const inw={ x:-sgn*dirOut.x, y:-sgn*dirOut.y };  // unit vector toward the midline
+    // Jowl re-drape: up + slightly inward, centered on the jowl pad.
+    const jowlC=add(lerp(g, pj, 0.45), mul(dirUp, 0.06*faceH));
+    const sigJ=WARP_JOWL_SIGMA*W;
+    kernels.push({ cx:jowlC.x, cy:jowlC.y, twoSig:2*sigJ*sigJ,
+      vx: dirUp.x*WARP_JOWL_LIFT*faceH + inw.x*WARP_JOWL_IN*W,
+      vy: dirUp.y*WARP_JOWL_LIFT*faceH + inw.y*WARP_JOWL_IN*W });
+    // Midface/submalar re-drape: straight up, centered below the cheek apex.
+    const midC=add(add(zy, mul(dirUp, -0.10*faceH)), mul(inw, 0.02*W));
+    const sigM=WARP_MIDFACE_SIGMA*W;
+    kernels.push({ cx:midC.x, cy:midC.y, twoSig:2*sigM*sigM,
+      vx: dirUp.x*WARP_MIDFACE_LIFT*faceH,
+      vy: dirUp.y*WARP_MIDFACE_LIFT*faceH });
+  }
+  if(!kernels.length) return null;
+
+  const N=w*h;
+  const sx=new Float32Array(N), sy=new Float32Array(N);
+  let x0=w, y0=h, x1=-1, y1=-1, maxPx=0;
+  for(let y=0,i=0;y<h;y++){
+    for(let x=0;x<w;x++,i++){
+      const guard=(ovalA[i*4]/255)*(1-(protA[i*4]/255));
+      if(guard<=0.01) continue;
+      let dx=0, dy=0;
+      for(let k=0;k<kernels.length;k++){
+        const K=kernels[k]; const ex=x-K.cx, ey=y-K.cy;
+        const gv=Math.exp(-(ex*ex+ey*ey)/K.twoSig);
+        dx+=K.vx*gv; dy+=K.vy*gv;
+      }
+      // (dx,dy) is the forward tissue displacement; the backward sample offset
+      // is its inverse, attenuated by the guards.
+      const ox=-dx*guard, oy=-dy*guard;
+      const mag=Math.hypot(ox,oy);
+      if(mag<0.25) continue;
+      sx[i]=ox; sy[i]=oy;
+      if(mag>maxPx) maxPx=mag;
+      if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y;
+    }
+  }
+  if(x1<0) return null;
+  const pad=Math.ceil(maxPx)+2;
+  x0=Math.max(0,x0-pad); y0=Math.max(0,y0-pad);
+  x1=Math.min(w-1,x1+pad); y1=Math.min(h-1,y1+pad);
+  return { sx, sy, x0, y0, x1, y1, maxPx };
+}
+
+// Re-sample the warped base wb from the original b inside the field's bounding
+// box at strength t (0..1). wb starts as a copy of b, and every bbox pixel is
+// rewritten each call (offset scaled by t, bilinear), so any t, including 0 and
+// going back DOWN the slider, is exact with no residue. Pixels outside the bbox
+// are untouched originals by construction.
+function applyLiftWarp(wb, b, w, h, f, t){
+  if(!f) return;
+  const s = Math.max(0, Math.min(1, t));
+  const sx=f.sx, sy=f.sy;
+  for(let y=f.y0; y<=f.y1; y++){
+    const row=y*w;
+    for(let x=f.x0; x<=f.x1; x++){
+      const i=row+x, p=i*4;
+      const ox=sx[i], oy=sy[i];
+      if(ox===0 && oy===0){ wb[p]=b[p]; wb[p+1]=b[p+1]; wb[p+2]=b[p+2]; continue; }
+      let fx=x+ox*s, fy=y+oy*s;
+      if(fx<0) fx=0; else if(fx>w-1) fx=w-1;
+      if(fy<0) fy=0; else if(fy>h-1) fy=h-1;
+      const xi=fx|0, yi=fy|0;
+      const x2=xi+1<w?xi+1:xi, y2=yi+1<h?yi+1:yi;
+      const ax=fx-xi, ay=fy-yi;
+      const w00=(1-ax)*(1-ay), w10=ax*(1-ay), w01=(1-ax)*ay, w11=ax*ay;
+      const p00=(yi*w+xi)*4, p10=(yi*w+x2)*4, p01=(y2*w+xi)*4, p11=(y2*w+x2)*4;
+      wb[p]  =b[p00]*w00+b[p10]*w10+b[p01]*w01+b[p11]*w11;
+      wb[p+1]=b[p00+1]*w00+b[p10+1]*w10+b[p01+1]*w01+b[p11+1]*w11;
+      wb[p+2]=b[p00+2]*w00+b[p10+2]*w10+b[p01+2]*w01+b[p11+2]*w11;
+    }
+  }
+}
+
+// Gate + build the lift field for a compositor run. Frontal Sculptra 'full'
+// scope only this milestone; everything else returns null (exact M5 behavior).
+// opts.warp === false is the A/B escape hatch. Never throws.
+async function maybeBuildLift(beforeImg, landmarks, w, h, scope, opts){
+  if(scope !== 'full') return null;
+  if(opts && opts.warp === false) return null;
+  try {
+    const pose = await detectPose(beforeImg);
+    if(!pose || pose.view !== 'frontal'){
+      console.log('%c[Visualize] M6 lift warp skipped: view is ' + ((pose && pose.view) || 'unknown') + ' (frontal only this milestone).', 'color:#888');
+      return null;
+    }
+    const f = buildLiftField(landmarks, w, h);
+    if(f){
+      console.log('%c[Visualize] M6 lift warp ACTIVE (frontal, yaw ~' + Math.round(pose.yawDeg) + ' deg): max displacement ' + f.maxPx.toFixed(1) + 'px at full strength.', 'color:#2e7d32;font-weight:bold');
+    } else {
+      console.warn('[Visualize] M6 lift warp unavailable (landmarks incomplete); compositing without it.');
+    }
+    return f;
+  } catch(e){
+    console.warn('[Visualize] M6 lift warp failed to build; compositing without it.', e);
+    return null;
+  }
 }
 
 // ---- model singleton ------------------------------------------------------
@@ -695,26 +898,34 @@ export async function compositeSculptra(beforeImg, aiImg, opts){
   cx.drawImage(aiImg, 0, 0, w, h);
   const ai = cx.getImageData(0, 0, w, h), a = ai.data;
 
+  // M6: frontal Sculptra lift warp. The composite base becomes the patient's
+  // own pixels re-draped upward (jowl + midface); the AI delta adds light on
+  // top. Null (non-frontal, other scopes, opts.warp false, or any error) means
+  // wb === b and this is exactly the M5 composite.
+  const lift = await maybeBuildLift(beforeImg, landmarks, w, h, scope, opts);
+  const wb = lift ? new Uint8ClampedArray(b) : b;
+  if(lift) applyLiftWarp(wb, b, w, h, lift, intensity);
+
   if(textureRestore){
     // Keep the AI low band (volume), restore the original high band (texture);
-    // out = original + al * delta. Identical math to makeSculptraCompositor.
+    // out = warpedOriginal + al * delta. Identical math to makeSculptraCompositor.
     const a0 = new Uint8ClampedArray(a);
     const W = faceWidthPx(landmarks, w, h);
     const tdOpts = sculptraTexOpts(scope, opts);
     const { dR, dG, dB } = buildTextureDelta(b, a0, w, h, W, tdOpts);
     for(let i=0,p=0;i<m.length;i++,p+=4){
       const al = Math.min(1, m[i]) * intensity;
-      a[p]   = b[p]   + al*dR[i];
-      a[p+1] = b[p+1] + al*dG[i];
-      a[p+2] = b[p+2] + al*dB[i];
+      a[p]   = wb[p]   + al*dR[i];
+      a[p+1] = wb[p+1] + al*dG[i];
+      a[p+2] = wb[p+2] + al*dB[i];
       a[p+3] = 255;
     }
   } else {
     for(let i=0,p=0;i<m.length;i++,p+=4){
       const al = Math.min(1, m[i]) * intensity;
-      a[p]   = a[p]*al   + b[p]*(1-al);
-      a[p+1] = a[p+1]*al + b[p+1]*(1-al);
-      a[p+2] = a[p+2]*al + b[p+2]*(1-al);
+      a[p]   = a[p]*al   + wb[p]*(1-al);
+      a[p+1] = a[p+1]*al + wb[p+1]*(1-al);
+      a[p+2] = a[p+2]*al + wb[p+2]*(1-al);
       a[p+3] = 255;
     }
   }
@@ -765,22 +976,29 @@ export async function makeSculptraCompositor(beforeImg, aiImg, opts){
     dR=d.dR; dG=d.dG; dB=d.dB;
   }
 
+  // M6: precompute the frontal lift field once. apply() re-samples only the
+  // field's bounding box per call (bilinear, offsets scaled by t), so the
+  // slider dials geometry and light together in real time. Null = exact M5.
+  const lift = await maybeBuildLift(beforeImg, landmarks, w, h, scope, opts);
+  const wb = lift ? new Uint8ClampedArray(b) : b;
+
   return function apply(intensity){
     const t = Math.max(0, Math.min(1, (typeof intensity === "number" ? intensity : 1)));
+    if(lift) applyLiftWarp(wb, b, w, h, lift, t);
     if(textureRestore){
       for(let i=0,p=0;i<m.length;i++,p+=4){
         const al = Math.min(1, m[i]) * t;
-        o[p]   = b[p]   + al*dR[i];
-        o[p+1] = b[p+1] + al*dG[i];
-        o[p+2] = b[p+2] + al*dB[i];
+        o[p]   = wb[p]   + al*dR[i];
+        o[p+1] = wb[p+1] + al*dG[i];
+        o[p+2] = wb[p+2] + al*dB[i];
         o[p+3] = 255;
       }
     } else {
       for(let i=0,p=0;i<m.length;i++,p+=4){
         const al = Math.min(1, m[i]) * t;
-        o[p]   = a0[p]*al   + b[p]*(1-al);
-        o[p+1] = a0[p+1]*al + b[p+1]*(1-al);
-        o[p+2] = a0[p+2]*al + b[p+2]*(1-al);
+        o[p]   = a0[p]*al   + wb[p]*(1-al);
+        o[p+1] = a0[p+1]*al + wb[p+1]*(1-al);
+        o[p+2] = a0[p+2]*al + wb[p+2]*(1-al);
         o[p+3] = 255;
       }
     }

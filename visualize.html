@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
   <meta name="robots" content="noindex, nofollow" />
-  <title>SkinDay Visualize — AI Treatment Preview for Clinics</title>
+  <title>SkinDay Visualize · AI Treatment Preview for Clinics</title>
   <meta name="description" content="Create AI-generated treatment previews for consultation purposes. Not a prediction of actual treatment results." />
   <link rel="icon" href="/favicon.ico" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -204,7 +204,7 @@
   <section class="flow">
     <!-- Step 1: choose treatment type -->
     <div class="card">
-      <div class="step-num">Step 1 — What do you want to visualize?</div>
+      <div class="step-num">Step 1 · What do you want to visualize?</div>
       <div class="type-toggle quad" id="typeToggle">
         <button class="type-btn active" data-type="filler" type="button"><strong>HA Fillers</strong></button>
         <button class="type-btn" data-type="biostim" type="button"><strong>Biostimulation</strong></button>
@@ -215,12 +215,12 @@
 
     <!-- Step 2: treatment details -->
     <div class="card">
-      <div class="step-num">Step 2 — Treatment details</div>
+      <div class="step-num">Step 2 · Treatment details</div>
 
       <!-- FILLER controls -->
       <div id="fillerControls">
         <div class="field">
-          <label>Areas — select one or more</label>
+          <label>Areas (select one or more)</label>
           <div class="area-grid" id="areaGrid">
             <div class="area-chip active" data-area="chin_jawline"><span class="tick">✓</span>Chin + Jawline</div>
             <div class="area-chip" data-area="nose"><span class="tick">✓</span>Nose</div>
@@ -238,8 +238,8 @@
           </div>
         </div>
         <div class="field">
-          <label>Result strength</label>
-          <div class="privacy-note"><span>ℹ️</span><span>One preview is generated at a strong, realistic anchor, then you dial it up or down with a slider on the result. No need to regenerate or compare separate versions.</span></div>
+          <label>Response</label>
+          <div class="privacy-note"><span>ℹ️</span><span>One preview is generated at a strong, realistic anchor, then you dial the displayed response up or down with a slider on the result. No need to regenerate or compare separate versions.</span></div>
         </div>
       </div>
 
@@ -252,15 +252,15 @@
           </div>
         </div>
         <div class="field">
-          <label>Result strength</label>
-          <div class="privacy-note"><span>ℹ️</span><span>Your preview is generated at a strong, realistic anchor, then you set the preview strength with a slider on the result. No need to regenerate.</span></div>
+          <label>Response</label>
+          <div class="privacy-note"><span>ℹ️</span><span>Your preview is generated at a strong, realistic anchor, then you set the displayed response with a slider on the result. No need to regenerate.</span></div>
         </div>
       </div>
     </div>
 
     <!-- Step 3: upload & generate -->
     <div class="card">
-      <div class="step-num">Step 3 — Upload &amp; generate</div>
+      <div class="step-num">Step 3 · Upload &amp; generate</div>
       <div class="photo-guide" id="photoGuide"><strong>Best photo:</strong> Three-quarter (45°) or side profile (90°) for lower-face contour. Well-lit, neutral expression, hair off the face.</div>
       <label class="upload-zone" id="uploadZone">
         <div class="upload-plus">+</div>
@@ -272,7 +272,7 @@
       <div class="privacy-note"><span>🔒</span><span>The photo stays in this browser until you press Generate. Generating sends the photo to the AI image provider (OpenAI) for that single request only. It is not used to train the model. You must have the patient's consent before uploading.</span></div>
 
       <div class="field" style="margin-top:14px;">
-        <label>Clinic name optional — appears on export</label>
+        <label>Clinic name (optional, appears on export)</label>
         <input id="clinicName" placeholder="Your clinic name" maxlength="60" />
       </div>
 
@@ -300,18 +300,18 @@
     </div>
     <div class="result-grid">
       <div class="result-card"><img id="originalResult" alt="Original photo" /><div class="result-tag">Original</div></div>
-      <div class="result-card"><img id="aiResult" alt="AI simulated treatment preview" /><svg class="anno-svg" id="annoSvg" viewBox="0 0 100 125" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg><div class="result-tag sim" id="simTag">Simulated — AI Visualization</div></div>
+      <div class="result-card"><img id="aiResult" alt="AI simulated treatment preview" /><svg class="anno-svg" id="annoSvg" viewBox="0 0 100 125" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg><div class="result-tag sim" id="simTag">Simulated · AI Visualization</div></div>
     </div>
     <div id="intensityWrap" style="display:none;margin-top:14px;">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-        <label for="intensitySlider" style="font-size:13px;letter-spacing:.04em;text-transform:uppercase;opacity:.75;">Treatment preview strength</label>
+        <label for="intensitySlider" style="font-size:13px;letter-spacing:.04em;text-transform:uppercase;opacity:.75;">Treatment response</label>
         <span id="intensityValue" style="font-family:'Cormorant Garamond',serif;font-size:22px;">Expected</span>
       </div>
       <input type="range" id="intensitySlider" min="0" max="70" step="1" value="50" style="width:100%;margin-top:8px;accent-color:#C8725A;" />
       <div style="display:flex;justify-content:space-between;font-size:.68rem;letter-spacing:.04em;text-transform:uppercase;opacity:.6;margin-top:4px;">
-        <span>Softer</span><span>Stronger</span>
+        <span>Conservative</span><span>Strong</span>
       </div>
-      <div class="small" style="margin-top:6px;">Slide to preview a softer or stronger result. The simulation updates instantly.</div>
+      <div class="small" style="margin-top:6px;">Slide to preview a more conservative or stronger response. The simulation updates instantly.</div>
     </div>
     <div class="compare-wrap" id="compareWrap" style="display:none;">
       <div class="compare-card" id="compareCard">
@@ -347,8 +347,9 @@ const FREE_REGEN_MS = 60000;
 
 // Bump this whenever sculptra-mask.js changes, so the browser fetches the new
 // module instead of a stale disk-cached copy. Both imports below use it, so they
-// stay the same module instance (shared face-detection cache).
-const MASK_MODULE_VERSION = '21';
+// stay the same module instance (shared face-detection cache). v22 = M6.1
+// frontal lift warp in the compositors.
+const MASK_MODULE_VERSION = '22';
 
 const state = {
   file:null, originalDataUrl:null, resultDataUrl:null,
@@ -492,13 +493,13 @@ input.addEventListener('change', async e => {
   const img = document.createElement('img'); img.src = state.originalDataUrl;
   zone.appendChild(img); zone.classList.add('filled');
   syncGenerateBtn();
-  setStatus(consentChk.checked ? 'Photo ready — choose treatment and generate.' : 'Photo ready — confirm patient consent to enable Generate.', 'ok');
+  setStatus(consentChk.checked ? 'Photo ready. Choose treatment and generate.' : 'Photo ready. Confirm patient consent to enable Generate.', 'ok');
 });
 
 consentChk.addEventListener('change', () => {
   consentBox.classList.toggle('checked', consentChk.checked);
   syncGenerateBtn();
-  if(state.file) setStatus(consentChk.checked ? 'Ready — choose treatment and generate.' : 'Confirm patient consent to enable Generate.', consentChk.checked ? 'ok' : 'warn');
+  if(state.file) setStatus(consentChk.checked ? 'Ready. Choose treatment and generate.' : 'Confirm patient consent to enable Generate.', consentChk.checked ? 'ok' : 'warn');
 });
 
 /* ───────── Treatment type toggle ───────── */
@@ -560,15 +561,16 @@ wirePills('biostimProduct', 'product');
 wirePills('fillerSex', 'sex');
 updatePhotoGuide();
 
-// Map the internal 0..70 preview value to a clinic-facing strength name. The
+// Map the internal 0..70 preview value to a clinic-facing RESPONSE name. The
 // slider is capped at 70 so the muddy full-strength zone is unreachable, and the
-// UI shows a named strength rather than a raw percentage (a consult tool should
-// read as "treatment preview strength", not "100% realism").
+// UI shows a named response rather than a raw percentage: a consult tool frames
+// the range as how strongly a patient may respond, never as a promised result
+// (and never as a vial count; dose is discussed verbally by the clinician).
 function strengthLabel(pct){
   const n = (typeof pct === 'number') ? pct : (parseInt(pct, 10) || 0);
-  if(n < 40) return 'Subtle';
+  if(n < 40) return 'Conservative';
   if(n < 60) return 'Expected';
-  return 'Enhanced';
+  return 'Strong';
 }
 
 // Live intensity slider: re-blend the cached apply() with no regeneration. Used
@@ -650,14 +652,14 @@ const PRODUCT_INSIGHT = {
   hdr:'Diffuse skin firming and improved quality'
 };
 const PROJECTION_INSIGHT = {
-  conservative:'Shown at a subtle strength, the lower end of the response',
-  expected:'Shown at the expected strength, the typical response most patients see',
-  optimistic:'Shown at a strong strength, the upper end for a strong responder'
+  conservative:'Shown at a conservative response, the lower end of the range',
+  expected:'Shown at the expected response, the typical result most patients see',
+  optimistic:'Shown at a strong response, the upper end for a strong responder'
 };
 // Clinician-facing label for each wire value. The wire keeps conservative/
 // expected/optimistic because buildSculptraPrompt routes on them; the UI shows
 // Subtle/Expected/Strong.
-const STRENGTH_LABEL = { conservative:'Subtle', expected:'Expected', optimistic:'Strong' };
+const STRENGTH_LABEL = { conservative:'Conservative', expected:'Expected', optimistic:'Strong' };
 
 function buildInsights(){
   const out = [];
@@ -679,7 +681,7 @@ const ANNO_DEFS =
   '<defs><marker id="annoArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">' +
   '<path d="M0,0 L10,5 L0,10 z" fill="#C8725A"></path></marker></defs>';
 
-// primitives — coords in 0..100 (x) by 0..125 (y)
+// primitives: coords in 0..100 (x) by 0..125 (y)
 function aArrow(x1,y1,x2,y2){ return `<line class="anno-el anno-arrow" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" marker-end="url(#annoArrow)"></line>`; }
 function aPath(d,dashed){ return `<path class="anno-el anno-contour${dashed?' dash':''}" d="${d}"></path>`; }
 function aRegion(cx,cy,rx,ry){ return `<ellipse class="anno-el anno-region" cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}"></ellipse>`; }
@@ -805,7 +807,7 @@ async function pollForResult(jobId, key, isRegen){
       // 'pending' (or status not written yet): keep polling
     }
     if(Date.now() - startedAt > MAX_MS){
-      throw new Error('The simulation is taking unusually long (over 4 minutes). It may have failed — please try again.');
+      throw new Error('The simulation is taking unusually long (over 4 minutes). It may have failed. Please try again.');
     }
   }
 }
@@ -937,7 +939,10 @@ async function runGeneration(isRegen){
         const aiImg = await loadImage(state.resultDataUrl);
         console.log('%c[Visualize] Composite v' + MASK_MODULE_VERSION + ' (scope ' + compScope + '): building compositor…', 'color:#C8725A');
         const { makeSculptraCompositor } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
-        const apply = await makeSculptraCompositor(beforeImg, aiImg, { scope: compScope, sex: state.sex });
+        // M6 A/B hook: append ?warp=off to the URL to disable the lift warp and
+        // compare against the pure M5 composite on the same generation.
+        const warpOn = !/[?&]warp=off\b/i.test(location.search);
+        const apply = await makeSculptraCompositor(beforeImg, aiImg, { scope: compScope, sex: state.sex, warp: warpOn });
         if(apply){
           state.intensityApply = apply;
           state.resultDataUrl = apply(state.intensityPct / 100);
@@ -981,10 +986,10 @@ function updateRegenNote(){
   const elapsed = Date.now() - state.lastGenAt;
   if(elapsed < FREE_REGEN_MS){
     const left = Math.ceil((FREE_REGEN_MS - elapsed)/1000);
-    note.textContent = `Free re-generate for ${left}s — adjust the treatment and run again at no extra cost.`;
+    note.textContent = `Free re-generate for ${left}s. Adjust the treatment and run again at no extra cost.`;
     setTimeout(updateRegenNote, 1000);
   } else {
-    note.textContent = 'Re-generate to try a different treatment, area, or strength.';
+    note.textContent = 'Re-generate to try a different treatment, area, or response.';
   }
 }
 
@@ -1089,10 +1094,10 @@ async function drawExport(includeText=true){
   function simKicker(){
     if(state.type === 'biostim'){
       const months = state.timeline + ' months';
-      return 'AI Visualization · ' + months + ' · ' + strengthLabel(state.intensityPct || 50) + ' preview';
+      return 'AI Visualization · ' + months + ' · ' + strengthLabel(state.intensityPct || 50) + ' response';
     }
     if(state.type === 'filler' && state.intensityApply){
-      return 'AI Visualization · ' + strengthLabel(state.intensityPct || 50) + ' preview';
+      return 'AI Visualization · ' + strengthLabel(state.intensityPct || 50) + ' response';
     }
     return 'AI Visualization';
   }
@@ -1131,7 +1136,7 @@ async function drawExport(includeText=true){
       ctx.fillText(clinic, canvas.width/2, panelH + 72);
       brandY = panelH + 108;
     }
-    // "Powered by SkinDay Visualize" — two-tone, centered
+    // "Powered by SkinDay Visualize": two-tone, centered
     const pre = 'Powered by ', brand = 'SkinDay Visualize';
     ctx.font = '500 19px "DM Sans", sans-serif';
     const preW = ctx.measureText(pre).width, brandW = ctx.measureText(brand).width;
