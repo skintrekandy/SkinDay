@@ -88,20 +88,20 @@ const FILLER_AREAS = {
 // third), which is what chin filler reads as from the front; earlier wording
 // forbade lengthening and so produced almost no visible frontal change.
 const FILLER_CHIN_JAWLINE = {
-  expected: 'a subtly restructured, better-balanced lower third treating the chin and jawline as one unit. ' +
-            'The main change, clearly visible from the front, is gentle vertical lengthening and projection of the chin: ' +
-            'bring the chin point a little lower and forward so the lower third of the face looks longer and more balanced and the face reads more oval, ' +
-            'with cleaner definition along the mandibular border and slight prejowl support so the chin-to-jaw line is more continuous. ' +
-            'As the chin lengthens and projects, the soft tissue of the lower face follows it, so the lateral lower-face contour (below the cheekbone, along the jowl and jaw) tapers slightly inward and the lower third reads more refined and defined, not just longer. ' +
-            'For a female face let this inward taper read a little more (softer, more tapered lower face); for a male face keep the jaw width and strength and let the change come mostly from chin length and projection. ' +
+  expected: 'a clearly restructured, better-balanced and more defined lower third, treating the chin and jawline as one unit. ' +
+            'The main change, clearly visible from the front, is a confident vertical lengthening and forward projection of the chin: ' +
+            'bring the chin point clearly lower and forward so the lower third looks longer, stronger, and better balanced and the face reads distinctly more oval and defined, ' +
+            'with clean, crisp definition along the mandibular border and clear prejowl support so the chin-to-jaw line is smooth and continuous. ' +
+            'As the chin lengthens and projects, the soft tissue of the lower face follows it, so the lateral lower-face contour (below the cheekbone, along the jowl and jaw) tapers inward and the jowl lifts and reduces, so the lower third reads visibly more refined, defined, and sculpted, not just longer. ' +
+            'For a female face let this inward taper and refinement read clearly (a softer, more tapered, more elegant lower face); for a male face keep the jaw width and strength and let the change come from a longer, stronger, more projected chin and a crisper, cleaner jawline. ' +
             'The mid-cheek width and cheekbones are unchanged; only the lower face follows the chin. ' +
             'The change comes only from added chin volume and structural support',
   avoid: 'do not over-lengthen into a long, narrow, pointed, jutting, or witch-like chin, and keep the chin width natural; ' +
-         'do not create a sharp, angular, or "superhero" jawline; ' +
+         'do not create a hard, angular, or "superhero" jawline; ' +
          'do not slim, hollow, or carve the cheeks or cheekbones to fake jaw definition; ' +
-         'a slight, soft inward taper of the lower face as the chin lengthens is expected and good, but do not over-narrow or carve the lower face into a hard, artificial, sharply pointed V-line, and do not widen the lower face; ' +
+         'a clear but natural inward taper and refinement of the lower face as the chin lengthens is expected and good, but do not over-narrow or carve the lower face into a hard, artificial, sharply pointed V-line, and do not widen the lower face; ' +
          'do not add a double chin and do not alter the neck below the new chin point; ' +
-         'keep the change proportionate to the patient\'s bone structure and sex (a male chin can be a little longer, squarer, and more projected with the jaw width preserved; a female chin softer, more tapered, slightly shorter, with the lower face allowed to taper)'
+         'keep the change proportionate to the patient\'s bone structure and sex (a male chin can be longer, squarer, and more projected with the jaw width preserved; a female chin softer, more tapered, with the lower face allowed to taper), and keep it unmistakably the same person'
 };
 
 // ---- Filler: goal modifiers (v1) ------------------------------------------
@@ -196,7 +196,7 @@ const TIMELINE = {
 
 // Version log so we know which prompt produced which result during tuning.
 const VERSIONS = {
-  base: 'v3', chin: 'v1', jawline: 'v1', chin_jawline: 'v5', nose: 'v1', lips: 'v2',
+  base: 'v3', chin: 'v1', jawline: 'v1', chin_jawline: 'v6', nose: 'v1', lips: 'v2',
   cheeks: 'v2', tear_trough: 'v1', nasolabial_folds: 'v1', sculptra: 'v13', sculptra_oblique: 'v13', hdr: 'v1', timeline: 'v2'
 };
 
