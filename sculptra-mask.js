@@ -7,6 +7,12 @@
 // background). gpt-image-1's edit endpoint edits only the transparent region, so
 // this physically prevents the global beautification leak.
 //
+// M6.3 (v24): the gain now shapes FORM, not brightness. Broad brightening is
+// soft-capped inside the delta (SCULPTRA_BRIGHT_CAP_FULL), the glow moved out of
+// the gained delta to a fixed apply-time term, the dark floor was widened for
+// underside shadow, and the lift warp stepped up again. Fixes the flat waxy
+// gold look of the first v23 Strong exports.
+//
 // M6.2 (v23): response gain added so the composite can EXCEED the AI's own
 // magnitude (see SCULPTRA_DELTA_GAIN), warp and glow recalibrated against the
 // first two real before/after pairs, and the lid-cheek roll opened.
@@ -163,10 +169,13 @@ const GUARD_EDGE_LO    = 12;
 const GUARD_EDGE_HI    = 40;
 const CHROMA_LOCK      = 1.0;
 const LUMA_DARK_FLOOR  = 0;     // treated skin never darker than original (broad tone)
-const GLOW_LUMA        = 8;     // lighten (Sculptra glow), luma levels at full. Raised
-                                // 6 -> 8 in the M6.2 calibration pass: the real
-                                // before/after pairs show markedly brighter treated
-                                // skin than the sim was allowing.
+const GLOW_LUMA        = 6;     // gentle lighten (glow), luma levels at full. M6.3:
+                                // back to 6, and for Sculptra the glow now lives
+                                // OUTSIDE the gained delta (added at apply time,
+                                // never multiplied by the response gain). The gained
+                                // glow was lifting the whole treated zone ~12 levels
+                                // at Strong, cancelling the underside shadows and
+                                // flattening the volume into the waxy gold look.
 // M5.4. 0..1. How much of the AI's high-frequency DARKENING is allowed through.
 // The low-band floor stops broad darkening, but where the moved-edge guard is
 // active (HA chin/jaw, which needs it to project the chin), the AI can paint a
@@ -216,6 +225,7 @@ function buildTextureDelta(b,a0,w,h,W,opts){
   const clock   = (opts.chromaLock==null ? CHROMA_LOCK : Math.max(0,Math.min(1,opts.chromaLock)));
   const darkFloor = (opts.darkFloor==null ? LUMA_DARK_FLOOR : Math.max(0,opts.darkFloor));
   const glow      = (opts.glowLuma==null ? GLOW_LUMA : opts.glowLuma);
+  const brightCap = (opts.brightCap==null ? 0 : Math.max(0,opts.brightCap)); // 0 = uncapped
   const highDark  = (opts.highDarkenScale==null ? HIGH_DARKEN_SCALE : Math.max(0,Math.min(1,opts.highDarkenScale)));
   // For Sculptra (inflation, no moved silhouette) the moved-edge guard is not
   // needed and is actively harmful: where the AI paints a fake submalar/cheek
@@ -280,6 +290,9 @@ function buildTextureDelta(b,a0,w,h,W,opts){
       // luminance moves, and only upward.
       let lowShift = aYl - oYl;
       if(lowShift < -darkFloor) lowShift = -darkFloor;
+      // M6.3: soft-knee the broad brightening so the response gain amplifies
+      // shading structure, not flat brightness (see SCULPTRA_BRIGHT_CAP_FULL).
+      else if(brightCap > 0 && lowShift > 0) lowShift = brightCap*Math.tanh(lowShift/brightCap);
       lowShift += glow;
       // High-frequency band. Brightening passes; darkening (a fake shadow the
       // guard would otherwise paint at the jaw/edge) is scaled down. The
@@ -336,10 +349,10 @@ function buildTextureDelta(b,a0,w,h,W,opts){
 // re-drape) that the M6.1 values, further attenuated by the old 0.7 slider cap,
 // could not reach. The slider now spans the full 0..1, so these are the true
 // full-strength figures.
-const WARP_JOWL_LIFT     = 0.022;
-const WARP_JOWL_IN       = 0.009;
+const WARP_JOWL_LIFT     = 0.026;
+const WARP_JOWL_IN       = 0.011;
 const WARP_JOWL_SIGMA    = 0.085;
-const WARP_MIDFACE_LIFT  = 0.014;
+const WARP_MIDFACE_LIFT  = 0.017;
 const WARP_MIDFACE_SIGMA = 0.12;
 const WARP_EDGE_FADE     = 0.06;
 
@@ -816,7 +829,22 @@ function buildTreatAlpha(L, w, h, scope, sex){
 // lock handles it independently. SCULPTRA_DARK_FLOOR is the single lever for how
 // much 3D form the volume is allowed: raise for bolder projection, lower toward 0
 // if a case ever reads hollow instead of full.
-const SCULPTRA_DARK_FLOOR = 14;
+const SCULPTRA_DARK_FLOOR = 20;
+// DARK_FLOOR 14 -> 20 (M6.3): more underside shadow allowance is what makes the
+// amplified volume read as 3D form instead of flat brightness. Chroma stays
+// locked, so this cannot reintroduce the brown mud.
+//
+// M6.3 BRIGHT CAP. Broad brightening SATURATES perceptually: past a ceiling it
+// stops reading as restored volume and starts erasing the natural shading
+// gradient, which is the flat, waxy, lit-from-within look the first v23 Strong
+// exports showed. The cap soft-knees (tanh) the POSITIVE broad-tone shift inside
+// the delta so that the response gain amplifies structure (the spatial variation
+// of the volume shading, and the floored underside shadow) while the flat
+// brightening component levels off. Defined as the maximum broad brightening in
+// luma levels reachable at the TOP of the slider; the pre-gain cap is derived
+// from it so retuning the gain does not silently change the ceiling.
+const SCULPTRA_BRIGHT_CAP_FULL = 26;
+//
 // M6.2 RESPONSE GAIN. The composite is otherwise purely attenuative: every stage
 // can only reduce the AI's change, so when the model under-delivers against real
 // Sculptra outcomes (it does; it is biased toward minimal edits), no slider value
@@ -833,6 +861,9 @@ const SCULPTRA_DARK_FLOOR = 14;
 // is the other half of this change.
 const SCULPTRA_DELTA_GAIN = 1.45;
 const CHIN_JAW_DELTA_GAIN = 1.0;
+// Sculptra glow applied at composite time, scaled by mask and slider but NOT by
+// the gain (see GLOW_LUMA note). Equal add to R,G,B, so chroma-exact.
+const SCULPTRA_GLOW_APPLY = 6;
 // HA chin/jaw: a defined jawline is created by the clean shadow line along the
 // mandibular border, so the path needs SOME darkening to read as definition
 // rather than flat. Colour is locked, so this clean luminance shadow cannot turn
@@ -843,8 +874,11 @@ const CHIN_JAW_DARK_FLOOR = 14;
 function sculptraTexOpts(scope, opts){
   const isHA = (scope === 'chin_jaw');
   const profile = isHA
-    ? { forceOriginalTexture:false, darkFloor:CHIN_JAW_DARK_FLOOR, highDarkenScale:0.5, deltaGain:CHIN_JAW_DELTA_GAIN }
-    : { forceOriginalTexture:true,  darkFloor:SCULPTRA_DARK_FLOOR, highDarkenScale:0, deltaGain:SCULPTRA_DELTA_GAIN };
+    ? { forceOriginalTexture:false, darkFloor:CHIN_JAW_DARK_FLOOR, highDarkenScale:0.5, deltaGain:CHIN_JAW_DELTA_GAIN,
+        glowLuma:GLOW_LUMA, glowApply:0, brightCap:0 }
+    : { forceOriginalTexture:true,  darkFloor:SCULPTRA_DARK_FLOOR, highDarkenScale:0, deltaGain:SCULPTRA_DELTA_GAIN,
+        glowLuma:0, glowApply:SCULPTRA_GLOW_APPLY,
+        brightCap:SCULPTRA_BRIGHT_CAP_FULL/SCULPTRA_DELTA_GAIN };
   return Object.assign(profile, opts || {});
 }
 
@@ -946,12 +980,15 @@ export async function compositeSculptra(beforeImg, aiImg, opts){
     const W = faceWidthPx(landmarks, w, h);
     const tdOpts = sculptraTexOpts(scope, opts);
     const gain = tdOpts.deltaGain || 1;
+    const glowApply = tdOpts.glowApply || 0;
     const { dR, dG, dB } = buildTextureDelta(b, a0, w, h, W, tdOpts);
     for(let i=0,p=0;i<m.length;i++,p+=4){
-      const al = Math.min(1, m[i]) * intensity * gain;
-      a[p]   = wb[p]   + al*dR[i];
-      a[p+1] = wb[p+1] + al*dG[i];
-      a[p+2] = wb[p+2] + al*dB[i];
+      const alm = Math.min(1, m[i]) * intensity;
+      const al = alm * gain;
+      const gl = alm * glowApply; // M6.3: glow is never gained
+      a[p]   = wb[p]   + al*dR[i] + gl;
+      a[p+1] = wb[p+1] + al*dG[i] + gl;
+      a[p+2] = wb[p+2] + al*dB[i] + gl;
       a[p+3] = 255;
     }
   } else {
@@ -1002,11 +1039,12 @@ export async function makeSculptraCompositor(beforeImg, aiImg, opts){
   // M5.1: precompute the texture-restore delta once. apply() then writes
   // out = original + al*delta, which dials the AI volume with the slider while
   // holding the original's high-frequency texture sharp at every intensity.
-  let dR=null, dG=null, dB=null, gain=1;
+  let dR=null, dG=null, dB=null, gain=1, glowApply=0;
   if(textureRestore){
     const W = faceWidthPx(landmarks, w, h);
     const tdOpts = sculptraTexOpts(scope, opts);
     gain = tdOpts.deltaGain || 1;
+    glowApply = tdOpts.glowApply || 0;
     const d = buildTextureDelta(b, a0, w, h, W, tdOpts);
     dR=d.dR; dG=d.dG; dB=d.dB;
   }
@@ -1022,11 +1060,14 @@ export async function makeSculptraCompositor(beforeImg, aiImg, opts){
     if(lift) applyLiftWarp(wb, b, w, h, lift, t);
     if(textureRestore){
       // M6.2: al carries the response gain (delta extrapolation at the top).
+      // M6.3: the glow term is scaled by mask and slider only, never by gain.
       for(let i=0,p=0;i<m.length;i++,p+=4){
-        const al = Math.min(1, m[i]) * t * gain;
-        o[p]   = wb[p]   + al*dR[i];
-        o[p+1] = wb[p+1] + al*dG[i];
-        o[p+2] = wb[p+2] + al*dB[i];
+        const alm = Math.min(1, m[i]) * t;
+        const al = alm * gain;
+        const gl = alm * glowApply;
+        o[p]   = wb[p]   + al*dR[i] + gl;
+        o[p+1] = wb[p+1] + al*dG[i] + gl;
+        o[p+2] = wb[p+2] + al*dB[i] + gl;
         o[p+3] = 255;
       }
     } else {

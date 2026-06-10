@@ -347,10 +347,10 @@ const FREE_REGEN_MS = 60000;
 
 // Bump this whenever sculptra-mask.js changes, so the browser fetches the new
 // module instead of a stale disk-cached copy. Both imports below use it, so they
-// stay the same module instance (shared face-detection cache). v23 = M6.2
-// response gain + calibration against the first real before/after pairs
-// (v22 = M6.1 frontal lift warp).
-const MASK_MODULE_VERSION = '23';
+// stay the same module instance (shared face-detection cache). v24 = M6.3
+// form-shaped gain: bright cap, ungained glow, deeper dark floor, bolder warp
+// (v23 = M6.2 response gain; v22 = M6.1 frontal lift warp).
+const MASK_MODULE_VERSION = '24';
 
 const state = {
   file:null, originalDataUrl:null, resultDataUrl:null,
