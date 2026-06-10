@@ -253,7 +253,7 @@
         </div>
         <div class="field">
           <label>Result strength</label>
-          <div class="privacy-note"><span>ℹ️</span><span>Your preview is generated at full strength, then you dial the intensity up or down with a slider on the result. No need to regenerate.</span></div>
+          <div class="privacy-note"><span>ℹ️</span><span>Your preview is generated at a strong, realistic anchor, then you set the preview strength with a slider on the result. No need to regenerate.</span></div>
         </div>
       </div>
     </div>
@@ -304,12 +304,12 @@
     </div>
     <div id="intensityWrap" style="display:none;margin-top:14px;">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-        <label for="intensitySlider" style="font-size:13px;letter-spacing:.04em;text-transform:uppercase;opacity:.75;">Treatment intensity</label>
-        <span id="intensityValue" style="font-family:'Cormorant Garamond',serif;font-size:22px;">50%</span>
+        <label for="intensitySlider" style="font-size:13px;letter-spacing:.04em;text-transform:uppercase;opacity:.75;">Treatment preview strength</label>
+        <span id="intensityValue" style="font-family:'Cormorant Garamond',serif;font-size:22px;">Expected</span>
       </div>
-      <input type="range" id="intensitySlider" min="0" max="100" step="1" value="50" style="width:100%;margin-top:8px;accent-color:#C8725A;" />
+      <input type="range" id="intensitySlider" min="0" max="70" step="1" value="50" style="width:100%;margin-top:8px;accent-color:#C8725A;" />
       <div style="display:flex;justify-content:space-between;font-size:.68rem;letter-spacing:.04em;text-transform:uppercase;opacity:.6;margin-top:4px;">
-        <span>Subtle</span><span>Expected</span><span>Enhanced</span>
+        <span>Softer</span><span>Stronger</span>
       </div>
       <div class="small" style="margin-top:6px;">Slide to preview a softer or stronger result. The simulation updates instantly.</div>
     </div>
@@ -348,7 +348,7 @@ const FREE_REGEN_MS = 60000;
 // Bump this whenever sculptra-mask.js changes, so the browser fetches the new
 // module instead of a stale disk-cached copy. Both imports below use it, so they
 // stay the same module instance (shared face-detection cache).
-const MASK_MODULE_VERSION = '18';
+const MASK_MODULE_VERSION = '20';
 
 const state = {
   file:null, originalDataUrl:null, resultDataUrl:null,
@@ -560,6 +560,17 @@ wirePills('biostimProduct', 'product');
 wirePills('fillerSex', 'sex');
 updatePhotoGuide();
 
+// Map the internal 0..70 preview value to a clinic-facing strength name. The
+// slider is capped at 70 so the muddy full-strength zone is unreachable, and the
+// UI shows a named strength rather than a raw percentage (a consult tool should
+// read as "treatment preview strength", not "100% realism").
+function strengthLabel(pct){
+  const n = (typeof pct === 'number') ? pct : (parseInt(pct, 10) || 0);
+  if(n < 40) return 'Subtle';
+  if(n < 60) return 'Expected';
+  return 'Enhanced';
+}
+
 // Live intensity slider: re-blend the cached apply() with no regeneration. Used
 // by both Sculptra and HA filler; both set state.intensityApply to a masked
 // compositor with the same (0..1) -> jpegDataURL contract.
@@ -570,7 +581,7 @@ updatePhotoGuide();
   slider.addEventListener('input', () => {
     const pct = parseInt(slider.value, 10) || 0;
     state.intensityPct = pct;
-    document.getElementById('intensityValue').textContent = pct + '%';
+    document.getElementById('intensityValue').textContent = strengthLabel(pct);
     if(!state.intensityApply) return;
     if(raf) cancelAnimationFrame(raf);
     raf = requestAnimationFrame(() => {
@@ -943,7 +954,7 @@ async function runGeneration(isRegen){
     document.getElementById('intensityWrap').style.display = showSlider ? 'block' : 'none';
     if(showSlider){
       document.getElementById('intensitySlider').value = state.intensityPct;
-      document.getElementById('intensityValue').textContent = state.intensityPct + '%';
+      document.getElementById('intensityValue').textContent = strengthLabel(state.intensityPct);
     }
 
     document.getElementById('originalResult').src = state.beforeDataUrl || state.originalDataUrl;
@@ -1078,10 +1089,10 @@ async function drawExport(includeText=true){
   function simKicker(){
     if(state.type === 'biostim'){
       const months = state.timeline + ' months';
-      return 'AI Visualization · ' + months + ' · ' + (state.intensityPct || 50) + '% intensity';
+      return 'AI Visualization · ' + months + ' · ' + strengthLabel(state.intensityPct || 50) + ' preview';
     }
     if(state.type === 'filler' && state.intensityApply){
-      return 'AI Visualization · ' + (state.intensityPct || 50) + '% intensity';
+      return 'AI Visualization · ' + strengthLabel(state.intensityPct || 50) + ' preview';
     }
     return 'AI Visualization';
   }

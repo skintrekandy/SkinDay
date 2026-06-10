@@ -478,7 +478,7 @@ function buildTreatAlpha(L, w, h, scope, sex){
   // cheekbone (the topTaper above still fades it) so the mid-cheek is untouched.
   const LF_TAPER_SIGMA=0.045*W;
   const twoSigTaper=2*LF_TAPER_SIGMA*LF_TAPER_SIGMA||1e-6;
-  const taperScale = isMale ? 0.25 : 0.6;
+  const taperScale = isMale ? 0.4 : 0.85;
   const taperSegs=[];
   if(taperScale>0){
     for(const POLY of [[365,397,288],[136,172,58]]){ // right side, left side
@@ -525,7 +525,7 @@ function buildTreatAlpha(L, w, h, scope, sex){
           // The central extension is eased (0.12 -> 0.09) so chin elongation does
           // not push a crescent down over the submental shadow.
           const central=1-smoothstep(0.10,0.22,alat);     // 1 under the chin, 0 at the jaw/sides
-          const floor=-0.02 - 0.09*central;               // jaw cuts at -0.02; chin column extends to ~-0.11
+          const floor=-0.02 - 0.12*central;               // jaw cuts at -0.02; chin column extends to ~-0.14 for clear projection
           const neckTaper=smoothstep(floor, floor+0.05, hF);
           m[i]=Math.min(1, lf*topTaper*neckTaper*protOnly);
         }
@@ -598,11 +598,18 @@ function buildTreatAlpha(L, w, h, scope, sex){
 // lock handles it independently. SCULPTRA_DARK_FLOOR is the single lever for how
 // much 3D form the volume is allowed: raise for bolder projection, lower toward 0
 // if a case ever reads hollow instead of full.
-const SCULPTRA_DARK_FLOOR = 24;
+const SCULPTRA_DARK_FLOOR = 14;
+// HA chin/jaw: a defined jawline is created by the clean shadow line along the
+// mandibular border, so the path needs SOME darkening to read as definition
+// rather than flat. Colour is locked, so this clean luminance shadow cannot turn
+// muddy or brown the way the earlier artifact did. Bounded and tunable: raise for
+// a crisper, more sculpted jaw and chin, lower toward 0 if a case reads shadowed
+// or harsh instead of defined.
+const CHIN_JAW_DARK_FLOOR = 14;
 function sculptraTexOpts(scope, opts){
   const isHA = (scope === 'chin_jaw');
   const profile = isHA
-    ? { forceOriginalTexture:false, darkFloor:0,                 highDarkenScale:0 }
+    ? { forceOriginalTexture:false, darkFloor:CHIN_JAW_DARK_FLOOR, highDarkenScale:0.5 }
     : { forceOriginalTexture:true,  darkFloor:SCULPTRA_DARK_FLOOR, highDarkenScale:0 };
   return Object.assign(profile, opts || {});
 }
