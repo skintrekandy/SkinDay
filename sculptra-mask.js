@@ -7,6 +7,10 @@
 // background). gpt-image-1's edit endpoint edits only the transparent region, so
 // this physically prevents the global beautification leak.
 //
+// M6.2 (v23): response gain added so the composite can EXCEED the AI's own
+// magnitude (see SCULPTRA_DELTA_GAIN), warp and glow recalibrated against the
+// first two real before/after pairs, and the lid-cheek roll opened.
+//
 // M6 (v22): this module now also hosts the geometry engine. The compositors
 // apply a landmark-driven LIFT WARP to the frontal Sculptra base (jowl and
 // midface re-drape using the patient's own pixels) before adding the AI's
@@ -47,7 +51,10 @@ const VOL_LAT_RAMP = 0.06;
 const LAT_MIN = 0.12;
 const VOL_LAT_MIN_CHEEK = 0.18;
 const VOL_LAT_MIN_TEMPLE = 0.27;
-const CHEEK_UE_LO = 0.56, CHEEK_UE_HI = 0.64, CHEEK_UE_ROLL = 0.30;
+const CHEEK_UE_LO = 0.56, CHEEK_UE_HI = 0.64, CHEEK_UE_ROLL = 0.18;
+// CHEEK_UE_ROLL 0.30 -> 0.18 (M6.2 calibration): the real-case pairs show a
+// clear lid-cheek junction improvement from restored midface volume that the
+// sim was under-delivering; the protected eye discs still guard the lid itself.
 
 const ZYGION = { r:234, l:454 };
 const TEMPLE_OVAL = { r:127, l:356 };
@@ -156,7 +163,10 @@ const GUARD_EDGE_LO    = 12;
 const GUARD_EDGE_HI    = 40;
 const CHROMA_LOCK      = 1.0;
 const LUMA_DARK_FLOOR  = 0;     // treated skin never darker than original (broad tone)
-const GLOW_LUMA        = 6;     // gentle lighten (Sculptra glow), luma levels at full
+const GLOW_LUMA        = 8;     // lighten (Sculptra glow), luma levels at full. Raised
+                                // 6 -> 8 in the M6.2 calibration pass: the real
+                                // before/after pairs show markedly brighter treated
+                                // skin than the sim was allowing.
 // M5.4. 0..1. How much of the AI's high-frequency DARKENING is allowed through.
 // The low-band floor stops broad darkening, but where the moved-edge guard is
 // active (HA chin/jaw, which needs it to project the chin), the AI can paint a
@@ -312,8 +322,8 @@ function buildTextureDelta(b,a0,w,h,W,opts){
 //   - Fail-safe everywhere: any error, missing landmark, or non-frontal pose
 //     disables the warp and the pipeline behaves exactly as M5.
 //
-// Tuning (the clinical correction loop; magnitudes are at FULL strength, and
-// the UI slider cap of 70 means the strongest reachable lift is 0.7 of these):
+// Tuning (the clinical correction loop; magnitudes are at FULL strength, which
+// the slider now reaches since the 70 cap was removed in M6.2):
 //   WARP_JOWL_LIFT     upward jowl/prejowl re-drape, fraction of face height.
 //   WARP_JOWL_IN       inward (toward midline) component at the jowl, fraction
 //                      of face width: the lift-and-narrow read. Keep small.
@@ -321,10 +331,15 @@ function buildTextureDelta(b,a0,w,h,W,opts){
 //   WARP_*_SIGMA       kernel breadth, fraction of face width.
 //   WARP_EDGE_FADE     band inside the face oval over which displacement fades
 //                      to zero, fraction of face width.
-const WARP_JOWL_LIFT     = 0.016;
-const WARP_JOWL_IN       = 0.006;
+// M6.2 calibration pass: magnitudes roughly doubled in effective terms. The
+// real before/after pairs show genuine contour change (jowl lift, midface
+// re-drape) that the M6.1 values, further attenuated by the old 0.7 slider cap,
+// could not reach. The slider now spans the full 0..1, so these are the true
+// full-strength figures.
+const WARP_JOWL_LIFT     = 0.022;
+const WARP_JOWL_IN       = 0.009;
 const WARP_JOWL_SIGMA    = 0.085;
-const WARP_MIDFACE_LIFT  = 0.009;
+const WARP_MIDFACE_LIFT  = 0.014;
 const WARP_MIDFACE_SIGMA = 0.12;
 const WARP_EDGE_FADE     = 0.06;
 
@@ -802,6 +817,22 @@ function buildTreatAlpha(L, w, h, scope, sex){
 // much 3D form the volume is allowed: raise for bolder projection, lower toward 0
 // if a case ever reads hollow instead of full.
 const SCULPTRA_DARK_FLOOR = 14;
+// M6.2 RESPONSE GAIN. The composite is otherwise purely attenuative: every stage
+// can only reduce the AI's change, so when the model under-delivers against real
+// Sculptra outcomes (it does; it is biased toward minimal edits), no slider value
+// can reach reality. deltaGain linearly EXTRAPOLATES the chroma-locked luminance
+// delta beyond the AI's own magnitude at the top of the slider:
+//   out = original + (mask * t * deltaGain) * delta
+// This is safe to amplify because the delta is already chroma-locked (no pigment
+// can be invented), dark-floored (broad tone cannot darken past the floor), and
+// carries the original's texture (nothing smooths). Calibrated against the first
+// two real before/after pairs; raise if Strong still lags real results, lower
+// toward 1.0 if the top of the slider starts to read inflated or lit-from-within.
+// HA chin/jaw stays at 1.0: its bold anchor already lands, and extrapolating a
+// silhouette move can ghost. The slider cap removal (70 -> 100, visualize.html)
+// is the other half of this change.
+const SCULPTRA_DELTA_GAIN = 1.45;
+const CHIN_JAW_DELTA_GAIN = 1.0;
 // HA chin/jaw: a defined jawline is created by the clean shadow line along the
 // mandibular border, so the path needs SOME darkening to read as definition
 // rather than flat. Colour is locked, so this clean luminance shadow cannot turn
@@ -812,8 +843,8 @@ const CHIN_JAW_DARK_FLOOR = 14;
 function sculptraTexOpts(scope, opts){
   const isHA = (scope === 'chin_jaw');
   const profile = isHA
-    ? { forceOriginalTexture:false, darkFloor:CHIN_JAW_DARK_FLOOR, highDarkenScale:0.5 }
-    : { forceOriginalTexture:true,  darkFloor:SCULPTRA_DARK_FLOOR, highDarkenScale:0 };
+    ? { forceOriginalTexture:false, darkFloor:CHIN_JAW_DARK_FLOOR, highDarkenScale:0.5, deltaGain:CHIN_JAW_DELTA_GAIN }
+    : { forceOriginalTexture:true,  darkFloor:SCULPTRA_DARK_FLOOR, highDarkenScale:0, deltaGain:SCULPTRA_DELTA_GAIN };
   return Object.assign(profile, opts || {});
 }
 
@@ -909,12 +940,15 @@ export async function compositeSculptra(beforeImg, aiImg, opts){
   if(textureRestore){
     // Keep the AI low band (volume), restore the original high band (texture);
     // out = warpedOriginal + al * delta. Identical math to makeSculptraCompositor.
+    // M6.2: al carries the response gain, so the top of the slider extrapolates
+    // the (chroma-locked, floored) delta beyond the AI's own magnitude.
     const a0 = new Uint8ClampedArray(a);
     const W = faceWidthPx(landmarks, w, h);
     const tdOpts = sculptraTexOpts(scope, opts);
+    const gain = tdOpts.deltaGain || 1;
     const { dR, dG, dB } = buildTextureDelta(b, a0, w, h, W, tdOpts);
     for(let i=0,p=0;i<m.length;i++,p+=4){
-      const al = Math.min(1, m[i]) * intensity;
+      const al = Math.min(1, m[i]) * intensity * gain;
       a[p]   = wb[p]   + al*dR[i];
       a[p+1] = wb[p+1] + al*dG[i];
       a[p+2] = wb[p+2] + al*dB[i];
@@ -968,10 +1002,11 @@ export async function makeSculptraCompositor(beforeImg, aiImg, opts){
   // M5.1: precompute the texture-restore delta once. apply() then writes
   // out = original + al*delta, which dials the AI volume with the slider while
   // holding the original's high-frequency texture sharp at every intensity.
-  let dR=null, dG=null, dB=null;
+  let dR=null, dG=null, dB=null, gain=1;
   if(textureRestore){
     const W = faceWidthPx(landmarks, w, h);
     const tdOpts = sculptraTexOpts(scope, opts);
+    gain = tdOpts.deltaGain || 1;
     const d = buildTextureDelta(b, a0, w, h, W, tdOpts);
     dR=d.dR; dG=d.dG; dB=d.dB;
   }
@@ -986,8 +1021,9 @@ export async function makeSculptraCompositor(beforeImg, aiImg, opts){
     const t = Math.max(0, Math.min(1, (typeof intensity === "number" ? intensity : 1)));
     if(lift) applyLiftWarp(wb, b, w, h, lift, t);
     if(textureRestore){
+      // M6.2: al carries the response gain (delta extrapolation at the top).
       for(let i=0,p=0;i<m.length;i++,p+=4){
-        const al = Math.min(1, m[i]) * t;
+        const al = Math.min(1, m[i]) * t * gain;
         o[p]   = wb[p]   + al*dR[i];
         o[p+1] = wb[p+1] + al*dG[i];
         o[p+2] = wb[p+2] + al*dB[i];

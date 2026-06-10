@@ -307,7 +307,7 @@
         <label for="intensitySlider" style="font-size:13px;letter-spacing:.04em;text-transform:uppercase;opacity:.75;">Treatment response</label>
         <span id="intensityValue" style="font-family:'Cormorant Garamond',serif;font-size:22px;">Expected</span>
       </div>
-      <input type="range" id="intensitySlider" min="0" max="70" step="1" value="50" style="width:100%;margin-top:8px;accent-color:#C8725A;" />
+      <input type="range" id="intensitySlider" min="0" max="100" step="1" value="50" style="width:100%;margin-top:8px;accent-color:#C8725A;" />
       <div style="display:flex;justify-content:space-between;font-size:.68rem;letter-spacing:.04em;text-transform:uppercase;opacity:.6;margin-top:4px;">
         <span>Conservative</span><span>Strong</span>
       </div>
@@ -347,9 +347,10 @@ const FREE_REGEN_MS = 60000;
 
 // Bump this whenever sculptra-mask.js changes, so the browser fetches the new
 // module instead of a stale disk-cached copy. Both imports below use it, so they
-// stay the same module instance (shared face-detection cache). v22 = M6.1
-// frontal lift warp in the compositors.
-const MASK_MODULE_VERSION = '22';
+// stay the same module instance (shared face-detection cache). v23 = M6.2
+// response gain + calibration against the first real before/after pairs
+// (v22 = M6.1 frontal lift warp).
+const MASK_MODULE_VERSION = '23';
 
 const state = {
   file:null, originalDataUrl:null, resultDataUrl:null,
@@ -561,15 +562,18 @@ wirePills('biostimProduct', 'product');
 wirePills('fillerSex', 'sex');
 updatePhotoGuide();
 
-// Map the internal 0..70 preview value to a clinic-facing RESPONSE name. The
-// slider is capped at 70 so the muddy full-strength zone is unreachable, and the
-// UI shows a named response rather than a raw percentage: a consult tool frames
-// the range as how strongly a patient may respond, never as a promised result
-// (and never as a vial count; dose is discussed verbally by the clinician).
+// Map the 0..100 preview value to a clinic-facing RESPONSE name. The old cap of
+// 70 protected against the pre-chroma-lock muddy zone; the chroma lock (M5.2),
+// dark floor (M5.3), and no-added-shadow guard (M5.4) made full strength clean,
+// and the M6.2 response gain in sculptra-mask.js means the top of the range now
+// extrapolates toward calibrated real-world magnitude. The UI shows a named
+// response rather than a raw percentage: a consult tool frames the range as how
+// strongly a patient may respond, never as a promised result (and never as a
+// vial count; dose is discussed verbally by the clinician).
 function strengthLabel(pct){
   const n = (typeof pct === 'number') ? pct : (parseInt(pct, 10) || 0);
   if(n < 40) return 'Conservative';
-  if(n < 60) return 'Expected';
+  if(n < 70) return 'Expected';
   return 'Strong';
 }
 
