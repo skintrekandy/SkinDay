@@ -249,18 +249,73 @@
     .guide-footer a { color: var(--rose); text-decoration: none; }
 
     /* MOBILE */
+  
+    /* ── QUICK ANSWER CARD ── */
+    .quick-answer-card {
+      background: white; border: 1px solid var(--border); border-radius: 12px;
+      padding: 1.5rem; margin: -36px auto 2.5rem;
+      position: relative; z-index: 2;
+      box-shadow: 0 8px 30px rgba(28,23,20,0.08);
+    }
+    .quick-answer-label { font-size:0.68rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--rose);margin-bottom:1rem; }
+    .quick-answer-table { width:100%;border-collapse:collapse;font-size:0.88rem; }
+    .quick-answer-table tr { border-bottom:1px solid var(--border); }
+    .quick-answer-table tr:last-child { border-bottom:none; }
+    .quick-answer-table td { padding:0.55rem 0; }
+    .quick-answer-table td:first-child { color:var(--muted);font-weight:500; }
+    .quick-answer-table td:last-child { text-align:right;font-weight:600;color:var(--deep); }
+    .quick-answer-note { font-size:0.72rem;color:var(--dim);margin-top:0.75rem;margin-bottom:0.75rem; }
+    .quick-answer-cta { display:block;text-align:center;background:var(--rose);color:white;padding:0.65rem 1rem;border-radius:6px;font-size:0.85rem;font-weight:500;text-decoration:none;transition:background 0.2s;margin-top:1rem; }
+    .quick-answer-cta:hover { background:var(--rose-m); }
+    /* ── JUMP CHIPS ── */
+    .jump-chips { display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:2.5rem; }
+    .jump-chip { font-size:0.78rem;font-weight:500;padding:0.35rem 0.85rem;border-radius:20px;background:var(--warm);color:var(--deep);text-decoration:none;border:1px solid var(--border);transition:background 0.2s; }
+    .jump-chip:hover { background:var(--rose-bg); }
+    .jump-chip.cta { background:var(--rose-bg);color:var(--rose);border-color:rgba(200,114,90,0.25); }
+    /* ── CALCULATOR ── */
+    .calc-card { background:white;border:1px solid var(--border);border-radius:12px;padding:1.5rem; }
+    .calc-presets { display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:1.25rem; }
+    .calc-preset { font-size:0.78rem;padding:0.35rem 0.85rem;border-radius:20px;background:var(--warm);border:1px solid var(--border);cursor:pointer;font-family:inherit;transition:background 0.2s; }
+    .calc-preset:hover { background:var(--rose-bg); }
+    .calc-preset.active { background:var(--rose-bg);border-color:rgba(200,114,90,0.25);color:var(--rose);font-weight:600; }
+    .calc-inputs { display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem; }
+    .calc-label { font-size:0.72rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:0.4rem; }
+    .calc-input { width:100%;padding:0.6rem 0.75rem;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.95rem;background:var(--warm);color:var(--deep);outline:none; }
+    .calc-result-row { background:var(--warm);border-radius:10px;padding:1rem 1.25rem;display:flex;align-items:center;justify-content:space-between; }
+    .calc-result-label { font-size:0.82rem;color:var(--muted);font-weight:500; }
+    .calc-result-num { font-family:'Cormorant Garamond',serif;font-size:2rem;font-weight:400;color:var(--deep); }
+    .calc-note { font-size:0.72rem;color:var(--dim);margin-top:0.75rem;margin-bottom:0; }
+    .calc-followup { display:block;text-align:center;margin-top:1rem;font-size:0.82rem;color:var(--rose);font-weight:500;text-decoration:none;padding:0.55rem 1rem;border:1px solid rgba(200,114,90,0.3);border-radius:6px;transition:background 0.2s; }
+    .calc-followup:hover { background:var(--rose-bg); }
+    /* ── MID CTA ── */
+    .mid-cta { background:var(--warm);border-radius:12px;padding:1.5rem 1.75rem;margin-bottom:3.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;border:1px solid var(--border); }
+    .mid-cta-heading { font-family:'Cormorant Garamond',serif;font-size:1.3rem;font-weight:400;color:var(--deep);margin-bottom:0.25rem; }
+    .mid-cta-sub { font-size:0.8rem;color:var(--muted); }
+    .mid-cta-btn { flex-shrink:0;background:var(--rose);color:white;padding:0.65rem 1.4rem;border-radius:6px;font-size:0.85rem;font-weight:500;text-decoration:none; }
+    .mid-cta-btn:hover { background:var(--rose-m); }
+
+    /* ── MOBILE — consolidated at end so base styles don't override ── */
     @media (max-width: 640px) {
-      .guide-hero { padding: 100px 5% 56px; }
-      .stat-strip { flex-direction: column; align-items: center; gap: 1.5rem; }
-      .stat-item { padding: 0; width: 100%; }
-      .stat-item + .stat-item { border-left: none; border-top: 1px solid rgba(255,255,255,0.07); padding-top: 1.5rem; }
-      .guide-wrap { padding: 32px 5% 60px; overflow-x: hidden; }
-      body { overflow-x: hidden; }
-      .chart-grid { grid-template-columns: 1fr !important; gap: 1.5rem !important; }
-      .tier-grid { grid-template-columns: 1fr; }
-      .guide-table { font-size: 0.8rem; }
-      .guide-table th, .guide-table td { padding: 0.6rem 0.75rem; }
-      .nav-right .nav-cta { display: none; }
+      .guide-hero { padding: 88px 5% 32px; }
+      .guide-hero h1 { font-size:2.15rem;margin-bottom:0.9rem; }
+      .guide-hero .lead { font-size:0.9rem;line-height:1.55;margin-bottom:1.25rem; }
+      .stat-strip { display:grid;grid-template-columns:repeat(3,1fr);gap:0.5rem;padding-top:1rem; }
+      .stat-item { border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.7rem 0.4rem; }
+      .stat-item + .stat-item { border-left:none;border-top:none;padding-top:0.7rem; }
+      .stat-num { font-size:1.45rem; }
+      .stat-num span { font-size:0.9rem; }
+      .stat-desc { font-size:0.62rem;line-height:1.25; }
+      .quick-answer-card { margin:-28px auto 2rem;padding:1.1rem; }
+      .guide-wrap { padding:0 5% 60px;overflow-x:hidden; }
+      body { overflow-x:hidden; }
+      .chart-grid { grid-template-columns:1fr !important;gap:1.5rem !important; }
+      #chart-legend { flex-direction:row !important;flex-wrap:wrap;gap:0.35rem !important; }
+      .tier-grid { grid-template-columns:1fr; }
+      .guide-table { font-size:0.8rem; }
+      .guide-table th, .guide-table td { padding:0.6rem 0.75rem; }
+      .calc-inputs { grid-template-columns:1fr 1fr; }
+      .mid-cta { flex-direction:column; }
+      .density-callout { flex-direction:column;gap:0.75rem; }
     }
   </style>
 </head>
@@ -269,8 +324,8 @@
 <nav>
   <a href="/" class="nav-logo">Skin<span>Day</span></a>
   <div class="nav-right">
-    <a href="/" class="nav-cta en">Compare prices →</a>
-    <a href="/" class="nav-cta fr">Comparer les prix →</a>
+    <a href="/" class="nav-cta en">Compare clinics →</a>
+    <a href="/" class="nav-cta fr">Comparer les cliniques →</a>
     <div class="lang-toggle">
       <button class="lang-btn active" id="btn-en" onclick="setLang('en')">EN</button>
       <button class="lang-btn" id="btn-fr" onclick="setLang('fr')">FR</button>
@@ -313,7 +368,178 @@
 
 <div class="guide-wrap">
 
-  <a href="/" style="display:inline-flex;align-items:center;gap:0.4rem;color:var(--muted);text-decoration:none;font-size:0.82rem;font-weight:500;margin-bottom:2.5rem;transition:color 0.2s;" onmouseover="this.style.color='var(--rose)'" onmouseout="this.style.color='var(--muted)'">← <span class="en">Back to directory</span><span class="fr">Retour au répertoire</span></a>
+  
+
+  <!-- QUICK ANSWER CARD -->
+  <div class="quick-answer-card">
+    <div class="quick-answer-label">
+      <span class="en">Quick answer: Botox cost in Montreal</span>
+      <span class="fr">Réponse rapide : coût du Botox à Montréal</span>
+    </div>
+    <table class="quick-answer-table">
+      <tbody>
+        <tr>
+          <td><span class="en">Average price per unit</span><span class="fr">Prix moyen par unité</span></td><td>$12.00</td>
+        </tr>
+        <tr>
+          <td><span class="en">Common range</span><span class="fr">Fourchette courante</span></td><td>$6–$15 / unit</td>
+        </tr>
+        <tr>
+          <td><span class="en">Forehead (single area)</span><span class="fr">Front (zone unique)</span></td><td>$115–$240</td>
+        </tr>
+        <tr>
+          <td><span class="en">Full upper face</span><span class="fr">Visage supérieur complet</span></td><td>$420–$720</td>
+        </tr>
+        <tr>
+          <td><span class="en">Premium clinics</span><span class="fr">Cliniques premium</span></td><td>$13–$15 / unit</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="quick-answer-note">
+      <span class="en">Updated May 2026 · based on verified SkinDay pricing</span>
+      <span class="fr">Mis à jour mai 2026 · basé sur les prix vérifiés SkinDay</span>
+    </p>
+    <a href="/" class="quick-answer-cta en">Compare Montreal Botox clinics →</a>
+    <a href="/" class="quick-answer-cta fr" style="margin-top:0.5rem;">Comparer les cliniques de Botox à Montréal →</a>
+  </div>
+
+  <!-- JUMP CHIPS -->
+  <div class="jump-chips">
+    <a href="#by-treatment-area" class="jump-chip"><span class="en">By treatment area</span><span class="fr">Par zone</span></a>
+    <a href="#who-is-injecting" class="jump-chip"><span class="en">Injector type</span><span class="fr">Injecteur</span></a>
+    <a href="#price-tiers" class="jump-chip"><span class="en">Price ranges</span><span class="fr">Gammes de prix</span></a>
+    <a href="#faq" class="jump-chip">FAQ</a>
+    <a href="/" class="jump-chip cta"><span class="en">Compare clinics →</span><span class="fr">Comparer →</span></a>
+  </div>
+
+
+
+  <div class="guide-section" id="by-treatment-area">
+    <h2>
+      <span class="en">Botox cost by <em>treatment area</em></span>
+      <span class="fr">Coût du Botox par <em>zone de traitement</em></span>
+    </h2>
+    <p class="en">Most patients don't buy "Botox" in the abstract — they want a specific area treated. Estimated costs below use the Montreal average. Actual units vary with muscle strength, anatomy, and the look you want, so treat these as planning ranges, not quotes.</p>
+    <p class="fr">La plupart des patients ne cherchent pas du Botox en général : ils veulent une zone précise traitée. Les estimations ci-dessous utilisent la moyenne montréalaise. Les unités réelles varient selon la force musculaire, l'anatomie et l'effet recherché. Traitez ces chiffres comme des repères de planification, non comme des devis.</p>
+
+    <table class="guide-table">
+      <thead>
+        <tr>
+          <th><span class="en">Treatment area</span><span class="fr">Zone de traitement</span></th>
+          <th><span class="en">Typical units</span><span class="fr">Unités typiques</span></th>
+          <th><span class="en">Est. Montreal cost</span><span class="fr">Coût estimé Montréal</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong class="en">Forehead lines</strong><strong class="fr">Rides du front</strong> <span style="font-size:0.78rem;color:var(--muted);" class="en">horizontal lines</span><span style="font-size:0.78rem;color:var(--muted);" class="fr">lignes horizontales</span></td>
+          <td>10–20 <span class="en">units</span><span class="fr">unités</span></td>
+          <td>$120–$240</td>
+        </tr>
+        <tr>
+          <td><strong class="en">Frown lines</strong><strong class="fr">Rides du lion</strong> <span style="font-size:0.78rem;color:var(--muted);" class="en">"11s" between brows</span><span style="font-size:0.78rem;color:var(--muted);" class="fr">entre les sourcils</span></td>
+          <td>15–25 <span class="en">units</span><span class="fr">unités</span></td>
+          <td>$180–$300</td>
+        </tr>
+        <tr>
+          <td><strong class="en">Crow's feet</strong><strong class="fr">Pattes d'oie</strong> <span style="font-size:0.78rem;color:var(--muted);" class="en">around the eyes</span><span style="font-size:0.78rem;color:var(--muted);" class="fr">autour des yeux</span></td>
+          <td>10–24 <span class="en">units</span><span class="fr">unités</span></td>
+          <td>$120–$288</td>
+        </tr>
+        <tr>
+          <td><strong class="en">Bunny lines</strong><strong class="fr">Rides du lapin</strong> <span style="font-size:0.78rem;color:var(--muted);" class="en">nose</span><span style="font-size:0.78rem;color:var(--muted);" class="fr">nez</span></td>
+          <td>5–10 <span class="en">units</span><span class="fr">unités</span></td>
+          <td>$60–$120</td>
+        </tr>
+        <tr>
+          <td><strong class="en">Lip flip</strong><strong class="fr">Retournement des lèvres</strong></td>
+          <td>4–8 <span class="en">units</span><span class="fr">unités</span></td>
+          <td>$48–$96</td>
+        </tr>
+        <tr>
+          <td><strong class="en">Jawline slimming</strong><strong class="fr">Affinement de la mâchoire</strong> <span style="font-size:0.78rem;color:var(--muted);" class="en">masseter</span><span style="font-size:0.78rem;color:var(--muted);" class="fr">masséter</span></td>
+          <td>30–60 <span class="en">units</span><span class="fr">unités</span></td>
+          <td>$360–$720</td>
+        </tr>
+        <tr>
+          <td><strong class="en">Chin dimpling</strong><strong class="fr">Fossettes du menton</strong></td>
+          <td>4–10 <span class="en">units</span><span class="fr">unités</span></td>
+          <td>$48–$120</td>
+        </tr>
+        <tr>
+          <td><strong class="en">Underarm sweating</strong><strong class="fr">Transpiration excessive</strong> <span style="font-size:0.78rem;color:var(--muted);" class="en">hyperhidrosis, both sides</span><span style="font-size:0.78rem;color:var(--muted);" class="fr">hyperhidrose, les deux côtés</span></td>
+          <td>50–100 <span class="en">units</span><span class="fr">unités</span></td>
+          <td>$600–$1,200</td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="font-size:0.75rem;color:var(--dim);">
+      <span class="en">Unit ranges reflect standard clinical dosing. Cost estimates use the Montreal market average and are for planning only. Your injector determines actual units.</span>
+      <span class="fr">Les fourchettes d'unités reflètent le dosage clinique standard. Les estimations de coûts utilisent la moyenne du marché montréalais et sont fournies à titre indicatif uniquement. Votre intervenant détermine les unités réelles.</span>
+    </p>
+    <p class="en">The upper-face trio most people start with — forehead, frown lines, and crow's feet together — typically runs 35–60 units, or roughly <strong>$420–$720</strong> at Montreal market rates. At the high end, jaw slimming and excessive sweating treatments require significantly more product, driving the cost up accordingly.</p>
+    <p class="fr">Le trio du haut du visage par lequel la plupart des gens commencent — front, rides du lion et pattes d'oie — représente généralement 35 à 60 unités, soit environ <strong>420 $ à 720 $</strong> aux tarifs montréalais. Pour les traitements plus importants comme l'affinement de la mâchoire ou la transpiration excessive, la quantité de produit nécessaire est nettement supérieure.</p>
+  </div>
+
+  <!-- SECTION: MONTREAL PRICING PREMIUM -->
+
+  <!-- COST CALCULATOR -->
+  <div class="guide-section" id="calculator">
+    <h2>Estimate your <em>Botox cost</em></h2>
+    <div class="calc-card">
+      <div class="calc-presets">
+        <button onclick="setCalc(15,12.0,this)" class="calc-preset">Forehead</button>
+        <button onclick="setCalc(20,12.0,this)" class="calc-preset">Frown lines</button>
+        <button onclick="setCalc(16,12.0,this)" class="calc-preset">Crow's feet</button>
+        <button onclick="setCalc(48,12.0,this)" class="calc-preset active">Upper face</button>
+        <button onclick="setCalc(45,12.0,this)" class="calc-preset">Masseter</button>
+      </div>
+      <div class="calc-inputs">
+        <div><label class="calc-label">Units</label>
+          <input id="calc-units" type="number" value="48" min="1" max="200" oninput="updateCalc()" class="calc-input" /></div>
+        <div><label class="calc-label">Price / unit ($)</label>
+          <input id="calc-price" type="number" value="12.0" min="1" max="25" step="0.01" oninput="updateCalc()" class="calc-input" /></div>
+      </div>
+      <div class="calc-result-row">
+        <span class="calc-result-label">Estimated total</span>
+        <span id="calc-result" class="calc-result-num">$576</span>
+      </div>
+      <p class="calc-note">Planning estimate only. Actual units vary by anatomy and desired outcome.</p>
+      <a href="/" class="calc-followup">Want to compare real Montreal clinic prices? See verified clinics →</a>
+    </div>
+  </div>
+  <script>
+  function setCalc(units, price, btn) {
+    document.getElementById('calc-units').value = units;
+    document.getElementById('calc-price').value = price;
+    document.querySelectorAll('.calc-preset').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    updateCalc();
+  }
+  function updateCalc() {
+    const u = parseFloat(document.getElementById('calc-units').value) || 0;
+    const pr = parseFloat(document.getElementById('calc-price').value) || 0;
+    document.getElementById('calc-result').textContent = '$' + Math.round(u * pr).toLocaleString('en-CA');
+  }
+  updateCalc();
+  </script>
+
+  <!-- MID-PAGE CTA -->
+  <div class="mid-cta">
+    <div>
+      <div class="mid-cta-heading">
+        <span class="en">Compare real Montreal clinics near you</span>
+        <span class="fr">Comparez les cliniques montréalaises</span>
+      </div>
+      <div class="mid-cta-sub">
+        <span class="en">Filter by injector type and brand. Free, no account needed.</span>
+        <span class="fr">Filtrez par type d'injecteur et marque. Gratuit.</span>
+      </div>
+    </div>
+    <a href="/" class="mid-cta-btn en">See Montreal clinics →</a>
+    <a href="/" class="mid-cta-btn fr">Voir les cliniques →</a>
+  </div>
+
 
   <!-- SECTION: MARKET DATA -->
   <div class="guide-section" id="market-data">
@@ -412,6 +638,7 @@
         <div class="bar-track"><div class="bar-fill green" id="cred-np-bar" style="width:10%"></div></div>
         <div class="bar-pct" id="cred-np-pct">8%</div>
       </div>
+    </div>
 
     <p class="en"><strong>Over 80% of Montreal clinics have physician involvement</strong> — compared to 22% in the GTA. This is the single most distinctive feature of the Montreal market. Many of these physicians are not aesthetic medicine specialists who occasionally perform surgery; they are reconstructive and plastic surgeons whose clinics also offer Botox as part of a full-service aesthetic program.</p>
     <p class="fr"><strong>Plus de 80 % des cliniques montréalaises impliquent un médecin</strong>, contre 22 % dans la région du Grand Toronto. C'est la caractéristique la plus distinctive du marché montréalais. Nombre de ces médecins ne sont pas des spécialistes en médecine esthétique pratiquant occasionnellement la chirurgie, mais des chirurgiens plasticiens et reconstructeurs dont les cabinets proposent aussi le Botox dans le cadre d'un programme esthétique complet.</p>
@@ -538,74 +765,6 @@
   </div>
 
   <!-- SECTION: BY TREATMENT AREA -->
-  <div class="guide-section" id="by-treatment-area">
-    <h2>
-      <span class="en">Botox cost by <em>treatment area</em></span>
-      <span class="fr">Coût du Botox par <em>zone de traitement</em></span>
-    </h2>
-    <p class="en">Most patients don't buy "Botox" in the abstract — they want a specific area treated. Estimated costs below use the Montreal average. Actual units vary with muscle strength, anatomy, and the look you want, so treat these as planning ranges, not quotes.</p>
-    <p class="fr">La plupart des patients ne cherchent pas du Botox en général : ils veulent une zone précise traitée. Les estimations ci-dessous utilisent la moyenne montréalaise. Les unités réelles varient selon la force musculaire, l'anatomie et l'effet recherché. Traitez ces chiffres comme des repères de planification, non comme des devis.</p>
-
-    <table class="guide-table">
-      <thead>
-        <tr>
-          <th><span class="en">Treatment area</span><span class="fr">Zone de traitement</span></th>
-          <th><span class="en">Typical units</span><span class="fr">Unités typiques</span></th>
-          <th><span class="en">Est. Montreal cost</span><span class="fr">Coût estimé Montréal</span></th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><strong class="en">Forehead lines</strong><strong class="fr">Rides du front</strong> <span style="font-size:0.78rem;color:var(--muted);" class="en">horizontal lines</span><span style="font-size:0.78rem;color:var(--muted);" class="fr">lignes horizontales</span></td>
-          <td>10–20 <span class="en">units</span><span class="fr">unités</span></td>
-          <td>$120–$240</td>
-        </tr>
-        <tr>
-          <td><strong class="en">Frown lines</strong><strong class="fr">Rides du lion</strong> <span style="font-size:0.78rem;color:var(--muted);" class="en">"11s" between brows</span><span style="font-size:0.78rem;color:var(--muted);" class="fr">entre les sourcils</span></td>
-          <td>15–25 <span class="en">units</span><span class="fr">unités</span></td>
-          <td>$180–$300</td>
-        </tr>
-        <tr>
-          <td><strong class="en">Crow's feet</strong><strong class="fr">Pattes d'oie</strong> <span style="font-size:0.78rem;color:var(--muted);" class="en">around the eyes</span><span style="font-size:0.78rem;color:var(--muted);" class="fr">autour des yeux</span></td>
-          <td>10–24 <span class="en">units</span><span class="fr">unités</span></td>
-          <td>$120–$288</td>
-        </tr>
-        <tr>
-          <td><strong class="en">Bunny lines</strong><strong class="fr">Rides du lapin</strong> <span style="font-size:0.78rem;color:var(--muted);" class="en">nose</span><span style="font-size:0.78rem;color:var(--muted);" class="fr">nez</span></td>
-          <td>5–10 <span class="en">units</span><span class="fr">unités</span></td>
-          <td>$60–$120</td>
-        </tr>
-        <tr>
-          <td><strong class="en">Lip flip</strong><strong class="fr">Retournement des lèvres</strong></td>
-          <td>4–8 <span class="en">units</span><span class="fr">unités</span></td>
-          <td>$48–$96</td>
-        </tr>
-        <tr>
-          <td><strong class="en">Jawline slimming</strong><strong class="fr">Affinement de la mâchoire</strong> <span style="font-size:0.78rem;color:var(--muted);" class="en">masseter</span><span style="font-size:0.78rem;color:var(--muted);" class="fr">masséter</span></td>
-          <td>30–60 <span class="en">units</span><span class="fr">unités</span></td>
-          <td>$360–$720</td>
-        </tr>
-        <tr>
-          <td><strong class="en">Chin dimpling</strong><strong class="fr">Fossettes du menton</strong></td>
-          <td>4–10 <span class="en">units</span><span class="fr">unités</span></td>
-          <td>$48–$120</td>
-        </tr>
-        <tr>
-          <td><strong class="en">Underarm sweating</strong><strong class="fr">Transpiration excessive</strong> <span style="font-size:0.78rem;color:var(--muted);" class="en">hyperhidrosis, both sides</span><span style="font-size:0.78rem;color:var(--muted);" class="fr">hyperhidrose, les deux côtés</span></td>
-          <td>50–100 <span class="en">units</span><span class="fr">unités</span></td>
-          <td>$600–$1,200</td>
-        </tr>
-      </tbody>
-    </table>
-    <p style="font-size:0.75rem;color:var(--dim);">
-      <span class="en">Unit ranges reflect standard clinical dosing. Cost estimates use the Montreal market average and are for planning only. Your injector determines actual units.</span>
-      <span class="fr">Les fourchettes d'unités reflètent le dosage clinique standard. Les estimations de coûts utilisent la moyenne du marché montréalais et sont fournies à titre indicatif uniquement. Votre intervenant détermine les unités réelles.</span>
-    </p>
-    <p class="en">The upper-face trio most people start with — forehead, frown lines, and crow's feet together — typically runs 35–60 units, or roughly <strong>$420–$720</strong> at Montreal market rates. At the high end, jaw slimming and excessive sweating treatments require significantly more product, driving the cost up accordingly.</p>
-    <p class="fr">Le trio du haut du visage par lequel la plupart des gens commencent — front, rides du lion et pattes d'oie — représente généralement 35 à 60 unités, soit environ <strong>420 $ à 720 $</strong> aux tarifs montréalais. Pour les traitements plus importants comme l'affinement de la mâchoire ou la transpiration excessive, la quantité de produit nécessaire est nettement supérieure.</p>
-  </div>
-
-  <!-- SECTION: MONTREAL PRICING PREMIUM -->
   <div class="guide-section" id="montreal-premium">
     <h2>
       <span class="en">Montreal: <em>Canada's most expensive</em> Botox market</span>
@@ -912,7 +1071,30 @@
 
 </div>
 
+<style>
+.sticky-cta {display:none;position:fixed;bottom:0;left:0;right:0;z-index:90;background:rgba(28,23,20,0.97);backdrop-filter:blur(10px);border-top:1px solid rgba(201,169,110,0.2);padding:0.75rem 5%;align-items:center;justify-content:space-between;gap:1rem;}
+.sticky-cta-label {font-size:0.78rem;color:var(--dim);}
+.sticky-cta-label strong {color:#FAF7F2;}
+.sticky-cta-btn {flex-shrink:0;background:var(--rose);color:white;padding:0.5rem 1.1rem;border-radius:5px;font-size:0.82rem;font-weight:500;text-decoration:none;white-space:nowrap;}
+/* sticky shown by JS only */
+</style>
+<div class="sticky-cta" id="stickyCta">
+  <div class="sticky-cta-label">Montréal avg: <strong>$12.0/unit</strong></div>
+  <a href="/" class="sticky-cta-btn">Compare clinics →</a>
+</div>
+<script>
+(function(){
+  var bar=document.getElementById('stickyCta');
+  window.addEventListener('scroll',function(){
+    var scrolled=window.scrollY>300;
+    var nearBottom=(window.innerHeight+window.scrollY)>=document.body.offsetHeight-200;
+    bar.style.display=(scrolled&&!nearBottom)?'flex':'none';
+  });
+})();
+</script>
+
 <div class="guide-footer">
+  <p><a href="/">← <span class="en">Back to directory</span><span class="fr">Retour au répertoire</span></a></p>
   <p><span class="en">Botox prices by city:</span><span class="fr">Prix du Botox par ville :</span> <a href="/guide/botox-cost-toronto">Toronto</a> · <a href="/guide/botox-cost-vancouver">Vancouver</a> · <a href="/guide/botox-cost-london-ontario">London</a> · <a href="/guide/botox-cost-montreal">Montréal</a></p>
   <p>© 2026 <a href="/">SkinDay</a> · <span class="en">Montreal Botox Price Guide ·</span><span class="fr">Guide de prix Botox Montréal ·</span> <a href="/">Browse all clinics</a></p>
   <p style="margin-top:0.5rem;" class="en">Prices based on SkinDay's market analysis as of June 2026. Always confirm directly with the clinic before booking. "Botox" is used as a general term — clinics may use Botox®, Dysport®, Xeomin®, Nuceiva®, or Letybo®.</p>

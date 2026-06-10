@@ -405,27 +405,78 @@
     .guide-footer a { color: var(--rose); text-decoration: none; }
 
     /* ── MOBILE ── */
-    @media (max-width: 640px) {
-      .guide-hero { padding: 100px 5% 56px; }
-      .stat-strip {
-        flex-direction: column;
-        align-items: center;
-        gap: 1.5rem;
-      }
-      .stat-item { padding: 0; width: 100%; }
-      .stat-item + .stat-item { border-left: none; border-top: 1px solid rgba(255,255,255,0.07); padding-top: 1.5rem; }
-      .guide-wrap { padding: 32px 5% 60px; overflow-x: hidden; }
-      body { overflow-x: hidden; }
-      .chart-grid { grid-template-columns: 1fr !important; gap: 1.5rem !important; }
-      #chart-legend { flex-direction: row !important; flex-wrap: wrap; gap: 0.35rem !important; }
-      .tier-grid { grid-template-columns: 1fr; }
-      .guide-table { font-size: 0.8rem; }
-      .guide-table th, .guide-table td { padding: 0.6rem 0.75rem; }
-    }
     .faq-list { display: flex; flex-direction: column; gap: 1rem; margin-top: 1.5rem; }
     .faq-item { border-bottom: 1px solid rgba(28,23,20,0.1); padding-bottom: 1rem; }
     .faq-q { font-size: 1.05rem; font-weight: 600; color: var(--deep); margin-bottom: 0.5rem; font-family: inherit; }
     .faq-a { font-size: 0.92rem; color: var(--deep); opacity: 0.85; line-height: 1.7; margin: 0; }
+
+    /* ── QUICK ANSWER CARD ── */
+    .quick-answer-card {
+      background: white; border: 1px solid var(--border); border-radius: 12px;
+      padding: 1.5rem; margin: -36px auto 2.5rem;
+      position: relative; z-index: 2;
+      box-shadow: 0 8px 30px rgba(28,23,20,0.08);
+    }
+    .quick-answer-label { font-size:0.68rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--rose);margin-bottom:1rem; }
+    .quick-answer-table { width:100%;border-collapse:collapse;font-size:0.88rem; }
+    .quick-answer-table tr { border-bottom:1px solid var(--border); }
+    .quick-answer-table tr:last-child { border-bottom:none; }
+    .quick-answer-table td { padding:0.55rem 0; }
+    .quick-answer-table td:first-child { color:var(--muted);font-weight:500; }
+    .quick-answer-table td:last-child { text-align:right;font-weight:600;color:var(--deep); }
+    .quick-answer-note { font-size:0.72rem;color:var(--dim);margin-top:0.75rem;margin-bottom:0.75rem; }
+    .quick-answer-cta { display:block;text-align:center;background:var(--rose);color:white;padding:0.65rem 1rem;border-radius:6px;font-size:0.85rem;font-weight:500;text-decoration:none;transition:background 0.2s;margin-top:1rem; }
+    .quick-answer-cta:hover { background:var(--rose-m); }
+    /* ── JUMP CHIPS ── */
+    .jump-chips { display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:2.5rem; }
+    .jump-chip { font-size:0.78rem;font-weight:500;padding:0.35rem 0.85rem;border-radius:20px;background:var(--warm);color:var(--deep);text-decoration:none;border:1px solid var(--border);transition:background 0.2s; }
+    .jump-chip:hover { background:var(--rose-bg); }
+    .jump-chip.cta { background:var(--rose-bg);color:var(--rose);border-color:rgba(200,114,90,0.25); }
+    /* ── CALCULATOR ── */
+    .calc-card { background:white;border:1px solid var(--border);border-radius:12px;padding:1.5rem; }
+    .calc-presets { display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:1.25rem; }
+    .calc-preset { font-size:0.78rem;padding:0.35rem 0.85rem;border-radius:20px;background:var(--warm);border:1px solid var(--border);cursor:pointer;font-family:inherit;transition:background 0.2s; }
+    .calc-preset:hover { background:var(--rose-bg); }
+    .calc-preset.active { background:var(--rose-bg);border-color:rgba(200,114,90,0.25);color:var(--rose);font-weight:600; }
+    .calc-inputs { display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem; }
+    .calc-label { font-size:0.72rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:0.4rem; }
+    .calc-input { width:100%;padding:0.6rem 0.75rem;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.95rem;background:var(--warm);color:var(--deep);outline:none; }
+    .calc-result-row { background:var(--warm);border-radius:10px;padding:1rem 1.25rem;display:flex;align-items:center;justify-content:space-between; }
+    .calc-result-label { font-size:0.82rem;color:var(--muted);font-weight:500; }
+    .calc-result-num { font-family:'Cormorant Garamond',serif;font-size:2rem;font-weight:400;color:var(--deep); }
+    .calc-note { font-size:0.72rem;color:var(--dim);margin-top:0.75rem;margin-bottom:0; }
+    .calc-followup { display:block;text-align:center;margin-top:1rem;font-size:0.82rem;color:var(--rose);font-weight:500;text-decoration:none;padding:0.55rem 1rem;border:1px solid rgba(200,114,90,0.3);border-radius:6px;transition:background 0.2s; }
+    .calc-followup:hover { background:var(--rose-bg); }
+    /* ── MID CTA ── */
+    .mid-cta { background:var(--warm);border-radius:12px;padding:1.5rem 1.75rem;margin-bottom:3.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;border:1px solid var(--border); }
+    .mid-cta-heading { font-family:'Cormorant Garamond',serif;font-size:1.3rem;font-weight:400;color:var(--deep);margin-bottom:0.25rem; }
+    .mid-cta-sub { font-size:0.8rem;color:var(--muted); }
+    .mid-cta-btn { flex-shrink:0;background:var(--rose);color:white;padding:0.65rem 1.4rem;border-radius:6px;font-size:0.85rem;font-weight:500;text-decoration:none; }
+    .mid-cta-btn:hover { background:var(--rose-m); }
+
+    /* ── MOBILE — consolidated at end so base styles don't override ── */
+    @media (max-width: 640px) {
+      .guide-hero { padding: 88px 5% 32px; }
+      .guide-hero h1 { font-size:2.15rem;margin-bottom:0.9rem; }
+      .guide-hero .lead { font-size:0.9rem;line-height:1.55;margin-bottom:1.25rem; }
+      .stat-strip { display:grid;grid-template-columns:repeat(3,1fr);gap:0.5rem;padding-top:1rem; }
+      .stat-item { border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.7rem 0.4rem; }
+      .stat-item + .stat-item { border-left:none;border-top:none;padding-top:0.7rem; }
+      .stat-num { font-size:1.45rem; }
+      .stat-num span { font-size:0.9rem; }
+      .stat-desc { font-size:0.62rem;line-height:1.25; }
+      .quick-answer-card { margin:-28px auto 2rem;padding:1.1rem; }
+      .guide-wrap { padding:0 5% 60px;overflow-x:hidden; }
+      body { overflow-x:hidden; }
+      .chart-grid { grid-template-columns:1fr !important;gap:1.5rem !important; }
+      #chart-legend { flex-direction:row !important;flex-wrap:wrap;gap:0.35rem !important; }
+      .tier-grid { grid-template-columns:1fr; }
+      .guide-table { font-size:0.8rem; }
+      .guide-table th, .guide-table td { padding:0.6rem 0.75rem; }
+      .calc-inputs { grid-template-columns:1fr 1fr; }
+      .mid-cta { flex-direction:column; }
+      .density-callout { flex-direction:column;gap:0.75rem; }
+    }
   </style>
   <script type="application/ld+json">
   {
@@ -494,7 +545,7 @@
 
 <nav>
   <a href="/" class="nav-logo">Skin<span>Day</span></a>
-  <a href="/" class="nav-cta">Compare prices →</a>
+  <a href="/" class="nav-cta">Compare clinics →</a>
 </nav>
 
 <div class="guide-hero">
@@ -522,16 +573,111 @@
 
 <div class="guide-wrap">
 
-  <a href="/" style="display:inline-flex;align-items:center;gap:0.4rem;color:var(--muted);text-decoration:none;font-size:0.82rem;font-weight:500;margin-bottom:2.5rem;transition:color 0.2s;" onmouseover="this.style.color='var(--rose)'" onmouseout="this.style.color='var(--muted)'">← Back to directory</a>
-
-  <!-- QUICK ANSWER -->
-  <div class="guide-section" id="quick-answer">
-    <h2>Quick answer: <em>what you'll probably pay</em></h2>
-    <p>Based on SkinDay's verified pricing data from clinics across London and Southwestern Ontario, Botox in London commonly costs <strong>$9–$11 per unit</strong>, with an average around <strong>$9.90/unit</strong>. The London market is notably consistent: the large majority of clinics price right around $10/unit. A common cosmetic treatment of the upper face runs roughly <strong>$345–$595</strong>, depending on how many units you need.</p>
-    <div class="highlight">"London is close to Toronto on price, but far more consistent — most clinics here land right around $10/unit, so there's less price-shopping to do."</div>
+    <!-- QUICK ANSWER CARD -->
+  <div class="quick-answer-card">
+    <div class="quick-answer-label">Quick answer: Botox cost in London, Ontario</div>
+    <table class="quick-answer-table">
+      <tbody>
+        <tr><td>Average price per unit</td><td>$9.90</td></tr>
+        <tr><td>Common range</td><td>$9–$11 / unit</td></tr>
+        <tr><td>Forehead (single area)</td><td>$95–$200</td></tr>
+        <tr><td>Full upper face</td><td>$340–$595</td></tr>
+        <tr><td>Premium clinics</td><td>$11–$13 / unit</td></tr>
+      </tbody>
+    </table>
+    <p class="quick-answer-note">Updated May 2026 · based on verified SkinDay pricing</p>
+    <a href="/" class="quick-answer-cta">Compare London Botox clinics →</a>
   </div>
 
-  <!-- MARKET DATA -->
+  <!-- JUMP CHIPS -->
+  <div class="jump-chips">
+    <a href="#by-treatment-area" class="jump-chip">By treatment area</a>
+    <a href="#who-is-injecting" class="jump-chip">Injector type</a>
+    <a href="#brands" class="jump-chip">Brands</a>
+    <a href="#find-your-fit" class="jump-chip">Find your fit</a>
+    <a href="#faq" class="jump-chip">FAQ</a>
+    <a href="/" class="jump-chip cta">Compare clinics →</a>
+  </div>
+
+
+
+  <div class="guide-section" id="by-treatment-area">
+    <h2>Botox cost by <em>treatment area</em></h2>
+    <p>Most patients want a specific area treated, not "Botox" in the abstract. Since pricing is per unit, the cost of any given area comes down to how many units it typically takes. Below are standard unit ranges for the most common areas, with estimated London cost based on the local average of $9.90/unit. Actual units vary with muscle strength, anatomy, and the result you want, so treat these as planning ranges, not quotes.</p>
+
+    <table class="guide-table">
+      <thead>
+        <tr>
+          <th>Treatment area</th>
+          <th>Typical units</th>
+          <th>Estimated London cost</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>Forehead lines</strong></td><td>10–20 units</td><td>$100–$200</td></tr>
+        <tr><td><strong>Frown lines</strong> <span style="font-size:0.78rem;color:var(--muted);">"11s" between brows</span></td><td>15–25 units</td><td>$150–$250</td></tr>
+        <tr><td><strong>Crow's feet</strong></td><td>10–24 units</td><td>$100–$240</td></tr>
+        <tr><td><strong>Lip flip</strong></td><td>4–8 units</td><td>$40–$80</td></tr>
+        <tr><td><strong>Jawline slimming</strong> <span style="font-size:0.78rem;color:var(--muted);">masseter</span></td><td>30–60 units</td><td>$300–$595</td></tr>
+        <tr><td><strong>Underarm sweating</strong> <span style="font-size:0.78rem;color:var(--muted);">both sides</span></td><td>50–100 units</td><td>$495–$990</td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:0.75rem;color:var(--dim);">Unit ranges reflect standard clinical dosing. Cost estimates use the May 2026 London average of $9.90/unit and are for planning only — your injector determines actual units. The upper-face trio (forehead, frown lines, crow's feet) most people start with typically runs 35–60 units, or roughly $345–$595 in London.</p>
+  </div>
+
+  <!-- COST CALCULATOR -->
+  <div class="guide-section" id="calculator">
+    <h2>Estimate your <em>Botox cost</em></h2>
+    <div class="calc-card">
+      <div class="calc-presets">
+        <button onclick="setCalc(15,9.9,this)" class="calc-preset">Forehead</button>
+        <button onclick="setCalc(20,9.9,this)" class="calc-preset">Frown lines</button>
+        <button onclick="setCalc(16,9.9,this)" class="calc-preset">Crow's feet</button>
+        <button onclick="setCalc(48,9.9,this)" class="calc-preset active">Upper face</button>
+        <button onclick="setCalc(45,9.9,this)" class="calc-preset">Masseter</button>
+      </div>
+      <div class="calc-inputs">
+        <div><label class="calc-label">Units</label>
+          <input id="calc-units" type="number" value="48" min="1" max="200" oninput="updateCalc()" class="calc-input" /></div>
+        <div><label class="calc-label">Price / unit ($)</label>
+          <input id="calc-price" type="number" value="9.9" min="1" max="25" step="0.01" oninput="updateCalc()" class="calc-input" /></div>
+      </div>
+      <div class="calc-result-row">
+        <span class="calc-result-label">Estimated total</span>
+        <span id="calc-result" class="calc-result-num">$475</span>
+      </div>
+      <p class="calc-note">Planning estimate only. Actual units vary by anatomy and desired outcome.</p>
+      <a href="/" class="calc-followup">Want to compare real London clinic prices? See verified clinics →</a>
+    </div>
+  </div>
+  <script>
+  function setCalc(units, price, btn) {
+    document.getElementById('calc-units').value = units;
+    document.getElementById('calc-price').value = price;
+    document.querySelectorAll('.calc-preset').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    updateCalc();
+  }
+  function updateCalc() {
+    const u = parseFloat(document.getElementById('calc-units').value) || 0;
+    const pr = parseFloat(document.getElementById('calc-price').value) || 0;
+    document.getElementById('calc-result').textContent = '$' + Math.round(u * pr).toLocaleString('en-CA');
+  }
+  updateCalc();
+  </script>
+
+  <!-- MID-PAGE CTA -->
+  <div class="mid-cta">
+    <div>
+      <div class="mid-cta-heading">Compare real London clinics near you</div>
+      <div class="mid-cta-sub">Filter by injector type and Botox brand. Free, no account needed.</div>
+    </div>
+    <a href="/" class="mid-cta-btn">See London clinics →</a>
+  </div>
+
+  <!-- BRANDS -->
+
+
   <div class="guide-section" id="market-data">
     <h2>What the London market <em>actually</em> looks like</h2>
     <p>Most Botox pricing guides are based on estimates or industry surveys. This one is built from real market data — verified pricing from clinics across London and the surrounding region. Here's what the numbers show.</p>
@@ -584,31 +730,6 @@
   </div>
 
   <!-- BY TREATMENT AREA -->
-  <div class="guide-section" id="by-treatment-area">
-    <h2>Botox cost by <em>treatment area</em></h2>
-    <p>Most patients want a specific area treated, not "Botox" in the abstract. Since pricing is per unit, the cost of any given area comes down to how many units it typically takes. Below are standard unit ranges for the most common areas, with estimated London cost based on the local average of $9.90/unit. Actual units vary with muscle strength, anatomy, and the result you want, so treat these as planning ranges, not quotes.</p>
-
-    <table class="guide-table">
-      <thead>
-        <tr>
-          <th>Treatment area</th>
-          <th>Typical units</th>
-          <th>Estimated London cost</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr><td><strong>Forehead lines</strong></td><td>10–20 units</td><td>$100–$200</td></tr>
-        <tr><td><strong>Frown lines</strong> <span style="font-size:0.78rem;color:var(--muted);">"11s" between brows</span></td><td>15–25 units</td><td>$150–$250</td></tr>
-        <tr><td><strong>Crow's feet</strong></td><td>10–24 units</td><td>$100–$240</td></tr>
-        <tr><td><strong>Lip flip</strong></td><td>4–8 units</td><td>$40–$80</td></tr>
-        <tr><td><strong>Jawline slimming</strong> <span style="font-size:0.78rem;color:var(--muted);">masseter</span></td><td>30–60 units</td><td>$300–$595</td></tr>
-        <tr><td><strong>Underarm sweating</strong> <span style="font-size:0.78rem;color:var(--muted);">both sides</span></td><td>50–100 units</td><td>$495–$990</td></tr>
-      </tbody>
-    </table>
-    <p style="font-size:0.75rem;color:var(--dim);">Unit ranges reflect standard clinical dosing. Cost estimates use the May 2026 London average of $9.90/unit and are for planning only — your injector determines actual units. The upper-face trio (forehead, frown lines, crow's feet) most people start with typically runs 35–60 units, or roughly $345–$595 in London.</p>
-  </div>
-
-  <!-- BRANDS -->
   <div class="guide-section" id="brands">
     <h2>Botox vs Dysport vs Xeomin vs <em>the rest</em></h2>
     <p>All neurotoxins approved by Health Canada are safe and effective. "Botox" has become a generic term the way "Kleenex" has — but several brands are available in Canada, each with a slightly different formulation and unit conversion.</p>
@@ -721,7 +842,30 @@
 
 </div>
 
+<style>
+.sticky-cta {display:none;position:fixed;bottom:0;left:0;right:0;z-index:90;background:rgba(28,23,20,0.97);backdrop-filter:blur(10px);border-top:1px solid rgba(201,169,110,0.2);padding:0.75rem 5%;align-items:center;justify-content:space-between;gap:1rem;}
+.sticky-cta-label {font-size:0.78rem;color:var(--dim);}
+.sticky-cta-label strong {color:#FAF7F2;}
+.sticky-cta-btn {flex-shrink:0;background:var(--rose);color:white;padding:0.5rem 1.1rem;border-radius:5px;font-size:0.82rem;font-weight:500;text-decoration:none;white-space:nowrap;}
+/* sticky shown by JS only */
+</style>
+<div class="sticky-cta" id="stickyCta">
+  <div class="sticky-cta-label">London avg: <strong>$9.9/unit</strong></div>
+  <a href="/" class="sticky-cta-btn">Compare clinics →</a>
+</div>
+<script>
+(function(){
+  var bar=document.getElementById('stickyCta');
+  window.addEventListener('scroll',function(){
+    var scrolled=window.scrollY>300;
+    var nearBottom=(window.innerHeight+window.scrollY)>=document.body.offsetHeight-200;
+    bar.style.display=(scrolled&&!nearBottom)?'flex':'none';
+  });
+})();
+</script>
+
 <div class="guide-footer">
+  <p><a href="/">← Back to directory</a></p>
   <p>Botox prices by city: <a href="/guide/botox-cost-toronto">Toronto</a> · <a href="/guide/botox-cost-vancouver">Vancouver</a> · <a href="/guide/botox-cost-london-ontario">London</a></p>
   <p>© 2026 <a href="/">SkinDay</a> · London Botox Price Guide · <a href="/">Browse all clinics</a></p>
   <p style="margin-top:0.5rem;">Prices based on SkinDay's market analysis as of May 2026. Always confirm directly with the clinic before booking. "Botox" is used as a general term — clinics may use Botox®, Dysport®, Xeomin®, Nuceiva®, or Letybo®.</p>
