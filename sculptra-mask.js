@@ -674,9 +674,17 @@ export async function compositeSculptra(beforeImg, aiImg, opts){
   const landmarks = await detectFace(beforeImg);
   if(!landmarks) return null;
 
-  // Composite at the AI result's pixel size; the AI was produced from the same
-  // framing, so the original scaled to these dims aligns with it.
-  const w = aiImg.naturalWidth, h = aiImg.naturalHeight;
+  // M5b: composite on the ORIGINAL's grid, not the AI's. gpt-image-1 returns a
+  // fixed supported size (often square) regardless of the input aspect, so the AI
+  // result is the original non-uniformly resized into that size. Working on the AI
+  // grid squished the original and emitted a squished-aspect result that no longer
+  // lined up with the true original in the side-by-side export. Drawing the
+  // original at its own aspect (uniform downscale, no distortion) and stretching
+  // the AI back onto that grid reverses the API resize, so the AI content
+  // re-aligns and the output matches the original framing.
+  const maxDim = (opts && opts.maxDim) || 1024;
+  const gs = Math.min(1, maxDim / Math.max(beforeImg.naturalWidth, beforeImg.naturalHeight));
+  const w = Math.round(beforeImg.naturalWidth * gs), h = Math.round(beforeImg.naturalHeight * gs);
   const m = buildTreatAlpha(landmarks, w, h, scope, sex);
 
   const c = document.createElement("canvas"); c.width = w; c.height = h;
@@ -728,7 +736,12 @@ export async function makeSculptraCompositor(beforeImg, aiImg, opts){
   const textureRestore = !(opts && opts.textureRestore === false);
   const landmarks = await detectFace(beforeImg);
   if(!landmarks) return null;
-  const w = aiImg.naturalWidth, h = aiImg.naturalHeight;
+  // M5b: work on the ORIGINAL's grid, not the AI's (see compositeSculptra). The AI
+  // is stretched back onto the original aspect so its content re-aligns and the
+  // emitted result matches the original framing for a clean side-by-side export.
+  const maxDim = (opts && opts.maxDim) || 1024;
+  const gs = Math.min(1, maxDim / Math.max(beforeImg.naturalWidth, beforeImg.naturalHeight));
+  const w = Math.round(beforeImg.naturalWidth * gs), h = Math.round(beforeImg.naturalHeight * gs);
   const m = buildTreatAlpha(landmarks, w, h, scope, sex);
 
   const c = document.createElement("canvas"); c.width = w; c.height = h;
