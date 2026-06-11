@@ -7,6 +7,11 @@
 // background). gpt-image-1's edit endpoint edits only the transparent region, so
 // this physically prevents the global beautification leak.
 //
+// M6.4 (v25): extrapolation retired after three calibration rounds; the gain is
+// pinned at 1.0 and the slider is pure original-to-anchor interpolation. Strong
+// now means the full anchor. Anchor magnitude is the upstream lever (projection
+// setting / prompt), geometry is the structural lever.
+//
 // M6.3 (v24): the gain now shapes FORM, not brightness. Broad brightening is
 // soft-capped inside the delta (SCULPTRA_BRIGHT_CAP_FULL), the glow moved out of
 // the gained delta to a fixed apply-time term, the dark floor was widened for
@@ -843,23 +848,24 @@ const SCULPTRA_DARK_FLOOR = 20;
 // brightening component levels off. Defined as the maximum broad brightening in
 // luma levels reachable at the TOP of the slider; the pre-gain cap is derived
 // from it so retuning the gain does not silently change the ceiling.
-const SCULPTRA_BRIGHT_CAP_FULL = 26;
+const SCULPTRA_BRIGHT_CAP_FULL = 18;
+// 26 -> 18 (M6.4): with the gain back at 1.0 this IS the full-slider ceiling.
+// 18 sits just above the broad brightening of the renders Andy judged decent
+// (about 13 levels effective) and well below the waxy zone (26+).
 //
-// M6.2 RESPONSE GAIN. The composite is otherwise purely attenuative: every stage
-// can only reduce the AI's change, so when the model under-delivers against real
-// Sculptra outcomes (it does; it is biased toward minimal edits), no slider value
-// can reach reality. deltaGain linearly EXTRAPOLATES the chroma-locked luminance
-// delta beyond the AI's own magnitude at the top of the slider:
-//   out = original + (mask * t * deltaGain) * delta
-// This is safe to amplify because the delta is already chroma-locked (no pigment
-// can be invented), dark-floored (broad tone cannot darken past the floor), and
-// carries the original's texture (nothing smooths). Calibrated against the first
-// two real before/after pairs; raise if Strong still lags real results, lower
-// toward 1.0 if the top of the slider starts to read inflated or lit-from-within.
-// HA chin/jaw stays at 1.0: its bold anchor already lands, and extrapolating a
-// silhouette move can ghost. The slider cap removal (70 -> 100, visualize.html)
-// is the other half of this change.
-const SCULPTRA_DELTA_GAIN = 1.45;
+// M6.4: EXTRAPOLATION RETIRED. The M6.2/M6.3 response gain (1.45, then 1.45
+// with form shaping) was tested against real before/after pairs across three
+// calibration rounds, and the finding was consistent: rendering at 0.7..1.0 of
+// the AI anchor's own magnitude reads clinical and believable; rendering BEYOND
+// the anchor degrades into flat, waxy brightness at the top of the slider no
+// matter how the delta is shaped, because gain can only inflate the amplitude
+// of information the anchor already contains; it cannot synthesize the form it
+// lacks. The gain therefore returns to 1.0 and stays: the slider is now pure
+// interpolation between the original and the anchor, which cannot produce that
+// failure mode. Magnitude ambition belongs UPSTREAM in the anchor itself (the
+// projection setting and the prompt magnitude) and in the geometry engine, not
+// in post-hoc amplification. Do not raise this above 1.0 again.
+const SCULPTRA_DELTA_GAIN = 1.0;
 const CHIN_JAW_DELTA_GAIN = 1.0;
 // Sculptra glow applied at composite time, scaled by mask and slider but NOT by
 // the gain (see GLOW_LUMA note). Equal add to R,G,B, so chroma-exact.

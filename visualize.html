@@ -307,7 +307,7 @@
         <label for="intensitySlider" style="font-size:13px;letter-spacing:.04em;text-transform:uppercase;opacity:.75;">Treatment response</label>
         <span id="intensityValue" style="font-family:'Cormorant Garamond',serif;font-size:22px;">Expected</span>
       </div>
-      <input type="range" id="intensitySlider" min="0" max="100" step="1" value="50" style="width:100%;margin-top:8px;accent-color:#C8725A;" />
+      <input type="range" id="intensitySlider" min="0" max="100" step="1" value="70" style="width:100%;margin-top:8px;accent-color:#C8725A;" />
       <div style="display:flex;justify-content:space-between;font-size:.68rem;letter-spacing:.04em;text-transform:uppercase;opacity:.6;margin-top:4px;">
         <span>Conservative</span><span>Strong</span>
       </div>
@@ -347,17 +347,17 @@ const FREE_REGEN_MS = 60000;
 
 // Bump this whenever sculptra-mask.js changes, so the browser fetches the new
 // module instead of a stale disk-cached copy. Both imports below use it, so they
-// stay the same module instance (shared face-detection cache). v24 = M6.3
-// form-shaped gain: bright cap, ungained glow, deeper dark floor, bolder warp
-// (v23 = M6.2 response gain; v22 = M6.1 frontal lift warp).
-const MASK_MODULE_VERSION = '24';
+// stay the same module instance (shared face-detection cache). v25 = M6.4
+// extrapolation retired, slider is pure original-to-anchor interpolation
+// (v24 = M6.3 form shaping; v23 = M6.2 gain; v22 = M6.1 lift warp).
+const MASK_MODULE_VERSION = '25';
 
 const state = {
   file:null, originalDataUrl:null, resultDataUrl:null,
   type:'filler', areas:['chin_jawline'], intensity:'enhanced', sex:'female',
   product:'sculptra', projection:'optimistic', timeline:'6',
   blackBg:true, beforeDataUrl:null, blackBgCache:null,
-  lastGenAt:0, intensityApply:null, intensityPct:50
+  lastGenAt:0, intensityApply:null, intensityPct:70
 };
 
 /* ───────── Lock screen ───────── */
@@ -562,18 +562,18 @@ wirePills('biostimProduct', 'product');
 wirePills('fillerSex', 'sex');
 updatePhotoGuide();
 
-// Map the 0..100 preview value to a clinic-facing RESPONSE name. The old cap of
-// 70 protected against the pre-chroma-lock muddy zone; the chroma lock (M5.2),
-// dark floor (M5.3), and no-added-shadow guard (M5.4) made full strength clean,
-// and the M6.2 response gain in sculptra-mask.js means the top of the range now
-// extrapolates toward calibrated real-world magnitude. The UI shows a named
+// Map the 0..100 preview value to a clinic-facing RESPONSE name. The slider is
+// pure interpolation between the original and the AI anchor (M6.4): 100 = the
+// full anchor, never beyond it. The default of 70 lands in the zone the
+// calibration rounds judged decent; anchor boldness itself is set upstream by
+// the projection selection. The UI shows a named
 // response rather than a raw percentage: a consult tool frames the range as how
 // strongly a patient may respond, never as a promised result (and never as a
 // vial count; dose is discussed verbally by the clinician).
 function strengthLabel(pct){
   const n = (typeof pct === 'number') ? pct : (parseInt(pct, 10) || 0);
-  if(n < 40) return 'Conservative';
-  if(n < 70) return 'Expected';
+  if(n < 45) return 'Conservative';
+  if(n < 80) return 'Expected';
   return 'Strong';
 }
 
@@ -1098,10 +1098,10 @@ async function drawExport(includeText=true){
   function simKicker(){
     if(state.type === 'biostim'){
       const months = state.timeline + ' months';
-      return 'AI Visualization · ' + months + ' · ' + strengthLabel(state.intensityPct || 50) + ' response';
+      return 'AI Visualization · ' + months + ' · ' + strengthLabel(state.intensityPct || 70) + ' response';
     }
     if(state.type === 'filler' && state.intensityApply){
-      return 'AI Visualization · ' + strengthLabel(state.intensityPct || 50) + ' response';
+      return 'AI Visualization · ' + strengthLabel(state.intensityPct || 70) + ' response';
     }
     return 'AI Visualization';
   }
