@@ -7,6 +7,17 @@
 // background). gpt-image-1's edit endpoint edits only the transparent region, so
 // this physically prevents the global beautification leak.
 //
+// M7.8 (v30): projection axis corrected on clinical feedback. Chin filler has
+// two distinct axes: vertical ELONGATION (menton travels down) and forward
+// PROJECTION (pogonion travels anteriorly); v29's oblique vector was nearly
+// diagonal (15px forward, 12px down), which reads as elongation, and it led
+// with the menton. v30 makes the oblique vector projection-dominant (forward
+// raised, drop cut to a small accompaniment) and anchors the leading capsule at
+// the POGONION (estimated just above the menton on the anterior chin contour),
+// with the menton following at reduced weight so the underside stays
+// continuous. Frontal is untouched: head-on, vertical lengthening IS the
+// correct visible expression and it is already signed off.
+//
 // M7.7 (v29): oblique chin/jaw pass two. (1) Warp kernels become CAPSULES:
 // each anchor's displacement stays constant along a short run in the direction
 // of motion before decaying, so the silhouette edge translates rigidly instead
@@ -589,16 +600,19 @@ async function maybeBuildLift(beforeImg, landmarks, w, h, scope, opts){
 // result at typical consult framing (about 10-14 px of chin travel on a 1024px
 // photo); CHINW_FWD / CHINW_DOWN are the first levers if calibration against
 // real before/afters asks for more or less.
-// v29 calibration (clinical feedback on the v28 obliques: projection must be
-// unmistakable and the border straight): FWD 0.030 -> 0.045, DOWN 0.022 ->
-// 0.028, JAW_OUT 0.012 -> 0.016, plus a mid-jaw kernel. Frontal is untouched
-// (it calibrated well in v28). These remain the first levers either direction.
-const CHINW_FWD          = 0.045; // oblique: chin toward the camera-side profile direction
-const CHINW_DOWN         = 0.028; // oblique: chin drop (vertical lengthening component)
+// v30 calibration (clinical: PROJECTION, not elongation, at obliques): FWD
+// 0.045 -> 0.060 and DOWN 0.028 -> 0.012, so the oblique vector is ~14 degrees
+// below horizontal instead of ~38, and the pogonion leads (see field builder).
+// v29 had raised both axes together, which read as diagonal lengthening.
+// These remain the first levers either direction.
+const CHINW_FWD          = 0.060; // oblique: pogonion toward the camera-side profile direction (anterior)
+const CHINW_DOWN         = 0.012; // oblique: small accompanying drop only (elongation is NOT the goal here)
 const CHINW_DOWN_FRONTAL = 0.025; // frontal: pure vertical lengthening (projection is invisible head-on)
 const CHINW_JAW_OUT      = 0.016; // oblique: near-side mandibular border outward (crisper border)
 const CHINW_JAW_OUT_MALE = 1.4;   // male jaw-width factor on top of CHINW_JAW_OUT
 const CHINW_SIG_CHIN     = 0.085; // kernel radius of the chin kernels, fraction of W
+const CHINW_POGO_UP      = 0.055; // pogonion estimate: above the menton along the face axis, fraction of faceH
+const CHINW_POGO_OUT     = 0.015; // and slightly toward the near-side profile line, fraction of W
 const CHINW_SIG_JAW      = 0.055; // kernel radius of the jaw kernels, fraction of W
 // Capsule run factor: displacement stays at full strength from the anchor along
 // the motion direction for |v|*CHINW_CAPSULE before decaying, so the moved
@@ -641,8 +655,14 @@ function buildChinProjectionField(L, w, h, pose, sex){
     const pjNear   = (pose.nearSide === 'right') ? lm[PREJOWL.r] : lm[PREJOWL.l];
     const goNear   = (pose.nearSide === 'right') ? lm[GONION.r]  : lm[GONION.l];
     const sigC=CHINW_SIG_CHIN*W, sigJ=CHINW_SIG_JAW*W;
-    kernels.push(capsule(p152, chinV, sigC));
-    if(paraNear) kernels.push(capsule(paraNear, chinV, sigC*0.8, 0.85));
+    // Pogonion leads the projection: anchored just above the menton on the
+    // anterior chin contour. The menton follows at reduced weight (continuous
+    // underside, no independent downward slide), para-menton carries the front
+    // face of the chin with it.
+    const pogo = add(add(p152, mul(dirUp, CHINW_POGO_UP*faceH)), mul(nearDir, CHINW_POGO_OUT*W));
+    kernels.push(capsule(pogo, chinV, sigC));
+    kernels.push(capsule(p152, chinV, sigC*0.9, 0.75));
+    if(paraNear) kernels.push(capsule(paraNear, chinV, sigC*0.8, 0.8));
     if(pjNear){
       const v = add(mul(nearDir, jawOut*W), mul(chinV, 0.30));
       kernels.push(capsule(pjNear, v, sigJ));
