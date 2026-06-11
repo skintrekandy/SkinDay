@@ -7,6 +7,22 @@
 // background). gpt-image-1's edit endpoint edits only the transparent region, so
 // this physically prevents the global beautification leak.
 //
+// M7.7 (v29): oblique chin/jaw pass two. (1) Warp kernels become CAPSULES:
+// each anchor's displacement stays constant along a short run in the direction
+// of motion before decaying, so the silhouette edge translates rigidly instead
+// of stretching; the isotropic v28 Gaussians had a displacement gradient ACROSS
+// the edge, which smeared the high-contrast skin-to-background boundary into
+// the soft band visible on the oblique exports. (2) The outline gate stops
+// trusting the landmark oval alone: at a three-quarter view MediaPipe's
+// projected face oval spills past the true jaw-neck silhouette, letting AI
+// paint through onto background and neck; the gate now also requires the
+// ORIGINAL pixel to be plausibly lit subject (a dark-luma floor kills black
+// backdrop, deep shadow, hair, and dark clothing), and the oval's lower-face
+// vertices are pulled slightly inward. (3) Magnitudes up on clinical feedback:
+// stronger oblique chin travel, wider jaw-out, a mid-jaw kernel for a straight
+// continuous border, and a deeper chin_jaw dark floor so the AI can draw the
+// sharp shadow line that makes a jawline read as defined (chroma stays locked).
+//
 // M7.6 (v28): chin/jaw projection moved to GEOMETRY. Three rounds of evidence
 // (M5, M7.5 runway, M7.5 prompt) show the image model will not reliably extend
 // a silhouette; it either under-delivers or leaves haze/blob artifacts at the
@@ -573,13 +589,21 @@ async function maybeBuildLift(beforeImg, landmarks, w, h, scope, opts){
 // result at typical consult framing (about 10-14 px of chin travel on a 1024px
 // photo); CHINW_FWD / CHINW_DOWN are the first levers if calibration against
 // real before/afters asks for more or less.
-const CHINW_FWD          = 0.030; // oblique: chin toward the camera-side profile direction
-const CHINW_DOWN         = 0.022; // oblique: chin drop (vertical lengthening component)
+// v29 calibration (clinical feedback on the v28 obliques: projection must be
+// unmistakable and the border straight): FWD 0.030 -> 0.045, DOWN 0.022 ->
+// 0.028, JAW_OUT 0.012 -> 0.016, plus a mid-jaw kernel. Frontal is untouched
+// (it calibrated well in v28). These remain the first levers either direction.
+const CHINW_FWD          = 0.045; // oblique: chin toward the camera-side profile direction
+const CHINW_DOWN         = 0.028; // oblique: chin drop (vertical lengthening component)
 const CHINW_DOWN_FRONTAL = 0.025; // frontal: pure vertical lengthening (projection is invisible head-on)
-const CHINW_JAW_OUT      = 0.012; // oblique: near-side mandibular border outward (crisper border)
+const CHINW_JAW_OUT      = 0.016; // oblique: near-side mandibular border outward (crisper border)
 const CHINW_JAW_OUT_MALE = 1.4;   // male jaw-width factor on top of CHINW_JAW_OUT
-const CHINW_SIG_CHIN     = 0.085; // Gaussian radius of the chin kernels, fraction of W
-const CHINW_SIG_JAW      = 0.055; // Gaussian radius of the jaw kernels, fraction of W
+const CHINW_SIG_CHIN     = 0.085; // kernel radius of the chin kernels, fraction of W
+const CHINW_SIG_JAW      = 0.055; // kernel radius of the jaw kernels, fraction of W
+// Capsule run factor: displacement stays at full strength from the anchor along
+// the motion direction for |v|*CHINW_CAPSULE before decaying, so the moved
+// silhouette edge translates rigidly (sharp) instead of stretching (smear).
+const CHINW_CAPSULE      = 1.25;
 
 function buildChinProjectionField(L, w, h, pose, sex){
   const lm = L.map(p=>({x:p.x*w, y:p.y*h}));
@@ -592,6 +616,19 @@ function buildChinProjectionField(L, w, h, pose, sex){
   const down = { x:-dirUp.x, y:-dirUp.y };
   const isMale = sex === 'male';
 
+  // Capsule kernel: the field is exp(-d^2/twoSig) of the distance to a short
+  // SEGMENT from the anchor along the displacement direction (length
+  // |v|*CHINW_CAPSULE). Along the motion the displacement therefore plateaus
+  // through and past the silhouette edge (rigid translation, crisp edge);
+  // perpendicular to it, and back toward the lips, falloff stays Gaussian.
+  function capsule(c, v, sig, scale){
+    const vx=v.x*(scale==null?1:scale), vy=v.y*(scale==null?1:scale);
+    const len=Math.hypot(vx,vy)||1e-6;
+    const run=len*CHINW_CAPSULE;
+    return { ax:c.x, ay:c.y,
+             bx:c.x+(vx/len)*run, by:c.y+(vy/len)*run,
+             twoSig:2*sig*sig, vx, vy };
+  }
   const kernels=[];
   if(pose && pose.view === 'three_quarter' && (pose.nearSide === 'left' || pose.nearSide === 'right') && lm[454] && lm[234]){
     // Oblique: project along the camera-side profile direction plus a drop.
@@ -604,15 +641,20 @@ function buildChinProjectionField(L, w, h, pose, sex){
     const pjNear   = (pose.nearSide === 'right') ? lm[PREJOWL.r] : lm[PREJOWL.l];
     const goNear   = (pose.nearSide === 'right') ? lm[GONION.r]  : lm[GONION.l];
     const sigC=CHINW_SIG_CHIN*W, sigJ=CHINW_SIG_JAW*W;
-    kernels.push({ cx:p152.x, cy:p152.y, twoSig:2*sigC*sigC, vx:chinV.x, vy:chinV.y });
-    if(paraNear) kernels.push({ cx:paraNear.x, cy:paraNear.y, twoSig:2*(sigC*0.8)*(sigC*0.8), vx:chinV.x*0.85, vy:chinV.y*0.85 });
+    kernels.push(capsule(p152, chinV, sigC));
+    if(paraNear) kernels.push(capsule(paraNear, chinV, sigC*0.8, 0.85));
     if(pjNear){
       const v = add(mul(nearDir, jawOut*W), mul(chinV, 0.30));
-      kernels.push({ cx:pjNear.x, cy:pjNear.y, twoSig:2*sigJ*sigJ, vx:v.x, vy:v.y });
+      kernels.push(capsule(pjNear, v, sigJ));
+    }
+    // Mid-jaw kernel between prejowl and gonion: keeps the redefined border one
+    // straight, continuous line instead of two bumps (the "sharp jawline" read).
+    if(pjNear && goNear){
+      const mid = lerp(pjNear, goNear, 0.5);
+      kernels.push(capsule(mid, mul(nearDir, jawOut*0.85*W), sigJ));
     }
     if(goNear){
-      const v = mul(nearDir, jawOut*0.7*W);
-      kernels.push({ cx:goNear.x, cy:goNear.y, twoSig:2*sigJ*sigJ, vx:v.x, vy:v.y });
+      kernels.push(capsule(goNear, mul(nearDir, jawOut*0.7*W), sigJ));
     }
   } else if(pose && pose.view === 'frontal'){
     // Frontal: projection toward the camera is invisible head-on; what reads is
@@ -620,10 +662,10 @@ function buildChinProjectionField(L, w, h, pose, sex){
     // points travel down; jaw width is untouched (the AI taper handles shape).
     const chinV = mul(down, CHINW_DOWN_FRONTAL*faceH);
     const sigC=CHINW_SIG_CHIN*W;
-    kernels.push({ cx:p152.x, cy:p152.y, twoSig:2*sigC*sigC, vx:chinV.x, vy:chinV.y });
+    kernels.push(capsule(p152, chinV, sigC));
     for(const idx of [148, 377]){
       const p=lm[idx]; if(!p) continue;
-      kernels.push({ cx:p.x, cy:p.y, twoSig:2*(sigC*0.8)*(sigC*0.8), vx:chinV.x*0.7, vy:chinV.y*0.7 });
+      kernels.push(capsule(p, chinV, sigC*0.8, 0.7));
     }
   } else {
     return null; // out_of_range or no pose: no geometric projection
@@ -642,14 +684,14 @@ function buildChinProjectionField(L, w, h, pose, sex){
   pctx.filter="blur("+(0.05*W)+"px)"; pctx.drawImage(pc,0,0); pctx.filter="none";
   const protA=pctx.getImageData(0,0,w,h).data;
 
-  // Evaluate only a window around the kernels (3.5 sigma + travel), not the
-  // whole frame; the field is zero elsewhere by construction.
+  // Evaluate only a window around the kernels (3.5 sigma around both capsule
+  // ends + travel), not the whole frame; the field is zero elsewhere.
   let kx0=w, ky0=h, kx1=0, ky1=0, travel=0;
   for(const K of kernels){
     const r=3.5*Math.sqrt(K.twoSig/2), t=Math.hypot(K.vx,K.vy);
     if(t>travel) travel=t;
-    kx0=Math.min(kx0, K.cx-r); kx1=Math.max(kx1, K.cx+r);
-    ky0=Math.min(ky0, K.cy-r); ky1=Math.max(ky1, K.cy+r);
+    kx0=Math.min(kx0, K.ax-r, K.bx-r); kx1=Math.max(kx1, K.ax+r, K.bx+r);
+    ky0=Math.min(ky0, K.ay-r, K.by-r); ky1=Math.max(ky1, K.ay+r, K.by+r);
   }
   const padK=Math.ceil(travel)+2;
   const wx0=Math.max(0, Math.floor(kx0-padK)), wy0=Math.max(0, Math.floor(ky0-padK));
@@ -663,8 +705,9 @@ function buildChinProjectionField(L, w, h, pose, sex){
       const i=y*w+x;
       let dx=0, dy=0;
       for(let k=0;k<kernels.length;k++){
-        const K=kernels[k]; const ex=x-K.cx, ey=y-K.cy;
-        const gv=Math.exp(-(ex*ex+ey*ey)/K.twoSig);
+        const K=kernels[k];
+        const dd=distToSeg(x, y, {x:K.ax, y:K.ay}, {x:K.bx, y:K.by});
+        const gv=Math.exp(-(dd*dd)/K.twoSig);
         dx+=K.vx*gv; dy+=K.vy*gv;
       }
       const guard=1-(protA[i*4]/255);
@@ -715,32 +758,66 @@ async function buildWarpForScope(beforeImg, landmarks, w, h, scope, sex, opts){
   return null;
 }
 
-// ---- M7.6 outline gate -------------------------------------------------------
+// ---- M7.6/M7.7 outline gate ---------------------------------------------------
 // chin_jaw scope only. History: M7.5 tried a luminance "decisiveness" gate here
 // (keep out-of-silhouette AI pixels only where |delta luma| was large), which
 // killed the faint grey haze but waved through the bright white blobs the model
 // painted once the prompt demanded decisive edges; decisive garbage passes a
-// decisiveness test. v28 ends the arms race: the silhouette is now moved
-// GEOMETRICALLY (buildChinProjectionField below), so the AI has no legitimate
-// business outside the original face oval at all. This gate is a hard outline
-// lock: 1 inside the oval fading to exactly 0 at and beyond it. Every class of
-// background artifact (haze, smudge, blob, halo) is structurally impossible,
-// on black and on real clinic walls alike.
-function buildOutlineGate(L, w, h){
+// decisiveness test. v28 ended the arms race: the silhouette is moved
+// GEOMETRICALLY (buildChinProjectionField), so the AI has no legitimate
+// business outside the face, and the gate became a hard outline lock.
+// v29 hardened it further: at a three-quarter view MediaPipe's projected face
+// oval spills past the true jaw-neck silhouette, so a landmark-only lock still
+// let AI paint through onto background and neck in that strip. The gate now
+// also requires the ORIGINAL pixel to be plausibly lit subject: a dark-luma
+// floor (GATE_LUMA_LO..HI) zeroes the black backdrop, deep shadow, hair, and
+// dark clothing (none of which the AI should repaint anyway), and the oval's
+// lower-face vertices are pulled inward by GATE_LOWER_PULL_IN so the polygon
+// hugs the real jawline. Light walls are still covered by the oval term.
+const GATE_LUMA_LO = 10;       // original luma at or below this: gate 0
+const GATE_LUMA_HI = 26;       // fully open above this
+const GATE_LOWER_PULL_IN = 0.015; // lower-face oval vertices toward centroid, fraction of W
+
+function buildOutlineGate(L, w, h, b){
   const lm = L.map(p=>({x:p.x*w, y:p.y*h}));
-  const dirUp = norm(sub(lm[10], lm[152]));
+  const p152 = lm[152];
+  const dirUp = norm(sub(lm[10], p152));
   const dirOut = { x:-dirUp.y, y:dirUp.x };
   const W = Math.abs(dot(sub(lm[454], lm[234]), dirOut)) || 1;
+  const faceH = (dot(sub(lm[10], p152), dirUp)) || 1;
+
+  // Oval polygon with the lower-face vertices pulled slightly inward.
+  const pts = [];
+  let cxm=0, cym=0, n=0;
+  for(const idx of FACE_OVAL){ const p=lm[idx]; if(!p) continue; cxm+=p.x; cym+=p.y; n++; }
+  cxm/=Math.max(1,n); cym/=Math.max(1,n);
+  for(const idx of FACE_OVAL){
+    const p=lm[idx]; if(!p) continue;
+    const hF = dot(sub(p, p152), dirUp)/faceH;
+    if(hF < 0.30){
+      const pull = GATE_LOWER_PULL_IN*W * (1 - smoothstep(0.18, 0.30, hF));
+      const d = norm(sub({x:cxm,y:cym}, p));
+      pts.push(add(p, mul(d, pull)));
+    } else {
+      pts.push(p);
+    }
+  }
   const oc=document.createElement("canvas"); oc.width=w; oc.height=h;
   const octx=oc.getContext("2d",{willReadFrequently:true});
   octx.fillStyle="#000"; octx.fillRect(0,0,w,h);
   octx.fillStyle="#fff"; octx.beginPath();
-  FACE_OVAL.forEach((idx,k)=>{ const p=lm[idx]; if(!p) return; if(k===0) octx.moveTo(p.x,p.y); else octx.lineTo(p.x,p.y); });
+  pts.forEach((p,k)=>{ if(k===0) octx.moveTo(p.x,p.y); else octx.lineTo(p.x,p.y); });
   octx.closePath(); octx.fill();
   octx.filter="blur("+(0.015*W)+"px)"; octx.drawImage(oc,0,0); octx.filter="none";
   const oval=octx.getImageData(0,0,w,h).data;
+
   const N=w*h, g=new Float32Array(N);
-  for(let i=0,p4=0;i<N;i++,p4+=4){ g[i]=oval[p4]/255; }
+  for(let i=0,p4=0;i<N;i++,p4+=4){
+    const ov=oval[p4]/255;
+    if(ov<=0){ g[i]=0; continue; }
+    const Y=0.299*b[p4]+0.587*b[p4+1]+0.114*b[p4+2];
+    g[i]=ov*smoothstep(GATE_LUMA_LO, GATE_LUMA_HI, Y);
+  }
   return g;
 }
 
@@ -1166,7 +1243,11 @@ const SCULPTRA_GLOW_APPLY = 6;
 // muddy or brown the way the earlier artifact did. Bounded and tunable: raise for
 // a crisper, more sculpted jaw and chin, lower toward 0 if a case reads shadowed
 // or harsh instead of defined.
-const CHIN_JAW_DARK_FLOOR = 14;
+const CHIN_JAW_DARK_FLOOR = 22;
+// 14 -> 22 (M7.7): with geometry owning the border position and the outline
+// gate owning the background, the remaining "sharp jawline" ingredient is the
+// shadow line under the border; a deeper chroma-locked luminance floor lets the
+// AI draw it. Drop back toward 14 if a case ever reads harsh or dirty.
 function sculptraTexOpts(scope, opts){
   const isHA = (scope === 'chin_jaw');
   const profile = isHA
@@ -1259,9 +1340,9 @@ export async function compositeSculptra(beforeImg, aiImg, opts){
   cx.drawImage(aiImg, 0, 0, w, h);
   const ai = cx.getImageData(0, 0, w, h), a = ai.data;
 
-  // M7.6: outline gate (chin_jaw only): zero AI contribution outside the
-  // original silhouette; the projected outline comes from the warp instead.
-  const outlineGate = (scope === 'chin_jaw') ? buildOutlineGate(landmarks, w, h) : null;
+  // M7.6/7.7: outline gate (chin_jaw only): zero AI contribution outside the
+  // true silhouette; the projected outline comes from the warp instead.
+  const outlineGate = (scope === 'chin_jaw') ? buildOutlineGate(landmarks, w, h, b) : null;
 
   // Geometry layer. Sculptra 'full': the M6 frontal lift (jowl + midface
   // re-drape, silhouette locked). HA chin_jaw: the M7.6 projection warp (chin
@@ -1337,9 +1418,9 @@ export async function makeSculptraCompositor(beforeImg, aiImg, opts){
   const a0 = new Uint8ClampedArray(out.data);     // pristine AI pixels
   const o = out.data;
 
-  // M7.6: outline gate (chin_jaw only): zero AI contribution outside the
-  // original silhouette; the projected outline comes from the warp instead.
-  const outlineGate = (scope === 'chin_jaw') ? buildOutlineGate(landmarks, w, h) : null;
+  // M7.6/7.7: outline gate (chin_jaw only): zero AI contribution outside the
+  // true silhouette; the projected outline comes from the warp instead.
+  const outlineGate = (scope === 'chin_jaw') ? buildOutlineGate(landmarks, w, h, b) : null;
 
   // M5.1: precompute the texture-restore delta once. apply() then writes
   // out = original + al*delta, which dials the AI volume with the slider while
