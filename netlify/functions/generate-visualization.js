@@ -7,7 +7,7 @@
 const OpenAI = require('openai');
 const Busboy = require('busboy');
 const { Readable } = require('stream');
-const { buildCorePrompt } = require('./prompts');
+const { buildCorePrompt, CHIN_JAW_SAFETY, usesChinJawSafety } = require('./prompts');
 
 // Non-negotiable constraints appended to EVERY prompt server-side, so a tampered
 // client cannot strip identity/ethnicity preservation or push the model to over-promise.
@@ -90,6 +90,23 @@ exports.handler = async (event) => {
     // Prompt is assembled SERVER-SIDE from the clinician's selections (the
     // treatment library lives in prompts.js). Falls back to a legacy pre-built
     // prompt field if an older client posts during a deploy window.
+    // M7.5: safety-tail policy kept in LOCKSTEP with the background function
+    // (which is the live generation path): Sculptra uses its own safety base
+    // (none appended here; this also fixes an old drift where this legacy path
+    // still appended the generic tail to Sculptra), chin/jawline filler uses
+    // CHIN_JAW_SAFETY, everything else keeps the generic tail. The
+    // [safety:server] note hook forces the generic tail for staging A/B and is
+    // stripped before the prompt is built.
+    const rawNote = (fields.note != null) ? String(fields.note) : '';
+    const forceServerSafety = /\[safety:server\]/i.test(rawNote);
+    const cleanNote = rawNote.replace(/\[safety:(server|none)\]/ig, '').replace(/\s{2,}/g, ' ').trim();
+
+    const product = (fields.type === 'biostim')
+      ? (['sculptra', 'hdr'].includes(fields.product) ? fields.product : 'sculptra')
+      : null;
+    const isSculptra = product === 'sculptra';
+    const isChinJaw = usesChinJawSafety(fields.type, fields.areas);
+
     let core;
     if (fields.type) {
       core = buildCorePrompt({
@@ -100,12 +117,17 @@ exports.handler = async (event) => {
         product: fields.product,
         projection: fields.projection,
         timeline: fields.timeline,
-        note: fields.note
+        note: cleanNote
       });
     } else {
       core = fields.prompt || 'Create a subtle, realistic aesthetic treatment visualization.';
     }
-    const prompt = core + SERVER_SAFETY;
+    let tail;
+    if (forceServerSafety) tail = SERVER_SAFETY;
+    else if (isSculptra) tail = '';
+    else if (isChinJaw) tail = CHIN_JAW_SAFETY;
+    else tail = SERVER_SAFETY;
+    const prompt = core + tail;
 
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const file = await OpenAI.toFile(imageFile.buffer, imageFile.filename, { type: imageFile.mimeType });

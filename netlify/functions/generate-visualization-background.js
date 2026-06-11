@@ -19,7 +19,7 @@
 
 const OpenAI = require('openai');
 const { getStore, connectLambda } = require('@netlify/blobs');
-const { buildCorePrompt } = require('./prompts');
+const { buildCorePrompt, CHIN_JAW_SAFETY, usesChinJawSafety } = require('./prompts');
 
 // === VERBATIM from generate-visualization.js. Do not diverge this copy in isolation. ===
 const SERVER_SAFETY =
@@ -66,13 +66,15 @@ exports.handler = async (event) => {
 
     const f = job.params || {};
 
-    // SERVER_SAFETY policy. Filler and hdr keep the generic safety tail. Sculptra
-    // no longer gets it by default: buildSculptraPrompt (v10.1) is its own, more
-    // specific safety base, and the generic "do NOT soften wrinkles / do not slim
-    // the face or jaw" tail fights the intended indirect fold softening and
-    // lateral lift. A/B hook for staging: putting [safety:server] in the note
-    // forces the old append back on for a Sculptra comparison run. The hook is
-    // stripped before the prompt is built so it never reaches the model.
+    // SERVER_SAFETY policy (M7.5). Sculptra has its own safety base (since M4)
+    // and chin/jawline filler now has its own too (CHIN_JAW_SAFETY in prompts.js,
+    // v7): the generic tail's "do NOT slim the face or jaw" and "subtly adjusted"
+    // were contradicting the chin/jaw content and capping the anchor, which is
+    // why oblique chin/jaw came out timid. All other filler areas and hdr keep
+    // the generic tail. A/B hook for staging: putting [safety:server] in the
+    // note forces the generic tail back on (for Sculptra or chin/jaw) so old and
+    // new can be compared on the same patient. The hook is stripped before the
+    // prompt is built so it never reaches the model.
     const rawNote = (f.note != null) ? String(f.note) : '';
     const forceServerSafety = /\[safety:server\]/i.test(rawNote);
     const cleanNote = rawNote.replace(/\[safety:(server|none)\]/ig, '').replace(/\s{2,}/g, ' ').trim();
@@ -92,9 +94,15 @@ exports.handler = async (event) => {
       core = f.prompt || 'Create a subtle, realistic aesthetic treatment visualization.';
     }
 
-    // Sculptra: append only when the A/B hook asks for it. Everything else: always.
-    const appendServerSafety = isSculptra ? forceServerSafety : true;
-    const prompt = core + (appendServerSafety ? SERVER_SAFETY : '');
+    // Tail selection: Sculptra none, chin/jaw filler its own base, others the
+    // generic tail. The [safety:server] hook forces the generic tail back on.
+    const isChinJaw = usesChinJawSafety(f.type, f.areas);
+    let tail;
+    if (forceServerSafety) tail = SERVER_SAFETY;
+    else if (isSculptra) tail = '';
+    else if (isChinJaw) tail = CHIN_JAW_SAFETY;
+    else tail = SERVER_SAFETY;
+    const prompt = core + tail;
 
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const buffer = Buffer.from(job.imageB64, 'base64');

@@ -1,4 +1,4 @@
-// SkinDay Visualize — Treatment Prompt Library
+// SkinDay Visualize: Treatment Prompt Library
 // ---------------------------------------------------------------------------
 // This file is the clinical brain of the generator. It turns the clinician's
 // selections (treatment, area, goal, intensity) into the CORE instruction sent
@@ -8,7 +8,7 @@
 //
 // Design rules (learned from real patient output):
 //   1. Lead with PROHIBITIONS. The model is fixed by what we forbid, not by
-//      describing the desired outcome — words like "mild definition" get read
+//      describing the desired outcome; words like "mild definition" get read
 //      through its beautify-everything prior, so each module names the specific
 //      drift to block (e.g. Sculptra over-lift, superhero jawline).
 //   2. Keep the ASSEMBLED prompt tight. gpt-image-1 follows only a handful of
@@ -115,8 +115,8 @@ const GOALS = {
 
 // ---- Filler: intensity = magnitude anchor (v1) ----------------------------
 const INTENSITY = {
-  natural:  'Magnitude: barely perceptible — the most conservative result a cautious injector would show. When in doubt, do less.',
-  moderate: 'Magnitude: clearly visible but still conservative — the typical outcome most patients see.',
+  natural:  'Magnitude: barely perceptible, the most conservative result a cautious injector would show. When in doubt, do less.',
+  moderate: 'Magnitude: clearly visible but still conservative, the typical outcome most patients see.',
   enhanced: 'Magnitude: the upper end of a realistic single-session result for a strong response, still clinically plausible and never exaggerated.'
 };
 
@@ -142,17 +142,17 @@ const BIOSTIM = {
     },
     avoid: 'this is collagen-driven SUPPORT, not filler SHAPE and not a beauty filter, so keep every feature outside soft-tissue volume identical to the original. These prohibitions are absolute and apply equally at every timeframe and every projection: a longer timeframe or stronger projection increases ONLY soft-tissue support and never relaxes any rule below. ' +
            'Eyebrows (strictest rule, most often violated): keep the brows exactly as in the original. Do not darken, thicken, fill, define, reshape, raise, sharpen, or groom them. Brow shape, density, color, and position must be identical. ' +
-           'Pigment and tone: do not even out, lighten, or brighten skin, and do not fade or remove melasma, sun spots, redness, or freckles — match the original skin tone. ' +
+           'Pigment and tone: do not even out, lighten, or brighten skin, and do not fade or remove melasma, sun spots, redness, or freckles; match the original skin tone. ' +
            'Texture: do not smooth skin, do not reduce pore visibility, do not reduce fine surface texture, do not apply any cosmetic-retouching or beauty-filter effect; skin texture must remain substantially unchanged. ' +
            'Eyes: do not enlarge the eyes, do not alter eye scale or shape, do not increase iris or scleral visibility, do not raise or alter eyelid position, and do not make the eyes look larger, wider, brighter, or more youthful. ' +
-           'Under-eye: do not retouch or erase under-eye hollows, bags, or dark circles — only the upper cheek may show subtle volume-driven support. ' +
+           'Under-eye: do not retouch or erase under-eye hollows, bags, or dark circles; only the upper cheek may show subtle volume-driven support. ' +
            'Lips: do not change lip color, fullness, shape, definition, liner, or gloss. ' +
            'Grooming: do not add or enhance makeup, lashes, or hair grooming. ' +
-           'Age: do not reduce apparent age — forehead lines, crow\'s feet, perioral lines, and the neck stay unchanged unless diffuse support naturally softens a fold. ' +
+           'Age: do not reduce apparent age; forehead lines, crow\'s feet, perioral lines, and the neck stay unchanged unless diffuse support naturally softens a fold. ' +
            'Symmetry: do not correct facial symmetry beyond the volume effect. ' +
            'Placement and shape: the support is LATERAL (lateral temple and lateral cheek fat pads) and produces an upward, outward lift, not central fill. Do not add volume to the central midface, anterior cheek, under-eye, or tear trough. Round or full front: a face that reads round, full, or heavy from the front WITH signs of descent (an older face, flattened temples and lateral cheeks, a jowl, volume slid downward and centrally) is showing deflation and descent, not excess volume, so it is a strong candidate for more lateral lift, not a reason to hold back; a young or well-supported full face with no jowl and no lateral hollowing is youthful or constitutional fullness, not descent, and must stay near baseline (do not narrow, lift, or slim it); restore lateral support so the descended central and lower-face fullness is drawn up and outward and the front becomes narrower, more lifted, and more defined. That central and lower-face fullness must DECREASE only as a consequence of the lateral lift, never from actively deflating, hollowing, slimming, carving, or skin-tightening the front. Never read a full face as needing central volume: adding central volume is the exact opposite of this treatment. Do not add filler-like or localized volume; the jowl should subtly REDUCE and the jawline read cleaner and smoother as a result of the lateral lift, but do not carve a sharp, angular, V-shaped, or superhero jawline, and never leave the jowl unchanged or make it heavier or more pronounced. Do not enlarge or round the cheeks or change facial shape, do not lift, pull, or tighten like a facelift. Never make the front of the face look fuller, rounder, swollen, or puffy: support should read as firmer and lifted, and if the choice is between too much and too little, choose less. Soften folds only partially and never fully erase nasolabial folds, marionette lines, or under-eye hollows. ' +
-           'Projection scaling: the ONLY thing that changes between Conservative, Expected, and Optimistic is the amount of diffuse subcutaneous soft-tissue support in the temples, midface, and prejowl — more support means more restored volume and softer folds, nothing else. Do not increase brightness, smoothness, symmetry, eye openness, brow definition, lip color, grooming, or apparent youth at any level. At 12 months or the Optimistic projection the extra strength shows as more support only, and must NOT bring back any skin smoothing, brightening, pigment or melasma fading, brow change, eye change, lip change, or de-aging that the lower settings correctly avoided. ' +
-           'Volume-deficit floor (applies at every timeframe, including 12 months): the floor is for genuinely LEAN, well-supported faces only. If the face already shows good lateral support with minimal temple, lateral cheek, and lower-face volume loss, the result should stay very close to the original — do not invent improvements just to produce a visible change, and a longer timeframe is never a reason to add more volume than the face needs. When little deficit exists, the correct output may be nearly indistinguishable from the original, and this includes a young or well-supported full face whose fullness is youthful or constitutional rather than descended: it stays near baseline and is not narrowed or lifted. Only a full face that ALSO shows descent (jowl, lateral and temporal hollowing, an older face, volume slid downward) is the opposite case: that fullness is descent, not good support, so it is not held at baseline and instead receives more lateral lift to draw the fullness up and outward and narrow the front. ' +
+           'Projection scaling: the ONLY thing that changes between Conservative, Expected, and Optimistic is the amount of diffuse subcutaneous soft-tissue support in the temples, midface, and prejowl; more support means more restored volume and softer folds, nothing else. Do not increase brightness, smoothness, symmetry, eye openness, brow definition, lip color, grooming, or apparent youth at any level. At 12 months or the Optimistic projection the extra strength shows as more support only, and must NOT bring back any skin smoothing, brightening, pigment or melasma fading, brow change, eye change, lip change, or de-aging that the lower settings correctly avoided. ' +
+           'Volume-deficit floor (applies at every timeframe, including 12 months): the floor is for genuinely LEAN, well-supported faces only. If the face already shows good lateral support with minimal temple, lateral cheek, and lower-face volume loss, the result should stay very close to the original; do not invent improvements just to produce a visible change, and a longer timeframe is never a reason to add more volume than the face needs. When little deficit exists, the correct output may be nearly indistinguishable from the original, and this includes a young or well-supported full face whose fullness is youthful or constitutional rather than descended: it stays near baseline and is not narrowed or lifted. Only a full face that ALSO shows descent (jowl, lateral and temporal hollowing, an older face, volume slid downward) is the opposite case: that fullness is descent, not good support, so it is not held at baseline and instead receives more lateral lift to draw the fullness up and outward and narrow the front. ' +
            'Any firmer look or better light reflection must come from the restored support underneath, never from retouching the skin',
     // ---- Oblique (three-quarter) skin-locked, contour-only variant (v10) -----
     // The frontal expected/avoid above stay FROZEN at v9. This branch is used only
@@ -196,7 +196,7 @@ const TIMELINE = {
 
 // Version log so we know which prompt produced which result during tuning.
 const VERSIONS = {
-  base: 'v3', chin: 'v1', jawline: 'v1', chin_jawline: 'v6', nose: 'v1', lips: 'v2',
+  base: 'v3', chin: 'v1', jawline: 'v1', chin_jawline: 'v7', nose: 'v1', lips: 'v2',
   cheeks: 'v2', tear_trough: 'v1', nasolabial_folds: 'v1', sculptra: 'v13', sculptra_oblique: 'v13', hdr: 'v1', timeline: 'v2'
 };
 
@@ -361,4 +361,35 @@ function buildCorePrompt(sel) {
          `Judge the result by facial contour alone: the added projection and support must be visible in the silhouette, while skin appearance stays exactly as photographed.${note}`;
 }
 
-module.exports = { buildCorePrompt, VERSIONS };
+// ---- Chin/jawline safety base (v7) -----------------------------------------
+// M7.5: chin/jawline filler drops the generic SERVER_SAFETY tail the same way
+// Sculptra did in M4. The generic tail says "do NOT slim the face or jaw" and
+// "the result must read as the SAME photograph with only the treated area
+// subtly adjusted", which directly contradicts the v6/v7 chin_jawline content
+// (inward taper, jowl reduction, decisive projection) and caps the anchor at a
+// conservative magnitude; on this model the prohibition voice wins, which is why
+// oblique chin/jaw anchors came out timid. This base keeps every protection the
+// generic tail provides (skin texture, identity, framing, no beautification)
+// while making the lower-face contour change explicitly IN-SCOPE, and it
+// attacks the background-haze artifact at the source by demanding a decisive,
+// fully opaque silhouette extension rather than a translucent ghost.
+const CHIN_JAW_SAFETY =
+  " CRITICAL: this is a medical consultation photograph, not a beauty image. The ONLY region that changes is the chin, jawline, and lower-face contour described above; every other pixel stays faithful to the original. " +
+  "Do NOT smooth or retouch skin anywhere, remove or soften wrinkles, even out skin tone, brighten the image, raise contrast, enlarge the eyes, lift the brows, or apply any beautifying, younger-looking, or filter-like effect. " +
+  "Keep ALL skin texture (pores, fine lines, blemishes) exactly as in the original, including on the treated lower face: the new contour carries the same real skin. " +
+  "Do NOT change the eyes, brows, nose, lips, cheekbones, mid-face width, hairstyle, ears, clothing, jewellery, expression, head angle and pose, camera framing and crop, lighting, or background. " +
+  "Reshaping the lower-face contour IS the treatment: a clearly projected chin and a redefined, smoothly tapered jawline are expected. Where the new chin and jaw extend past the old outline, draw them DECISIVELY as solid, fully opaque skin with a crisp silhouette edge against the background; never leave a faint, translucent, blurred, or smudged halo, ghost outline, or soft cloud outside the face. " +
+  "Preserve identity, ethnicity and ethnic features, and apparent age; the result must be unmistakably the same person with only the lower-face contour treated. Do not add text, labels, or watermarks.";
+
+// True when the request is the chin+jawline lower-face unit (the client posts
+// chin_jawline expanded to 'chin,jawline'). Used by the Netlify functions to
+// pick the safety tail; keep this predicate in lockstep with the
+// FILLER_CHIN_JAWLINE selection logic in buildCorePrompt above.
+function usesChinJawSafety(type, areasField){
+  if(type !== 'filler') return false;
+  const areas = (Array.isArray(areasField) ? areasField : String(areasField || '').split(','))
+    .map(a => a.trim());
+  return areas.includes('chin') && areas.includes('jawline');
+}
+
+module.exports = { buildCorePrompt, VERSIONS, CHIN_JAW_SAFETY, usesChinJawSafety };
