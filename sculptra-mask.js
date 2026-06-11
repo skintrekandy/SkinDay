@@ -7,6 +7,21 @@
 // background). gpt-image-1's edit endpoint edits only the transparent region, so
 // this physically prevents the global beautification leak.
 //
+// M8.0 (v32): PROJECTION DIRECTION SIGN FIX (clinical bug report: sliding to
+// Strong moved the chin BACKWARD). The anterior direction in image space at an
+// oblique points toward the FAR cheek, the side the nose points, not toward
+// the camera-facing near side; v28-v31 aimed the vector at the near side
+// (toward the ear), which is posterior. v32 derives the anterior sign directly
+// from anatomy: the nose tip is displaced anteriorly relative to the bridge at
+// any oblique view, so its lateral offset gives the forward sign unambiguously
+// (fallback: the opposite of the camera-facing side). The jaw kernels are also
+// corrected to the same axis and restructured clinically: a projected chin
+// straightens the chin-to-gonion line by ROTATING it around the gonion, so the
+// prejowl follows the chin's advance strongly, mid-jaw moderately, and the
+// gonion stays nearly anchored. NOTE: v31's lighting-integration verdict was
+// contaminated by this bug (the warp ran backward in every oblique export);
+// the composite-then-warp architecture gets its first fair test on v32.
+//
 // M7.9 (v31): composite-then-warp for chin_jaw. v30 proved the displacement
 // fires, and also exposed the real remaining gap: the AI's light is computed in
 // the ORIGINAL frame and gated to the ORIGINAL silhouette, so the tissue the
@@ -621,8 +636,14 @@ async function maybeBuildLift(beforeImg, landmarks, w, h, scope, opts){
 const CHINW_FWD          = 0.060; // oblique: pogonion toward the camera-side profile direction (anterior)
 const CHINW_DOWN         = 0.012; // oblique: small accompanying drop only (elongation is NOT the goal here)
 const CHINW_DOWN_FRONTAL = 0.025; // frontal: pure vertical lengthening (projection is invisible head-on)
-const CHINW_JAW_OUT      = 0.016; // oblique: near-side mandibular border outward (crisper border)
-const CHINW_JAW_OUT_MALE = 1.4;   // male jaw-width factor on top of CHINW_JAW_OUT
+// Jawline at oblique (v32): the border straightens by rotating around the
+// gonion as the chin advances, so the jaw kernels carry graded fractions of the
+// chin vector along the SAME anterior axis. (The v29-v31 lateral "jaw out"
+// pushed toward the ear, the same wrong axis as the chin bug, and is removed;
+// male jaw WIDTH is a frontal attribute and returns as a frontal feature later.)
+const CHINW_PREJOWL_F    = 0.45;  // prejowl follows the chin's advance
+const CHINW_MIDJAW_F     = 0.25;  // mid-border follows moderately
+const CHINW_GONION_F     = 0.10;  // gonion nearly anchored (the rotation pivot)
 const CHINW_SIG_CHIN     = 0.085; // kernel radius of the chin kernels, fraction of W
 const CHINW_POGO_UP      = 0.055; // pogonion estimate: above the menton along the face axis, fraction of faceH
 const CHINW_POGO_OUT     = 0.015; // and slightly toward the near-side profile line, fraction of W
@@ -641,7 +662,9 @@ function buildChinProjectionField(L, w, h, pose, sex){
   const W = Math.abs(dot(sub(zl, zr), dirOut)) || 1;
   const faceH = (dot(sub(p10, p152), dirUp)) || 1;
   const down = { x:-dirUp.x, y:-dirUp.y };
-  const isMale = sex === 'male';
+  // (sex is currently unused here: male jaw WIDTH is a frontal attribute and
+  // returns as a frontal feature; the parameter is kept for that.)
+  void sex;
 
   // Capsule kernel: the field is exp(-d^2/twoSig) of the distance to a short
   // SEGMENT from the anchor along the displacement direction (length
@@ -658,12 +681,21 @@ function buildChinProjectionField(L, w, h, pose, sex){
   }
   const kernels=[];
   if(pose && pose.view === 'three_quarter' && (pose.nearSide === 'left' || pose.nearSide === 'right') && lm[454] && lm[234]){
-    // Oblique: project along the camera-side profile direction plus a drop.
-    const leftSign = Math.sign(dot(sub(lm[454], p152), dirOut)) || 1;
-    const nearSign = (pose.nearSide === 'left') ? leftSign : -leftSign;
-    const nearDir = mul(dirOut, nearSign);
-    const chinV = add(mul(nearDir, CHINW_FWD*W), mul(down, CHINW_DOWN*faceH));
-    const jawOut = CHINW_JAW_OUT * (isMale ? CHINW_JAW_OUT_MALE : 1);
+    // Oblique: project along the ANTERIOR direction. In image space at an
+    // oblique, anterior is toward the FAR cheek (the side the nose points),
+    // NOT toward the camera-facing side; v28-v31 had this backwards. The sign
+    // is measured from anatomy: the nose tip is displaced anteriorly relative
+    // to the bridge, so its lateral offset gives the forward direction
+    // unambiguously. Fallback: the opposite of the camera-facing side.
+    const tip = lm[1] || lm[4];
+    const bridge = lm[168] || p10;
+    let antSign = tip ? (Math.sign(dot(sub(tip, bridge), dirOut)) || 0) : 0;
+    if(!antSign){
+      const leftSign = Math.sign(dot(sub(lm[454], p152), dirOut)) || 1;
+      antSign = (pose.nearSide === 'left') ? -leftSign : leftSign;
+    }
+    const antDir = mul(dirOut, antSign);
+    const chinV = add(mul(antDir, CHINW_FWD*W), mul(down, CHINW_DOWN*faceH));
     const paraNear = (pose.nearSide === 'right') ? lm[148] : lm[377];
     const pjNear   = (pose.nearSide === 'right') ? lm[PREJOWL.r] : lm[PREJOWL.l];
     const goNear   = (pose.nearSide === 'right') ? lm[GONION.r]  : lm[GONION.l];
@@ -672,23 +704,18 @@ function buildChinProjectionField(L, w, h, pose, sex){
     // anterior chin contour. The menton follows at reduced weight (continuous
     // underside, no independent downward slide), para-menton carries the front
     // face of the chin with it.
-    const pogo = add(add(p152, mul(dirUp, CHINW_POGO_UP*faceH)), mul(nearDir, CHINW_POGO_OUT*W));
+    const pogo = add(add(p152, mul(dirUp, CHINW_POGO_UP*faceH)), mul(antDir, CHINW_POGO_OUT*W));
     kernels.push(capsule(pogo, chinV, sigC));
     kernels.push(capsule(p152, chinV, sigC*0.9, 0.75));
     if(paraNear) kernels.push(capsule(paraNear, chinV, sigC*0.8, 0.8));
-    if(pjNear){
-      const v = add(mul(nearDir, jawOut*W), mul(chinV, 0.30));
-      kernels.push(capsule(pjNear, v, sigJ));
-    }
-    // Mid-jaw kernel between prejowl and gonion: keeps the redefined border one
-    // straight, continuous line instead of two bumps (the "sharp jawline" read).
+    // Jawline: straightens by rotating around the gonion. All three border
+    // kernels move along the SAME anterior axis as the chin, at graded weights.
+    if(pjNear) kernels.push(capsule(pjNear, chinV, sigJ, CHINW_PREJOWL_F));
     if(pjNear && goNear){
       const mid = lerp(pjNear, goNear, 0.5);
-      kernels.push(capsule(mid, mul(nearDir, jawOut*0.85*W), sigJ));
+      kernels.push(capsule(mid, chinV, sigJ, CHINW_MIDJAW_F));
     }
-    if(goNear){
-      kernels.push(capsule(goNear, mul(nearDir, jawOut*0.7*W), sigJ));
-    }
+    if(goNear) kernels.push(capsule(goNear, chinV, sigJ, CHINW_GONION_F));
   } else if(pose && pose.view === 'frontal'){
     // Frontal: projection toward the camera is invisible head-on; what reads is
     // vertical lengthening of the lower third. Chin point plus both para-menton
