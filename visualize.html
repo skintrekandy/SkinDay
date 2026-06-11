@@ -395,10 +395,10 @@ const FREE_REGEN_MS = 60000;
 
 // Bump this whenever sculptra-mask.js changes, so the browser fetches the new
 // module instead of a stale disk-cached copy. Both imports below use it, so they
-// stay the same module instance (shared face-detection cache). v26 = M7
-// multi-angle cases (jaw-margin feather in the mask, analyzePhoto for upload QC)
-// (v25 = M6.4 interpolation; v24 = M6.3; v23 = M6.2; v22 = M6.1 lift warp).
-const MASK_MODULE_VERSION = '26';
+// stay the same module instance (shared face-detection cache). v27 = M7.5
+// HA chin/jaw oblique pass: background haze gate + pose-aware projection runway
+// (v26 = M7 multi-angle; v25 = M6.4 interpolation; v24-v22 = M6 series).
+const MASK_MODULE_VERSION = '27';
 
 /* M7: a case is one or more ANGLES, each with its own photo, QC result, job,
    and compositor. Treatment settings are shared across the case; the response
