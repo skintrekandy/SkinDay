@@ -7,6 +7,18 @@
 // background). gpt-image-1's edit endpoint edits only the transparent region, so
 // this physically prevents the global beautification leak.
 //
+// M7.6 (v28): chin/jaw projection moved to GEOMETRY. Three rounds of evidence
+// (M5, M7.5 runway, M7.5 prompt) show the image model will not reliably extend
+// a silhouette; it either under-delivers or leaves haze/blob artifacts at the
+// boundary, and a decisiveness test cannot tell decisive tissue from decisive
+// garbage. So the outline now moves the same way the M6 Sculptra lift does:
+// a deterministic warp of the patient's own pixels (chin forward/down, near-side
+// jaw outward at obliques; vertical chin lengthening frontally), with the AI
+// confined to light and shading INSIDE the face. The luminance haze gate is
+// replaced by a hard outline gate: for chin_jaw, zero AI contribution outside
+// the original silhouette, ever. The M7.5 mask runway is reverted (no longer
+// needed; it only invited the model to paint where we now discard).
+//
 // M7.5 (v27): HA chin/jawline oblique pass. (1) Background haze gate in the
 // compositors: outside the original face silhouette the AI's pixels are kept
 // only where the change is DECISIVE (real new chin/jaw tissue is an 80+ luma
@@ -94,17 +106,10 @@ const JAW_EDGE_FEATHER = 0.055; // wide oval blur for the lower-face guard, frac
 const JAW_EDGE_TOP     = 0.26;  // guard fully active below this hF (chin=0)
 const JAW_EDGE_FADE_TO = 0.38;  // guard fades out by this hF (mid-cheek unaffected)
 
-// M7.5 oblique projection runway (chin_jaw scope). The chin/jaw band was built
-// frontal-first and its spill beyond the outline is symmetric, but at a
-// three-quarter view projection happens along the camera-side profile
-// direction, exactly where the band gave the model the least room. When the
-// pose is oblique, the near-side jaw and chin segments are duplicated offset
-// toward the camera side (and slightly down for the chin drop) so the editable
-// region includes a real runway for the new profile line. Frontal behavior is
-// untouched (pose-gated).
-const PROJ_RUNWAY = 0.05;  // near-side outward offset, fraction of face width
-const PROJ_DROP   = 0.02;  // downward offset for the chin drop, fraction of face height
-const PROJ_EXTRA_FLOOR = 0.05; // extra central downward allowance at oblique
+// M7.6: the M7.5 "projection runway" (offset mask segments beyond the outline
+// at obliques) is REVERTED. It only gave the model room to paint boundary
+// artifacts we now discard; the outline is moved geometrically instead (see
+// buildChinProjectionField), so the chin_jaw mask is back to its M7 footprint.
 
 const ZYGION = { r:234, l:454 };
 const TEMPLE_OVAL = { r:127, l:356 };
@@ -554,24 +559,174 @@ async function maybeBuildLift(beforeImg, landmarks, w, h, scope, opts){
   }
 }
 
-// ---- M7.5 background haze gate ---------------------------------------------
-// chin_jaw scope only. The mask deliberately opens a runway beyond the chin and
-// jaw outline so projection can extend the silhouette; when the model paints
-// something timid and translucent there instead of decisive tissue, the
-// composite used to admit it as a grey smudge over the backdrop (worse at
-// higher slider values, since it scales with alpha). The gate keeps AI pixels
-// outside the ORIGINAL face oval only where the luminance change is decisive.
-// New skin over a studio backdrop is a jump of 80+ levels; haze is 10-30, so
-// the soft threshold between HAZE_GATE_LO and HAZE_GATE_HI separates them
-// cleanly on black AND on ordinary clinic walls. Genuine new contour passes at
-// full strength; everything indecisive snaps back to the exact original.
-const HAZE_GATE_LO = 25;
-const HAZE_GATE_HI = 60;
+// ---- M7.6 chin/jaw projection warp ------------------------------------------
+// Deterministic silhouette displacement for HA chin/jawline, built on the same
+// field format and backward-mapping resampler as the M6 Sculptra lift. The
+// decisive difference from the lift: there is NO oval guard, because moving the
+// outline is the whole point. The patient's own pixels are re-draped outward,
+// so the projected chin and jaw carry real skin texture with a crisp edge
+// against any background by construction; backward mapping means pixels beyond
+// the old outline sample from inside it (skin), never invented tissue.
+//
+// Magnitudes at full strength (slider = 100), as fractions of face width W or
+// face height faceH. Calibrated to read as a strong 3-4 syringe lower-face
+// result at typical consult framing (about 10-14 px of chin travel on a 1024px
+// photo); CHINW_FWD / CHINW_DOWN are the first levers if calibration against
+// real before/afters asks for more or less.
+const CHINW_FWD          = 0.030; // oblique: chin toward the camera-side profile direction
+const CHINW_DOWN         = 0.022; // oblique: chin drop (vertical lengthening component)
+const CHINW_DOWN_FRONTAL = 0.025; // frontal: pure vertical lengthening (projection is invisible head-on)
+const CHINW_JAW_OUT      = 0.012; // oblique: near-side mandibular border outward (crisper border)
+const CHINW_JAW_OUT_MALE = 1.4;   // male jaw-width factor on top of CHINW_JAW_OUT
+const CHINW_SIG_CHIN     = 0.085; // Gaussian radius of the chin kernels, fraction of W
+const CHINW_SIG_JAW      = 0.055; // Gaussian radius of the jaw kernels, fraction of W
 
-// Per-pixel gate factor (0..1): 1 inside the original face oval, and outside it
-// the decisiveness of the AI's change. b and a must be the UNMODIFIED original
-// and AI pixel buffers on the same grid.
-function buildHazeGate(L, w, h, b, a){
+function buildChinProjectionField(L, w, h, pose, sex){
+  const lm = L.map(p=>({x:p.x*w, y:p.y*h}));
+  const p10=lm[10], p152=lm[152], zr=lm[ZYGION.r], zl=lm[ZYGION.l];
+  if(!p10||!p152||!zr||!zl) return null;
+  const dirUp = norm(sub(p10, p152));
+  const dirOut = { x:-dirUp.y, y:dirUp.x };
+  const W = Math.abs(dot(sub(zl, zr), dirOut)) || 1;
+  const faceH = (dot(sub(p10, p152), dirUp)) || 1;
+  const down = { x:-dirUp.x, y:-dirUp.y };
+  const isMale = sex === 'male';
+
+  const kernels=[];
+  if(pose && pose.view === 'three_quarter' && (pose.nearSide === 'left' || pose.nearSide === 'right') && lm[454] && lm[234]){
+    // Oblique: project along the camera-side profile direction plus a drop.
+    const leftSign = Math.sign(dot(sub(lm[454], p152), dirOut)) || 1;
+    const nearSign = (pose.nearSide === 'left') ? leftSign : -leftSign;
+    const nearDir = mul(dirOut, nearSign);
+    const chinV = add(mul(nearDir, CHINW_FWD*W), mul(down, CHINW_DOWN*faceH));
+    const jawOut = CHINW_JAW_OUT * (isMale ? CHINW_JAW_OUT_MALE : 1);
+    const paraNear = (pose.nearSide === 'right') ? lm[148] : lm[377];
+    const pjNear   = (pose.nearSide === 'right') ? lm[PREJOWL.r] : lm[PREJOWL.l];
+    const goNear   = (pose.nearSide === 'right') ? lm[GONION.r]  : lm[GONION.l];
+    const sigC=CHINW_SIG_CHIN*W, sigJ=CHINW_SIG_JAW*W;
+    kernels.push({ cx:p152.x, cy:p152.y, twoSig:2*sigC*sigC, vx:chinV.x, vy:chinV.y });
+    if(paraNear) kernels.push({ cx:paraNear.x, cy:paraNear.y, twoSig:2*(sigC*0.8)*(sigC*0.8), vx:chinV.x*0.85, vy:chinV.y*0.85 });
+    if(pjNear){
+      const v = add(mul(nearDir, jawOut*W), mul(chinV, 0.30));
+      kernels.push({ cx:pjNear.x, cy:pjNear.y, twoSig:2*sigJ*sigJ, vx:v.x, vy:v.y });
+    }
+    if(goNear){
+      const v = mul(nearDir, jawOut*0.7*W);
+      kernels.push({ cx:goNear.x, cy:goNear.y, twoSig:2*sigJ*sigJ, vx:v.x, vy:v.y });
+    }
+  } else if(pose && pose.view === 'frontal'){
+    // Frontal: projection toward the camera is invisible head-on; what reads is
+    // vertical lengthening of the lower third. Chin point plus both para-menton
+    // points travel down; jaw width is untouched (the AI taper handles shape).
+    const chinV = mul(down, CHINW_DOWN_FRONTAL*faceH);
+    const sigC=CHINW_SIG_CHIN*W;
+    kernels.push({ cx:p152.x, cy:p152.y, twoSig:2*sigC*sigC, vx:chinV.x, vy:chinV.y });
+    for(const idx of [148, 377]){
+      const p=lm[idx]; if(!p) continue;
+      kernels.push({ cx:p.x, cy:p.y, twoSig:2*(sigC*0.8)*(sigC*0.8), vx:chinV.x*0.7, vy:chinV.y*0.7 });
+    }
+  } else {
+    return null; // out_of_range or no pose: no geometric projection
+  }
+  if(!kernels.length) return null;
+
+  // Feature guard only (lips, nose, eyes, brows must not be dragged); NO oval
+  // guard, the silhouette is supposed to move. Same disc/blur recipe as the lift.
+  const pc=document.createElement("canvas"); pc.width=w; pc.height=h;
+  const pctx=pc.getContext("2d",{willReadFrequently:true});
+  pctx.fillStyle="#000"; pctx.fillRect(0,0,w,h);
+  pctx.fillStyle="#fff";
+  const rDisc=0.026*W;
+  for(const idx of PROTECTED){ const p=lm[idx]; if(!p) continue;
+    pctx.beginPath(); pctx.arc(p.x,p.y,rDisc,0,7); pctx.fill(); }
+  pctx.filter="blur("+(0.05*W)+"px)"; pctx.drawImage(pc,0,0); pctx.filter="none";
+  const protA=pctx.getImageData(0,0,w,h).data;
+
+  // Evaluate only a window around the kernels (3.5 sigma + travel), not the
+  // whole frame; the field is zero elsewhere by construction.
+  let kx0=w, ky0=h, kx1=0, ky1=0, travel=0;
+  for(const K of kernels){
+    const r=3.5*Math.sqrt(K.twoSig/2), t=Math.hypot(K.vx,K.vy);
+    if(t>travel) travel=t;
+    kx0=Math.min(kx0, K.cx-r); kx1=Math.max(kx1, K.cx+r);
+    ky0=Math.min(ky0, K.cy-r); ky1=Math.max(ky1, K.cy+r);
+  }
+  const padK=Math.ceil(travel)+2;
+  const wx0=Math.max(0, Math.floor(kx0-padK)), wy0=Math.max(0, Math.floor(ky0-padK));
+  const wx1=Math.min(w-1, Math.ceil(kx1+padK)), wy1=Math.min(h-1, Math.ceil(ky1+padK));
+
+  const N=w*h;
+  const sx=new Float32Array(N), sy=new Float32Array(N);
+  let x0=w, y0=h, x1=-1, y1=-1, maxPx=0;
+  for(let y=wy0;y<=wy1;y++){
+    for(let x=wx0;x<=wx1;x++){
+      const i=y*w+x;
+      let dx=0, dy=0;
+      for(let k=0;k<kernels.length;k++){
+        const K=kernels[k]; const ex=x-K.cx, ey=y-K.cy;
+        const gv=Math.exp(-(ex*ex+ey*ey)/K.twoSig);
+        dx+=K.vx*gv; dy+=K.vy*gv;
+      }
+      const guard=1-(protA[i*4]/255);
+      const ox=-dx*guard, oy=-dy*guard;
+      const mag=Math.hypot(ox,oy);
+      if(mag<0.25) continue;
+      sx[i]=ox; sy[i]=oy;
+      if(mag>maxPx) maxPx=mag;
+      if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y;
+    }
+  }
+  if(x1<0) return null;
+  const pad=Math.ceil(maxPx)+2;
+  x0=Math.max(0,x0-pad); y0=Math.max(0,y0-pad);
+  x1=Math.min(w-1,x1+pad); y1=Math.min(h-1,y1+pad);
+  return { sx, sy, x0, y0, x1, y1, maxPx };
+}
+
+// Gate + build the chin/jaw projection field. chin_jaw scope only; opts.warp
+// === false is the same A/B escape hatch as the Sculptra lift (?warp=off).
+// Never throws.
+async function maybeBuildChinWarp(beforeImg, landmarks, w, h, sex, opts){
+  if(opts && opts.warp === false) return null;
+  try {
+    const pose = await detectPose(beforeImg);
+    if(!pose || !pose.view || pose.view === 'out_of_range'){
+      console.log('%c[Visualize] M7.6 chin warp skipped: view is ' + ((pose && pose.view) || 'unknown') + '.', 'color:#888');
+      return null;
+    }
+    const f = buildChinProjectionField(landmarks, w, h, pose, sex);
+    if(f){
+      console.log('%c[Visualize] M7.6 chin/jaw projection warp ACTIVE (' + pose.view + (pose.view === 'three_quarter' ? ', near side ' + pose.nearSide : '') + '): max displacement ' + f.maxPx.toFixed(1) + 'px at full strength.', 'color:#2e7d32;font-weight:bold');
+    } else {
+      console.warn('[Visualize] M7.6 chin warp unavailable (landmarks incomplete); compositing without it.');
+    }
+    return f;
+  } catch(e){
+    console.warn('[Visualize] M7.6 chin warp failed to build; compositing without it.', e);
+    return null;
+  }
+}
+
+// One warp per scope: Sculptra 'full' gets the frontal lift, HA chin_jaw gets
+// the projection warp, everything else composites without geometry.
+async function buildWarpForScope(beforeImg, landmarks, w, h, scope, sex, opts){
+  if(scope === 'full') return maybeBuildLift(beforeImg, landmarks, w, h, scope, opts);
+  if(scope === 'chin_jaw') return maybeBuildChinWarp(beforeImg, landmarks, w, h, sex, opts);
+  return null;
+}
+
+// ---- M7.6 outline gate -------------------------------------------------------
+// chin_jaw scope only. History: M7.5 tried a luminance "decisiveness" gate here
+// (keep out-of-silhouette AI pixels only where |delta luma| was large), which
+// killed the faint grey haze but waved through the bright white blobs the model
+// painted once the prompt demanded decisive edges; decisive garbage passes a
+// decisiveness test. v28 ends the arms race: the silhouette is now moved
+// GEOMETRICALLY (buildChinProjectionField below), so the AI has no legitimate
+// business outside the original face oval at all. This gate is a hard outline
+// lock: 1 inside the oval fading to exactly 0 at and beyond it. Every class of
+// background artifact (haze, smudge, blob, halo) is structurally impossible,
+// on black and on real clinic walls alike.
+function buildOutlineGate(L, w, h){
   const lm = L.map(p=>({x:p.x*w, y:p.y*h}));
   const dirUp = norm(sub(lm[10], lm[152]));
   const dirOut = { x:-dirUp.y, y:dirUp.x };
@@ -585,15 +740,7 @@ function buildHazeGate(L, w, h, b, a){
   octx.filter="blur("+(0.015*W)+"px)"; octx.drawImage(oc,0,0); octx.filter="none";
   const oval=octx.getImageData(0,0,w,h).data;
   const N=w*h, g=new Float32Array(N);
-  for(let i=0,p4=0;i<N;i++,p4+=4){
-    const inFace=oval[p4]/255;
-    if(inFace>=0.999){ g[i]=1; continue; }
-    const dY=Math.abs(
-      (0.299*a[p4]+0.587*a[p4+1]+0.114*a[p4+2]) -
-      (0.299*b[p4]+0.587*b[p4+1]+0.114*b[p4+2]));
-    const dec=smoothstep(HAZE_GATE_LO, HAZE_GATE_HI, dY);
-    g[i]=inFace+(1-inFace)*dec;
-  }
+  for(let i=0,p4=0;i<N;i++,p4+=4){ g[i]=oval[p4]/255; }
   return g;
 }
 
@@ -747,7 +894,7 @@ function buildFoldSegs(lm, p152, dirUp, dirOut, faceH, W){
 // temporal apex + nasolabial/marionette folds only (cheeks/midface/under-eye stay
 // original); 'temple' = fossa + temporal apex only; 'chin_jaw' = HA filler chin pad
 // + mandibular border only (lips/nose/eyes/brows/cheeks/midface/neck protected).
-function buildTreatAlpha(L, w, h, scope, sex, pose){
+function buildTreatAlpha(L, w, h, scope, sex){
   const lm = L.map(p=>({x:p.x*w, y:p.y*h}));
   const p152 = lm[152];
   const dirUp = norm(sub(lm[10], lm[152]));
@@ -855,25 +1002,6 @@ function buildTreatAlpha(L, w, h, scope, sex, pose){
     }
   }
 
-  // M7.5 oblique projection runway (see PROJ_RUNWAY): at a three-quarter view,
-  // duplicate the near-side jaw segments and the chin segment offset toward the
-  // camera side (and slightly down) so the editable band gives the model room to
-  // draw the new chin and jaw forward of the old profile line. Frontal: empty.
-  const runwaySegs=[];
-  let extraFloor=0;
-  if(scope==="chin_jaw" && pose && pose.view==="three_quarter" &&
-     (pose.nearSide==="left" || pose.nearSide==="right") && lm[454]){
-    const leftSign = Math.sign(dot(sub(lm[454], p152), dirOut)) || 1;
-    const nearSign = (pose.nearSide==="left") ? leftSign : -leftSign;
-    const off = add(mul(dirOut, nearSign*PROJ_RUNWAY*W), mul(dirUp, -PROJ_DROP*faceH));
-    for(let k=0;k<jawSegs.length;k++){
-      const sg=jawSegs[k];
-      const midLat = dot(sub(lerp(sg[0],sg[1],0.5), p152), dirOut);
-      if(midLat*nearSign > -0.04*W){ runwaySegs.push([add(sg[0],off), add(sg[1],off)]); }
-    }
-    runwaySegs.push([add(chinA,off), add(chinB,off)]);
-    extraFloor=PROJ_EXTRA_FLOOR;
-  }
 
   const N=w*h, m=new Float32Array(N);
   for(let y=0,i=0;y<h;y++){
@@ -894,7 +1022,6 @@ function buildTreatAlpha(L, w, h, scope, sex, pose){
           const dc=distToSeg(x,y,chinA,chinB);
           let lf=Math.exp(-(dc*dc)/twoSigChin);
           for(let k=0;k<jawSegs.length;k++){ const sg=jawSegs[k]; const dd=distToSeg(x,y,sg[0],sg[1]); const g=Math.exp(-(dd*dd)/twoSigJaw); if(g>lf) lf=g; }
-          for(let k=0;k<runwaySegs.length;k++){ const sg=runwaySegs[k]; const dd=distToSeg(x,y,sg[0],sg[1]); const g=Math.exp(-(dd*dd)/twoSigJaw); if(g>lf) lf=g; }
           for(let k=0;k<gonialPts.length;k++){ const gp=gonialPts[k]; const dx=x-gp.x, dy=y-gp.y; const g=Math.exp(-(dx*dx+dy*dy)/twoSigGonial); if(g>lf) lf=g; }
           // Lateral taper, CONTAINED INSIDE the silhouette. Editing the taper band
           // over the dark background outside the jaw was what produced the muddy
@@ -915,7 +1042,7 @@ function buildTreatAlpha(L, w, h, scope, sex, pose){
           // The central extension is eased (0.12 -> 0.09) so chin elongation does
           // not push a crescent down over the submental shadow.
           const central=1-smoothstep(0.10,0.22,alat);     // 1 under the chin, 0 at the jaw/sides
-          const floor=-0.02 - (0.12+extraFloor)*central;  // jaw cuts at -0.02; chin column extends for clear projection (deeper at oblique)
+          const floor=-0.02 - 0.12*central;               // jaw cuts at -0.02; chin column extends to ~-0.14 for clear projection
           const neckTaper=smoothstep(floor, floor+0.05, hF);
           m[i]=Math.min(1, lf*topTaper*neckTaper*protOnly);
         }
@@ -1051,15 +1178,6 @@ function sculptraTexOpts(scope, opts){
   return Object.assign(profile, opts || {});
 }
 
-// M7.5: pose for the chin_jaw runway. Memoized detection, so this is free on a
-// photo that gets masked or composited anyway; null (any error or other scope)
-// means the frontal band, which is the exact pre-v27 behavior.
-async function poseForScope(imgEl, scope){
-  if(scope !== 'chin_jaw') return null;
-  try { return await detectPose(imgEl); }
-  catch(e){ console.warn('[Visualize] pose unavailable for chin_jaw runway; using frontal band.', e); return null; }
-}
-
 /**
  * Build the Sculptra edit-mask PNG for a photo.
  * @param {HTMLImageElement} imgEl  loaded image (the exact photo being posted)
@@ -1082,7 +1200,7 @@ export async function buildSculptraMaskBlob(imgEl, opts){
   const w = Math.round(imgEl.naturalWidth * scale);
   const h = Math.round(imgEl.naturalHeight * scale);
 
-  const m = buildTreatAlpha(landmarks, w, h, scope, sex, await poseForScope(imgEl, scope));
+  const m = buildTreatAlpha(landmarks, w, h, scope, sex);
 
   // rasterize: treated region transparent (alpha 0), protected opaque. RGB is
   // ignored by the edit endpoint; we paint white in the treated region so the
@@ -1131,7 +1249,7 @@ export async function compositeSculptra(beforeImg, aiImg, opts){
   const maxDim = (opts && opts.maxDim) || 1024;
   const gs = Math.min(1, maxDim / Math.max(beforeImg.naturalWidth, beforeImg.naturalHeight));
   const w = Math.round(beforeImg.naturalWidth * gs), h = Math.round(beforeImg.naturalHeight * gs);
-  const m = buildTreatAlpha(landmarks, w, h, scope, sex, await poseForScope(beforeImg, scope));
+  const m = buildTreatAlpha(landmarks, w, h, scope, sex);
 
   const c = document.createElement("canvas"); c.width = w; c.height = h;
   const cx = c.getContext("2d",{willReadFrequently:true});
@@ -1141,16 +1259,16 @@ export async function compositeSculptra(beforeImg, aiImg, opts){
   cx.drawImage(aiImg, 0, 0, w, h);
   const ai = cx.getImageData(0, 0, w, h), a = ai.data;
 
-  // M7.5: background haze gate (chin_jaw only). Built from the UNMODIFIED
-  // buffers before any blending mutates `a`; 1 inside the face, decisiveness
-  // of the AI's change outside it (see buildHazeGate).
-  const hazeGate = (scope === 'chin_jaw') ? buildHazeGate(landmarks, w, h, b, a) : null;
+  // M7.6: outline gate (chin_jaw only): zero AI contribution outside the
+  // original silhouette; the projected outline comes from the warp instead.
+  const outlineGate = (scope === 'chin_jaw') ? buildOutlineGate(landmarks, w, h) : null;
 
-  // M6: frontal Sculptra lift warp. The composite base becomes the patient's
-  // own pixels re-draped upward (jowl + midface); the AI delta adds light on
-  // top. Null (non-frontal, other scopes, opts.warp false, or any error) means
-  // wb === b and this is exactly the M5 composite.
-  const lift = await maybeBuildLift(beforeImg, landmarks, w, h, scope, opts);
+  // Geometry layer. Sculptra 'full': the M6 frontal lift (jowl + midface
+  // re-drape, silhouette locked). HA chin_jaw: the M7.6 projection warp (chin
+  // and near-side jaw outline moved outward; this is where projection comes
+  // from, the AI only shades inside the face). Null (other scopes, opts.warp
+  // false, or any error) means wb === b and this is exactly the M5 composite.
+  const lift = await buildWarpForScope(beforeImg, landmarks, w, h, scope, sex, opts);
   const wb = lift ? new Uint8ClampedArray(b) : b;
   if(lift) applyLiftWarp(wb, b, w, h, lift, intensity);
 
@@ -1166,7 +1284,7 @@ export async function compositeSculptra(beforeImg, aiImg, opts){
     const glowApply = tdOpts.glowApply || 0;
     const { dR, dG, dB } = buildTextureDelta(b, a0, w, h, W, tdOpts);
     for(let i=0,p=0;i<m.length;i++,p+=4){
-      const alm = Math.min(1, m[i]) * intensity * (hazeGate ? hazeGate[i] : 1);
+      const alm = Math.min(1, m[i]) * intensity * (outlineGate ? outlineGate[i] : 1);
       const al = alm * gain;
       const gl = alm * glowApply; // M6.3: glow is never gained
       a[p]   = wb[p]   + al*dR[i] + gl;
@@ -1176,7 +1294,7 @@ export async function compositeSculptra(beforeImg, aiImg, opts){
     }
   } else {
     for(let i=0,p=0;i<m.length;i++,p+=4){
-      const al = Math.min(1, m[i]) * intensity * (hazeGate ? hazeGate[i] : 1);
+      const al = Math.min(1, m[i]) * intensity * (outlineGate ? outlineGate[i] : 1);
       a[p]   = a[p]*al   + wb[p]*(1-al);
       a[p+1] = a[p+1]*al + wb[p+1]*(1-al);
       a[p+2] = a[p+2]*al + wb[p+2]*(1-al);
@@ -1207,7 +1325,7 @@ export async function makeSculptraCompositor(beforeImg, aiImg, opts){
   const maxDim = (opts && opts.maxDim) || 1024;
   const gs = Math.min(1, maxDim / Math.max(beforeImg.naturalWidth, beforeImg.naturalHeight));
   const w = Math.round(beforeImg.naturalWidth * gs), h = Math.round(beforeImg.naturalHeight * gs);
-  const m = buildTreatAlpha(landmarks, w, h, scope, sex, await poseForScope(beforeImg, scope));
+  const m = buildTreatAlpha(landmarks, w, h, scope, sex);
 
   const c = document.createElement("canvas"); c.width = w; c.height = h;
   const cx = c.getContext("2d",{willReadFrequently:true});
@@ -1219,8 +1337,9 @@ export async function makeSculptraCompositor(beforeImg, aiImg, opts){
   const a0 = new Uint8ClampedArray(out.data);     // pristine AI pixels
   const o = out.data;
 
-  // M7.5: background haze gate (chin_jaw only), from the pristine buffers.
-  const hazeGate = (scope === 'chin_jaw') ? buildHazeGate(landmarks, w, h, b, a0) : null;
+  // M7.6: outline gate (chin_jaw only): zero AI contribution outside the
+  // original silhouette; the projected outline comes from the warp instead.
+  const outlineGate = (scope === 'chin_jaw') ? buildOutlineGate(landmarks, w, h) : null;
 
   // M5.1: precompute the texture-restore delta once. apply() then writes
   // out = original + al*delta, which dials the AI volume with the slider while
@@ -1235,10 +1354,11 @@ export async function makeSculptraCompositor(beforeImg, aiImg, opts){
     dR=d.dR; dG=d.dG; dB=d.dB;
   }
 
-  // M6: precompute the frontal lift field once. apply() re-samples only the
-  // field's bounding box per call (bilinear, offsets scaled by t), so the
-  // slider dials geometry and light together in real time. Null = exact M5.
-  const lift = await maybeBuildLift(beforeImg, landmarks, w, h, scope, opts);
+  // Geometry layer, precomputed once (M6 Sculptra lift or M7.6 chin/jaw
+  // projection warp by scope). apply() re-samples only the field's bounding box
+  // per call (bilinear, offsets scaled by t), so the slider dials geometry and
+  // light together in real time. Null = exact M5 composite.
+  const lift = await buildWarpForScope(beforeImg, landmarks, w, h, scope, sex, opts);
   const wb = lift ? new Uint8ClampedArray(b) : b;
 
   return function apply(intensity){
@@ -1247,9 +1367,9 @@ export async function makeSculptraCompositor(beforeImg, aiImg, opts){
     if(textureRestore){
       // M6.2: al carries the response gain (delta extrapolation at the top).
       // M6.3: the glow term is scaled by mask and slider only, never by gain.
-      // M7.5: the haze gate snaps indecisive out-of-silhouette AI paint to 0.
+      // M7.6: the outline gate zeroes all out-of-silhouette AI paint.
       for(let i=0,p=0;i<m.length;i++,p+=4){
-        const alm = Math.min(1, m[i]) * t * (hazeGate ? hazeGate[i] : 1);
+        const alm = Math.min(1, m[i]) * t * (outlineGate ? outlineGate[i] : 1);
         const al = alm * gain;
         const gl = alm * glowApply;
         o[p]   = wb[p]   + al*dR[i] + gl;
@@ -1259,7 +1379,7 @@ export async function makeSculptraCompositor(beforeImg, aiImg, opts){
       }
     } else {
       for(let i=0,p=0;i<m.length;i++,p+=4){
-        const al = Math.min(1, m[i]) * t * (hazeGate ? hazeGate[i] : 1);
+        const al = Math.min(1, m[i]) * t * (outlineGate ? outlineGate[i] : 1);
         o[p]   = a0[p]*al   + wb[p]*(1-al);
         o[p+1] = a0[p+1]*al + wb[p+1]*(1-al);
         o[p+2] = a0[p+2]*al + wb[p+2]*(1-al);
