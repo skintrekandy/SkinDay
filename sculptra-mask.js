@@ -7,6 +7,12 @@
 // background). gpt-image-1's edit endpoint edits only the transparent region, so
 // this physically prevents the global beautification leak.
 //
+// M7 (v26): jaw-margin feather added to the Sculptra mask (the lower-face
+// alpha now dissolves over a wide band inside the jawline silhouette, fixing
+// the faint tonal step at the jaw margin seen on oblique cases), and a new
+// analyzePhoto() export that returns pose plus capture-quality metrics (face
+// size in frame, mean luma, sharpness) for the upload gate in the M7 UI.
+//
 // M6.4 (v25): extrapolation retired after three calibration rounds; the gain is
 // pinned at 1.0 and the slider is pure original-to-anchor interpolation. Strong
 // now means the full anchor. Anchor magnitude is the upstream lever (projection
@@ -66,6 +72,18 @@ const CHEEK_UE_LO = 0.56, CHEEK_UE_HI = 0.64, CHEEK_UE_ROLL = 0.18;
 // CHEEK_UE_ROLL 0.30 -> 0.18 (M6.2 calibration): the real-case pairs show a
 // clear lid-cheek junction improvement from restored midface volume that the
 // sim was under-delivering; the protected eye discs still guard the lid itself.
+
+// M7 jaw-margin feather. Along the lower-face silhouette the active band used
+// to run to the same narrow (~0.02*W) oval fade as everywhere else, leaving the
+// AI's luminance shift abutting the jawline with only a few pixels of falloff;
+// on oblique cases that read as a faint tonal step (discoloration) at the jaw
+// margin. The Sculptra scopes now additionally fade the alpha over a wide band
+// inside the lower silhouette so volume shading always dissolves well before
+// the jaw edge. Upper face (temple and cheek against hair) is untouched, and HA
+// chin_jaw is untouched because it must reach and move the outline.
+const JAW_EDGE_FEATHER = 0.055; // wide oval blur for the lower-face guard, fraction of W
+const JAW_EDGE_TOP     = 0.26;  // guard fully active below this hF (chin=0)
+const JAW_EDGE_FADE_TO = 0.38;  // guard fades out by this hF (mid-cheek unaffected)
 
 const ZYGION = { r:234, l:454 };
 const TEMPLE_OVAL = { r:127, l:356 };
@@ -599,6 +617,49 @@ export async function detectPose(imgEl){
   };
 }
 
+// ---- M7 capture-quality readout -------------------------------------------
+// Pose plus capture-quality metrics for the upload gate. Shares the memoized
+// face detection (no extra model run on a photo that will be masked anyway).
+// Returns all detectPose fields plus:
+//   faceFrac  - face-oval bounding box area as a fraction of the frame (0..1);
+//               small values mean the patient is too far from the camera.
+//   meanLuma  - mean luma (0..255) of the face crop; exposure sanity check.
+//   sharpness - Laplacian variance of a fixed-size grayscale face crop; low
+//               values suggest blur. Scale depends on the fixed 160px sampling,
+//               so thresholds belong to the caller, not here.
+// Metric failures degrade to null fields, never throw past the pose result.
+export async function analyzePhoto(imgEl){
+  const pose = await detectPose(imgEl);
+  if(!pose || !pose.view) return { ...pose, faceFrac:null, meanLuma:null, sharpness:null };
+  try {
+    const lm = await detectFace(imgEl); // memoized
+    let x0=1,y0=1,x1=0,y1=0;
+    for(const idx of FACE_OVAL){ const p=lm[idx]; if(!p) continue;
+      if(p.x<x0)x0=p.x; if(p.x>x1)x1=p.x; if(p.y<y0)y0=p.y; if(p.y>y1)y1=p.y; }
+    const faceFrac = Math.max(0,(x1-x0))*Math.max(0,(y1-y0));
+    const iw=imgEl.naturalWidth||imgEl.width, ih=imgEl.naturalHeight||imgEl.height;
+    const bx=Math.max(0,Math.floor(x0*iw)), by=Math.max(0,Math.floor(y0*ih));
+    const bw=Math.max(1,Math.ceil((x1-x0)*iw)), bh=Math.max(1,Math.ceil((y1-y0)*ih));
+    const S=160, sc=Math.min(1, S/Math.max(bw,bh));
+    const cw=Math.max(8,Math.round(bw*sc)), ch=Math.max(8,Math.round(bh*sc));
+    const c=document.createElement('canvas'); c.width=cw; c.height=ch;
+    const cx2=c.getContext('2d',{willReadFrequently:true});
+    cx2.drawImage(imgEl,bx,by,bw,bh,0,0,cw,ch);
+    const d=cx2.getImageData(0,0,cw,ch).data;
+    const g=new Float32Array(cw*ch); let sum=0;
+    for(let i=0,p=0;i<g.length;i++,p+=4){ const Y=0.299*d[p]+0.587*d[p+1]+0.114*d[p+2]; g[i]=Y; sum+=Y; }
+    const meanLuma=sum/g.length;
+    let lsum=0,l2=0,n=0;
+    for(let y=1;y<ch-1;y++){ for(let x=1;x<cw-1;x++){ const i=y*cw+x;
+      const L=4*g[i]-g[i-1]-g[i+1]-g[i-cw]-g[i+cw]; lsum+=L; l2+=L*L; n++; } }
+    const meanL=lsum/n, sharpness=l2/n-meanL*meanL;
+    return { ...pose, faceFrac, meanLuma, sharpness };
+  } catch(err){
+    console.warn('[Visualize] analyzePhoto metrics failed; returning pose only.', err);
+    return { ...pose, faceFrac:null, meanLuma:null, sharpness:null };
+  }
+}
+
 function buildFoldSegs(lm, p152, dirUp, dirOut, faceH, W){
   const segs=[];
   for(const s of ["r","l"]){
@@ -660,6 +721,14 @@ function buildTreatAlpha(L, w, h, scope, sex){
   octx.closePath(); octx.fill();
   octx.filter="blur("+(0.02*W)+"px)"; octx.drawImage(oc,0,0); octx.filter="none";
   const ovalA=octx.getImageData(0,0,w,h).data;
+
+  // M7: a second, wide-feathered oval drives the jaw-margin guard below.
+  octx.fillStyle="#000"; octx.fillRect(0,0,w,h);
+  octx.fillStyle="#fff"; octx.beginPath();
+  FACE_OVAL.forEach((idx,k)=>{ const p=lm[idx]; if(k===0) octx.moveTo(p.x,p.y); else octx.lineTo(p.x,p.y); });
+  octx.closePath(); octx.fill();
+  octx.filter="blur("+(JAW_EDGE_FEATHER*W)+"px)"; octx.drawImage(oc,0,0); octx.filter="none";
+  const ovalWideA=octx.getImageData(0,0,w,h).data;
 
   // apex centers anchored to lateral landmarks
   const cC=[], cT=[];
@@ -773,6 +842,15 @@ function buildTreatAlpha(L, w, h, scope, sex){
       const base=oval*prot;
       if(base<=0.003) continue;
 
+      // M7 jaw-margin guard (see JAW_EDGE_FEATHER): fade the alpha over a wide
+      // band inside the lower-face silhouette so shading never abuts the jaw.
+      let edgeG=1;
+      if(hF < JAW_EDGE_FADE_TO){
+        const wide=smoothstep(0.45,0.95, ovalWideA[i*4]/255);
+        const wLow=1-smoothstep(JAW_EDGE_TOP, JAW_EDGE_FADE_TO, hF);
+        edgeG=1-wLow*(1-wide);
+      }
+
       let templeFrac=0;
       if(scope==="temple" || scope==="temple_fold"){
         // fossa membership
@@ -792,7 +870,7 @@ function buildTreatAlpha(L, w, h, scope, sex){
           for(let k=0;k<foldSegs.length;k++){ const sg=foldSegs[k]; const dd=distToSeg(x,y,sg[0],sg[1]); const g=Math.exp(-(dd*dd)/twoSigFold); if(g>fw) fw=g; }
           fw*=base; if(fw>v) v=fw;
         }
-        m[i]=Math.min(1,v);
+        m[i]=Math.min(1,v)*edgeG;
         continue;
       }
 
@@ -819,7 +897,7 @@ function buildTreatAlpha(L, w, h, scope, sex){
       let axt=0; for(let k=0;k<cT.length;k++){ const dx=x-cT[k].x, dy=y-cT[k].y; const g=Math.exp(-(dx*dx+dy*dy)/twoSigT); if(g>axt) axt=g; }
       const at=axt*base; if(at>v) v=at;
 
-      m[i]=Math.min(1,v);
+      m[i]=Math.min(1,v)*edgeG;
     }
   }
   return blurAlpha(m, w, h, 3);

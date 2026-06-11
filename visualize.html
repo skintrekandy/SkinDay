@@ -157,6 +157,21 @@
     .lock-err { font-size:.78rem; color:var(--rose-m); min-height:1.1em; }
     .lock-foot { font-size:.74rem; color:var(--muted); margin-top:24px; line-height:1.6; }
     .lock-foot a { color:var(--gold); text-decoration:none; }
+    /* M7: multi-angle slots, tabs, capture guide */
+    .area-grid.three { grid-template-columns:repeat(3,1fr); }
+    .slot-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-top:12px; }
+    .slot-cell { display:flex; flex-direction:column; gap:6px; }
+    .slot-status { font-size:.7rem; line-height:1.4; color:var(--muted); min-height:2.1em; }
+    .slot-status.ok { color:#3D7A55; }
+    .slot-status.bad { color:var(--rose); }
+    .guide-link { border:none; background:transparent; color:var(--rose); font-size:.78rem; cursor:pointer; text-decoration:underline; padding:0; margin-top:10px; font-family:'DM Sans',sans-serif; }
+    .angle-tabs { display:flex; gap:8px; justify-content:center; margin:0 0 14px; flex-wrap:wrap; }
+    .guide-modal { position:fixed; inset:0; z-index:300; background:rgba(28,23,20,.55); display:flex; align-items:center; justify-content:center; padding:20px; }
+    .guide-card { background:var(--cream); border-radius:12px; max-width:540px; width:100%; max-height:84vh; overflow:auto; padding:26px 26px 22px; }
+    .guide-card h2 { font-family:'Cormorant Garamond',serif; font-weight:400; font-size:1.7rem; margin-bottom:10px; }
+    .guide-card h3 { font-size:.7rem; letter-spacing:.14em; text-transform:uppercase; color:var(--gold); margin:16px 0 6px; }
+    .guide-card p, .guide-card li { font-size:.84rem; color:var(--deep); line-height:1.6; }
+    .guide-card ul { padding-left:18px; display:flex; flex-direction:column; gap:4px; }
     .hidden { display:none !important; }
     @media(max-width:720px){ .grid,.result-grid{grid-template-columns:1fr;} .page{padding-left:16px;padding-right:16px;} .pill-grid,.area-grid,.type-toggle{grid-template-columns:1fr;} .nav-link{display:none;} }
   </style>
@@ -260,14 +275,18 @@
 
     <!-- Step 3: upload & generate -->
     <div class="card">
-      <div class="step-num">Step 3 · Upload &amp; generate</div>
-      <div class="photo-guide" id="photoGuide"><strong>Best photo:</strong> Three-quarter (45°) or side profile (90°) for lower-face contour. Well-lit, neutral expression, hair off the face.</div>
-      <label class="upload-zone" id="uploadZone">
-        <div class="upload-plus">+</div>
-        <div class="upload-txt">Upload patient photo</div>
-        <input type="file" accept="image/*" id="photoInput" />
-        <div class="zone-tag">Original</div>
-      </label>
+      <div class="step-num">Step 3 · Photos &amp; generate</div>
+      <div class="field">
+        <label>Angles to simulate (select one or more)</label>
+        <div class="area-grid three" id="angleGrid">
+          <div class="area-chip active" data-angle="frontal"><span class="tick">✓</span>Frontal</div>
+          <div class="area-chip" data-angle="r45"><span class="tick">✓</span>Right 45°</div>
+          <div class="area-chip" data-angle="l45"><span class="tick">✓</span>Left 45°</div>
+        </div>
+      </div>
+      <div class="photo-guide" id="photoGuide"><strong>Best photos:</strong> Even, diffuse light, neutral expression, hair off the face, face filling most of the frame.</div>
+      <button class="guide-link" id="guideBtn" type="button">Photo guide: how to shoot each angle (each photo is checked automatically)</button>
+      <div class="slot-grid" id="uploadSlots"></div>
       <label class="bg-toggle"><input type="checkbox" id="blackBgChk" checked /><span>Replace background with black on the generated image.</span></label>
       <div class="privacy-note"><span>🔒</span><span>The photo stays in this browser until you press Generate. Generating sends the photo to the AI image provider (OpenAI) for that single request only. It is not used to train the model. You must have the patient's consent before uploading.</span></div>
 
@@ -283,7 +302,7 @@
 
       <div class="disclaimer"><span>⚠️</span><span>Every export is labelled and carries a permanent consultation-only disclaimer. Outputs are simulations for communication, never a guaranteed result or medical prediction.</span></div>
 
-      <div class="status"><div class="dot" id="dot"></div><span id="statusText">Choose a treatment, then upload a photo</span></div>
+      <div class="status"><div class="dot" id="dot"></div><span id="statusText">Choose a treatment, then add the patient photos</span></div>
 
       <div class="btn-row"><button class="btn btn-primary" id="generateBtn" disabled>Generate simulated preview</button></div>
     </div>
@@ -292,6 +311,7 @@
   <!-- Output -->
   <section class="output" id="outputSection">
     <div class="step-num">Your consultation preview</div>
+    <div class="angle-tabs" id="angleTabs" style="display:none;"></div>
     <div class="zoom-bar">
       <button class="zoom-btn" id="zoomOut" type="button" aria-label="Zoom out">−</button>
       <span id="zoomLabel">100%</span>
@@ -329,6 +349,7 @@
       <button class="btn btn-primary" id="regenBtn">Re-generate</button>
       <button class="btn btn-light" id="insightsBtn">Compare</button>
       <button class="btn btn-dark" id="downloadBtn">Download side-by-side</button>
+      <button class="btn btn-dark" id="sheetBtn" style="display:none;">Download all angles</button>
       <button class="btn btn-light" id="plainBtn">Download plain photos</button>
       <button class="btn btn-light" id="newBtn">New case</button>
     </div>
@@ -339,6 +360,33 @@
   <div class="brand">Skin<span>Day</span></div>
   <div>Visualize AI Beta · Consultation previews only · AI-generated, not a prediction of results</div>
 </footer>
+<!-- ───────── CAPTURE GUIDE ───────── -->
+<div class="guide-modal hidden" id="guideModal">
+  <div class="guide-card">
+    <h2>Consultation photo guide</h2>
+    <p>Good input photos are the single biggest factor in simulation quality. Each photo is checked automatically when you add it.</p>
+    <h3>Lighting</h3>
+    <ul>
+      <li>Even, diffuse light from the front. Avoid strong side light, windows behind the patient, and overhead-only light.</li>
+      <li>No flash if possible; flash flattens the facial shading the simulation builds on.</li>
+    </ul>
+    <h3>Framing</h3>
+    <ul>
+      <li>Face fills roughly two-thirds of the frame, whole head and top of the neck visible.</li>
+      <li>Hair fully off the face (headband or clip), glasses off, neutral expression, mouth closed.</li>
+      <li>Camera at eye level, phone steady.</li>
+    </ul>
+    <h3>The three angles</h3>
+    <ul>
+      <li><strong>Frontal:</strong> nose pointing straight at the camera, both ears equally visible.</li>
+      <li><strong>Right 45°:</strong> patient turns so their right cheek faces the camera, about halfway to profile.</li>
+      <li><strong>Left 45°:</strong> the same turn to the other side, left cheek toward the camera.</li>
+    </ul>
+    <h3>Consistency</h3>
+    <p>Use the same angles, distance, and lighting at every visit so before and after photos stay comparable over time.</p>
+    <div class="btn-row guide-close"><button class="btn btn-primary" id="guideCloseBtn" type="button">Got it</button></div>
+  </div>
+</div>
 </div><!-- /#app -->
 
 <script>
@@ -347,18 +395,43 @@ const FREE_REGEN_MS = 60000;
 
 // Bump this whenever sculptra-mask.js changes, so the browser fetches the new
 // module instead of a stale disk-cached copy. Both imports below use it, so they
-// stay the same module instance (shared face-detection cache). v25 = M6.4
-// extrapolation retired, slider is pure original-to-anchor interpolation
-// (v24 = M6.3 form shaping; v23 = M6.2 gain; v22 = M6.1 lift warp).
-const MASK_MODULE_VERSION = '25';
+// stay the same module instance (shared face-detection cache). v26 = M7
+// multi-angle cases (jaw-margin feather in the mask, analyzePhoto for upload QC)
+// (v25 = M6.4 interpolation; v24 = M6.3; v23 = M6.2; v22 = M6.1 lift warp).
+const MASK_MODULE_VERSION = '26';
+
+/* M7: a case is one or more ANGLES, each with its own photo, QC result, job,
+   and compositor. Treatment settings are shared across the case; the response
+   slider drives every angle's compositor with the same value. */
+const ANGLE_DEF = {
+  frontal: { label:'Frontal',   short:'Frontal',  hint:'Frontal photo',
+             help:'Nose straight at the camera, both ears equally visible.' },
+  r45:     { label:'Right 45°', short:'Right 45', hint:'Right 45° photo',
+             help:"Patient's right cheek toward the camera, about halfway to profile." },
+  l45:     { label:'Left 45°',  short:'Left 45',  hint:'Left 45° photo',
+             help:"Patient's left cheek toward the camera, about halfway to profile." }
+};
+const ANGLE_ORDER = ['frontal','r45','l45'];
+
+// Upload QC thresholds. Pose and face size are hard gates (a wrong pose or a
+// tiny face wastes a generation); exposure and sharpness are warnings only,
+// since those heuristics can false-positive on legitimate clinic photos.
+const QC = { MIN_FACE_FRAC:0.05, LUMA_LO:55, LUMA_HI:205, SHARP_MIN:16 };
+
+function makeSlot(){
+  return { file:null, originalDataUrl:null, beforeDataUrl:null, blackBgCache:null,
+           resultDataUrl:null, apply:null, jobId:null, error:null,
+           status:'empty', qcMsg:'' };
+}
 
 const state = {
-  file:null, originalDataUrl:null, resultDataUrl:null,
   type:'filler', areas:['chin_jawline'], intensity:'enhanced', sex:'female',
   product:'sculptra', projection:'optimistic', timeline:'6',
-  blackBg:true, beforeDataUrl:null, blackBgCache:null,
-  lastGenAt:0, intensityApply:null, intensityPct:70
+  blackBg:true, lastGenAt:0, intensityPct:70,
+  selectedAngles:['frontal'], activeAngle:'frontal',
+  slots:{ frontal:makeSlot(), r45:makeSlot(), l45:makeSlot() }
 };
+function activeSlot(){ return state.slots[state.activeAngle]; }
 
 /* ───────── Lock screen ───────── */
 const lockScreen = document.getElementById('lockScreen');
@@ -408,8 +481,6 @@ betaKey.addEventListener('keydown', e => { if(e.key === 'Enter') attemptUnlock()
 })();
 
 /* ───────── Helpers ───────── */
-const input = document.getElementById('photoInput');
-const zone = document.getElementById('uploadZone');
 const generateBtn = document.getElementById('generateBtn');
 const regenBtn = document.getElementById('regenBtn');
 const statusText = document.getElementById('statusText');
@@ -423,7 +494,15 @@ function setStatus(text, type='idle'){
 }
 
 function syncGenerateBtn(){
-  generateBtn.disabled = !(state.file && consentChk.checked);
+  const ids = state.selectedAngles;
+  const ready = ids.length > 0 && ids.every(id => {
+    const st = state.slots[id].status;
+    return st === 'ready' || st === 'done' || st === 'generating' || st === 'error';
+  });
+  generateBtn.disabled = !(ready && consentChk.checked);
+  generateBtn.textContent = ids.length > 1
+    ? ('Generate ' + ids.length + ' simulated previews')
+    : 'Generate simulated preview';
 }
 
 function fileToDataUrl(file){
@@ -482,25 +561,129 @@ async function toBlackBackground(dataUrl){
   return canvas.toDataURL('image/jpeg', .92);
 }
 
-/* ───────── Upload ───────── */
-input.addEventListener('change', async e => {
-  const file = e.target.files[0];
-  if(!file) return;
-  if(!file.type.startsWith('image/')) { setStatus('Please upload an image file.', 'warn'); return; }
-  state.file = file;
-  state.originalDataUrl = await fileToDataUrl(file);
-  state.blackBgCache = null; state.beforeDataUrl = null;
-  let old = zone.querySelector('img'); if(old) old.remove();
-  const img = document.createElement('img'); img.src = state.originalDataUrl;
-  zone.appendChild(img); zone.classList.add('filled');
-  syncGenerateBtn();
-  setStatus(consentChk.checked ? 'Photo ready. Choose treatment and generate.' : 'Photo ready. Confirm patient consent to enable Generate.', 'ok');
+/* ───────── M7: angle slots, upload QC, capture guide ───────── */
+// Pose gate per slot. nearSide is patient-anatomical (the patient's own left or
+// right cheek toward the camera), matching how clinics label oblique photos.
+function poseMatches(angleId, a){
+  if(!a || !a.view){
+    return { ok:false, msg:'No face detected. Use a clear, unobstructed photo of the face.' };
+  }
+  if(a.view === 'out_of_range'){
+    return { ok:false, msg:'Turned too far (about ' + Math.round(a.yawDeg) + '°). Aim for roughly a 45° turn.' };
+  }
+  if(angleId === 'frontal'){
+    if(a.view !== 'frontal'){
+      return { ok:false, msg:'This reads as a three-quarter photo (~' + Math.round(a.yawDeg) + '°, ' + a.nearSide + ' side). Use it in the ' + (a.nearSide === 'right' ? 'Right' : 'Left') + ' 45° slot, or retake facing the camera.' };
+    }
+    return { ok:true, msg:'Frontal confirmed (yaw ~' + Math.round(a.yawDeg) + '°).' };
+  }
+  const want = angleId === 'r45' ? 'right' : 'left';
+  if(a.view !== 'three_quarter'){
+    return { ok:false, msg:'This reads as a frontal photo (~' + Math.round(a.yawDeg) + '°). Turn the patient about 45° so their ' + want + ' cheek faces the camera.' };
+  }
+  if(a.nearSide !== want){
+    return { ok:false, msg:"This is the patient's " + a.nearSide + ' side. This slot expects the ' + want + ' cheek toward the camera; move the photo to the other 45° slot or retake.' };
+  }
+  return { ok:true, msg:(want === 'right' ? 'Right' : 'Left') + ' 45° confirmed (yaw ~' + Math.round(a.yawDeg) + '°).' };
+}
+
+function readySummary(){
+  const ids = state.selectedAngles;
+  const ready = ids.filter(id => state.slots[id].status === 'ready' || state.slots[id].status === 'done').length;
+  if(ready === 0) return 'Add ' + (ids.length > 1 ? 'a photo for each selected angle' : 'a patient photo') + '.';
+  if(ready < ids.length) return ready + ' of ' + ids.length + ' photos ready. Add the remaining angle' + (ids.length - ready > 1 ? 's' : '') + '.';
+  return consentChk.checked ? 'All photos ready. Generate when you are.' : 'Photos ready. Confirm patient consent to enable Generate.';
+}
+
+function renderSlots(){
+  const wrap = document.getElementById('uploadSlots');
+  wrap.innerHTML = '';
+  for(const id of state.selectedAngles){
+    const sl = state.slots[id], A = ANGLE_DEF[id];
+    const cell = document.createElement('div'); cell.className = 'slot-cell';
+    const label = document.createElement('label');
+    label.className = 'upload-zone' + (sl.originalDataUrl ? ' filled' : '');
+    label.innerHTML =
+      (sl.originalDataUrl
+        ? '<img src="' + sl.originalDataUrl + '" alt="" />'
+        : '<div class="upload-plus">+</div><div class="upload-txt">' + A.hint + '</div>')
+      + '<input type="file" accept="image/*" data-angle="' + id + '" />'
+      + '<div class="zone-tag">' + A.label + '</div>';
+    cell.appendChild(label);
+    const st = document.createElement('div');
+    st.className = 'slot-status' + (sl.status === 'ready' || sl.status === 'done' ? ' ok' : sl.status === 'bad' ? ' bad' : '');
+    st.textContent = sl.qcMsg || A.help;
+    cell.appendChild(st);
+    wrap.appendChild(cell);
+  }
+  wrap.querySelectorAll('input[type=file]').forEach(inp => {
+    inp.addEventListener('change', e => {
+      const f = e.target.files[0];
+      if(f) onSlotFile(inp.dataset.angle, f);
+    });
+  });
+}
+
+async function onSlotFile(angleId, file){
+  const sl = state.slots[angleId];
+  if(!file.type.startsWith('image/')){ setStatus('Please upload an image file.', 'warn'); return; }
+  sl.file = file;
+  sl.originalDataUrl = await fileToDataUrl(file);
+  sl.blackBgCache = null; sl.beforeDataUrl = null; sl.resultDataUrl = null; sl.apply = null; sl.error = null;
+  sl.status = 'checking'; sl.qcMsg = 'Checking pose and photo quality…';
+  renderSlots(); syncGenerateBtn();
+  try {
+    const img = await loadImage(sl.originalDataUrl);
+    const mod = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
+    const a = await mod.analyzePhoto(img);
+    console.log('%c[Visualize] QC ' + angleId + ': view=' + (a && a.view) + ' yaw≈' + (a && a.yawDeg != null ? Math.round(a.yawDeg) : '?') + '° nearSide=' + (a && a.nearSide) + ' faceFrac=' + (a && a.faceFrac != null ? a.faceFrac.toFixed(3) : '?') + ' luma=' + (a && a.meanLuma != null ? Math.round(a.meanLuma) : '?') + ' sharp=' + (a && a.sharpness != null ? Math.round(a.sharpness) : '?'), 'color:#C8725A');
+    const gate = poseMatches(angleId, a);
+    if(!gate.ok){
+      sl.status = 'bad'; sl.qcMsg = '✗ ' + gate.msg;
+    } else if(a.faceFrac != null && a.faceFrac < QC.MIN_FACE_FRAC){
+      sl.status = 'bad'; sl.qcMsg = '✗ Face is too small in the frame. Move closer so the face fills most of the photo.';
+    } else {
+      const warns = [];
+      if(a.meanLuma != null && a.meanLuma < QC.LUMA_LO) warns.push('photo is quite dark');
+      if(a.meanLuma != null && a.meanLuma > QC.LUMA_HI) warns.push('photo is very bright');
+      if(a.sharpness != null && a.sharpness < QC.SHARP_MIN) warns.push('may be slightly blurry');
+      sl.status = 'ready';
+      sl.qcMsg = '✓ ' + gate.msg + (warns.length ? ' Note: ' + warns.join('; ') + '. Even light and a steady shot give the best result.' : '');
+    }
+  } catch(err){
+    console.warn('[Visualize] Photo QC failed; accepting the photo (mask fail-safes still apply).', err);
+    sl.status = 'ready'; sl.qcMsg = 'Pose check unavailable; photo accepted.';
+  }
+  renderSlots(); syncGenerateBtn();
+  setStatus(readySummary(), state.selectedAngles.every(id => ['ready','done'].includes(state.slots[id].status)) ? 'ok' : 'idle');
+}
+
+/* Angle chips: at least one stays selected; slot photos persist when an angle
+   is toggled off so nothing is lost on reselect. */
+document.querySelectorAll('#angleGrid .area-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    const id = chip.dataset.angle;
+    const sel = state.selectedAngles;
+    if(chip.classList.contains('active') && sel.length === 1) return; // keep one
+    chip.classList.toggle('active');
+    state.selectedAngles = ANGLE_ORDER.filter(a =>
+      document.querySelector('#angleGrid .area-chip[data-angle="' + a + '"]').classList.contains('active'));
+    if(!state.selectedAngles.includes(state.activeAngle)) state.activeAngle = state.selectedAngles[0];
+    renderSlots(); syncGenerateBtn();
+    setStatus(readySummary(), 'idle');
+  });
 });
+
+/* Capture guide modal */
+const guideModal = document.getElementById('guideModal');
+document.getElementById('guideBtn').addEventListener('click', () => guideModal.classList.remove('hidden'));
+document.getElementById('guideCloseBtn').addEventListener('click', () => guideModal.classList.add('hidden'));
+guideModal.addEventListener('click', e => { if(e.target === guideModal) guideModal.classList.add('hidden'); });
 
 consentChk.addEventListener('change', () => {
   consentBox.classList.toggle('checked', consentChk.checked);
   syncGenerateBtn();
-  if(state.file) setStatus(consentChk.checked ? 'Ready. Choose treatment and generate.' : 'Confirm patient consent to enable Generate.', consentChk.checked ? 'ok' : 'warn');
+  setStatus(readySummary(), consentChk.checked ? 'ok' : 'warn');
 });
 
 /* ───────── Treatment type toggle ───────── */
@@ -520,23 +703,19 @@ document.querySelectorAll('#typeToggle .type-btn').forEach(btn => {
 function updatePhotoGuide(){
   const el = document.getElementById('photoGuide');
   if(!el) return;
-  const base = 'Well-lit, neutral expression, hair off the face.';
-  let angle;
+  const base = 'Even, diffuse light, neutral expression, hair off the face, face filling most of the frame.';
+  let tip;
   if(state.type === 'biostim'){
-    angle = 'Front-facing or three-quarter (45°), same angle each visit to compare the timeline.';
+    tip = 'Frontal plus both 45° angles shows the full Sculptra effect (temple and cheek read best on the obliques). Same angles every visit.';
   } else {
     const a = state.areas || [];
-    if(a.includes('nose')){
-      angle = 'Side profile (90°) or three-quarter (45°) for the nasal bridge.';
-    } else if(a.includes('chin_jawline') || a.includes('jawline') || a.includes('chin')){
-      angle = 'Three-quarter (45°) or side profile (90°) for lower-face contour.';
-    } else if(a.includes('nasolabial_folds')){
-      angle = 'Front-facing or three-quarter (45°) for the nasolabial folds.';
+    if(a.includes('nose') || a.includes('chin_jawline') || a.includes('jawline') || a.includes('chin')){
+      tip = 'A 45° angle reads lower-face and profile contour best; add the frontal for balance.';
     } else {
-      angle = 'Front-facing or three-quarter (45°).';
+      tip = 'Frontal reads most areas well; add a 45° angle for contour.';
     }
   }
-  el.innerHTML = '<strong>Best photo:</strong> ' + angle + ' ' + base;
+  el.innerHTML = '<strong>Best photos:</strong> ' + base + ' ' + tip;
 }
 
 /* ───────── Filler: areas (multi) ───────── */
@@ -577,24 +756,39 @@ function strengthLabel(pct){
   return 'Strong';
 }
 
-// Live intensity slider: re-blend the cached apply() with no regeneration. Used
-// by both Sculptra and HA filler; both set state.intensityApply to a masked
-// compositor with the same (0..1) -> jpegDataURL contract.
+// Live response slider: re-blend the cached per-angle apply() with no
+// regeneration. Sculptra and HA filler both store a masked compositor on their
+// slot with the same (0..1) -> jpegDataURL contract.
 (function(){
   const slider = document.getElementById('intensitySlider');
   if(!slider) return;
   let raf = 0;
+  // Live: re-blend only the visible angle per frame (a full-res composite per
+  // angle per frame would blow the frame budget with three angles).
   slider.addEventListener('input', () => {
     const pct = parseInt(slider.value, 10) || 0;
     state.intensityPct = pct;
     document.getElementById('intensityValue').textContent = strengthLabel(pct);
-    if(!state.intensityApply) return;
+    const sl = activeSlot();
+    if(!sl || !sl.apply) return;
     if(raf) cancelAnimationFrame(raf);
     raf = requestAnimationFrame(() => {
-      const url = state.intensityApply(pct / 100);
-      state.resultDataUrl = url;
+      const url = sl.apply(pct / 100);
+      sl.resultDataUrl = url;
       document.getElementById('aiResult').src = url;
     });
+  });
+  // Settle: on release, bring every other finished angle to the same response
+  // so tab switches and exports always reflect the chosen value.
+  slider.addEventListener('change', () => {
+    const pct = state.intensityPct;
+    for(const id of state.selectedAngles){
+      if(id === state.activeAngle) continue;
+      const sl = state.slots[id];
+      if(sl.apply && sl.status === 'done'){
+        setTimeout(() => { sl.resultDataUrl = sl.apply(pct / 100); }, 0);
+      }
+    }
   });
 })();
 
@@ -753,8 +947,9 @@ function setComparePos(pos){
   cmpHandle.style.left = pos + '%';
 }
 function showCompare(){
-  cmpBefore.src = state.beforeDataUrl || state.originalDataUrl;
-  cmpAfter.src = state.resultDataUrl;
+  const sl = activeSlot();
+  cmpBefore.src = sl.beforeDataUrl || sl.originalDataUrl;
+  cmpAfter.src = sl.resultDataUrl;
   setComparePos(50);
   resultGrid.style.display = 'none';
   compareWrap.style.display = 'block';
@@ -768,7 +963,7 @@ function hideAnnotations(){
 }
 insightsBtn.addEventListener('click', () => {
   if(compareWrap.style.display === 'block'){ hideAnnotations(); }
-  else if(state.resultDataUrl){ showCompare(); }
+  else if(activeSlot().resultDataUrl){ showCompare(); }
 });
 
 // drag the divider (mouse + touch, via pointer events)
@@ -790,15 +985,14 @@ compareCard.addEventListener('pointercancel', () => { cmpDragging = false; });
 // Poll the background job until it finishes. The slow gpt-image-1 call now runs
 // in a Netlify background function (15-min budget), so this replaces the single
 // synchronous request that used to 504.
-async function pollForResult(jobId, key, isRegen){
+async function pollForResult(jobId, key){
   const startedAt = Date.now();
   const MAX_MS = 4 * 60 * 1000;   // hard stop after 4 minutes
   const INTERVAL_MS = 3000;
   while(true){
     await new Promise(r => setTimeout(r, INTERVAL_MS));
-    const secs = Math.round((Date.now() - startedAt) / 1000);
-    setStatus((isRegen ? 'Re-generating' : 'Generating AI preview') + '… ' + secs + 's. Runs in the background; keep this tab open.', 'spin');
-
+    // status text is owned by the per-case ticker in runGeneration (M7: several
+    // angles poll concurrently, so a per-poll status line would fight itself).
     let res;
     try { res = await fetch('/.netlify/functions/get-visualization?jobId=' + encodeURIComponent(jobId), { headers:{ 'x-beta-key':key } }); }
     catch { continue; }   // transient network blip; keep polling
@@ -816,171 +1010,206 @@ async function pollForResult(jobId, key, isRegen){
   }
 }
 
+async function prepAndStartSlot(angleId, key){
+  const sl = state.slots[angleId];
+  sl.status = 'generating'; sl.error = null; sl.apply = null;
+
+  // Black background per photo, applied at generation time, never on upload.
+  let beforeDataUrl = sl.originalDataUrl;
+  if(state.blackBg){
+    if(!sl.blackBgCache){
+      try { sl.blackBgCache = await toBlackBackground(sl.originalDataUrl); }
+      catch(err){ console.error('[Visualize] ' + angleId + ': background isolation failed; using the original.', err); sl.blackBgCache = null; }
+    }
+    if(sl.blackBgCache) beforeDataUrl = sl.blackBgCache;
+  }
+  sl.beforeDataUrl = beforeDataUrl;
+
+  const blob = await resizeToUpload(beforeDataUrl);
+  const form = new FormData();
+  form.append('image', blob, 'patient-' + angleId + '.jpg');
+  form.append('type', state.type);
+
+  // Hybrid mask per photo (each angle has its own landmarks). Fail-safe: any
+  // error posts no mask, falling back to a full-image edit.
+  const maskScope = (state.type === 'biostim' && state.product === 'sculptra') ? 'full'
+                  : (state.type === 'filler') ? 'chin_jaw'
+                  : null;
+  if(maskScope){
+    try {
+      const beforeImg = await loadImage(beforeDataUrl);
+      const mod = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
+      const maskBlob = await mod.buildSculptraMaskBlob(beforeImg, { maxDim:1024, scope:maskScope, sex:state.sex });
+      if(maskBlob){
+        form.append('mask', maskBlob, 'mask.png');
+        console.log('%c[Visualize] ' + angleId + ': mask v' + MASK_MODULE_VERSION + ' built (' + Math.round(maskBlob.size/1024) + ' kB).', 'color:#2e7d32;font-weight:bold');
+      } else {
+        console.warn('[Visualize] ' + angleId + ': mask empty (no face); sending WITHOUT a mask (raw AI).');
+      }
+    } catch(err){
+      console.error('%c[Visualize] ' + angleId + ': mask FAILED; sending WITHOUT a mask (raw AI).', 'color:#c62828;font-weight:bold', err);
+    }
+  }
+
+  if(state.type === 'filler'){
+    const postAreas = (state.areas.length ? state.areas : ['chin_jawline'])
+      .flatMap(a => a === 'chin_jawline' ? ['chin','jawline'] : [a]);
+    form.append('areas', postAreas.join(','));
+    // One masked anchor at the upper-realistic Enhanced strength; the response
+    // slider dials the in-mask intensity down from there.
+    form.append('intensity', 'enhanced');
+  } else {
+    form.append('product', state.product);
+    form.append('timeline', state.timeline);
+    form.append('projection', state.projection);
+  }
+
+  const jobId = (window.crypto && crypto.randomUUID && crypto.randomUUID()) ||
+                (Date.now() + '-' + Math.random().toString(36).slice(2));
+  form.append('jobId', jobId);
+  sl.jobId = jobId;
+
+  const startRes = await fetch('/.netlify/functions/start-visualization', {
+    method:'POST', headers:{ 'x-beta-key':key }, body:form
+  });
+  if(startRes.status === 401){ sessionStorage.removeItem(KEY_STORE); location.reload(); throw new Error('Session expired.'); }
+  if(!startRes.ok){
+    let e; try { e = JSON.parse(await startRes.text()); } catch {}
+    throw new Error((e && e.error) || ('Could not start generation (HTTP ' + startRes.status + ').'));
+  }
+}
+
+async function finishSlot(angleId, key){
+  const sl = state.slots[angleId];
+  sl.resultDataUrl = await pollForResult(sl.jobId, key);
+
+  // Masked compositor per angle: AI inside the treatment mask, the original
+  // photo everywhere else, exposing apply(0..1) -> jpegDataURL for the shared
+  // response slider. Fail-safe: on any error keep the raw AI for this angle.
+  const compScope = (state.type === 'biostim' && state.product === 'sculptra') ? 'full'
+                  : (state.type === 'filler') ? 'chin_jaw'
+                  : null;
+  if(compScope){
+    try {
+      const beforeImg = await loadImage(sl.beforeDataUrl || sl.originalDataUrl);
+      const aiImg = await loadImage(sl.resultDataUrl);
+      const { makeSculptraCompositor } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
+      // M6 A/B hook: append ?warp=off to compare against the pure M5 composite.
+      const warpOn = !/[?&]warp=off\b/i.test(location.search);
+      const apply = await makeSculptraCompositor(beforeImg, aiImg, { scope:compScope, sex:state.sex, warp:warpOn });
+      if(apply){
+        sl.apply = apply;
+        sl.resultDataUrl = apply(state.intensityPct / 100);
+        console.log('%c[Visualize] ' + angleId + ': compositor ready; outside the treatment zone is the original photo.', 'color:#2e7d32;font-weight:bold');
+      } else {
+        console.warn('[Visualize] ' + angleId + ': compositor null (no face); showing RAW AI for this angle, slider skips it.');
+      }
+    } catch(err){
+      console.error('%c[Visualize] ' + angleId + ': compositor FAILED; showing RAW AI for this angle.', 'color:#c62828;font-weight:bold', err);
+    }
+  }
+  sl.status = 'done';
+}
+
 async function runGeneration(isRegen){
-  if(!state.file) return;
   const key = sessionStorage.getItem(KEY_STORE) || '';
-  setStatus(isRegen ? 'Re-generating…' : 'Generating AI preview… this may take 20–60 seconds.', 'spin');
+  const angles = state.selectedAngles.filter(id => state.slots[id].originalDataUrl);
+  if(!angles.length) return;
   generateBtn.disabled = true; regenBtn.disabled = true;
+
+  const t0 = Date.now();
+  setStatus((isRegen ? 'Re-generating' : 'Generating') + '… this may take 1-3 minutes.', 'spin');
+  const ticker = setInterval(() => {
+    const secs = Math.round((Date.now() - t0) / 1000);
+    const done = angles.filter(id => state.slots[id].status === 'done').length;
+    setStatus((isRegen ? 'Re-generating ' : 'Generating ') + angles.length + ' angle' + (angles.length > 1 ? 's' : '') +
+      '… ' + secs + 's (' + done + '/' + angles.length + ' ready). Runs in the background; keep this tab open.', 'spin');
+  }, 1000);
+
   try {
-    // Black background is applied HERE, at generation, never on upload.
-    // We black out the original and use it as both the model input and the
-    // "before" panel, so before and after share the same clean backdrop.
-    let beforeDataUrl = state.originalDataUrl;
-    if(state.blackBg){
-      if(!state.blackBgCache){
-        setStatus('Preparing image… isolating the subject (first run downloads a small model).', 'spin');
-        try { state.blackBgCache = await toBlackBackground(state.originalDataUrl); }
-        catch(err){ console.error(err); state.blackBgCache = null; }
-      }
-      if(state.blackBgCache){ beforeDataUrl = state.blackBgCache; }
-      else { setStatus('Could not isolate the background; using the original photo.', 'warn'); }
-    }
-    state.beforeDataUrl = beforeDataUrl;
-    setStatus(isRegen ? 'Re-generating…' : 'Generating AI preview… this may take 20–60 seconds.', 'spin');
-
-    const blob = await resizeToUpload(beforeDataUrl);
-    const form = new FormData();
-    form.append('image', blob, 'patient.jpg');
-    form.append('type', state.type);
-
-    // Hybrid mask: build a treatment-region mask and post it so the AI edit is
-    // confined to it and cannot beautify outside it. Sculptra uses the full
-    // lateral scope; HA filler uses the chin_jaw scope (chin pad + mandibular
-    // border, everything else protected). Generated at the same 1024px cap as the
-    // posted image so dimensions match. Fail-safe: any error (no face, model load)
-    // posts no mask, falling back to a full-image edit.
-    const maskScope = (state.type === 'biostim' && state.product === 'sculptra') ? 'full'
-                    : (state.type === 'filler') ? 'chin_jaw'
-                    : null;
-    if(maskScope){
-      try {
-        setStatus('Preparing treatment mask… (first run downloads a small model).', 'spin');
-        const beforeImg = await loadImage(beforeDataUrl);
-        const mod = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
-        const { buildSculptraMaskBlob, detectPose } = mod;
-
-        // M-obl spike: head-pose readout on the same image element (shares the
-        // memoized face detection, so no extra model run). Logs yaw, view, and
-        // near side for the oblique shakedown, and hard-rejects > 50 degrees with
-        // photo guidance so a steep angle never burns an API call this milestone.
-        let pose = null;
-        try {
-          pose = await detectPose(beforeImg);
-          if(pose && pose.view){
-            console.log('%c[Visualize] Pose: view=' + pose.view + ' yaw≈' + Math.round(pose.yawDeg) + '° (' + pose.source + ')'
-              + ' nearSide=' + pose.nearSide
-              + ' [matrix=' + (pose.matrixYawDeg==null?'n/a':Math.round(pose.matrixYawDeg)+'°')
-              + ' proxy=' + Math.round(pose.proxyYawDeg) + '°]',
-              'color:#C8725A;font-weight:bold');
-          } else {
-            console.warn('[Visualize] Pose: no face detected for pose readout; proceeding (mask fail-safe applies).');
-          }
-        } catch(perr){
-          console.warn('[Visualize] Pose readout failed; proceeding without the angle gate.', perr);
-        }
-        if(pose && pose.view === 'out_of_range'){
-          setStatus('This photo is turned too far (about ' + Math.round(pose.yawDeg) + '°). For now, use a front-facing or gentle three-quarter angle, roughly within 50 degrees. Steeper profiles are not supported yet.', 'warn');
-          return;
-        }
-
-        console.log('%c[Visualize] Mask v' + MASK_MODULE_VERSION + ' (scope ' + maskScope + '): loading module + MediaPipe…', 'color:#C8725A');
-        const maskBlob = await buildSculptraMaskBlob(beforeImg, { maxDim: 1024, scope: maskScope, sex: state.sex });
-        if(maskBlob){
-          form.append('mask', maskBlob, 'mask.png');
-          console.log('%c[Visualize] Mask BUILT and attached (scope ' + maskScope + ', ' + Math.round(maskBlob.size/1024) + ' kB).', 'color:#2e7d32;font-weight:bold');
-        } else {
-          console.warn('[Visualize] Mask returned empty (no face); sending request WITHOUT a mask (raw AI).');
-        }
-      } catch(err) {
-        console.error('%c[Visualize] Mask FAILED; sending request WITHOUT a mask (raw AI). The result may be globally beautified.', 'color:#c62828;font-weight:bold', err);
+    // Prep and start sequentially: background isolation and the mask each run a
+    // local model, and three at once would thrash memory. The slow generations
+    // themselves then run in parallel server-side and are polled concurrently.
+    const started = [];
+    for(const id of angles){
+      try { await prepAndStartSlot(id, key); started.push(id); }
+      catch(err){
+        console.error('[Visualize] ' + id + ' failed to start:', err);
+        const sl = state.slots[id]; sl.status = 'error'; sl.error = (err && err.message) || 'Could not start generation.';
       }
     }
-
-    if(state.type === 'filler'){
-      const postAreas = (state.areas.length ? state.areas : ['chin_jawline'])
-        .flatMap(a => a === 'chin_jawline' ? ['chin','jawline'] : [a]);
-      form.append('areas', postAreas.join(','));
-      // One masked anchor. Generate at the upper-realistic Enhanced strength; the
-      // composite slider dials the in-mask intensity down from there.
-      form.append('intensity', 'enhanced');
-    } else {
-      form.append('product', state.product);
-      form.append('timeline', state.timeline);
-      form.append('projection', state.projection);
+    if(started.length){
+      await Promise.allSettled(started.map(id =>
+        finishSlot(id, key).catch(err => {
+          const sl = state.slots[id];
+          sl.status = 'error'; sl.error = (err && err.message) || 'Generation failed.';
+        })
+      ));
     }
+  } finally {
+    clearInterval(ticker);
+  }
 
-    // Async generation: stash the job (start), then poll until the background
-    // worker finishes. Removes the synchronous Netlify timeout (the 504s).
-    const jobId = (window.crypto && crypto.randomUUID && crypto.randomUUID()) ||
-                  (Date.now() + '-' + Math.random().toString(36).slice(2));
-    form.append('jobId', jobId);
+  const doneIds = angles.filter(id => state.slots[id].status === 'done');
+  const failIds = angles.filter(id => state.slots[id].status === 'error');
+  if(doneIds.length) state.lastGenAt = Date.now();
 
-    const startRes = await fetch('/.netlify/functions/start-visualization', {
-      method:'POST', headers:{ 'x-beta-key':key }, body:form
-    });
-    if(startRes.status === 401){ sessionStorage.removeItem(KEY_STORE); location.reload(); return; }
-    if(!startRes.ok){
-      let e; try { e = JSON.parse(await startRes.text()); } catch {}
-      throw new Error((e && e.error) || ('Could not start generation (HTTP ' + startRes.status + ').'));
-    }
-
-    state.resultDataUrl = await pollForResult(jobId, key, isRegen);
-    state.lastGenAt = Date.now();
-
-    // Build the live intensity slider via the masked compositor: AI inside the
-    // treatment mask, the original photo everywhere else, pixel for pixel. Sculptra
-    // uses the full lateral scope; HA filler uses the chin_jaw scope. Both expose
-    // the same apply(0..1)->jpegDataURL, so the slider code is identical and there
-    // is no ghosting (outside the mask is the original by construction).
-    // Fail-safe: on any error keep the raw AI result with the slider hidden.
-    state.intensityApply = null;
-    const compScope = (state.type === 'biostim' && state.product === 'sculptra') ? 'full'
-                    : (state.type === 'filler') ? 'chin_jaw'
-                    : null;
-    if(compScope){
-      try {
-        const beforeImg = await loadImage(state.beforeDataUrl || state.originalDataUrl);
-        const aiImg = await loadImage(state.resultDataUrl);
-        console.log('%c[Visualize] Composite v' + MASK_MODULE_VERSION + ' (scope ' + compScope + '): building compositor…', 'color:#C8725A');
-        const { makeSculptraCompositor } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
-        // M6 A/B hook: append ?warp=off to the URL to disable the lift warp and
-        // compare against the pure M5 composite on the same generation.
-        const warpOn = !/[?&]warp=off\b/i.test(location.search);
-        const apply = await makeSculptraCompositor(beforeImg, aiImg, { scope: compScope, sex: state.sex, warp: warpOn });
-        if(apply){
-          state.intensityApply = apply;
-          state.resultDataUrl = apply(state.intensityPct / 100);
-          console.log('%c[Visualize] Compositor READY (scope ' + compScope + '). Slider is live; everything outside the treatment zone is the original photo.', 'color:#2e7d32;font-weight:bold');
-        } else {
-          console.warn('[Visualize] Compositor returned null (no face); showing RAW AI, slider disabled.');
-        }
-      } catch(err) {
-        console.error('%c[Visualize] Compositor FAILED; showing RAW AI, slider disabled.', 'color:#c62828;font-weight:bold', err);
-      }
-    }
-
-    const showSlider = !!state.intensityApply;
-    document.getElementById('intensityWrap').style.display = showSlider ? 'block' : 'none';
-    if(showSlider){
-      document.getElementById('intensitySlider').value = state.intensityPct;
-      document.getElementById('intensityValue').textContent = strengthLabel(state.intensityPct);
-    }
-
-    document.getElementById('originalResult').src = state.beforeDataUrl || state.originalDataUrl;
-    document.getElementById('aiResult').src = state.resultDataUrl;
-    resetZoom();
-    document.getElementById('simTag').textContent = 'Simulated · AI Visualization' + (state.type === 'biostim' ? ' · ' + (state.timeline === '12' ? '12 months' : state.timeline + ' months') : '');
-    hideAnnotations();
+  if(doneIds.length){
+    if(!doneIds.includes(state.activeAngle)) state.activeAngle = doneIds[0];
+    renderTabs();
+    renderActiveSlot();
     document.getElementById('outputSection').classList.add('visible');
     document.getElementById('outputSection').scrollIntoView({ behavior:'smooth', block:'start' });
-    setStatus('Preview generated.', 'ok');
     updateRegenNote();
-  } catch(err) {
-    console.error(err);
-    setStatus(err.message || 'Could not generate preview. Check the Netlify function and API key.', 'warn');
-  } finally {
-    syncGenerateBtn(); regenBtn.disabled = false;
   }
+  if(!failIds.length){
+    setStatus(doneIds.length > 1 ? 'All ' + doneIds.length + ' previews generated.' : 'Preview generated.', 'ok');
+  } else if(doneIds.length){
+    setStatus(doneIds.length + ' of ' + angles.length + ' previews generated. Failed: ' +
+      failIds.map(id => ANGLE_DEF[id].short + ' (' + state.slots[id].error + ')').join('; ') + '. Re-generate to retry.', 'warn');
+  } else {
+    setStatus('Generation failed: ' + state.slots[failIds[0]].error, 'warn');
+  }
+  syncGenerateBtn(); regenBtn.disabled = false;
+}
+
+/* ───────── M7: angle tabs + active-slot rendering ───────── */
+function renderTabs(){
+  const tabs = document.getElementById('angleTabs');
+  const ids = state.selectedAngles.filter(id => ['done','error','generating'].includes(state.slots[id].status));
+  if(ids.length <= 1){ tabs.style.display = 'none'; tabs.innerHTML = ''; return; }
+  tabs.style.display = 'flex'; tabs.innerHTML = '';
+  for(const id of ids){
+    const sl = state.slots[id];
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'tab' + (id === state.activeAngle ? ' active' : '');
+    b.textContent = ANGLE_DEF[id].short + (sl.status === 'error' ? ' ⚠' : sl.status === 'done' ? '' : ' …');
+    b.addEventListener('click', () => { state.activeAngle = id; renderTabs(); renderActiveSlot(); });
+    tabs.appendChild(b);
+  }
+}
+
+function renderActiveSlot(){
+  const sl = activeSlot();
+  const multi = state.selectedAngles.length > 1;
+  document.getElementById('originalResult').src = sl.beforeDataUrl || sl.originalDataUrl || '';
+  document.getElementById('aiResult').src = sl.resultDataUrl || sl.beforeDataUrl || sl.originalDataUrl || '';
+  let tag = 'Simulated · AI Visualization';
+  if(multi) tag += ' · ' + ANGLE_DEF[state.activeAngle].short;
+  if(state.type === 'biostim') tag += ' · ' + (state.timeline === '12' ? '12 months' : state.timeline + ' months');
+  if(sl.status === 'error') tag = 'Generation failed for this angle · Re-generate to retry';
+  document.getElementById('simTag').textContent = tag;
+  const showSlider = !!sl.apply;
+  document.getElementById('intensityWrap').style.display = showSlider ? 'block' : 'none';
+  if(showSlider){
+    document.getElementById('intensitySlider').value = state.intensityPct;
+    document.getElementById('intensityValue').textContent = strengthLabel(state.intensityPct);
+  }
+  const doneCount = state.selectedAngles.filter(id => state.slots[id].status === 'done').length;
+  document.getElementById('sheetBtn').style.display = doneCount > 1 ? '' : 'none';
+  resetZoom();
+  hideAnnotations();
 }
 generateBtn.addEventListener('click', () => runGeneration(false));
 regenBtn.addEventListener('click', () => runGeneration(true));
@@ -1071,18 +1300,23 @@ window.addEventListener('touchend', e => {
 });
 
 /* ───────── Export (canvas) ───────── */
-async function drawExport(includeText=true){
-  await (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve());
-  const before = await loadImage(state.beforeDataUrl || state.originalDataUrl);
-  const after = await loadImage(state.resultDataUrl);
-  const canvas = document.getElementById('exportCanvas');
-  const ctx = canvas.getContext('2d');
-  const panelW = 900, panelH = 1125, gap = 6;
-  const clinic = includeText ? document.getElementById('clinicName').value.trim() : '';
-  const footerH = includeText ? (clinic ? 132 : 104) : 0;
-  canvas.width = panelW * 2 + gap;
-  canvas.height = panelH + footerH;
-  ctx.fillStyle = '#1C1714'; ctx.fillRect(0,0,canvas.width,canvas.height);
+function simKicker(angleId){
+  const multiDone = state.selectedAngles.filter(id => state.slots[id].status === 'done').length > 1;
+  const parts = ['AI Visualization'];
+  if(multiDone) parts.push(ANGLE_DEF[angleId].label);
+  if(state.type === 'biostim') parts.push(state.timeline + ' months');
+  if(state.type === 'biostim' || (state.type === 'filler' && state.slots[angleId].apply)){
+    parts.push(strengthLabel(state.intensityPct || 70) + ' response');
+  }
+  return parts.join(' · ');
+}
+
+// One Original/Simulated pair at a vertical offset. Used by both the
+// single-angle export and the multi-angle case sheet (one row per angle).
+async function drawPair(ctx, angleId, yOff, panelW, panelH, gap, includeText){
+  const sl = state.slots[angleId];
+  const before = await loadImage(sl.beforeDataUrl || sl.originalDataUrl);
+  const after = await loadImage(sl.resultDataUrl);
 
   function cover(img, x, y, w, h){
     const scale = Math.max(w/img.width, h/img.height);
@@ -1091,54 +1325,68 @@ async function drawExport(includeText=true){
     const sy = (img.height - sh)/2;
     ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
   }
-  cover(before, 0, 0, panelW, panelH);
-  cover(after, panelW + gap, 0, panelW, panelH);
-
-  // Metadata kicker for the simulated panel; carries the timeframe (months) for biostim.
-  function simKicker(){
-    if(state.type === 'biostim'){
-      const months = state.timeline + ' months';
-      return 'AI Visualization · ' + months + ' · ' + strengthLabel(state.intensityPct || 70) + ' response';
-    }
-    if(state.type === 'filler' && state.intensityApply){
-      return 'AI Visualization · ' + strengthLabel(state.intensityPct || 70) + ' response';
-    }
-    return 'AI Visualization';
-  }
+  cover(before, 0, yOff, panelW, panelH);
+  cover(after, panelW + gap, yOff, panelW, panelH);
+  if(!includeText) return;
 
   // Editorial label: identical deep scrim on both panels, a letterspaced kicker,
-  // and a Cormorant headline. No coloured bar.
+  // and a Cormorant headline.
   function label(x, sim){
-    const grad = ctx.createLinearGradient(x, panelH-250, x, panelH);
+    const yB = yOff + panelH;
+    const grad = ctx.createLinearGradient(x, yB-250, x, yB);
     grad.addColorStop(0, 'rgba(28,23,20,0)');
     grad.addColorStop(.55, 'rgba(28,23,20,.42)');
     grad.addColorStop(1, 'rgba(28,23,20,.88)');
-    ctx.fillStyle = grad; ctx.fillRect(x, panelH-250, panelW, 250);
+    ctx.fillStyle = grad; ctx.fillRect(x, yB-250, panelW, 250);
 
     ctx.textAlign = 'left';
     ctx.font = '500 19px "DM Sans", sans-serif';
     ctx.letterSpacing = '3px';
     ctx.fillStyle = sim ? 'rgba(201,169,110,.96)' : 'rgba(181,168,159,.82)';
-    ctx.fillText((sim ? simKicker() : 'As photographed').toUpperCase(), x + 40, panelH - 80);
+    ctx.fillText((sim ? simKicker(angleId) : 'As photographed').toUpperCase(), x + 40, yB - 80);
     ctx.letterSpacing = '0px';
 
     ctx.font = '400 58px "Cormorant Garamond", serif';
     ctx.fillStyle = 'rgba(250,247,242,.97)';
-    ctx.fillText(sim ? 'Simulated' : 'Original', x + 38, panelH - 34);
+    ctx.fillText(sim ? 'Simulated' : 'Original', x + 38, yB - 34);
+  }
+  label(0, false);
+  label(panelW + gap, true);
+}
+
+// angleIds: one id = the classic side-by-side; several = the case sheet with
+// one row per angle and a single shared footer.
+async function drawExport(includeText, angleIds){
+  await (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve());
+  const ids = angleIds.filter(id => state.slots[id].resultDataUrl);
+  if(!ids.length) return null;
+
+  const canvas = document.getElementById('exportCanvas');
+  const ctx = canvas.getContext('2d');
+  const panelW = 900, panelH = 1125, gap = 6, rowGap = 6;
+  const clinic = includeText ? document.getElementById('clinicName').value.trim() : '';
+  const footerH = includeText ? (clinic ? 132 : 104) : 0;
+  canvas.width = panelW * 2 + gap;
+  canvas.height = ids.length * panelH + (ids.length - 1) * rowGap + footerH;
+  ctx.fillStyle = '#1C1714'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  let y = 0;
+  for(const id of ids){
+    await drawPair(ctx, id, y, panelW, panelH, gap, includeText);
+    y += panelH + rowGap;
   }
 
   if(includeText){
-    label(0, false);
-    label(panelW + gap, true);
-    ctx.fillStyle = '#1C1714'; ctx.fillRect(0, panelH, canvas.width, footerH);
+    const yF = canvas.height - footerH;
+    ctx.fillStyle = '#1C1714'; ctx.fillRect(0, yF, canvas.width, footerH);
     ctx.textAlign = 'center';
     ctx.font = '300 22px "DM Sans", sans-serif'; ctx.fillStyle = 'rgba(250,247,242,.80)';
-    ctx.fillText('AI-generated visualization for consultation purposes only. Not a prediction of actual results.', canvas.width/2, panelH + 36);
-    let brandY = panelH + 74;
+    ctx.fillText('AI-generated visualization for consultation purposes only. Not a prediction of actual results.', canvas.width/2, yF + 36);
+    let brandY = yF + 74;
     if(clinic){
       ctx.font = '500 23px "DM Sans", sans-serif'; ctx.fillStyle = 'rgba(250,247,242,.92)';
-      ctx.fillText(clinic, canvas.width/2, panelH + 72);
-      brandY = panelH + 108;
+      ctx.fillText(clinic, canvas.width/2, yF + 72);
+      brandY = yF + 108;
     }
     // "Powered by SkinDay Visualize": two-tone, centered
     const pre = 'Powered by ', brand = 'SkinDay Visualize';
@@ -1153,33 +1401,42 @@ async function drawExport(includeText=true){
   return canvas;
 }
 
-async function downloadExport(includeText){
-  if(!state.resultDataUrl) return;
-  const canvas = await drawExport(includeText);
+async function downloadExport(includeText, allAngles){
+  const ids = allAngles
+    ? state.selectedAngles.filter(id => state.slots[id].status === 'done')
+    : [state.activeAngle];
+  const canvas = await drawExport(includeText, ids);
+  if(!canvas) return;
+  const suffix = allAngles ? 'all-angles' : state.activeAngle;
   const link = document.createElement('a');
-  link.download = includeText ? 'skinday-visualize-consultation-preview.png' : 'skinday-visualize-plain-preview.png';
+  link.download = (includeText ? 'skinday-visualize-consultation-preview-' : 'skinday-visualize-plain-preview-') + suffix + '.png';
   link.href = canvas.toDataURL('image/png', .95);
   link.click();
 }
-document.getElementById('downloadBtn').addEventListener('click', () => downloadExport(true));
-document.getElementById('plainBtn').addEventListener('click', () => downloadExport(false));
+document.getElementById('downloadBtn').addEventListener('click', () => downloadExport(true, false));
+document.getElementById('sheetBtn').addEventListener('click', () => downloadExport(true, true));
+document.getElementById('plainBtn').addEventListener('click', () => downloadExport(false, false));
 
 /* ───────── New case (proper reset, no reload) ───────── */
 document.getElementById('newBtn').addEventListener('click', () => {
-  state.file = null; state.originalDataUrl = null; state.resultDataUrl = null; state.lastGenAt = 0;
-  state.blackBgCache = null; state.beforeDataUrl = null; state.intensityApply = null;
-  input.value = '';
-  const oldImg = zone.querySelector('img'); if(oldImg) oldImg.remove();
-  zone.classList.remove('filled');
+  state.lastGenAt = 0;
+  for(const id of ANGLE_ORDER) state.slots[id] = makeSlot();
+  state.activeAngle = state.selectedAngles[0];
   consentChk.checked = false; consentBox.classList.remove('checked');
   hideAnnotations();
   resetZoom();
   document.getElementById('outputSection').classList.remove('visible');
+  document.getElementById('angleTabs').style.display = 'none';
+  renderSlots();
   updatePhotoGuide();
   syncGenerateBtn();
-  setStatus('Choose a treatment, then upload a photo', 'idle');
+  setStatus('Choose a treatment, then add the patient photo' + (state.selectedAngles.length > 1 ? 's' : ''), 'idle');
   window.scrollTo({ top:0, behavior:'smooth' });
 });
+
+/* ───────── Init ───────── */
+renderSlots();
+syncGenerateBtn();
 </script>
 </body>
 </html>
