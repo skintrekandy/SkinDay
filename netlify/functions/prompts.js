@@ -196,7 +196,7 @@ const TIMELINE = {
 
 // Version log so we know which prompt produced which result during tuning.
 const VERSIONS = {
-  base: 'v3', chin: 'v1', jawline: 'v1', chin_jawline: 'v7', nose: 'v1', lips: 'v2',
+  base: 'v3', chin: 'v1', jawline: 'v1', chin_jawline: 'v8', nose: 'v1', lips: 'v2',
   cheeks: 'v2', tear_trough: 'v1', nasolabial_folds: 'v1', sculptra: 'v13', sculptra_oblique: 'v13', hdr: 'v1', timeline: 'v2'
 };
 
@@ -370,15 +370,20 @@ function buildCorePrompt(sel) {
 // conservative magnitude; on this model the prohibition voice wins, which is why
 // oblique chin/jaw anchors came out timid. This base keeps every protection the
 // generic tail provides (skin texture, identity, framing, no beautification)
-// while making the lower-face contour change explicitly IN-SCOPE, and it
-// attacks the background-haze artifact at the source by demanding a decisive,
-// fully opaque silhouette extension rather than a translucent ghost.
+// while making the lower-face contour change explicitly IN-SCOPE.
+// v8 (M7.6): the silhouette itself is now displaced GEOMETRICALLY client-side
+// (the chin/jaw projection warp in sculptra-mask.js); asking the model to
+// extend the outline produced boundary artifacts in every round, so the model
+// is now told the opposite: express the treatment entirely INSIDE the existing
+// outline (volume, support, light, shadow) and paint nothing over the
+// background. The composite discards out-of-silhouette AI pixels regardless,
+// so prompt and pipeline now agree instead of fighting.
 const CHIN_JAW_SAFETY =
   " CRITICAL: this is a medical consultation photograph, not a beauty image. The ONLY region that changes is the chin, jawline, and lower-face contour described above; every other pixel stays faithful to the original. " +
   "Do NOT smooth or retouch skin anywhere, remove or soften wrinkles, even out skin tone, brighten the image, raise contrast, enlarge the eyes, lift the brows, or apply any beautifying, younger-looking, or filter-like effect. " +
   "Keep ALL skin texture (pores, fine lines, blemishes) exactly as in the original, including on the treated lower face: the new contour carries the same real skin. " +
   "Do NOT change the eyes, brows, nose, lips, cheekbones, mid-face width, hairstyle, ears, clothing, jewellery, expression, head angle and pose, camera framing and crop, lighting, or background. " +
-  "Reshaping the lower-face contour IS the treatment: a clearly projected chin and a redefined, smoothly tapered jawline are expected. Where the new chin and jaw extend past the old outline, draw them DECISIVELY as solid, fully opaque skin with a crisp silhouette edge against the background; never leave a faint, translucent, blurred, or smudged halo, ghost outline, or soft cloud outside the face. " +
+  "Reshaping the lower-face contour IS the treatment, expressed entirely INSIDE the existing face: a stronger, better-projected chin and a more defined, smoothly tapered jawline shown through volume, structural support, light, and shadow within the current outline. Do NOT paint anything outside the existing silhouette: no new tissue, glow, haze, cloud, halo, blur, or smudge over the background; the boundary between the face and the background stays exactly as photographed. " +
   "Preserve identity, ethnicity and ethnic features, and apparent age; the result must be unmistakably the same person with only the lower-face contour treated. Do not add text, labels, or watermarks.";
 
 // True when the request is the chin+jawline lower-face unit (the client posts
