@@ -433,11 +433,10 @@ const FREE_REGEN_MS = 60000;
 
 // Bump this whenever sculptra-mask.js changes, so the browser fetches the new
 // module instead of a stale disk-cached copy. Both imports below use it, so they
-// stay the same module instance (shared face-detection cache). v33 = M8.1
-// convex chin unit (witch-chin fix: supramental kernel, pogonion peak) +
-// stronger jaw border followers, border drop, dark floor 26
-// (v32 = M8.0 direction fix; v31-v22 = earlier).
-const MASK_MODULE_VERSION = '33';
+// stay the same module instance (shared face-detection cache). v34 = M8.2
+// warp shading reconciliation (one-sided luma pull-back in the moved band;
+// fixes the left-45 pale lighting patch) (v33 = M8.1 convex chin; earlier=v32-).
+const MASK_MODULE_VERSION = '34';
 
 /* M7: a case is one or more ANGLES, each with its own photo, QC result, job,
    and compositor. Treatment settings are shared across the case; the response

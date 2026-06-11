@@ -7,6 +7,20 @@
 // background). gpt-image-1's edit endpoint edits only the transparent region, so
 // this physically prevents the global beautification leak.
 //
+// M8.2 (v34): warp shading reconciliation. The one predictable residue of
+// warping real pixels: the warp can slide brighter mid-chin skin forward over
+// what used to be a darker zone (labiomental, under-jaw), so the moved band
+// arrives a notch too bright for its new neighborhood and reads as a pale
+// lighting patch (seen on the left-45 export). Fix: a ONE-SIDED reconciliation
+// pass inside the warped band only. Where the warped result's luminance
+// overshoots the location's ORIGINAL low-frequency light by more than a
+// margin, it is pulled partway back, multiplicatively (chroma untouched).
+// Gated to lit subject (original low-freq luma above the gate floor), so the
+// projected chin against a dark backdrop is never darkened, and one-sided, so
+// the AI's shadow line under the border (darker, not brighter) is never
+// touched. Fires only on overshoot: a side that already matches passes
+// through with factor ~1.
+//
 // M8.1 (v33): aesthetic shaping pass on confirmed-correct direction. (1)
 // Witch-chin fix: v32 concentrated the advance at the tip while the
 // supramental region lagged, so Strong led with a point and hooked. v33
@@ -627,6 +641,39 @@ async function maybeBuildLift(beforeImg, landmarks, w, h, scope, opts){
   }
 }
 
+// M8.2: low-frequency luminance of the ORIGINAL, the reference light field for
+// the warp shading reconciliation. Built once per compositor (reuses blurAlpha).
+function buildLowLuma(b, w, h, W){
+  const N=w*h, m=new Float32Array(N);
+  for(let i=0,p4=0;i<N;i++,p4+=4){ m[i]=0.299*b[p4]+0.587*b[p4+1]+0.114*b[p4+2]; }
+  return blurAlpha(m, w, h, Math.max(2, Math.round(WARP_SHADE_BLUR*W)));
+}
+
+// M8.2: one-sided shading reconciliation inside the warped band (see header).
+// o = composited+warped pixels (mutated), lowY = buildLowLuma of the original,
+// f = the warp field (its sx/sy mark moved destinations, its bbox bounds the pass).
+function applyWarpShadeFix(o, lowY, f, w){
+  for(let y=f.y0; y<=f.y1; y++){
+    const row=y*w;
+    for(let x=f.x0; x<=f.x1; x++){
+      const i=row+x;
+      const mag=Math.abs(f.sx[i])+Math.abs(f.sy[i]);
+      if(mag<0.5) continue;                       // outside the moved band
+      const Yo=lowY[i];
+      const subj=smoothstep(GATE_LUMA_LO, GATE_LUMA_HI, Yo);
+      if(subj<=0) continue;                       // backdrop/hair: never darken
+      const p4=i*4;
+      const Yr=0.299*o[p4]+0.587*o[p4+1]+0.114*o[p4+2];
+      const excess=Yr-(Yo+WARP_SHADE_MARGIN);
+      if(excess<=0) continue;                     // one-sided: shadows untouched
+      const band=Math.min(1, mag/2);              // feather at the band edge
+      const target=Yr - WARP_SHADE_PULL*excess*subj*band;
+      const fct=target/Math.max(1, Yr);
+      o[p4]*=fct; o[p4+1]*=fct; o[p4+2]*=fct;
+    }
+  }
+}
+
 // ---- M7.6 chin/jaw projection warp ------------------------------------------
 // Deterministic silhouette displacement for HA chin/jawline, built on the same
 // field format and backward-mapping resampler as the M6 Sculptra lift. The
@@ -862,6 +909,11 @@ async function buildWarpForScope(beforeImg, landmarks, w, h, scope, sex, opts){
 const GATE_LUMA_LO = 10;       // original luma at or below this: gate 0
 const GATE_LUMA_HI = 26;       // fully open above this
 const GATE_LOWER_PULL_IN = 0.015; // lower-face oval vertices toward centroid, fraction of W
+
+// M8.2 warp shading reconciliation (chin_jaw post-warp pass; see header).
+const WARP_SHADE_MARGIN = 10;  // luma overshoot allowed before correction starts
+const WARP_SHADE_PULL   = 0.55; // fraction of the excess pulled back
+const WARP_SHADE_BLUR   = 0.04; // low-frequency reference blur radius, fraction of W
 
 function buildOutlineGate(L, w, h, b){
   const lm = L.map(p=>({x:p.x*w, y:p.y*h}));
@@ -1469,9 +1521,11 @@ export async function compositeSculptra(beforeImg, aiImg, opts){
     }
   }
   // M7.9: chin_jaw warps the FINISHED composite so light moves with tissue.
+  // M8.2: then reconcile the moved band's shading with the local light field.
   if(lift && postWarp){
     const src = new Uint8ClampedArray(a);
     applyLiftWarp(a, src, w, h, lift, intensity);
+    applyWarpShadeFix(a, buildLowLuma(b, w, h, faceWidthPx(landmarks, w, h)), lift, w);
   }
   cx.putImageData(ai, 0, 0);
   return c.toDataURL("image/jpeg", 0.92);
@@ -1538,6 +1592,8 @@ export async function makeSculptraCompositor(beforeImg, aiImg, opts){
   const postWarp = (scope === 'chin_jaw');
   const wb = (lift && !postWarp) ? new Uint8ClampedArray(b) : b;
   const warpSrc = (lift && postWarp) ? new Uint8ClampedArray(b.length) : null;
+  // M8.2: reference light field for the post-warp shading reconciliation.
+  const lowY = (lift && postWarp) ? buildLowLuma(b, w, h, faceWidthPx(landmarks, w, h)) : null;
 
   return function apply(intensity){
     const t = Math.max(0, Math.min(1, (typeof intensity === "number" ? intensity : 1)));
@@ -1565,9 +1621,11 @@ export async function makeSculptraCompositor(beforeImg, aiImg, opts){
       }
     }
     // M7.9: chin_jaw warps the finished composite (light travels with tissue).
+    // M8.2: then reconcile the moved band's shading with the local light field.
     if(lift && postWarp){
       warpSrc.set(o);
       applyLiftWarp(o, warpSrc, w, h, lift, t);
+      applyWarpShadeFix(o, lowY, lift, w);
     }
     cx.putImageData(out, 0, 0);
     return c.toDataURL("image/jpeg", 0.92);
