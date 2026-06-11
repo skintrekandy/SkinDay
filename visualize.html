@@ -433,10 +433,10 @@ const FREE_REGEN_MS = 60000;
 
 // Bump this whenever sculptra-mask.js changes, so the browser fetches the new
 // module instead of a stale disk-cached copy. Both imports below use it, so they
-// stay the same module instance (shared face-detection cache). v30 = M7.8
-// oblique chin vector rebalanced to forward PROJECTION led by the pogonion
-// (v29 = M7.7 capsules/gate; v28 = M7.6 geometry; v27-v22 = earlier).
-const MASK_MODULE_VERSION = '30';
+// stay the same module instance (shared face-detection cache). v31 = M7.9
+// chin_jaw composites first then warps, so the AI's shading travels with the
+// projected tissue (v30 = M7.8 pogonion vector; v29-v22 = earlier).
+const MASK_MODULE_VERSION = '31';
 
 /* M7: a case is one or more ANGLES, each with its own photo, QC result, job,
    and compositor. Treatment settings are shared across the case; the response

@@ -7,6 +7,19 @@
 // background). gpt-image-1's edit endpoint edits only the transparent region, so
 // this physically prevents the global beautification leak.
 //
+// M7.9 (v31): composite-then-warp for chin_jaw. v30 proved the displacement
+// fires, and also exposed the real remaining gap: the AI's light is computed in
+// the ORIGINAL frame and gated to the ORIGINAL silhouette, so the tissue the
+// warp moves outward arrives flat-lit on the dark neck with no form shadow
+// under the new border; it reads as a pale sticker, not a projected chin. v31
+// reorders the chin_jaw pipeline: build the full composite first (patient +
+// the AI's jawline shading, including the under-border shadow the deep dark
+// floor permits), THEN warp that finished image. Light now travels with the
+// tissue: the AI's border shadow lands under the NEW border, the chin's leading
+// edge carries its shading, and the moved band inherits exactly the appearance
+// the model painted for "the jawline". Sculptra keeps the M6 warp-then-blend
+// order untouched (calibrated and approved); this reorder is chin_jaw only.
+//
 // M7.8 (v30): projection axis corrected on clinical feedback. Chin filler has
 // two distinct axes: vertical ELONGATION (menton travels down) and forward
 // PROJECTION (pogonion travels anteriorly); v29's oblique vector was nearly
@@ -1365,13 +1378,15 @@ export async function compositeSculptra(beforeImg, aiImg, opts){
   const outlineGate = (scope === 'chin_jaw') ? buildOutlineGate(landmarks, w, h, b) : null;
 
   // Geometry layer. Sculptra 'full': the M6 frontal lift (jowl + midface
-  // re-drape, silhouette locked). HA chin_jaw: the M7.6 projection warp (chin
-  // and near-side jaw outline moved outward; this is where projection comes
-  // from, the AI only shades inside the face). Null (other scopes, opts.warp
-  // false, or any error) means wb === b and this is exactly the M5 composite.
+  // re-drape, silhouette locked), applied to the BASE before blending. HA
+  // chin_jaw: the M7.6 projection warp, applied AFTER blending (M7.9,
+  // composite-then-warp) so the AI's shading travels with the moved tissue.
+  // Null (other scopes, opts.warp false, or any error) means this is exactly
+  // the M5 composite.
   const lift = await buildWarpForScope(beforeImg, landmarks, w, h, scope, sex, opts);
-  const wb = lift ? new Uint8ClampedArray(b) : b;
-  if(lift) applyLiftWarp(wb, b, w, h, lift, intensity);
+  const postWarp = (scope === 'chin_jaw');
+  const wb = (lift && !postWarp) ? new Uint8ClampedArray(b) : b;
+  if(lift && !postWarp) applyLiftWarp(wb, b, w, h, lift, intensity);
 
   if(textureRestore){
     // Keep the AI low band (volume), restore the original high band (texture);
@@ -1401,6 +1416,11 @@ export async function compositeSculptra(beforeImg, aiImg, opts){
       a[p+2] = a[p+2]*al + wb[p+2]*(1-al);
       a[p+3] = 255;
     }
+  }
+  // M7.9: chin_jaw warps the FINISHED composite so light moves with tissue.
+  if(lift && postWarp){
+    const src = new Uint8ClampedArray(a);
+    applyLiftWarp(a, src, w, h, lift, intensity);
   }
   cx.putImageData(ai, 0, 0);
   return c.toDataURL("image/jpeg", 0.92);
@@ -1459,12 +1479,18 @@ export async function makeSculptraCompositor(beforeImg, aiImg, opts){
   // projection warp by scope). apply() re-samples only the field's bounding box
   // per call (bilinear, offsets scaled by t), so the slider dials geometry and
   // light together in real time. Null = exact M5 composite.
+  // M7.9: order is scope-dependent. Sculptra warps the BASE then blends (M6,
+  // calibrated, untouched). chin_jaw blends in the original frame then warps
+  // the FINISHED composite, so the AI's border shadow and edge shading travel
+  // outward with the projected tissue instead of staying at the old outline.
   const lift = await buildWarpForScope(beforeImg, landmarks, w, h, scope, sex, opts);
-  const wb = lift ? new Uint8ClampedArray(b) : b;
+  const postWarp = (scope === 'chin_jaw');
+  const wb = (lift && !postWarp) ? new Uint8ClampedArray(b) : b;
+  const warpSrc = (lift && postWarp) ? new Uint8ClampedArray(b.length) : null;
 
   return function apply(intensity){
     const t = Math.max(0, Math.min(1, (typeof intensity === "number" ? intensity : 1)));
-    if(lift) applyLiftWarp(wb, b, w, h, lift, t);
+    if(lift && !postWarp) applyLiftWarp(wb, b, w, h, lift, t);
     if(textureRestore){
       // M6.2: al carries the response gain (delta extrapolation at the top).
       // M6.3: the glow term is scaled by mask and slider only, never by gain.
@@ -1486,6 +1512,11 @@ export async function makeSculptraCompositor(beforeImg, aiImg, opts){
         o[p+2] = a0[p+2]*al + wb[p+2]*(1-al);
         o[p+3] = 255;
       }
+    }
+    // M7.9: chin_jaw warps the finished composite (light travels with tissue).
+    if(lift && postWarp){
+      warpSrc.set(o);
+      applyLiftWarp(o, warpSrc, w, h, lift, t);
     }
     cx.putImageData(out, 0, 0);
     return c.toDataURL("image/jpeg", 0.92);
