@@ -7,6 +7,19 @@
 // background). gpt-image-1's edit endpoint edits only the transparent region, so
 // this physically prevents the global beautification leak.
 //
+// M8.1 (v33): aesthetic shaping pass on confirmed-correct direction. (1)
+// Witch-chin fix: v32 concentrated the advance at the tip while the
+// supramental region lagged, so Strong led with a point and hooked. v33
+// distributes the projection as a broad CONVEX unit: a new supramental kernel
+// (between the labiomental area and the pogonion) carries the advance upward,
+// the pogonion keeps the maximum, and the menton follows slightly less, so the
+// profile reads as a strong rounded chin, never a point. (2) Jawline
+// definition strengthened on clinical feedback ("drastically"): border
+// followers up (prejowl 0.45 -> 0.60, mid 0.25 -> 0.40, gonion 0.10 -> 0.15),
+// a small downward component on the prejowl and mid-border kernels deepens the
+// border-to-neck step, and the chin_jaw dark floor rises 22 -> 26 so the AI
+// can draw a stronger chroma-locked shadow line under the new border.
+//
 // M8.0 (v32): PROJECTION DIRECTION SIGN FIX (clinical bug report: sliding to
 // Strong moved the chin BACKWARD). The anterior direction in image space at an
 // oblique points toward the FAR cheek, the side the nose points, not toward
@@ -641,9 +654,14 @@ const CHINW_DOWN_FRONTAL = 0.025; // frontal: pure vertical lengthening (project
 // chin vector along the SAME anterior axis. (The v29-v31 lateral "jaw out"
 // pushed toward the ear, the same wrong axis as the chin bug, and is removed;
 // male jaw WIDTH is a frontal attribute and returns as a frontal feature later.)
-const CHINW_PREJOWL_F    = 0.45;  // prejowl follows the chin's advance
-const CHINW_MIDJAW_F     = 0.25;  // mid-border follows moderately
-const CHINW_GONION_F     = 0.10;  // gonion nearly anchored (the rotation pivot)
+const CHINW_PREJOWL_F    = 0.60;  // prejowl follows the chin's advance strongly (v33)
+const CHINW_MIDJAW_F     = 0.40;  // mid-border follows (v33)
+const CHINW_GONION_F     = 0.15;  // gonion nearly anchored (the rotation pivot)
+const CHINW_JAW_DROP     = 0.006; // small extra drop on prejowl/mid kernels: deepens the border-to-neck step
+// Witch-chin prevention (v33): distribute the advance as a convex unit.
+const CHINW_SUPRA_F      = 0.55;  // supramental follows: fills the step above the pogonion so the chin never hooks
+const CHINW_SUPRA_UP     = 0.115; // supramental anchor height above the menton, fraction of faceH
+const CHINW_MENTON_F     = 0.68;  // menton follows slightly less than v32 (0.75): the tip must not lead
 const CHINW_SIG_CHIN     = 0.085; // kernel radius of the chin kernels, fraction of W
 const CHINW_POGO_UP      = 0.055; // pogonion estimate: above the menton along the face axis, fraction of faceH
 const CHINW_POGO_OUT     = 0.015; // and slightly toward the near-side profile line, fraction of W
@@ -705,15 +723,22 @@ function buildChinProjectionField(L, w, h, pose, sex){
     // underside, no independent downward slide), para-menton carries the front
     // face of the chin with it.
     const pogo = add(add(p152, mul(dirUp, CHINW_POGO_UP*faceH)), mul(antDir, CHINW_POGO_OUT*W));
+    // Convex chin unit (v33 witch-chin fix): maximum advance at the pogonion,
+    // the supramental region above carries most of it (no step, no hook), the
+    // menton and para-menton follow below at reduced weight (tip never leads).
+    const supra = add(add(p152, mul(dirUp, CHINW_SUPRA_UP*faceH)), mul(antDir, CHINW_POGO_OUT*0.6*W));
     kernels.push(capsule(pogo, chinV, sigC));
-    kernels.push(capsule(p152, chinV, sigC*0.9, 0.75));
-    if(paraNear) kernels.push(capsule(paraNear, chinV, sigC*0.8, 0.8));
-    // Jawline: straightens by rotating around the gonion. All three border
-    // kernels move along the SAME anterior axis as the chin, at graded weights.
-    if(pjNear) kernels.push(capsule(pjNear, chinV, sigJ, CHINW_PREJOWL_F));
+    kernels.push(capsule(supra, chinV, sigC*0.75, CHINW_SUPRA_F));
+    kernels.push(capsule(p152, chinV, sigC*0.9, CHINW_MENTON_F));
+    if(paraNear) kernels.push(capsule(paraNear, chinV, sigC*0.8, 0.72));
+    // Jawline: straightens by rotating around the gonion. Border kernels move
+    // along the SAME anterior axis as the chin at graded weights; prejowl and
+    // mid-border also carry a small drop that deepens the border-to-neck step.
+    const jawDrop = mul(down, CHINW_JAW_DROP*faceH);
+    if(pjNear) kernels.push(capsule(pjNear, add(mul(chinV, CHINW_PREJOWL_F), jawDrop), sigJ));
     if(pjNear && goNear){
       const mid = lerp(pjNear, goNear, 0.5);
-      kernels.push(capsule(mid, chinV, sigJ, CHINW_MIDJAW_F));
+      kernels.push(capsule(mid, add(mul(chinV, CHINW_MIDJAW_F), jawDrop), sigJ));
     }
     if(goNear) kernels.push(capsule(goNear, chinV, sigJ, CHINW_GONION_F));
   } else if(pose && pose.view === 'frontal'){
@@ -1303,11 +1328,10 @@ const SCULPTRA_GLOW_APPLY = 6;
 // muddy or brown the way the earlier artifact did. Bounded and tunable: raise for
 // a crisper, more sculpted jaw and chin, lower toward 0 if a case reads shadowed
 // or harsh instead of defined.
-const CHIN_JAW_DARK_FLOOR = 22;
-// 14 -> 22 (M7.7): with geometry owning the border position and the outline
-// gate owning the background, the remaining "sharp jawline" ingredient is the
-// shadow line under the border; a deeper chroma-locked luminance floor lets the
-// AI draw it. Drop back toward 14 if a case ever reads harsh or dirty.
+const CHIN_JAW_DARK_FLOOR = 26;
+// 14 -> 22 (M7.7) -> 26 (M8.1, "jawline definition drastically"): the shadow
+// line under the border is what makes definition read; chroma stays locked so
+// this cannot discolor. Drop back toward 22 if a case reads harsh or dirty.
 function sculptraTexOpts(scope, opts){
   const isHA = (scope === 'chin_jaw');
   const profile = isHA
