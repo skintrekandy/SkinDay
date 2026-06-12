@@ -7,6 +7,27 @@
 // background). gpt-image-1's edit endpoint edits only the transparent region, so
 // this physically prevents the global beautification leak.
 //
+// M9.6 (v41): DETERMINISTIC JAWLINE DEFINITION (clinical: jawline never made
+// stronger; structural rebuild is the point of chin/jawline HA in bone
+// resorption, and the persistent "blur" reading in the jowl/jaw region).
+// Re-diagnosis against the clinic's real before/afters: the treated jaw reads
+// sharp because it has STRUCTURE, a lit border plane with a crisp shadow step
+// below it running chin to gonion, not because of pore detail. Our composite
+// preserves pores (v37-v40) but fills the region with featureless smooth
+// brightness, and featureless reads as blurry; meanwhile the AI under-paints
+// the border light, especially posteriorly. Fix, two parts:
+// (1) applyJawDefinition: a photometric border pass on the FINISHED, warped
+// composite. Along the displaced chin-to-gonion border polyline it lifts a
+// narrow band just above the border (JAWDEF_BRIGHT over JAWDEF_W_IN) and
+// deepens a band just below (JAWDEF_DARK over JAWDEF_W_OUT), luminance only,
+// added equally to RGB (chroma locked), scaled by the slider, brightening
+// gated to lit subject so hair and backdrop are never lifted. This is the
+// light architecture of a structural jawline, drawn deterministically.
+// (2) Gonial squaring at oblique: a small posterior-inferior kernel at the
+// near gonion (GONW_DEF) restores the angle the way jawline filler does, so
+// the border line has a corner to end at. Both lever-tunable; zero either to
+// disable. Sculptra untouched (chin_jaw post-warp path only).
+//
 // M9.5 (v40): the two residual softeners at high intensity (clinical: "a bit
 // better but still not enough" after v39 closed all three texture-swap paths).
 // (1) STRETCH-AWARE sharpening: the warp's detail loss follows local
@@ -934,6 +955,89 @@ function applyWarpSharpen(o, w, h, f, t, Wpx){
   }
 }
 
+// M9.6 (v41): deterministic jawline definition. Draws the light architecture
+// of a structural jawline onto the finished, warped composite: a narrow lit
+// band just above the chin-to-gonion border and a shadow step just below it.
+// The border polyline is taken from the landmarks and displaced by the warp
+// field (first order: a point at q lands at q - s*offset(q)), so the light
+// lands on the NEW border. Luminance only, added equally to RGB (chroma
+// locked). Brightening is gated to lit subject (hair, backdrop, deep shadow
+// never lifted); the shadow step is allowed to deepen the under-border region,
+// which is exactly the step that makes a jawline read as rebuilt. Levers
+// below; zero JAWDEF_BRIGHT and JAWDEF_DARK to disable the pass entirely.
+const JAWDEF_BRIGHT  = 9;     // luma lift just above the border at full strength
+const JAWDEF_DARK    = 14;    // luma deepening just below the border at full strength
+const JAWDEF_W_IN    = 0.018; // bright band width above the border, fraction of W
+const JAWDEF_W_OUT   = 0.028; // shadow band width below the border, fraction of W
+const JAWDEF_GATE_LO = 14;    // brightening gate on current luma: 0 at or below
+const JAWDEF_GATE_HI = 40;    // fully open above
+const JAWDEF_IDX     = [397,365,379,378,400,377,152,148,176,149,150,136,172]; // gonion -> chin -> gonion
+
+function applyJawDefinition(o, w, h, L, f, t, Wpx){
+  if((JAWDEF_BRIGHT<=0 && JAWDEF_DARK<=0) || !f || !Wpx) return;
+  const s=Math.max(0, Math.min(1, t));
+  if(s<=0) return;
+  const lm=L.map(p=>({x:p.x*w, y:p.y*h}));
+  const p10=lm[10], p152=lm[152];
+  if(!p10||!p152) return;
+  const cFace={x:(p10.x+p152.x)/2, y:(p10.y+p152.y)/2};
+  // Border polyline, displaced onto the warped border.
+  const pts=[];
+  for(const idx of JAWDEF_IDX){
+    const p=lm[idx]; if(!p) continue;
+    const xi=Math.max(0, Math.min(w-1, Math.round(p.x)));
+    const yi=Math.max(0, Math.min(h-1, Math.round(p.y)));
+    const i=yi*w+xi;
+    pts.push({x:p.x - s*f.sx[i], y:p.y - s*f.sy[i]});
+  }
+  if(pts.length<2) return;
+  const sigA=JAWDEF_W_IN*Wpx, sigB=JAWDEF_W_OUT*Wpx;
+  const twoSigA=2*sigA*sigA||1e-6, twoSigB=2*sigB*sigB||1e-6;
+  const pad=3*Math.max(sigA, sigB);
+  let x0=w, y0=h, x1=0, y1=0;
+  for(const p of pts){
+    if(p.x<x0)x0=p.x; if(p.x>x1)x1=p.x;
+    if(p.y<y0)y0=p.y; if(p.y>y1)y1=p.y;
+  }
+  x0=Math.max(0,Math.floor(x0-pad)); x1=Math.min(w-1,Math.ceil(x1+pad));
+  y0=Math.max(0,Math.floor(y0-pad)); y1=Math.min(h-1,Math.ceil(y1+pad));
+  const pad2=pad*pad;
+  for(let y=y0;y<=y1;y++){
+    for(let x=x0;x<=x1;x++){
+      // nearest border segment: distance, closest point, and direction
+      let best=1e18, qx=0, qy=0, dirx=0, diry=0;
+      for(let k=0;k+1<pts.length;k++){
+        const A=pts[k], B=pts[k+1];
+        const vx=B.x-A.x, vy=B.y-A.y;
+        const L2=vx*vx+vy*vy||1e-6;
+        let u=((x-A.x)*vx+(y-A.y)*vy)/L2;
+        if(u<0)u=0; else if(u>1)u=1;
+        const cx2=A.x+u*vx, cy2=A.y+u*vy;
+        const dx=x-cx2, dy=y-cy2;
+        const d2=dx*dx+dy*dy;
+        if(d2<best){ best=d2; qx=cx2; qy=cy2; dirx=vx; diry=vy; }
+      }
+      if(best > pad2) continue;
+      // signed side: normal oriented away from the face center = below border
+      let nx=-diry, ny=dirx;
+      if(nx*(qx-cFace.x)+ny*(qy-cFace.y) < 0){ nx=-nx; ny=-ny; }
+      const sd=(x-qx)*nx+(y-qy)*ny;
+      const p4=(y*w+x)*4;
+      let addv;
+      if(sd>=0){
+        addv = -JAWDEF_DARK*Math.exp(-best/twoSigB)*s;
+      } else {
+        const Y=0.299*o[p4]+0.587*o[p4+1]+0.114*o[p4+2];
+        const subj=smoothstep(JAWDEF_GATE_LO, JAWDEF_GATE_HI, Y);
+        if(subj<=0) continue;
+        addv = JAWDEF_BRIGHT*Math.exp(-best/twoSigA)*s*subj;
+      }
+      if(addv===0) continue;
+      o[p4]+=addv; o[p4+1]+=addv; o[p4+2]+=addv;  // clamped by the typed array
+    }
+  }
+}
+
 // ---- M7.6 chin/jaw projection warp ------------------------------------------
 // Deterministic silhouette displacement for HA chin/jawline, built on the same
 // field format and backward-mapping resampler as the M6 Sculptra lift. The
@@ -988,6 +1092,11 @@ const CHINW_NOTCH_FILL         = 0.022; // oblique: extra anterior fill at the n
                                         // visible dip on a deep sulcus at 45 degrees)
 const CHINW_NOTCH_FILL_FRONTAL = 0.008; // frontal: outward fill at both prejowl points, fraction of W
 const CHINW_NOTCH_DOWN         = 0.004; // small accompanying drop, fraction of faceH
+// M9.6 (v41): gonial squaring at oblique. Jawline filler at the angle restores
+// the corner bone resorption took; in 2D at 45 degrees that reads as the
+// gonion moving slightly posterior and inferior, giving the border line a
+// defined corner to end at. Small on purpose; zero to disable.
+const GONW_DEF                 = 0.007; // posterior-inferior gonial move, fraction of W
 
 function buildChinProjectionField(L, w, h, pose, sex){
   const lm = L.map(p=>({x:p.x*w, y:p.y*h}));
@@ -1065,6 +1174,11 @@ function buildChinProjectionField(L, w, h, pose, sex){
       kernels.push(capsule(mid, add(mul(chinV, CHINW_MIDJAW_F), jawDrop), sigJ));
     }
     if(goNear) kernels.push(capsule(goNear, chinV, sigJ, CHINW_GONION_F));
+    // M9.6: gonial squaring, posterior-inferior, restoring the angle's corner.
+    if(goNear && GONW_DEF > 0){
+      const v = add(mul(antDir, -GONW_DEF*W), mul(down, GONW_DEF*0.8*W));
+      kernels.push(capsule(goNear, v, sigJ*0.7));
+    }
   } else if(pose && pose.view === 'frontal'){
     // Frontal: projection toward the camera is invisible head-on; what reads is
     // vertical lengthening of the lower third. Chin point plus both para-menton
@@ -1914,6 +2028,7 @@ export async function compositeSculptra(beforeImg, aiImg, opts){
     applyLiftWarp(a, src, w, h, lift, intensity);
     applyWarpShadeFix(a, buildLowLuma(b, w, h, Wpx), lift, w);
     applyWarpSharpen(a, w, h, lift, intensity, Wpx); // M9.2: restore pore-scale crispness in the moved band
+    applyJawDefinition(a, w, h, landmarks, lift, intensity, Wpx); // M9.6: structural border light
   }
   cx.putImageData(ai, 0, 0);
   return c.toDataURL("image/jpeg", 0.92);
@@ -2021,6 +2136,7 @@ export async function makeSculptraCompositor(beforeImg, aiImg, opts){
       applyLiftWarp(o, warpSrc, w, h, lift, t);
       applyWarpShadeFix(o, lowY, lift, w);
       applyWarpSharpen(o, w, h, lift, t, sharpW); // M9.2: restore pore-scale crispness in the moved band
+      applyJawDefinition(o, w, h, landmarks, lift, t, sharpW); // M9.6: structural border light
     }
     cx.putImageData(out, 0, 0);
     return c.toDataURL("image/jpeg", 0.92);
