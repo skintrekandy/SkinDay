@@ -92,6 +92,7 @@ const FILLER_CHIN_JAWLINE = {
             'The main change, clearly visible from the front, is a confident vertical lengthening and forward projection of the chin: ' +
             'bring the chin point clearly lower and forward so the lower third looks longer, stronger, and better balanced and the face reads distinctly more oval and defined, ' +
             'with clean, crisp definition along the mandibular border and clear prejowl support so the chin-to-jaw line is smooth and continuous. ' +
+            'Where jowls or a prejowl hollow are present, fill the prejowl hollow and visibly soften the jowl, prejowl, and marionette shadows so the jowl blends into the new continuous jawline as one smooth line; the jowl itself is never enlarged. ' +
             'As the chin lengthens and projects, the soft tissue of the lower face follows it, so the lateral lower-face contour (below the cheekbone, along the jowl and jaw) tapers inward and the jowl lifts and reduces, so the lower third reads visibly more refined, defined, and sculpted, not just longer. ' +
             'For a female face let this inward taper and refinement read clearly (a softer, more tapered, more elegant lower face); for a male face keep the jaw width and strength and let the change come from a longer, stronger, more projected chin and a crisper, cleaner jawline. ' +
             'The mid-cheek width and cheekbones are unchanged; only the lower face follows the chin. ' +
