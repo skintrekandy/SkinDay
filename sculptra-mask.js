@@ -7,6 +7,22 @@
 // background). gpt-image-1's edit endpoint edits only the transparent region, so
 // this physically prevents the global beautification leak.
 //
+// M9.8 (v43): organic mid band + photographic border light (clinical: the
+// Overfilled oblique still reads synthetically smooth between border and lower
+// cheek, and the border light reads drawn). Two causes, two fixes:
+// (1) THREE-BAND mid keep (chin_jaw only): the two-band restore preserves pore
+// detail (high band) but hands everything coarser to the AI's smooth fill, so
+// the patient's 8-30px organic skin variation vanishes at high alpha, which
+// is the synthetic-smoothness read. The luma path now splits a MID band
+// (between CHIN_JAW_TEX_RADIUS and CHIN_JAW_MID_RADIUS) and keeps
+// CHIN_JAW_MID_KEEP of the patient's own mid variation, suppressed inside the
+// jowl release lobes so the fold erasure is not undone. midKeep 0 reproduces
+// the v42 path bit for bit; Sculptra passes no midKeep and is untouched.
+// (2) LIGHT-MODULATED border pass: applyJawDefinition now samples the lit
+// face just inside the border at each polyline vertex and scales both the lit
+// band and the shadow step by that local illumination, so the structural light
+// breathes with the photo's lighting instead of tracing a uniform line.
+//
 // M9.7 (v42): jaw shadow containment + layer attribution. (1) The v41 shadow
 // step smeared: a 0.028W feather with no hard stop painted a soft dark band
 // past the border onto the neck and clothing. Real border shadow is a thin
@@ -546,6 +562,9 @@ function buildTextureDelta(b,a0,w,h,W,opts){
   // texture. Built over the jowl-blend lobes for chin_jaw; null everywhere
   // else, so nothing outside the lobes changes.
   const rel = opts.releaseField || null;
+  // M9.8 (v43): optional three-band mid keep (see CHIN_JAW_MID_KEEP).
+  const midK = (opts.midKeep==null ? 0 : Math.max(0, Math.min(1, opts.midKeep)));
+  const midR = Math.max(0, Math.round((opts.midRadiusFrac ?? 0)*W));
 
   const bR=new Float32Array(N),bG=new Float32Array(N),bB=new Float32Array(N);
   const aR=new Float32Array(N),aG=new Float32Array(N),aB=new Float32Array(N);
@@ -555,6 +574,18 @@ function buildTextureDelta(b,a0,w,h,W,opts){
   }
   const bRl=blurPlane(bR,w,h,r,passes), bGl=blurPlane(bG,w,h,r,passes), bBl=blurPlane(bB,w,h,r,passes);
   const aRl=blurPlane(aR,w,h,r,passes), aGl=blurPlane(aG,w,h,r,passes), aBl=blurPlane(aB,w,h,r,passes);
+  // M9.8: deep-low luma planes for the mid split (luma commutes with blur, so
+  // blurring the per-pixel luma equals the luma of the blurred channels).
+  let YoM=null, YaM=null;
+  if(midK>0 && midR>r){
+    const Yo=new Float32Array(N), Ya=new Float32Array(N);
+    for(let i=0;i<N;i++){
+      Yo[i]=0.299*bRl[i]+0.587*bGl[i]+0.114*bBl[i];
+      Ya[i]=0.299*aRl[i]+0.587*aGl[i]+0.114*aBl[i];
+    }
+    YoM=blurPlane(Yo,w,h,midR,1);
+    YaM=blurPlane(Ya,w,h,midR,1);
+  }
 
   // moved-edge guard: local variation of the low-band luma difference. A moved
   // silhouette produces a sharp transition in (aiLow - origLow); a broad volume
@@ -619,6 +650,13 @@ function buildTextureDelta(b,a0,w,h,W,opts){
       // are untouched, so spots, pores, and pigment all stay; only the broad
       // luminance moves, and only upward.
       let lowShift = aYl - oYl;
+      // M9.8: keep midK of the patient's own mid band (deep volume still moves
+      // with the AI). kEff is suppressed inside the jowl release lobes so the
+      // fold erasure is never undone. midK 0 leaves this line a no-op.
+      if(YoM){
+        const kEff = midK * (rel ? (1 - Math.min(1, rel[i])) : 1);
+        if(kEff > 0) lowShift -= kEff * ((aYl - YaM[i]) - (oYl - YoM[i]));
+      }
       if(lowShift < -darkFloor) lowShift = -darkFloor;
       // M6.3: soft-knee the broad brightening so the response gain amplifies
       // shading structure, not flat brightness (see SCULPTRA_BRIGHT_CAP_FULL).
@@ -984,6 +1022,14 @@ const JAWDEF_W_OUT   = 0.014; // shadow band width below the border, fraction of
                               // plus a hard 2.5 sigma cutoff so the step never smears onto neck/clothing)
 const JAWDEF_GATE_LO = 14;    // brightening gate on current luma: 0 at or below
 const JAWDEF_GATE_HI = 40;    // fully open above
+// M9.8 (v43): illumination modulation. The pass samples the lit face just
+// inside the border at each polyline vertex and scales the whole step by that
+// local light, so the border light follows the photo's illumination instead of
+// tracing a uniform drawn line. Below LIGHT_LO the step vanishes; above
+// LIGHT_HI it runs at full strength.
+const JAWDEF_LIGHT_LO = 35;
+const JAWDEF_LIGHT_HI = 95;
+const JAWDEF_LIGHT_IN = 2.2;  // sampling point: this many bright-sigmas inside the border
 const JAWDEF_IDX     = [397,365,379,378,400,377,152,148,176,149,150,136,172]; // gonion -> chin -> gonion
 
 function applyJawDefinition(o, w, h, L, f, t, Wpx){
@@ -1005,6 +1051,22 @@ function applyJawDefinition(o, w, h, L, f, t, Wpx){
   }
   if(pts.length<2) return;
   const sigA=JAWDEF_W_IN*Wpx, sigB=JAWDEF_W_OUT*Wpx;
+  // M9.8: per-vertex illumination of the face just inside the border (small
+  // cross average on the warped composite), interpolated per pixel below.
+  const vLum=new Float32Array(pts.length);
+  for(let k=0;k<pts.length;k++){
+    const p=pts[k];
+    let ix=p.x+(cFace.x-p.x)/ (Math.hypot(cFace.x-p.x, cFace.y-p.y)||1) * JAWDEF_LIGHT_IN*sigA;
+    let iy=p.y+(cFace.y-p.y)/ (Math.hypot(cFace.x-p.x, cFace.y-p.y)||1) * JAWDEF_LIGHT_IN*sigA;
+    ix=Math.max(1, Math.min(w-2, Math.round(ix)));
+    iy=Math.max(1, Math.min(h-2, Math.round(iy)));
+    let acc=0;
+    for(const [ox,oy] of [[0,0],[1,0],[-1,0],[0,1],[0,-1]]){
+      const q4=((iy+oy)*w+(ix+ox))*4;
+      acc+=0.299*o[q4]+0.587*o[q4+1]+0.114*o[q4+2];
+    }
+    vLum[k]=acc/5;
+  }
   const twoSigA=2*sigA*sigA||1e-6, twoSigB=2*sigB*sigB||1e-6;
   const cutB=(2.5*sigB)*(2.5*sigB); // v42: hard stop for the shadow step
   const pad=3*Math.max(sigA, sigB);
@@ -1019,7 +1081,7 @@ function applyJawDefinition(o, w, h, L, f, t, Wpx){
   for(let y=y0;y<=y1;y++){
     for(let x=x0;x<=x1;x++){
       // nearest border segment: distance, closest point, and direction
-      let best=1e18, qx=0, qy=0, dirx=0, diry=0;
+      let best=1e18, qx=0, qy=0, dirx=0, diry=0, segK=0, segU=0;
       for(let k=0;k+1<pts.length;k++){
         const A=pts[k], B=pts[k+1];
         const vx=B.x-A.x, vy=B.y-A.y;
@@ -1029,23 +1091,27 @@ function applyJawDefinition(o, w, h, L, f, t, Wpx){
         const cx2=A.x+u*vx, cy2=A.y+u*vy;
         const dx=x-cx2, dy=y-cy2;
         const d2=dx*dx+dy*dy;
-        if(d2<best){ best=d2; qx=cx2; qy=cy2; dirx=vx; diry=vy; }
+        if(d2<best){ best=d2; qx=cx2; qy=cy2; dirx=vx; diry=vy; segK=k; segU=u; }
       }
       if(best > pad2) continue;
       // signed side: normal oriented away from the face center = below border
       let nx=-diry, ny=dirx;
       if(nx*(qx-cFace.x)+ny*(qy-cFace.y) < 0){ nx=-nx; ny=-ny; }
       const sd=(x-qx)*nx+(y-qy)*ny;
+      // M9.8: local illumination scale, interpolated along the border.
+      const lum=vLum[segK]+(vLum[Math.min(segK+1, pts.length-1)]-vLum[segK])*segU;
+      const light=smoothstep(JAWDEF_LIGHT_LO, JAWDEF_LIGHT_HI, lum);
+      if(light<=0) continue;
       const p4=(y*w+x)*4;
       let addv;
       if(sd>=0){
         if(best > cutB) continue; // v42: the step hugs the border, never the neck
-        addv = -JAWDEF_DARK*Math.exp(-best/twoSigB)*s;
+        addv = -JAWDEF_DARK*Math.exp(-best/twoSigB)*s*light;
       } else {
         const Y=0.299*o[p4]+0.587*o[p4+1]+0.114*o[p4+2];
         const subj=smoothstep(JAWDEF_GATE_LO, JAWDEF_GATE_HI, Y);
         if(subj<=0) continue;
-        addv = JAWDEF_BRIGHT*Math.exp(-best/twoSigA)*s*subj;
+        addv = JAWDEF_BRIGHT*Math.exp(-best/twoSigA)*s*subj*light;
       }
       if(addv===0) continue;
       o[p4]+=addv; o[p4+1]+=addv; o[p4+2]+=addv;  // clamped by the typed array
@@ -1828,6 +1894,15 @@ const CHIN_JAW_DELTA_GAIN = 1.0;
 // Sculptra keeps the shared 0.016 untouched. Raise back toward 0.016 only if
 // the AI's intended chin/jaw shading ever looks visibly band-limited.
 const CHIN_JAW_TEX_RADIUS = 0.009;
+// M9.8 (v43): three-band mid keep. The band between CHIN_JAW_TEX_RADIUS and
+// CHIN_JAW_MID_RADIUS carries the patient's organic mid-scale skin variation;
+// CHIN_JAW_MID_KEEP of it is kept (0 = the AI's smooth fill replaces it, the
+// v42 behavior; 1 = fully the patient's own). Suppressed inside the jowl
+// release lobes so fold erasure still wins there. Raise toward 0.75 if the
+// treated zone still reads synthetically smooth; lower toward 0.4 if the
+// patient's own shadows fight the volume change.
+const CHIN_JAW_MID_RADIUS = 0.022;
+const CHIN_JAW_MID_KEEP   = 0.6;
 // Sculptra glow applied at composite time, scaled by mask and slider but NOT by
 // the gain (see GLOW_LUMA note). Equal add to R,G,B, so chroma-exact.
 const SCULPTRA_GLOW_APPLY = 6;
@@ -1898,7 +1973,8 @@ function sculptraTexOpts(scope, opts){
   const isHA = (scope === 'chin_jaw');
   const profile = isHA
     ? { forceOriginalTexture:false, darkFloor:CHIN_JAW_DARK_FLOOR, highDarkenScale:0.5, deltaGain:CHIN_JAW_DELTA_GAIN,
-        glowLuma:GLOW_LUMA, glowApply:0, brightCap:0, texRadiusFrac:CHIN_JAW_TEX_RADIUS }
+        glowLuma:GLOW_LUMA, glowApply:0, brightCap:0, texRadiusFrac:CHIN_JAW_TEX_RADIUS,
+        midRadiusFrac:CHIN_JAW_MID_RADIUS, midKeep:CHIN_JAW_MID_KEEP }
     : { forceOriginalTexture:true,  darkFloor:SCULPTRA_DARK_FLOOR, highDarkenScale:0, deltaGain:SCULPTRA_DELTA_GAIN,
         glowLuma:0, glowApply:SCULPTRA_GLOW_APPLY,
         brightCap:SCULPTRA_BRIGHT_CAP_FULL/SCULPTRA_DELTA_GAIN };

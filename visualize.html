@@ -380,7 +380,7 @@
         <span id="intensityMin">Conservative</span><span id="intensityMax">Strong</span>
       </div>
       <div class="small" id="intensityHelp" style="margin-top:6px;">Slide to preview a more conservative or stronger response. The simulation updates instantly.</div>
-      <div class="small" id="overfillNote" style="display:none;margin-top:4px;color:#A33524;font-weight:600;">Shown for education: this is beyond full correction, not a treatment goal.</div>
+      <div class="small" id="overfillNote" style="display:none;margin-top:4px;color:#A33524;font-weight:600;">Shown for education: deliberately overfilled, not a treatment goal.</div>
     </div>
     <div class="compare-wrap" id="compareWrap" style="display:none;">
       <div class="compare-card" id="compareCard">
@@ -507,7 +507,7 @@ const FREE_REGEN_MS = 60000;
 // stay the same module instance (shared face-detection cache). v35 = M9.0
 // jowl blending (alpha lobes over marionette/jowl shadows + prejowl notch-fill
 // warp kernels) (v34 = M8.2 shade reconciliation; v33 = M8.1 convex chin).
-const MASK_MODULE_VERSION = '42';
+const MASK_MODULE_VERSION = '43';
 
 /* M7: a case is one or more ANGLES, each with its own photo, QC result, job,
    and compositor. Treatment settings are shared across the case; the response
@@ -1137,8 +1137,9 @@ function strengthLabel(pct){
 // consult education zone showing why more is not better. The UI tints to the
 // warning color there and the export kicker is stamped as educational, so an
 // overfilled frame can never read as the recommended plan. Thresholds are
-// levers: Full correction sits over the calibrated default (70); at or past
-// FILLER_LEVELS.full the view is overfilled.
+// levers: Enhanced correction sits over the calibrated default (70), named
+// Enhanced rather than Full because full reads as a completed treatment; at or
+// past FILLER_LEVELS.full the view is overfilled.
 const FILLER_LEVELS = { subtle:35, balanced:70, full:80 };
 const OVERFILL_COLOR = '#A33524';
 function levelInfo(pct){
@@ -1146,7 +1147,7 @@ function levelInfo(pct){
   if(state.type === 'filler'){
     if(n < FILLER_LEVELS.subtle)   return { name:'Subtle correction',   over:false };
     if(n < FILLER_LEVELS.balanced) return { name:'Balanced correction', over:false };
-    if(n < FILLER_LEVELS.full)     return { name:'Full correction',     over:false };
+    if(n < FILLER_LEVELS.full)     return { name:'Enhanced correction', over:false };
     return { name:'Overfilled', over:true };
   }
   return { name: strengthLabel(n), over:false };
