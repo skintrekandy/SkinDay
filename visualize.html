@@ -195,6 +195,9 @@
     .pack-row { display:flex; align-items:center; justify-content:space-between; gap:14px; border:1px solid rgba(28,23,20,.12); border-radius:10px; padding:14px 16px; margin-top:10px; }
     .pack-row .pack-name { font-weight:500; color:var(--deep); font-size:.92rem; }
     .pack-row .pack-sub { font-size:.74rem; color:var(--muted); margin-top:2px; }
+    .pack-sub strong { color:var(--rose); font-size:.86rem; }
+    .pack-sub s { color:var(--dim); margin:0 2px; }
+    .launch-badge { display:inline-block; margin:2px 0 4px; padding:5px 12px; border-radius:999px; background:rgba(201,169,110,.14); border:1px solid rgba(201,169,110,.35); color:#8A6D3B; font-size:.72rem; letter-spacing:.04em; }
     .hidden { display:none !important; }
     @media(max-width:720px){ .grid,.result-grid{grid-template-columns:1fr;} .page{padding-left:16px;padding-right:16px;} .pill-grid,.area-grid,.type-toggle{grid-template-columns:1fr;} .nav-link{display:none;} }
   </style>
@@ -243,7 +246,7 @@
   <span id="acctIdent"></span>
   <span class="credits" id="creditChip"></span>
   <button class="linklike" id="creditsInfoBtn" type="button" style="display:none;">How credits work</button>
-  <button class="linklike" id="buyBtn" type="button" style="display:none;">Buy credits</button>
+  <button class="linklike" id="buyBtn" type="button" style="display:none;">Add credits</button>
   <button class="linklike" id="signOutBtn" type="button" style="display:none;">Sign out</button>
 </div>
 
@@ -409,7 +412,7 @@
 <div class="guide-modal hidden" id="creditsInfoModal">
   <div class="guide-card">
     <h2>How credits work</h2>
-    <p>Credits are spent only when a simulation is generated. Each angle of a case is one generation: <strong>HA filler costs 1 credit per angle</strong> and <strong>Sculptra (and other biostimulators) costs 2 credits per angle</strong>, so a full 3-angle HA case is 3 credits and a 3-angle Sculptra case is 6.</p>
+    <p>Credits are spent only when a simulation is generated. Each angle of a case is one generation: <strong>HA filler costs <span id="ciFiller">1</span> credit(s) per angle</strong> and <strong>Sculptra (and other biostimulators) costs <span id="ciBiostim">2</span> credit(s) per angle</strong>, so a full 3-angle HA case is <span id="ciCaseF">3</span> credits and a 3-angle Sculptra case is <span id="ciCaseB">6</span>.</p>
     <p>Everything after generation is free: adjusting the response slider, comparing angles, exporting and downloading, and re-generating within 60 seconds of a result. If a generation fails or is blocked by the AI provider's safety system, its credits are refunded to your balance automatically.</p>
     <p>Purchased credits do not expire. New accounts start with a small free balance so you can try the tool on a real consultation first.</p>
     <p><strong>Independence note:</strong> Visualize credits are a clinic tool purchase only. Buying credits never affects a clinic's ranking, search placement, reviews, or visibility anywhere on SkinDay.</p>
@@ -420,8 +423,9 @@
 <!-- ───────── BUY CREDITS ───────── -->
 <div class="guide-modal hidden" id="buyModal">
   <div class="guide-card">
-    <h2>Buy credits</h2>
-    <p>Credits power generations: 1 credit per angle for HA filler, 2 per angle for Sculptra and other biostimulators. A failed or moderation-blocked generation is refunded automatically, and a re-generate within the free window costs nothing.</p>
+    <h2>Add credits</h2>
+    <span class="launch-badge">Launch pricing for founding clinics · regular pricing applies after beta</span>
+    <p id="buyIntro">Credits are used only when a new preview is generated. Slider adjustments, exports, and re-generates within the free window cost nothing, and a failed or blocked generation is refunded automatically.</p>
     <div id="packList"></div>
     <p class="auth-hint" style="margin-top:12px;color:var(--muted);">Payments are processed by Stripe in CAD. Credits land on your account the moment payment completes.</p>
     <div class="btn-row guide-close"><button class="btn btn-light" id="buyCloseBtn" type="button">Close</button></div>
@@ -560,6 +564,17 @@ async function verifyKey(key){
    e.g. a fresh staging deploy), the UI falls back to beta-only, the exact
    pre-M8 behavior. */
 let SD_CFG = { authDisabled:true };
+
+function creditCostFor(type){
+  const c = (SD_CFG && SD_CFG.costs) || {};
+  return (type === 'biostim') ? (c.biostim || 2) : (c.filler || 1);
+}
+
+function fillCreditCopy(){
+  const f = creditCostFor('filler'), b = creditCostFor('biostim');
+  const set = (id, v) => { const el = document.getElementById(id); if(el) el.textContent = v; };
+  set('ciFiller', f); set('ciBiostim', b); set('ciCaseF', 3 * f); set('ciCaseB', 3 * b);
+}
 let sb = null;                  // supabase client (account mode)
 let accessMode = null;          // 'beta' | 'account'
 let creditBalance = null;
@@ -723,8 +738,12 @@ function openBuyModal(){
   (SD_CFG.packs || []).forEach(pk => {
     const row = document.createElement('div'); row.className = 'pack-row';
     const left = document.createElement('div');
+    const reg = (pk.regularCad && pk.regularCad > pk.cad) ? pk.regularCad : null;
+    const price = reg
+      ? '<strong>CA$' + (pk.cad/100).toFixed(2) + '</strong> <s>CA$' + (reg/100).toFixed(2) + '</s> <span>regular after beta</span>'
+      : 'CA$' + (pk.cad/100).toFixed(2);
     left.innerHTML = '<div class="pack-name">' + pk.label + ' · ' + pk.credits + ' credits</div>'
-      + '<div class="pack-sub">CA$' + (pk.cad/100).toFixed(2) + ' · about $' + (pk.cad/100/pk.credits).toFixed(2) + ' per credit</div>';
+      + '<div class="pack-sub">' + price + ' · about $' + (pk.cad/100/pk.credits).toFixed(2) + ' per credit</div>';
     const btn = document.createElement('button'); btn.className = 'btn btn-primary'; btn.type = 'button';
     btn.textContent = 'Buy';
     btn.addEventListener('click', async () => {
@@ -767,6 +786,7 @@ document.getElementById('buyModal').addEventListener('click', e => { if(e.target
     SD_CFG = await (await fetch('/.netlify/functions/visualize-config')).json();
   } catch(e){ SD_CFG = { authDisabled:true }; }
   if(!SD_CFG || !SD_CFG.supabaseUrl || !SD_CFG.supabaseAnonKey) SD_CFG = { ...(SD_CFG||{}), authDisabled:true };
+  fillCreditCopy();
 
   // Returning from Stripe?
   const qp = new URLSearchParams(location.search);
@@ -833,11 +853,12 @@ function syncGenerateBtn(){
     ? ('Generate ' + ids.length + ' simulated previews')
     : 'Generate simulated preview';
 
-  // M8: cost preview for metered accounts (HA 1 credit per angle, biostim 2).
+  // M8: cost preview for metered accounts. Costs come from server config
+  // (env-tunable); the fallback matches the server's defaults.
   const note = document.getElementById('costNote');
   if(note){
     if(accessMode === 'account' && ids.length){
-      const per = (state.type === 'biostim') ? 2 : 1;
+      const per = creditCostFor(state.type);
       const total = per * ids.length;
       const short = (creditBalance != null && creditBalance < total);
       note.innerHTML = '<span class="cost-pill' + (short ? ' warn' : '') + '">'
