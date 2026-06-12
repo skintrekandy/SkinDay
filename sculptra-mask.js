@@ -7,6 +7,26 @@
 // background). gpt-image-1's edit endpoint edits only the transparent region, so
 // this physically prevents the global beautification leak.
 //
+// M9.9 (v44): EVIDENCE-DRIVEN RETIREMENT of the painted border light. Pixel
+// forensics on a real v43 Enhanced export (signed diff + local-contrast map
+// against the original panel) showed two things. (1) The jawdef pass renders
+// as a literal drawn stroke: one isolated arc of ADDED contrast tracing the
+// border on the contrast map, visible in the photo as a pale line. A
+// hand-painted luminance band cannot pass a clinician's eye at consultation
+// levels; credible border definition comes from geometry changing what real
+// light does (proven by the chin arc, v31-v34, composite-then-warp), so that
+// job moves to the M10 geometry stack. JAWDEF_BRIGHT and JAWDEF_DARK default
+// to 0 (the pass and its levers remain for a possible overfill-education-only
+// revival). The GEOMETRIC gonial squaring (GONW_DEF) stays: it is the
+// legitimate mechanism and carries real pixels. (2) The simulated panel was
+// globally softer than the original panel, including pipeline-untouched
+// regions (forehead contrast ratio 0.93, blur-match sigma ~0.6px): the
+// compositor's 1024 grid was being UPSCALED into the larger export panel and
+// compared against the sharper original. That gap predates and underlies the
+// whole v37-v43 softness chase. Fixed client-side: exports re-render each
+// angle at maxDim 2048 (compositeSculptra already accepts maxDim; the high
+// band comes from the original, so output crispness scales with the grid).
+//
 // M9.8 (v43): organic mid band + photographic border light (clinical: the
 // Overfilled oblique still reads synthetically smooth between border and lower
 // cheek, and the border light reads drawn). Two causes, two fixes:
@@ -1015,8 +1035,8 @@ function applyWarpSharpen(o, w, h, f, t, Wpx){
 // never lifted); the shadow step is allowed to deepen the under-border region,
 // which is exactly the step that makes a jawline read as rebuilt. Levers
 // below; zero JAWDEF_BRIGHT and JAWDEF_DARK to disable the pass entirely.
-const JAWDEF_BRIGHT  = 9;     // luma lift just above the border at full strength
-const JAWDEF_DARK    = 10;    // luma deepening just below the border at full strength (v42: 14 -> 10)
+const JAWDEF_BRIGHT  = 0;     // v44: retired at consultation levels (see header); was 9
+const JAWDEF_DARK    = 0;     // v44: retired at consultation levels (see header); was 10
 const JAWDEF_W_IN    = 0.018; // bright band width above the border, fraction of W
 const JAWDEF_W_OUT   = 0.014; // shadow band width below the border, fraction of W (v42: 0.028 -> 0.014,
                               // plus a hard 2.5 sigma cutoff so the step never smears onto neck/clothing)

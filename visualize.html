@@ -507,7 +507,7 @@ const FREE_REGEN_MS = 60000;
 // stay the same module instance (shared face-detection cache). v35 = M9.0
 // jowl blending (alpha lobes over marionette/jowl shadows + prejowl notch-fill
 // warp kernels) (v34 = M8.2 shade reconciliation; v33 = M8.1 convex chin).
-const MASK_MODULE_VERSION = '43';
+const MASK_MODULE_VERSION = '44';
 
 /* M7: a case is one or more ANGLES, each with its own photo, QC result, job,
    and compositor. Treatment settings are shared across the case; the response
@@ -999,7 +999,7 @@ async function onSlotFile(angleId, file){
   if(!file.type.startsWith('image/')){ setStatus('Please upload an image file.', 'warn'); return; }
   sl.file = file;
   sl.originalDataUrl = await fileToDataUrl(file);
-  sl.blackBgCache = null; sl.beforeDataUrl = null; sl.resultDataUrl = null; sl.apply = null; sl.error = null;
+  sl.blackBgCache = null; sl.beforeDataUrl = null; sl.resultDataUrl = null; sl.apply = null; sl.error = null; sl.hiRes = null; sl.rawAiDataUrl = null;
   sl.status = 'checking'; sl.qcMsg = 'Checking pose and photo quality…';
   renderSlots(); syncGenerateBtn();
   try {
@@ -1810,6 +1810,39 @@ async function buildLayerDebugSheet(angleId){
   }
 }
 
+/* ───────── M9.9 hi-res export render ───────── */
+// Forensics on a real export showed the simulated panel was globally softer
+// than the original panel: the compositor's 1024 grid was upscaled into the
+// export while the original panel came from a sharper source. Exports now
+// re-render each angle at a 2048 grid (the texture-restore high band comes
+// from the ORIGINAL, so output crispness scales with the grid). Cached per
+// angle and slider value; falls back to the live 1024 result on any error.
+const EXPORT_MAXDIM = 2048;
+function exportCompScope(){
+  return (state.type === 'biostim' && state.product === 'sculptra') ? 'full'
+       : (state.type === 'filler') ? 'chin_jaw'
+       : null;
+}
+async function hiResResultFor(angleId){
+  const sl = state.slots[angleId];
+  const compScope = exportCompScope();
+  if(!sl || !compScope || !sl.rawAiDataUrl || !sl.apply) return null;
+  const pct = state.intensityPct || 70;
+  if(sl.hiRes && sl.hiRes.pct === pct) return sl.hiRes.url;
+  const beforeImg = await loadImage(sl.beforeDataUrl || sl.originalDataUrl);
+  const aiImg = await loadImage(sl.rawAiDataUrl);
+  const { compositeSculptra } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
+  const warpOn = !/[?&]warp=off\b/i.test(location.search);
+  const jowlTexOn = !/[?&]jowltex=off\b/i.test(location.search);
+  const jawDefOn = !/[?&]jawdef=off\b/i.test(location.search);
+  const url = await compositeSculptra(beforeImg, aiImg, {
+    scope: compScope, sex: state.sex, warp: warpOn, jowlTexRelease: jowlTexOn,
+    jawDef: jawDefOn, intensity: pct / 100, maxDim: EXPORT_MAXDIM
+  });
+  if(url) sl.hiRes = { pct, url };
+  return url;
+}
+
 /* ───────── Export (canvas) ───────── */
 // Clinic-facing treatment name for tags and export kickers. The footer line
 // still carries the AI-generated disclosure, so the kicker can lead with the
@@ -1843,7 +1876,10 @@ function simKicker(angleId){
 async function drawPair(ctx, angleId, yOff, panelW, panelH, gap, includeText){
   const sl = state.slots[angleId];
   const before = await loadImage(sl.beforeDataUrl || sl.originalDataUrl);
-  const after = await loadImage(sl.resultDataUrl);
+  // M9.9: exports render at the hi-res grid; the live 1024 frame is the fallback.
+  let hiRes = null;
+  try { hiRes = await hiResResultFor(angleId); } catch(e){ console.warn('[Visualize] hi-res export render failed; using live frame.', e); }
+  const after = await loadImage(hiRes || sl.resultDataUrl);
 
   function cover(img, x, y, w, h){
     const scale = Math.max(w/img.width, h/img.height);
