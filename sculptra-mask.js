@@ -7,6 +7,24 @@
 // background). gpt-image-1's edit endpoint edits only the transparent region, so
 // this physically prevents the global beautification leak.
 //
+// M9.2 (v37): chin sharpness at oblique Strong (clinical: "blurry effects at
+// the chin area at strong"). Mechanism, two compounding resampling losses in
+// the chin_jaw post-warp, neither fixable by the texture restore because that
+// runs BEFORE the warp and its output gets resampled too:
+// (1) bilinear sampling averages 4 pixels at every fractional offset, and
+// (2) in the kernel decay zone the backward map locally MAGNIFIES (the chin
+// peak 0.06W over sigma 0.085W gives a local stretch up to ~1.4x), thinning
+// pore detail exactly where displacement is largest. Largest displacement is
+// the oblique chin at Strong, which is exactly where the blur was seen.
+// Fixes: (a) Catmull-Rom bicubic resampling for the chin_jaw field only (the
+// field carries bicubic:true; the approved Sculptra lift keeps its exact
+// bilinear path, zero change there), and (b) a displacement-weighted,
+// subject-gated self-unsharp pass on the warped result (luminance only, added
+// equally to RGB so chroma is locked; scaled by local displacement so it does
+// nothing outside the moved band; dark-gated so the backdrop and hair are
+// never haloed). Levers: WARP_SHARP_AMOUNT (0 disables, isolating the bicubic
+// change), WARP_SHARP_RADIUS, WARP_SHARP_DISP.
+//
 // M9.1 (v36): jowl-lobe TEXTURE RELEASE, the structural fix v35's lobes were
 // missing. Diagnosis (settled by the composite math, not by tuning): the
 // chroma-locked texture restore's high-frequency term reduces to
@@ -644,6 +662,7 @@ function buildLiftField(L, w, h){
 // are untouched originals by construction.
 function applyLiftWarp(wb, b, w, h, f, t){
   if(!f) return;
+  if(f.bicubic) return applyLiftWarpBicubic(wb, b, w, h, f, t); // M9.2: chin_jaw
   const s = Math.max(0, Math.min(1, t));
   const sx=f.sx, sy=f.sy;
   for(let y=f.y0; y<=f.y1; y++){
@@ -663,6 +682,50 @@ function applyLiftWarp(wb, b, w, h, f, t){
       wb[p]  =b[p00]*w00+b[p10]*w10+b[p01]*w01+b[p11]*w11;
       wb[p+1]=b[p00+1]*w00+b[p10+1]*w10+b[p01+1]*w01+b[p11+1]*w11;
       wb[p+2]=b[p00+2]*w00+b[p10+2]*w10+b[p01+2]*w01+b[p11+2]*w11;
+    }
+  }
+}
+
+// M9.2 (v37): Catmull-Rom bicubic variant of applyLiftWarp, used when the
+// field carries bicubic:true (the chin_jaw projection warp). Bilinear averages
+// 4 pixels at every fractional offset, which compounds with the decay zone's
+// local magnification into the chin softness seen at oblique Strong; the
+// 16-tap Catmull-Rom kernel preserves edges and pore-scale detail through the
+// same map. Overshoot is clamped by the Uint8ClampedArray write. The Sculptra
+// lift never sets the flag, so its approved output is bit-identical to v36.
+function applyLiftWarpBicubic(wb, b, w, h, f, t){
+  const s = Math.max(0, Math.min(1, t));
+  const sx=f.sx, sy=f.sy;
+  for(let y=f.y0; y<=f.y1; y++){
+    const row=y*w;
+    for(let x=f.x0; x<=f.x1; x++){
+      const i=row+x, p=i*4;
+      const ox=sx[i], oy=sy[i];
+      if(ox===0 && oy===0){ wb[p]=b[p]; wb[p+1]=b[p+1]; wb[p+2]=b[p+2]; continue; }
+      let fx=x+ox*s, fy=y+oy*s;
+      if(fx<0) fx=0; else if(fx>w-1) fx=w-1;
+      if(fy<0) fy=0; else if(fy>h-1) fy=h-1;
+      const xi=Math.floor(fx), yi=Math.floor(fy);
+      const ax=fx-xi, ay=fy-yi;
+      const ax2=ax*ax, ax3=ax2*ax;
+      const wx0=-0.5*ax3+ax2-0.5*ax, wx1=1.5*ax3-2.5*ax2+1,
+            wx2=-1.5*ax3+2*ax2+0.5*ax, wx3=0.5*ax3-0.5*ax2;
+      const ay2=ay*ay, ay3=ay2*ay;
+      const wy0=-0.5*ay3+ay2-0.5*ay, wy1=1.5*ay3-2.5*ay2+1,
+            wy2=-1.5*ay3+2*ay2+0.5*ay, wy3=0.5*ay3-0.5*ay2;
+      const xA=xi-1<0?0:xi-1, xB=xi, xC=xi+1>w-1?w-1:xi+1, xD=xi+2>w-1?w-1:xi+2;
+      const yA=yi-1<0?0:yi-1, yB=yi, yC=yi+1>h-1?h-1:yi+1, yD=yi+2>h-1?h-1:yi+2;
+      let r=0, g=0, bb=0;
+      const rows=[yA,yB,yC,yD], wys=[wy0,wy1,wy2,wy3];
+      for(let k=0;k<4;k++){
+        const ro=rows[k]*w;
+        const pA=(ro+xA)*4, pB=(ro+xB)*4, pC=(ro+xC)*4, pD=(ro+xD)*4;
+        const wy=wys[k];
+        r +=wy*(wx0*b[pA]  +wx1*b[pB]  +wx2*b[pC]  +wx3*b[pD]);
+        g +=wy*(wx0*b[pA+1]+wx1*b[pB+1]+wx2*b[pC+1]+wx3*b[pD+1]);
+        bb+=wy*(wx0*b[pA+2]+wx1*b[pB+2]+wx2*b[pC+2]+wx3*b[pD+2]);
+      }
+      wb[p]=r; wb[p+1]=g; wb[p+2]=bb; // clamped by the typed array
     }
   }
 }
@@ -721,6 +784,47 @@ function applyWarpShadeFix(o, lowY, f, w){
       const target=Yr - WARP_SHADE_PULL*excess*subj*band;
       const fct=target/Math.max(1, Yr);
       o[p4]*=fct; o[p4+1]*=fct; o[p4+2]*=fct;
+    }
+  }
+}
+
+// M9.2 (v37): displacement-weighted self-unsharp on the warped result. Even
+// with bicubic resampling, the decay zone's local magnification thins pore
+// detail; this pass restores micro-contrast from the warped image's OWN high
+// band (no foreign texture, so nothing can ghost). Luminance only, added
+// equally to RGB (chroma locked). Scaled by local displacement (zero outside
+// the moved band), gated by blurred subject luma (backdrop, hair, and deep
+// shadow are never haloed). Levers below; WARP_SHARP_AMOUNT 0 disables, which
+// isolates the bicubic change for the A/B.
+const WARP_SHARP_AMOUNT  = 0.45;  // 0..~0.8 sensible; 0 = off
+const WARP_SHARP_RADIUS  = 0.0035; // high-band cutoff, fraction of W (pore scale)
+const WARP_SHARP_DISP    = 0.025; // displacement (fraction of W) at full effect
+const WARP_SHARP_LUMA_LO = 22;    // blurred-luma dark gate: 0 at or below
+const WARP_SHARP_LUMA_HI = 48;    // fully open above
+
+function applyWarpSharpen(o, w, h, f, t, Wpx){
+  if(!f || WARP_SHARP_AMOUNT <= 0 || !Wpx) return;
+  const s = Math.max(0, Math.min(1, t));
+  if(s <= 0) return;
+  const N = w*h;
+  const Y = new Float32Array(N);
+  for(let i=0,p=0;i<N;i++,p+=4) Y[i]=0.299*o[p]+0.587*o[p+1]+0.114*o[p+2];
+  const r = Math.max(1, Math.round(WARP_SHARP_RADIUS*Wpx));
+  const Yl = blurAlpha(Y, w, h, r);
+  const dispRef = Math.max(1e-3, WARP_SHARP_DISP*Wpx);
+  for(let y=f.y0; y<=f.y1; y++){
+    const row=y*w;
+    for(let x=f.x0; x<=f.x1; x++){
+      const i=row+x;
+      const d=(Math.abs(f.sx[i])+Math.abs(f.sy[i]))*s;
+      if(d < 0.75) continue;                      // outside the moved band
+      const subj=smoothstep(WARP_SHARP_LUMA_LO, WARP_SHARP_LUMA_HI, Yl[i]);
+      if(subj <= 0) continue;
+      const amt=WARP_SHARP_AMOUNT*Math.min(1, d/dispRef)*subj;
+      const addv=amt*(Y[i]-Yl[i]);
+      if(addv===0) continue;
+      const p4=i*4;
+      o[p4]+=addv; o[p4+1]+=addv; o[p4+2]+=addv;  // clamped by the typed array
     }
   }
 }
@@ -934,7 +1038,7 @@ function buildChinProjectionField(L, w, h, pose, sex){
   const pad=Math.ceil(maxPx)+2;
   x0=Math.max(0,x0-pad); y0=Math.max(0,y0-pad);
   x1=Math.min(w-1,x1+pad); y1=Math.min(h-1,y1+pad);
-  return { sx, sy, x0, y0, x1, y1, maxPx };
+  return { sx, sy, x0, y0, x1, y1, maxPx, bicubic:true }; // M9.2: chin_jaw resamples bicubic
 }
 
 // Gate + build the chin/jaw projection field. chin_jaw scope only; opts.warp
@@ -1691,8 +1795,10 @@ export async function compositeSculptra(beforeImg, aiImg, opts){
   // M8.2: then reconcile the moved band's shading with the local light field.
   if(lift && postWarp){
     const src = new Uint8ClampedArray(a);
+    const Wpx = faceWidthPx(landmarks, w, h);
     applyLiftWarp(a, src, w, h, lift, intensity);
-    applyWarpShadeFix(a, buildLowLuma(b, w, h, faceWidthPx(landmarks, w, h)), lift, w);
+    applyWarpShadeFix(a, buildLowLuma(b, w, h, Wpx), lift, w);
+    applyWarpSharpen(a, w, h, lift, intensity, Wpx); // M9.2: restore pore-scale crispness in the moved band
   }
   cx.putImageData(ai, 0, 0);
   return c.toDataURL("image/jpeg", 0.92);
@@ -1766,6 +1872,7 @@ export async function makeSculptraCompositor(beforeImg, aiImg, opts){
   const warpSrc = (lift && postWarp) ? new Uint8ClampedArray(b.length) : null;
   // M8.2: reference light field for the post-warp shading reconciliation.
   const lowY = (lift && postWarp) ? buildLowLuma(b, w, h, faceWidthPx(landmarks, w, h)) : null;
+  const sharpW = (lift && postWarp) ? faceWidthPx(landmarks, w, h) : 0; // M9.2
 
   return function apply(intensity){
     const t = Math.max(0, Math.min(1, (typeof intensity === "number" ? intensity : 1)));
@@ -1798,6 +1905,7 @@ export async function makeSculptraCompositor(beforeImg, aiImg, opts){
       warpSrc.set(o);
       applyLiftWarp(o, warpSrc, w, h, lift, t);
       applyWarpShadeFix(o, lowY, lift, w);
+      applyWarpSharpen(o, w, h, lift, t, sharpW); // M9.2: restore pore-scale crispness in the moved band
     }
     cx.putImageData(out, 0, 0);
     return c.toDataURL("image/jpeg", 0.92);

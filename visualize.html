@@ -300,8 +300,8 @@
           </div>
         </div>
         <div class="field">
-          <label>Response</label>
-          <div class="privacy-note"><span>ℹ️</span><span>One preview is generated at a strong, realistic anchor, then you dial the displayed response up or down with a slider on the result. No need to regenerate or compare separate versions.</span></div>
+          <label>Degree of correction</label>
+          <div class="privacy-note"><span>ℹ️</span><span>One preview is generated at a strong anchor, then you dial the displayed degree of correction with a slider on the result, from subtle to a deliberately overfilled view for patient education. No need to regenerate or compare separate versions.</span></div>
         </div>
       </div>
 
@@ -372,14 +372,15 @@
     </div>
     <div id="intensityWrap" style="display:none;margin-top:14px;">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-        <label for="intensitySlider" style="font-size:13px;letter-spacing:.04em;text-transform:uppercase;opacity:.75;">Treatment response</label>
+        <label for="intensitySlider" id="intensityLabel" style="font-size:13px;letter-spacing:.04em;text-transform:uppercase;opacity:.75;">Treatment response</label>
         <span id="intensityValue" style="font-family:'Cormorant Garamond',serif;font-size:22px;">Expected</span>
       </div>
       <input type="range" id="intensitySlider" min="0" max="100" step="1" value="70" style="width:100%;margin-top:8px;accent-color:#C8725A;" />
       <div style="display:flex;justify-content:space-between;font-size:.68rem;letter-spacing:.04em;text-transform:uppercase;opacity:.6;margin-top:4px;">
-        <span>Conservative</span><span>Strong</span>
+        <span id="intensityMin">Conservative</span><span id="intensityMax">Strong</span>
       </div>
-      <div class="small" style="margin-top:6px;">Slide to preview a more conservative or stronger response. The simulation updates instantly.</div>
+      <div class="small" id="intensityHelp" style="margin-top:6px;">Slide to preview a more conservative or stronger response. The simulation updates instantly.</div>
+      <div class="small" id="overfillNote" style="display:none;margin-top:4px;color:#A33524;font-weight:600;">Shown for education: this is beyond full correction, not a treatment goal.</div>
     </div>
     <div class="compare-wrap" id="compareWrap" style="display:none;">
       <div class="compare-card" id="compareCard">
@@ -506,7 +507,7 @@ const FREE_REGEN_MS = 60000;
 // stay the same module instance (shared face-detection cache). v35 = M9.0
 // jowl blending (alpha lobes over marionette/jowl shadows + prejowl notch-fill
 // warp kernels) (v34 = M8.2 shade reconciliation; v33 = M8.1 convex chin).
-const MASK_MODULE_VERSION = '36';
+const MASK_MODULE_VERSION = '37';
 
 /* M7: a case is one or more ANGLES, each with its own photo, QC result, job,
    and compositor. Treatment settings are shared across the case; the response
@@ -1125,6 +1126,50 @@ function strengthLabel(pct){
   return 'Strong';
 }
 
+// M9.2: HA filler speaks a different slider vocabulary than Sculptra. Biostim
+// keeps RESPONSE (biological response to stimulation genuinely varies between
+// patients, so the range frames how strongly this patient may respond). HA is
+// dose-dependent and immediate: what is injected is what is seen, so response
+// language is wrong there. But the slider must never speak in syringes either:
+// a vial count is a treatment recommendation, the clinician's call, made
+// verbally. DEGREE OF CORRECTION names the visual ENDPOINT and leaves dose to
+// the clinic. The top band is kept and labeled OVERFILLED on purpose: a
+// consult education zone showing why more is not better. The UI tints to the
+// warning color there and the export kicker is stamped as educational, so an
+// overfilled frame can never read as the recommended plan. Thresholds are
+// levers: Full correction sits over the calibrated default (70); at or past
+// FILLER_LEVELS.full the view is overfilled.
+const FILLER_LEVELS = { subtle:35, balanced:70, full:80 };
+const OVERFILL_COLOR = '#A33524';
+function levelInfo(pct){
+  const n = (typeof pct === 'number') ? pct : (parseInt(pct, 10) || 0);
+  if(state.type === 'filler'){
+    if(n < FILLER_LEVELS.subtle)   return { name:'Subtle correction',   over:false };
+    if(n < FILLER_LEVELS.balanced) return { name:'Balanced correction', over:false };
+    if(n < FILLER_LEVELS.full)     return { name:'Full correction',     over:false };
+    return { name:'Overfilled', over:true };
+  }
+  return { name: strengthLabel(n), over:false };
+}
+
+// One place that renders every intensity-related element from state, so the
+// vocabulary cannot drift between the input handler and renderActiveSlot.
+function updateIntensityUI(){
+  const li = levelInfo(state.intensityPct);
+  const isFiller = state.type === 'filler';
+  document.getElementById('intensityLabel').textContent = isFiller ? 'Degree of correction' : 'Treatment response';
+  document.getElementById('intensityMin').textContent = isFiller ? 'Subtle' : 'Conservative';
+  document.getElementById('intensityMax').textContent = isFiller ? 'Overfilled' : 'Strong';
+  document.getElementById('intensityHelp').textContent = isFiller
+    ? 'Slide to preview less or more correction. The top of the range deliberately shows an overfilled result.'
+    : 'Slide to preview a more conservative or stronger response. The simulation updates instantly.';
+  const valEl = document.getElementById('intensityValue');
+  valEl.textContent = li.name;
+  valEl.style.color = li.over ? OVERFILL_COLOR : '';
+  document.getElementById('intensitySlider').style.accentColor = li.over ? OVERFILL_COLOR : '';
+  document.getElementById('overfillNote').style.display = li.over ? '' : 'none';
+}
+
 // Live response slider: re-blend the cached per-angle apply() with no
 // regeneration. Sculptra and HA filler both store a masked compositor on their
 // slot with the same (0..1) -> jpegDataURL contract.
@@ -1137,7 +1182,7 @@ function strengthLabel(pct){
   slider.addEventListener('input', () => {
     const pct = parseInt(slider.value, 10) || 0;
     state.intensityPct = pct;
-    document.getElementById('intensityValue').textContent = strengthLabel(pct);
+    updateIntensityUI();
     const sl = activeSlot();
     if(!sl || !sl.apply) return;
     if(raf) cancelAnimationFrame(raf);
@@ -1605,7 +1650,7 @@ function renderActiveSlot(){
   document.getElementById('intensityWrap').style.display = showSlider ? 'block' : 'none';
   if(showSlider){
     document.getElementById('intensitySlider').value = state.intensityPct;
-    document.getElementById('intensityValue').textContent = strengthLabel(state.intensityPct);
+    updateIntensityUI();
   }
   const doneCount = state.selectedAngles.filter(id => state.slots[id].status === 'done').length;
   document.getElementById('sheetBtn').style.display = doneCount > 1 ? '' : 'none';
@@ -1623,7 +1668,7 @@ function updateRegenNote(){
     note.textContent = `Free re-generate for ${left}s. Adjust the treatment and run again at no extra cost.`;
     setTimeout(updateRegenNote, 1000);
   } else {
-    note.textContent = 'Re-generate to try a different treatment, area, or response.';
+    note.textContent = 'Re-generate to try a different treatment, area, or setting.';
   }
 }
 
@@ -1716,7 +1761,14 @@ function simKicker(angleId){
   if(multiDone) parts.push(ANGLE_DEF[angleId].label);
   if(state.type === 'biostim') parts.push(state.timeline + ' months');
   if(state.type === 'biostim' || (state.type === 'filler' && state.slots[angleId].apply)){
-    parts.push(strengthLabel(state.intensityPct || 70) + ' response');
+    if(state.type === 'filler'){
+      // M9.2: correction vocabulary; an overfilled frame is stamped as
+      // educational so it can never read as the recommended plan.
+      const li = levelInfo(state.intensityPct || 70);
+      parts.push(li.over ? 'Overfilled · shown for education' : li.name);
+    } else {
+      parts.push(strengthLabel(state.intensityPct || 70) + ' response');
+    }
   }
   return parts.join(' · ');
 }
