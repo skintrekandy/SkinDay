@@ -185,7 +185,13 @@
     .acct-bar { display:none; justify-content:flex-end; align-items:center; gap:14px; padding:8px 28px; background:rgba(28,23,20,.04); border-bottom:1px solid rgba(28,23,20,.07); font-size:.76rem; color:var(--muted); }
     .acct-bar .credits { color:var(--deep); font-weight:500; }
     .linklike { border:none; background:transparent; color:var(--rose); cursor:pointer; font-size:.76rem; text-decoration:underline; padding:0; font-family:'DM Sans',sans-serif; }
-    .cost-note { text-align:center; font-size:.72rem; color:var(--muted); margin-top:8px; min-height:1em; }
+    .nav-credits { display:none; align-items:center; gap:6px; padding:7px 16px; border-radius:999px; border:1px solid var(--hero-border); color:var(--gold); font-size:.8rem; cursor:pointer; background:transparent; font-family:'DM Sans',sans-serif; white-space:nowrap; }
+    .nav-credits strong { color:#FAF7F2; font-weight:600; }
+    .nav-credits:hover { border-color:var(--gold); }
+    .cost-note { display:flex; justify-content:center; margin-top:12px; min-height:1em; }
+    .cost-pill { display:inline-flex; align-items:center; gap:6px; padding:9px 18px; border-radius:999px; border:1px solid rgba(28,23,20,.14); background:rgba(28,23,20,.035); font-size:.86rem; color:var(--deep); }
+    .cost-pill strong { font-weight:600; }
+    .cost-pill.warn { border-color:var(--rose); background:rgba(196,106,86,.08); color:var(--rose); }
     .pack-row { display:flex; align-items:center; justify-content:space-between; gap:14px; border:1px solid rgba(28,23,20,.12); border-radius:10px; padding:14px 16px; margin-top:10px; }
     .pack-row .pack-name { font-weight:500; color:var(--deep); font-size:.92rem; }
     .pack-row .pack-sub { font-size:.74rem; color:var(--muted); margin-top:2px; }
@@ -228,6 +234,7 @@
 <nav>
   <a href="/" class="nav-logo">Skin<span>Day</span></a>
   <div class="nav-ctas">
+    <button class="nav-credits" id="navCredits" type="button" title="Credit balance"></button>
     <a href="/studio.html" class="nav-link">Before &amp; After</a>
     <a href="/editor.html" class="nav-cta">Clinic Portal</a>
   </div>
@@ -235,6 +242,7 @@
 <div class="acct-bar" id="acctBar">
   <span id="acctIdent"></span>
   <span class="credits" id="creditChip"></span>
+  <button class="linklike" id="creditsInfoBtn" type="button" style="display:none;">How credits work</button>
   <button class="linklike" id="buyBtn" type="button" style="display:none;">Buy credits</button>
   <button class="linklike" id="signOutBtn" type="button" style="display:none;">Sign out</button>
 </div>
@@ -397,6 +405,18 @@
   <div class="brand">Skin<span>Day</span></div>
   <div>Visualize AI Beta · Consultation previews only · AI-generated, not a prediction of results</div>
 </footer>
+<!-- ───────── HOW CREDITS WORK ───────── -->
+<div class="guide-modal hidden" id="creditsInfoModal">
+  <div class="guide-card">
+    <h2>How credits work</h2>
+    <p>Credits are spent only when a simulation is generated. Each angle of a case is one generation: <strong>HA filler costs 1 credit per angle</strong> and <strong>Sculptra (and other biostimulators) costs 2 credits per angle</strong>, so a full 3-angle HA case is 3 credits and a 3-angle Sculptra case is 6.</p>
+    <p>Everything after generation is free: adjusting the response slider, comparing angles, exporting and downloading, and re-generating within 60 seconds of a result. If a generation fails or is blocked by the AI provider's safety system, its credits are refunded to your balance automatically.</p>
+    <p>Purchased credits do not expire. New accounts start with a small free balance so you can try the tool on a real consultation first.</p>
+    <p><strong>Independence note:</strong> Visualize credits are a clinic tool purchase only. Buying credits never affects a clinic's ranking, search placement, reviews, or visibility anywhere on SkinDay.</p>
+    <div class="btn-row guide-close"><button class="btn btn-light" id="creditsInfoCloseBtn" type="button">Close</button></div>
+  </div>
+</div>
+
 <!-- ───────── BUY CREDITS ───────── -->
 <div class="guide-modal hidden" id="buyModal">
   <div class="guide-card">
@@ -578,18 +598,24 @@ function renderAcctBar(){
   const chip = document.getElementById('creditChip');
   const buy = document.getElementById('buyBtn');
   const out = document.getElementById('signOutBtn');
+  const navPill = document.getElementById('navCredits');
+  const info = document.getElementById('creditsInfoBtn');
   if(accessMode === 'beta'){
     bar.style.display = 'flex';
     ident.textContent = 'Beta access';
     chip.textContent = 'Unmetered';
-    buy.style.display = 'none'; out.style.display = 'none';
+    buy.style.display = 'none'; out.style.display = 'none'; info.style.display = 'none';
+    navPill.style.display = 'none';
   } else if(accessMode === 'account'){
     bar.style.display = 'flex';
     ident.textContent = (sb && sb.__email) || '';
     chip.textContent = creditBalance == null ? 'Credits: …' : ('Credits: ' + creditBalance);
-    buy.style.display = ''; out.style.display = '';
+    buy.style.display = ''; out.style.display = ''; info.style.display = '';
+    navPill.style.display = 'inline-flex';
+    navPill.innerHTML = 'Credits: <strong>' + (creditBalance == null ? '…' : creditBalance) + '</strong>';
   } else {
     bar.style.display = 'none';
+    navPill.style.display = 'none';
   }
 }
 
@@ -728,7 +754,11 @@ function openBuyModal(){
 }
 function closeBuyModal(){ document.getElementById('buyModal').classList.add('hidden'); }
 document.getElementById('buyBtn').addEventListener('click', openBuyModal);
+document.getElementById('navCredits').addEventListener('click', openBuyModal);
 document.getElementById('buyCloseBtn').addEventListener('click', closeBuyModal);
+document.getElementById('creditsInfoBtn').addEventListener('click', () => document.getElementById('creditsInfoModal').classList.remove('hidden'));
+document.getElementById('creditsInfoCloseBtn').addEventListener('click', () => document.getElementById('creditsInfoModal').classList.add('hidden'));
+document.getElementById('creditsInfoModal').addEventListener('click', e => { if(e.target === document.getElementById('creditsInfoModal')) document.getElementById('creditsInfoModal').classList.add('hidden'); });
 document.getElementById('buyModal').addEventListener('click', e => { if(e.target === document.getElementById('buyModal')) closeBuyModal(); });
 
 /* Boot: config, then saved beta key, then account session, then the lock UI. */
@@ -809,9 +839,14 @@ function syncGenerateBtn(){
     if(accessMode === 'account' && ids.length){
       const per = (state.type === 'biostim') ? 2 : 1;
       const total = per * ids.length;
-      note.textContent = 'Uses ' + total + ' credit' + (total > 1 ? 's' : '')
-        + ' (' + ids.length + ' angle' + (ids.length > 1 ? 's' : '') + ' × ' + per + ')'
-        + (creditBalance != null ? ' · balance ' + creditBalance : '');
+      const short = (creditBalance != null && creditBalance < total);
+      note.innerHTML = '<span class="cost-pill' + (short ? ' warn' : '') + '">'
+        + 'This case: <strong>' + total + ' credit' + (total > 1 ? 's' : '') + '</strong>'
+        + '<span>(' + ids.length + ' angle' + (ids.length > 1 ? 's' : '') + ' × ' + per + ')</span>'
+        + (creditBalance != null
+            ? '<span>·</span>Balance: <strong>' + creditBalance + '</strong>' + (short ? '<span>· top up needed</span>' : '')
+            : '')
+        + '</span>';
     } else {
       note.textContent = '';
     }
