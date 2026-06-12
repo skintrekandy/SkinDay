@@ -7,6 +7,22 @@
 // background). gpt-image-1's edit endpoint edits only the transparent region, so
 // this physically prevents the global beautification leak.
 //
+// M9.3 (v38): crease-SELECTIVE lobe release (clinical: chin/jowl area still
+// blurry at the high end of the slider after v37; conservative end good).
+// That slider signature identifies the source: v36's release handed the WHOLE
+// lobe's high band to the AI, and the AI's in-mask fill is soft, so as alpha
+// climbed the patient's pore texture was progressively swapped for smooth AI
+// skin. The fix separates what the release was for (erasing the fold line)
+// from what it must never touch (pore-scale texture) by amplitude: a jowl or
+// marionette fold is a dark high-frequency structure many luma levels below
+// its local mean; pores are a few levels. The release now fires per pixel only
+// on dark structures deeper than JOWL_CREASE_LO..HI, so the fold is still
+// erased where the AI softened it while pores keep the original texture at
+// EVERY slider value. Tradeoff, documented: a deep pigment spot inside the
+// lobes (darker than JOWL_CREASE_HI below its surroundings) is treated like a
+// crease and can fade at the top of the slider; raise both thresholds if a
+// real spot visibly fades, at the cost of fold-erasure strength.
+//
 // M9.2 (v37): chin sharpness at oblique Strong (clinical: "blurry effects at
 // the chin area at strong"). Mechanism, two compounding resampling losses in
 // the chin_jaw post-warp, neither fixable by the texture restore because that
@@ -379,6 +395,16 @@ const GLOW_LUMA        = 6;     // gentle lighten (glow), luma levels at full. M
 // natural contour shadow back under a strongly projected chin.
 const HIGH_DARKEN_SCALE = 0;
 
+// M9.3 (v38): crease detector for the jowl-lobe texture release. The release
+// (rel, from buildJowlReleaseField) only acts on dark high-frequency structure
+// between these depths, in luma levels below the local mean: at or below LO
+// nothing releases (pores, fine texture stay the patient's own at every
+// intensity); at HI and deeper the release is fully open (the fold line is
+// erased where the AI softened it). Raise both to protect deep pigment spots
+// inside the lobes; lower LO if a shallow fold survives at full intensity.
+const JOWL_CREASE_LO = 4;
+const JOWL_CREASE_HI = 12;
+
 // repeated separable box blur on a Float32 plane -> approximate gaussian
 function blurPlane(src,w,h,r,passes){
   if(r<=0) return src.slice();
@@ -429,11 +455,12 @@ function buildTextureDelta(b,a0,w,h,W,opts){
   // low-band dark floor, Sculptra skin can only hold or brighten. HA chin/jaw
   // keeps the guard (it has genuine moved edges) by leaving this false.
   const forceOrig = !!opts.forceOriginalTexture;
-  // M9.1 (v36): optional per-pixel texture-release field (0..1). Where it is
-  // positive, the moved-edge guard is scaled DOWN (g *= 1 - release), letting
-  // the AI's high-frequency luminance replace the original's there. Built over
-  // the jowl-blend lobes for chin_jaw so the AI's crease softening survives
-  // the composite; null everywhere else, so nothing outside the lobes changes.
+  // M9.1/M9.3: optional per-pixel texture-release field (0..1). Where it is
+  // positive, the luma path's guard is scaled down crease-selectively (only on
+  // dark high-frequency structure deeper than JOWL_CREASE_LO..HI), letting the
+  // AI's flattened version replace the fold line while pores keep the original
+  // texture. Built over the jowl-blend lobes for chin_jaw; null everywhere
+  // else, so nothing outside the lobes changes.
   const rel = opts.releaseField || null;
 
   const bR=new Float32Array(N),bG=new Float32Array(N),bB=new Float32Array(N);
@@ -460,8 +487,9 @@ function buildTextureDelta(b,a0,w,h,W,opts){
   const dR=new Float32Array(N),dG=new Float32Array(N),dB=new Float32Array(N);
   for(let i=0;i<N;i++){
     const edge=Math.abs(D[i]-Dl[i]);
-    let g=forceOrig ? strength : (1-smoothstep(lo,hi,edge))*strength; // 1 = stationary skin -> full original texture
-    if(rel && rel[i]>0) g*=(1-Math.min(1,rel[i])); // M9.1: lobe texture release
+    const g=forceOrig ? strength : (1-smoothstep(lo,hi,edge))*strength; // 1 = stationary skin -> full original texture
+    // (M9.3: the lobe release no longer scales this shared guard wholesale; it
+    // acts crease-selectively on the luma path below, so pores stay original.)
     const bHr=bR[i]-bRl[i], bHg=bG[i]-bGl[i], bHb=bB[i]-bBl[i];
     const aHr=aR[i]-aRl[i], aHg=aG[i]-aGl[i], aHb=aB[i]-aBl[i];
     const detHr=aHr+(bHr-aHr)*g, detHg=aHg+(bHg-aHg)*g, detHb=aHb+(bHb-aHb)*g;
@@ -482,7 +510,19 @@ function buildTextureDelta(b,a0,w,h,W,opts){
       const oY =0.299*bR[i] +0.587*bG[i] +0.114*bB[i];
       const aY =0.299*aR[i] +0.587*aG[i] +0.114*aB[i];
       const oYh=oY-oYl, aYh=aY-aYl;
-      const detY=aYh+(oYh-aYh)*g;
+      // M9.3 (v38): crease-selective lobe release. Inside the jowl lobes the
+      // guard is scaled down ONLY on dark high-frequency structure (the fold
+      // line), gated by depth via JOWL_CREASE_LO..HI. Pores and fine texture
+      // (shallow |oYh|) keep the original at every intensity, which removes the
+      // v36 high-slider softness; the fold is still erased where the AI
+      // flattened it (release open -> detY ~ aYh ~ 0 -> the bright correction
+      // -oYh passes the darkening gate and cancels the crease).
+      let gY=g;
+      if(rel && rel[i]>0 && oYh<0){
+        const creaseW=smoothstep(JOWL_CREASE_LO, JOWL_CREASE_HI, -oYh);
+        if(creaseW>0) gY*=(1-Math.min(1,rel[i])*creaseW);
+      }
+      const detY=aYh+(oYh-aYh)*gY;
       // Broad tone change from the AI volume. Real Sculptra lightens skin (glow)
       // and does not darken it, so floor any darkening of the broad tone and add
       // a gentle uniform glow lift. Texture (the high-band term below) and chroma
