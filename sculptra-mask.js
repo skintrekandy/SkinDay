@@ -7,6 +7,33 @@
 // background). gpt-image-1's edit endpoint edits only the transparent region, so
 // this physically prevents the global beautification leak.
 //
+// M9.1 (v36): jowl-lobe TEXTURE RELEASE, the structural fix v35's lobes were
+// missing. Diagnosis (settled by the composite math, not by tuning): the
+// chroma-locked texture restore's high-frequency term reduces to
+//   highTerm = (1 - g) * (aiHighLuma - origHighLuma)
+// and on stationary skin the moved-edge guard gives g ~ 1, so highTerm ~ 0.
+// The output is original + alpha * delta; the jowl fold's sharp crease line
+// lives in the ORIGINAL's high band and therefore survives at full strength no
+// matter how well the AI softens it. v35's lobes opened the ALPHA, but alpha
+// multiplies a delta that structurally contains no crease correction. Only the
+// low band (cutoff TEX_RADIUS_FRAC, roughly 10-16 px) passes, which is exactly
+// why the broad frontal shadow mildly improved while the oblique fold (a sharp
+// line at 45 degrees, almost entirely high frequency) did not move. Fix: a
+// per-pixel RELEASE FIELD over the same v35 jowl lobes, passed into
+// buildTextureDelta, where it scales the guard down (g *= 1 - release). Inside
+// the lobes the high band becomes aiHigh - origHigh: where the original holds
+// a dark crease line and the AI flattened it, that term is POSITIVE
+// (brightening), passes the darkening gate untouched, and literally erases the
+// crease. AI attempts to ADD dark detail there stay governed by the existing
+// highDarkenScale. Chroma stays locked (luminance only, no invented pigment),
+// and the field is zero outside the lobes, so chin/border moved-edge behavior
+// is untouched. Lever: JOWL_TEX_RELEASE (0 restores v35 behavior); client
+// hook ?jowltex=off for the A/B. Also: CHINW_NOTCH_FILL 0.012 -> 0.022. The
+// undulating BORDER at oblique can only be the warp's (the outline gate zeroes
+// AI paint outside the silhouette and the lobes are oval-contained), and the
+// follower sum plus 0.012W still left a visible dip on a deep sulcus. Frontal
+// notch fill unchanged (frontal mildly improved on the v35 run).
+//
 // M9.0 (v35): jowl blending for the aging lower face. Clinical mechanism
 // (calibrated against real chin/jawline before/afters): on a jowled face the
 // treatment reads as jowl SOFTENING because the prejowl sulcus is filled and
@@ -384,6 +411,12 @@ function buildTextureDelta(b,a0,w,h,W,opts){
   // low-band dark floor, Sculptra skin can only hold or brighten. HA chin/jaw
   // keeps the guard (it has genuine moved edges) by leaving this false.
   const forceOrig = !!opts.forceOriginalTexture;
+  // M9.1 (v36): optional per-pixel texture-release field (0..1). Where it is
+  // positive, the moved-edge guard is scaled DOWN (g *= 1 - release), letting
+  // the AI's high-frequency luminance replace the original's there. Built over
+  // the jowl-blend lobes for chin_jaw so the AI's crease softening survives
+  // the composite; null everywhere else, so nothing outside the lobes changes.
+  const rel = opts.releaseField || null;
 
   const bR=new Float32Array(N),bG=new Float32Array(N),bB=new Float32Array(N);
   const aR=new Float32Array(N),aG=new Float32Array(N),aB=new Float32Array(N);
@@ -409,7 +442,8 @@ function buildTextureDelta(b,a0,w,h,W,opts){
   const dR=new Float32Array(N),dG=new Float32Array(N),dB=new Float32Array(N);
   for(let i=0;i<N;i++){
     const edge=Math.abs(D[i]-Dl[i]);
-    const g=forceOrig ? strength : (1-smoothstep(lo,hi,edge))*strength; // 1 = stationary skin -> full original texture
+    let g=forceOrig ? strength : (1-smoothstep(lo,hi,edge))*strength; // 1 = stationary skin -> full original texture
+    if(rel && rel[i]>0) g*=(1-Math.min(1,rel[i])); // M9.1: lobe texture release
     const bHr=bR[i]-bRl[i], bHg=bG[i]-bGl[i], bHb=bB[i]-bBl[i];
     const aHr=aR[i]-aRl[i], aHg=aG[i]-aGl[i], aHb=aB[i]-aBl[i];
     const detHr=aHr+(bHr-aHr)*g, detHg=aHg+(bHg-aHg)*g, detHb=aHb+(bHb-aHb)*g;
@@ -740,7 +774,9 @@ const CHINW_CAPSULE      = 1.25;
 // chin-to-gonion silhouette reads as one straight, continuous line (the visual
 // mechanism of jowl softening). Oblique pushes the notch anterior; frontal
 // pushes both notches slightly outward. Zero either constant to disable.
-const CHINW_NOTCH_FILL         = 0.012; // oblique: extra anterior fill at the near prejowl, fraction of W
+const CHINW_NOTCH_FILL         = 0.022; // oblique: extra anterior fill at the near prejowl, fraction of W
+                                        // (v36: 0.012 -> 0.022; the follower sum plus 0.012W still left a
+                                        // visible dip on a deep sulcus at 45 degrees)
 const CHINW_NOTCH_FILL_FRONTAL = 0.008; // frontal: outward fill at both prejowl points, fraction of W
 const CHINW_NOTCH_DOWN         = 0.004; // small accompanying drop, fraction of faceH
 
@@ -1457,6 +1493,59 @@ const CHIN_JAW_DARK_FLOOR = 26;
 // 14 -> 22 (M7.7) -> 26 (M8.1, "jawline definition drastically"): the shadow
 // line under the border is what makes definition read; chroma stays locked so
 // this cannot discolor. Drop back toward 22 if a case reads harsh or dirty.
+// M9.1 (v36): jowl-lobe texture-release field for chin_jaw. Same geometry as
+// the v35 alpha lobes in buildTreatAlpha (marionette tube: dropped mouth
+// corner -> prejowl; jowl body tube: prejowl -> raised mid-jowl), rebuilt here
+// as a standalone Float32 plane so the composite can scale the moved-edge
+// guard down inside the lobes (see buildTextureDelta). Peak value is
+// JOWL_TEX_RELEASE: 1 means the AI's high-frequency luminance fully replaces
+// the original's at the lobe core (the crease line is erased where the AI
+// softened it); 0 disables and restores exact v35 behavior. Not oval-gated:
+// the field only acts through the delta, which the treat alpha (itself
+// oval-contained at the lobes) already gates.
+const JOWL_TEX_RELEASE = 0.9;
+function buildJowlReleaseField(L, w, h){
+  if(JOWL_TEX_RELEASE <= 0) return null;
+  const lm = L.map(p=>({x:p.x*w, y:p.y*h}));
+  const p10=lm[10], p152=lm[152], zr=lm[234], zl=lm[454];
+  if(!p10||!p152||!zr||!zl) return null;
+  const dirUp = norm(sub(p10, p152));
+  const dirOut = { x:-dirUp.y, y:dirUp.x };
+  const W = Math.abs(dot(sub(zl, zr), dirOut)) || 1;
+  const faceH = (dot(sub(p10, p152), dirUp)) || 1;
+  const sig = 0.060*W, twoSig = 2*sig*sig || 1e-6; // mirrors LF_JOWL_SIGMA
+  const segs=[];
+  for(const pair of [[400,397],[176,172]]){ // [prejowl, gonion] per side
+    const pj=lm[pair[0]], go=lm[pair[1]];
+    if(!pj||!go) continue;
+    const cR=lm[COMMISSURE.r], cL=lm[COMMISSURE.l];
+    let corner=null;
+    if(cR&&cL) corner = (Math.hypot(cR.x-pj.x,cR.y-pj.y) <= Math.hypot(cL.x-pj.x,cL.y-pj.y)) ? cR : cL;
+    else corner = cR || cL;
+    if(corner) segs.push([add(corner, mul(dirUp, -0.04*faceH)), pj]);
+    const mid = { x:(pj.x+go.x)/2, y:(pj.y+go.y)/2 };
+    segs.push([pj, add(mid, mul(dirUp, 0.05*faceH))]);
+  }
+  if(!segs.length) return null;
+  const f=new Float32Array(w*h);
+  let minX=w, minY=h, maxX=0, maxY=0;
+  for(const sg of segs){ for(const p of sg){
+    if(p.x<minX)minX=p.x; if(p.x>maxX)maxX=p.x;
+    if(p.y<minY)minY=p.y; if(p.y>maxY)maxY=p.y;
+  } }
+  const pad=3*sig;
+  minX=Math.max(0,Math.floor(minX-pad)); maxX=Math.min(w-1,Math.ceil(maxX+pad));
+  minY=Math.max(0,Math.floor(minY-pad)); maxY=Math.min(h-1,Math.ceil(maxY+pad));
+  for(let y=minY;y<=maxY;y++){
+    for(let x=minX;x<=maxX;x++){
+      let v=0;
+      for(let k=0;k<segs.length;k++){ const sg=segs[k]; const dd=distToSeg(x,y,sg[0],sg[1]); const g=Math.exp(-(dd*dd)/twoSig); if(g>v) v=g; }
+      f[y*w+x]=JOWL_TEX_RELEASE*v;
+    }
+  }
+  return f;
+}
+
 function sculptraTexOpts(scope, opts){
   const isHA = (scope === 'chin_jaw');
   const profile = isHA
@@ -1572,6 +1661,11 @@ export async function compositeSculptra(beforeImg, aiImg, opts){
     const a0 = new Uint8ClampedArray(a);
     const W = faceWidthPx(landmarks, w, h);
     const tdOpts = sculptraTexOpts(scope, opts);
+    // M9.1: jowl-lobe texture release (chin_jaw only; ?jowltex=off sets
+    // jowlTexRelease false for the v35 A/B).
+    if(scope === 'chin_jaw' && !(opts && opts.jowlTexRelease === false)){
+      try { tdOpts.releaseField = buildJowlReleaseField(landmarks, w, h); } catch(e){ /* release is optional */ }
+    }
     const gain = tdOpts.deltaGain || 1;
     const glowApply = tdOpts.glowApply || 0;
     const { dR, dG, dB } = buildTextureDelta(b, a0, w, h, W, tdOpts);
@@ -1647,6 +1741,11 @@ export async function makeSculptraCompositor(beforeImg, aiImg, opts){
   if(textureRestore){
     const W = faceWidthPx(landmarks, w, h);
     const tdOpts = sculptraTexOpts(scope, opts);
+    // M9.1: jowl-lobe texture release (chin_jaw only; ?jowltex=off sets
+    // jowlTexRelease false for the v35 A/B).
+    if(scope === 'chin_jaw' && !(opts && opts.jowlTexRelease === false)){
+      try { tdOpts.releaseField = buildJowlReleaseField(landmarks, w, h); } catch(e){ /* release is optional */ }
+    }
     gain = tdOpts.deltaGain || 1;
     glowApply = tdOpts.glowApply || 0;
     const d = buildTextureDelta(b, a0, w, h, W, tdOpts);

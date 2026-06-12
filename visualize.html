@@ -506,7 +506,7 @@ const FREE_REGEN_MS = 60000;
 // stay the same module instance (shared face-detection cache). v35 = M9.0
 // jowl blending (alpha lobes over marionette/jowl shadows + prejowl notch-fill
 // warp kernels) (v34 = M8.2 shade reconciliation; v33 = M8.1 convex chin).
-const MASK_MODULE_VERSION = '35';
+const MASK_MODULE_VERSION = '36';
 
 /* M7: a case is one or more ANGLES, each with its own photo, QC result, job,
    and compositor. Treatment settings are shared across the case; the response
@@ -1466,13 +1466,25 @@ async function finishSlot(angleId, auth){
                   : (state.type === 'filler') ? 'chin_jaw'
                   : null;
   if(compScope){
+    // M9.1 diagnostic hook: ?composite=raw shows the AI's UNTOUCHED output for
+    // every angle (no mask composite, no texture restore, no warp; the slider
+    // skips these angles). One look settles whether the model is painting the
+    // requested change at all, before any composite or warp tuning.
+    if(/[?&]composite=raw\b/i.test(location.search)){
+      console.warn('%c[Visualize] ' + angleId + ': composite=raw hook active; showing the RAW AI output (no composite, no warp).', 'color:#e65100;font-weight:bold');
+      sl.status = 'done';
+      return;
+    }
     try {
       const beforeImg = await loadImage(sl.beforeDataUrl || sl.originalDataUrl);
       const aiImg = await loadImage(sl.resultDataUrl);
       const { makeSculptraCompositor } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
       // M6 A/B hook: append ?warp=off to compare against the pure M5 composite.
       const warpOn = !/[?&]warp=off\b/i.test(location.search);
-      const apply = await makeSculptraCompositor(beforeImg, aiImg, { scope:compScope, sex:state.sex, warp:warpOn });
+      // M9.1 A/B hook: append ?jowltex=off to disable the jowl-lobe texture
+      // release and compare against exact v35 composite behavior.
+      const jowlTexOn = !/[?&]jowltex=off\b/i.test(location.search);
+      const apply = await makeSculptraCompositor(beforeImg, aiImg, { scope:compScope, sex:state.sex, warp:warpOn, jowlTexRelease:jowlTexOn });
       if(apply){
         sl.apply = apply;
         sl.resultDataUrl = apply(state.intensityPct / 100);
