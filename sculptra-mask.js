@@ -7,6 +7,24 @@
 // background). gpt-image-1's edit endpoint edits only the transparent region, so
 // this physically prevents the global beautification leak.
 //
+// M9.5 (v40): the two residual softeners at high intensity (clinical: "a bit
+// better but still not enough" after v39 closed all three texture-swap paths).
+// (1) STRETCH-AWARE sharpening: the warp's detail loss follows local
+// MAGNIFICATION, not displacement; the plateau translates rigidly and loses
+// almost nothing, while the decay zone stretches up to ~1.4x and thins detail.
+// The sharpen pass now weights by the local stretch of the offset field (sum
+// of absolute partial derivatives, the Jacobian deviation) with a small base
+// term for plain fractional-offset translation, and the ceiling rises 0.45 ->
+// 0.7. (2) MID-BAND tightening for chin_jaw only: detail coarser than the
+// texture-restore cutoff lives in the low band and takes the AI's smooth
+// version at high alpha, an airbrushed look at the 7px-and-coarser scale (fine
+// lines, skin mottling) even with pores intact. CHIN_JAW_TEX_RADIUS drops the
+// chin_jaw cutoff 0.016W -> 0.009W so that band stays the patient's own;
+// treatment shading is far coarser than 0.009W and is unaffected, and Sculptra
+// keeps 0.016W untouched. Attribution if any softness remains: ?warp=off at
+// the top of the slider; sharp there means raise WARP_SHARP_AMOUNT, soft
+// there means lower CHIN_JAW_TEX_RADIUS further.
+//
 // M9.4 (v39): micro-texture-PROTECTED guard, the third and final texture-
 // replacement path in the chin/jaw region (clinical: chin still blurry at the
 // top of the slider after v38). v37 fixed warp resampling, v38 fixed the
@@ -867,17 +885,18 @@ function applyWarpShadeFix(o, lowY, f, w){
   }
 }
 
-// M9.2 (v37): displacement-weighted self-unsharp on the warped result. Even
-// with bicubic resampling, the decay zone's local magnification thins pore
-// detail; this pass restores micro-contrast from the warped image's OWN high
-// band (no foreign texture, so nothing can ghost). Luminance only, added
-// equally to RGB (chroma locked). Scaled by local displacement (zero outside
-// the moved band), gated by blurred subject luma (backdrop, hair, and deep
-// shadow are never haloed). Levers below; WARP_SHARP_AMOUNT 0 disables, which
-// isolates the bicubic change for the A/B.
-const WARP_SHARP_AMOUNT  = 0.45;  // 0..~0.8 sensible; 0 = off
+// M9.2/M9.5: displacement-band self-unsharp on the warped result, weighted by
+// the LOCAL STRETCH of the map (v40). Bicubic preserves detail through rigid
+// translation; what thins detail is magnification in the kernel decay zone, so
+// the weight is the offset field's Jacobian deviation (sum of absolute partial
+// derivatives), with a small base term for plain fractional-offset softening.
+// Luminance only, added equally to RGB (chroma locked). Zero outside the moved
+// band; gated by blurred subject luma (backdrop, hair, and deep shadow are
+// never haloed). WARP_SHARP_AMOUNT 0 disables for the A/B.
+const WARP_SHARP_AMOUNT  = 0.7;   // ceiling; 0 = off (v40: 0.45 -> 0.7)
 const WARP_SHARP_RADIUS  = 0.0035; // high-band cutoff, fraction of W (pore scale)
-const WARP_SHARP_DISP    = 0.025; // displacement (fraction of W) at full effect
+const WARP_SHARP_STRETCH = 0.25;  // local stretch at which the effect saturates
+const WARP_SHARP_BASE    = 0.2;   // fraction applied at zero stretch inside the band
 const WARP_SHARP_LUMA_LO = 22;    // blurred-luma dark gate: 0 at or below
 const WARP_SHARP_LUMA_HI = 48;    // fully open above
 
@@ -890,17 +909,24 @@ function applyWarpSharpen(o, w, h, f, t, Wpx){
   for(let i=0,p=0;i<N;i++,p+=4) Y[i]=0.299*o[p]+0.587*o[p+1]+0.114*o[p+2];
   const r = Math.max(1, Math.round(WARP_SHARP_RADIUS*Wpx));
   const Yl = blurAlpha(Y, w, h, r);
-  const dispRef = Math.max(1e-3, WARP_SHARP_DISP*Wpx);
+  const sx=f.sx, sy=f.sy;
   for(let y=f.y0; y<=f.y1; y++){
     const row=y*w;
+    const yU=(y>f.y0? y-1 : y), yD=(y<f.y1? y+1 : y);
     for(let x=f.x0; x<=f.x1; x++){
       const i=row+x;
-      const d=(Math.abs(f.sx[i])+Math.abs(f.sy[i]))*s;
+      const d=(Math.abs(sx[i])+Math.abs(sy[i]))*s;
       if(d < 0.75) continue;                      // outside the moved band
       const subj=smoothstep(WARP_SHARP_LUMA_LO, WARP_SHARP_LUMA_HI, Yl[i]);
       if(subj <= 0) continue;
-      const amt=WARP_SHARP_AMOUNT*Math.min(1, d/dispRef)*subj;
-      const addv=amt*(Y[i]-Yl[i]);
+      // Local stretch of the backward map (central differences, clamped at
+      // the bounding box; the one-sided halving at the rim is harmless).
+      const iL=row+(x>f.x0? x-1 : x), iR=row+(x<f.x1? x+1 : x);
+      const iU=yU*w+x, iD=yD*w+x;
+      const stretch=s*0.5*(Math.abs(sx[iR]-sx[iL])+Math.abs(sy[iD]-sy[iU])
+                          +0.5*(Math.abs(sy[iR]-sy[iL])+Math.abs(sx[iD]-sx[iU])));
+      const wS=WARP_SHARP_BASE+(1-WARP_SHARP_BASE)*Math.min(1, stretch/WARP_SHARP_STRETCH);
+      const addv=WARP_SHARP_AMOUNT*wS*subj*(Y[i]-Yl[i]);
       if(addv===0) continue;
       const p4=i*4;
       o[p4]+=addv; o[p4+1]+=addv; o[p4+2]+=addv;  // clamped by the typed array
@@ -1663,6 +1689,16 @@ const SCULPTRA_BRIGHT_CAP_FULL = 18;
 // in post-hoc amplification. Do not raise this above 1.0 again.
 const SCULPTRA_DELTA_GAIN = 1.0;
 const CHIN_JAW_DELTA_GAIN = 1.0;
+// M9.5 (v40): chin_jaw texture-restore cutoff, tighter than the shared
+// TEX_RADIUS_FRAC (0.016). Detail coarser than the cutoff lives in the low
+// band and takes the AI's smooth version at high alpha; at 0.016W that
+// includes 7px-and-coarser skin character (fine lines, mottling), which read
+// as an airbrushed band at the top of the slider even with pores intact.
+// 0.009W keeps that band the patient's own. Treatment shading (border shadow
+// gradient, broad brightening) is far coarser than 0.009W and unaffected.
+// Sculptra keeps the shared 0.016 untouched. Raise back toward 0.016 only if
+// the AI's intended chin/jaw shading ever looks visibly band-limited.
+const CHIN_JAW_TEX_RADIUS = 0.009;
 // Sculptra glow applied at composite time, scaled by mask and slider but NOT by
 // the gain (see GLOW_LUMA note). Equal add to R,G,B, so chroma-exact.
 const SCULPTRA_GLOW_APPLY = 6;
@@ -1733,7 +1769,7 @@ function sculptraTexOpts(scope, opts){
   const isHA = (scope === 'chin_jaw');
   const profile = isHA
     ? { forceOriginalTexture:false, darkFloor:CHIN_JAW_DARK_FLOOR, highDarkenScale:0.5, deltaGain:CHIN_JAW_DELTA_GAIN,
-        glowLuma:GLOW_LUMA, glowApply:0, brightCap:0 }
+        glowLuma:GLOW_LUMA, glowApply:0, brightCap:0, texRadiusFrac:CHIN_JAW_TEX_RADIUS }
     : { forceOriginalTexture:true,  darkFloor:SCULPTRA_DARK_FLOOR, highDarkenScale:0, deltaGain:SCULPTRA_DELTA_GAIN,
         glowLuma:0, glowApply:SCULPTRA_GLOW_APPLY,
         brightCap:SCULPTRA_BRIGHT_CAP_FULL/SCULPTRA_DELTA_GAIN };
