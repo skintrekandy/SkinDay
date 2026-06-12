@@ -11,10 +11,12 @@ const SUPABASE_URL = process.env.SUPABASE_URL || '';
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const STRIPE_KEY = process.env.STRIPE_SECRET_KEY || '';
 
+// Must mirror visualize-config.js. `cad` is the charged (launch) price;
+// `regularCad` is display-only and never charged.
 const DEFAULT_PACKS = [
-  { id: 'starter', label: 'Starter', credits: 20,  cad: 5900  },
-  { id: 'clinic',  label: 'Clinic',  credits: 60,  cad: 14900 },
-  { id: 'studio',  label: 'Studio',  credits: 150, cad: 32900 }
+  { id: 'starter', label: 'Starter', credits: 20,  cad: 2900,  regularCad: 5900  },
+  { id: 'clinic',  label: 'Clinic',  credits: 60,  cad: 6900,  regularCad: 14900 },
+  { id: 'studio',  label: 'Studio',  credits: 150, cad: 13900, regularCad: 32900 }
 ];
 
 function packs() {
