@@ -7,6 +7,28 @@
 // background). gpt-image-1's edit endpoint edits only the transparent region, so
 // this physically prevents the global beautification leak.
 //
+// M9.4 (v39): micro-texture-PROTECTED guard, the third and final texture-
+// replacement path in the chin/jaw region (clinical: chin still blurry at the
+// top of the slider after v38). v37 fixed warp resampling, v38 fixed the
+// release lobes; both were real, but the original M5.1 moved-edge guard was
+// independently doing the same damage in a band along the jawline: the AI's
+// strong border shadow and local brightening (demanded by prompt v9, permitted
+// by the deep dark floor) create exactly the sharp low-band transition the
+// guard triggers on, so g collapses along the border and the AI's soft,
+// upscale-stretched high band replaces the patient's pores there, scaled by
+// alpha (hence worse to the right of the slider). Fix, same amplitude
+// separation as v38: the guard's fallback now only proceeds where there is
+// real STRUCTURE at the pixel in either image (max(|origHigh|,|aiHigh|) above
+// GUARD_DETAIL_LO..HI). Pore-scale pixels keep the original unconditionally.
+// Both of the guard's legitimate jobs survive intact, because both involve
+// structure: an old-edge ghost candidate has |origHigh| large (fallback still
+// proceeds, no ghost), and the AI's new shadow line has |aiHigh| large
+// (fallback still carries it). After this change, a pore pixel's luminance
+// delta is mathematically pure low band at every slider position; the only
+// remaining softener in the region is warp resampling, already bicubic plus
+// sharpened (v37). Sculptra is untouched (forceOriginalTexture already pins
+// its guard fully open).
+//
 // M9.3 (v38): crease-SELECTIVE lobe release (clinical: chin/jowl area still
 // blurry at the high end of the slider after v37; conservative end good).
 // That slider signature identifies the source: v36's release handed the WHOLE
@@ -405,6 +427,17 @@ const HIGH_DARKEN_SCALE = 0;
 const JOWL_CREASE_LO = 4;
 const JOWL_CREASE_HI = 12;
 
+// M9.4 (v39): structure detector for the moved-edge guard. The guard's
+// fallback to AI high-frequency detail only proceeds where the pixel carries
+// real structure in either image (max(|origHigh|,|aiHigh|), luma levels): at
+// or below LO the original texture is kept unconditionally (pores can never be
+// swapped for AI softness, at any slider value); at HI and above the guard
+// behaves exactly as before (old-edge ghost protection and the AI's border
+// shadow line both live above this). Raise LO if any AI softness still creeps
+// into skin; lower HI if a moved edge ever ghosts.
+const GUARD_DETAIL_LO = 4;
+const GUARD_DETAIL_HI = 10;
+
 // repeated separable box blur on a Float32 plane -> approximate gaussian
 function blurPlane(src,w,h,r,passes){
   if(r<=0) return src.slice();
@@ -510,6 +543,13 @@ function buildTextureDelta(b,a0,w,h,W,opts){
       const oY =0.299*bR[i] +0.587*bG[i] +0.114*bB[i];
       const aY =0.299*aR[i] +0.587*aG[i] +0.114*aB[i];
       const oYh=oY-oYl, aYh=aY-aYl;
+      // M9.4 (v39): micro-texture-protected guard. The guard reduction (1-g)
+      // only applies where the pixel carries real structure in either image;
+      // pore-scale pixels (both high bands shallow) keep the original texture
+      // unconditionally, so the AI's soft fill can never replace pores no
+      // matter how hard the guard fires along the AI's border shading.
+      const structW=smoothstep(GUARD_DETAIL_LO, GUARD_DETAIL_HI, Math.max(Math.abs(oYh), Math.abs(aYh)));
+      let gY=1-(1-g)*structW;
       // M9.3 (v38): crease-selective lobe release. Inside the jowl lobes the
       // guard is scaled down ONLY on dark high-frequency structure (the fold
       // line), gated by depth via JOWL_CREASE_LO..HI. Pores and fine texture
@@ -517,7 +557,6 @@ function buildTextureDelta(b,a0,w,h,W,opts){
       // v36 high-slider softness; the fold is still erased where the AI
       // flattened it (release open -> detY ~ aYh ~ 0 -> the bright correction
       // -oYh passes the darkening gate and cancels the crease).
-      let gY=g;
       if(rel && rel[i]>0 && oYh<0){
         const creaseW=smoothstep(JOWL_CREASE_LO, JOWL_CREASE_HI, -oYh);
         if(creaseW>0) gY*=(1-Math.min(1,rel[i])*creaseW);
