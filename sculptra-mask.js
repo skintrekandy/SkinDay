@@ -7,6 +7,23 @@
 // background). gpt-image-1's edit endpoint edits only the transparent region, so
 // this physically prevents the global beautification leak.
 //
+// M9.0 (v35): jowl blending for the aging lower face. Clinical mechanism
+// (calibrated against real chin/jawline before/afters): on a jowled face the
+// treatment reads as jowl SOFTENING because the prejowl sulcus is filled and
+// the border becomes one continuous line from chin to gonion; the jowl is
+// blended into the line, never enlarged, never excised. v34 missed this twice:
+// (1) the treat alpha was a tube hugging the border, so the AI's softening of
+// the marionette/prejowl shadow and jowl shadow ABOVE the border was thrown
+// away at composite time; (2) the warp followers interpolate the border, so a
+// concave notch stays concave. v35 adds (a) jowl-blend alpha lobes (marionette
+// tube: mouth corner -> prejowl; jowl body tube: prejowl -> raised mid-jowl),
+// oval-contained so they are shading-only and can never move the contour, and
+// (b) a prejowl notch-fill kernel in the warp (anterior at oblique, outward at
+// frontal) that overfills the sulcus so the silhouette line straightens.
+// Levers: CHINW_NOTCH_FILL (oblique straightening), CHINW_NOTCH_FILL_FRONTAL
+// (frontal, keep small, frontal is approved), JOWL_SCALE / LF_JOWL_SIGMA
+// (how much AI shading the jowl region admits).
+//
 // M8.2 (v34): warp shading reconciliation. The one predictable residue of
 // warping real pixels: the warp can slide brighter mid-chin skin forward over
 // what used to be a darker zone (labiomental, under-jaw), so the moved band
@@ -718,6 +735,15 @@ const CHINW_SIG_JAW      = 0.055; // kernel radius of the jaw kernels, fraction 
 // silhouette edge translates rigidly (sharp) instead of stretching (smear).
 const CHINW_CAPSULE      = 1.25;
 
+// M9.0 (v35) prejowl notch fill: the followers interpolate the border, which
+// preserves a concave prejowl sulcus; these kernels OVERFILL the notch so the
+// chin-to-gonion silhouette reads as one straight, continuous line (the visual
+// mechanism of jowl softening). Oblique pushes the notch anterior; frontal
+// pushes both notches slightly outward. Zero either constant to disable.
+const CHINW_NOTCH_FILL         = 0.012; // oblique: extra anterior fill at the near prejowl, fraction of W
+const CHINW_NOTCH_FILL_FRONTAL = 0.008; // frontal: outward fill at both prejowl points, fraction of W
+const CHINW_NOTCH_DOWN         = 0.004; // small accompanying drop, fraction of faceH
+
 function buildChinProjectionField(L, w, h, pose, sex){
   const lm = L.map(p=>({x:p.x*w, y:p.y*h}));
   const p10=lm[10], p152=lm[152], zr=lm[ZYGION.r], zl=lm[ZYGION.l];
@@ -783,6 +809,12 @@ function buildChinProjectionField(L, w, h, pose, sex){
     // mid-border also carry a small drop that deepens the border-to-neck step.
     const jawDrop = mul(down, CHINW_JAW_DROP*faceH);
     if(pjNear) kernels.push(capsule(pjNear, add(mul(chinV, CHINW_PREJOWL_F), jawDrop), sigJ));
+    // M9.0: prejowl notch fill (sums with the follower above): straighten the
+    // chin-to-jowl silhouette line by overfilling the sulcus.
+    if(pjNear && CHINW_NOTCH_FILL > 0){
+      const fillV = add(mul(antDir, CHINW_NOTCH_FILL*W), mul(down, CHINW_NOTCH_DOWN*faceH));
+      kernels.push(capsule(pjNear, fillV, sigJ*0.85));
+    }
     if(pjNear && goNear){
       const mid = lerp(pjNear, goNear, 0.5);
       kernels.push(capsule(mid, add(mul(chinV, CHINW_MIDJAW_F), jawDrop), sigJ));
@@ -798,6 +830,17 @@ function buildChinProjectionField(L, w, h, pose, sex){
     for(const idx of [148, 377]){
       const p=lm[idx]; if(!p) continue;
       kernels.push(capsule(p, chinV, sigC*0.8, 0.7));
+    }
+    // M9.0: frontal prejowl notch fill, both sides slightly outward so the
+    // border under the jowls straightens. Deliberately small (the approved
+    // frontal must not change character); zero CHINW_NOTCH_FILL_FRONTAL to disable.
+    if(CHINW_NOTCH_FILL_FRONTAL > 0){
+      for(const idx of [176, 400]){
+        const p=lm[idx]; if(!p) continue;
+        const sideSign = (dot(sub(p, p152), dirOut) >= 0) ? 1 : -1;
+        const v = add(mul(dirOut, sideSign*CHINW_NOTCH_FILL_FRONTAL*W), mul(down, CHINW_NOTCH_DOWN*faceH));
+        kernels.push(capsule(p, v, CHINW_SIG_JAW*W*0.9));
+      }
     }
   } else {
     return null; // out_of_range or no pose: no geometric projection
@@ -1216,6 +1259,31 @@ function buildTreatAlpha(L, w, h, scope, sex){
     }
   }
 
+  // M9.0 (v35) jowl-blend lobes: open the alpha over the marionette/prejowl
+  // shadow and the jowl body so the AI's softening of those shadows survives
+  // the composite (v34's border tubes discarded it). Two tubes per side:
+  // mouth corner (dropped) -> prejowl, and prejowl -> raised mid-jowl point.
+  // Oval-contained in the pixel loop, so this is SHADING-ONLY coverage; the
+  // contour itself stays owned by the warp. Levers: JOWL_SCALE, LF_JOWL_SIGMA.
+  const LF_JOWL_SIGMA=0.060*W, JOWL_SCALE=0.9;
+  const twoSigJowl=2*LF_JOWL_SIGMA*LF_JOWL_SIGMA||1e-6;
+  const jowlSegs=[];
+  for(const pair of [[400,397],[176,172]]){ // [prejowl, gonion] per side
+    const pj=lm[pair[0]], go=lm[pair[1]];
+    if(!pj||!go) continue;
+    const cR=lm[COMMISSURE.r], cL=lm[COMMISSURE.l];
+    let corner=null;
+    if(cR&&cL) corner = (Math.hypot(cR.x-pj.x,cR.y-pj.y) <= Math.hypot(cL.x-pj.x,cL.y-pj.y)) ? cR : cL;
+    else corner = cR || cL;
+    if(corner){
+      const cDrop = add(corner, mul(dirUp, -0.04*faceH));
+      jowlSegs.push([cDrop, pj]);
+    }
+    const mid = { x:(pj.x+go.x)/2, y:(pj.y+go.y)/2 };
+    const jowlMid = add(mid, mul(dirUp, 0.05*faceH));
+    jowlSegs.push([pj, jowlMid]);
+  }
+
 
   const N=w*h, m=new Float32Array(N);
   for(let y=0,i=0;y<h;y++){
@@ -1249,6 +1317,11 @@ function buildTreatAlpha(L, w, h, scope, sex){
           for(let k=0;k<taperSegs.length;k++){ const sg=taperSegs[k]; const dd=distToSeg(x,y,sg[0],sg[1]); const g=taperScale*Math.exp(-(dd*dd)/twoSigTaper); if(g>taperVal) taperVal=g; }
           taperVal*=ovalInside;
           if(taperVal>lf) lf=taperVal;
+          // M9.0 jowl-blend lobes (shading-only: oval-contained, see setup above)
+          let jowlVal=0;
+          for(let k=0;k<jowlSegs.length;k++){ const sg=jowlSegs[k]; const dd=distToSeg(x,y,sg[0],sg[1]); const g=JOWL_SCALE*Math.exp(-(dd*dd)/twoSigJowl); if(g>jowlVal) jowlVal=g; }
+          jowlVal*=ovalInside;
+          if(jowlVal>lf) lf=jowlVal;
           const topTaper=1-smoothstep(LF_TOP,LF_TOP+0.08,hF);
           // Downward allowance depends on laterality: directly under the chin
           // (central) the mask extends down so the chin can lengthen; toward the
