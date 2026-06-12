@@ -60,8 +60,11 @@ exports.handler = async (event) => {
   const pack = packs().find(p => p.id === packId);
   if (!pack) return json(400, { error: 'Unknown credit pack.' });
 
-  const base = process.env.URL || process.env.DEPLOY_PRIME_URL ||
-               ('https://' + (event.headers.host || event.headers.Host));
+  // The request's own host is the only context-correct base: Netlify's URL
+  // env var is ALWAYS the production URL, even on branch deploys, which sent
+  // checkout returns from staging back to skinday.ca. Host header first.
+  const base = 'https://' + (event.headers.host || event.headers.Host ||
+               (process.env.DEPLOY_PRIME_URL || process.env.URL || '').replace(/^https?:\/\//, ''));
 
   const params = new URLSearchParams();
   params.append('mode', 'payment');

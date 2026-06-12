@@ -191,8 +191,11 @@ exports.handler = async (event) => {
     // Fire the background worker. It re-reads the job from Blobs, so we send
     // only the id (background-function request bodies are capped at 256KB,
     // which the photo would exceed).
-    const base = process.env.URL || process.env.DEPLOY_PRIME_URL ||
-                 ('https://' + (event.headers.host || event.headers.Host));
+    // Host header first: Netlify's URL env var is ALWAYS the production URL,
+    // even on branch deploys, which made staging trigger PRODUCTION's worker
+    // (whose context lacks the Supabase vars, silently disabling refunds).
+    const base = 'https://' + (event.headers.host || event.headers.Host ||
+                 (process.env.DEPLOY_PRIME_URL || process.env.URL || '').replace(/^https?:\/\//, ''));
     // M8: the internal trigger authenticates with the server's own beta key
     // (account users have no key to forward; the server trusts itself).
     const trigger = await fetch(base + '/.netlify/functions/generate-visualization-background', {
