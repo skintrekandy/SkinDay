@@ -7,6 +7,18 @@
 // background). gpt-image-1's edit endpoint edits only the transparent region, so
 // this physically prevents the global beautification leak.
 //
+// M9.7 (v42): jaw shadow containment + layer attribution. (1) The v41 shadow
+// step smeared: a 0.028W feather with no hard stop painted a soft dark band
+// past the border onto the neck and clothing. Real border shadow is a thin
+// crease hugging the border. JAWDEF_DARK 14 -> 10, JAWDEF_W_OUT 0.028 ->
+// 0.014, and the dark side now has a HARD cutoff at 2.5 sigma, so the step is
+// crisp and close and nothing below it is touched. (2) Post passes are now
+// individually addressable from the client: opts.jawDef === false skips the
+// border light, opts.warpSharpen === false skips the sharpen pass. Together
+// with the existing warp/textureRestore/jowlTexRelease flags, this powers the
+// client's ?debug=layers contact sheet (one generation rendered with each
+// layer isolated), which replaces diagnosis-by-correspondence with evidence.
+//
 // M9.6 (v41): DETERMINISTIC JAWLINE DEFINITION (clinical: jawline never made
 // stronger; structural rebuild is the point of chin/jawline HA in bone
 // resorption, and the persistent "blur" reading in the jowl/jaw region).
@@ -966,9 +978,10 @@ function applyWarpSharpen(o, w, h, f, t, Wpx){
 // which is exactly the step that makes a jawline read as rebuilt. Levers
 // below; zero JAWDEF_BRIGHT and JAWDEF_DARK to disable the pass entirely.
 const JAWDEF_BRIGHT  = 9;     // luma lift just above the border at full strength
-const JAWDEF_DARK    = 14;    // luma deepening just below the border at full strength
+const JAWDEF_DARK    = 10;    // luma deepening just below the border at full strength (v42: 14 -> 10)
 const JAWDEF_W_IN    = 0.018; // bright band width above the border, fraction of W
-const JAWDEF_W_OUT   = 0.028; // shadow band width below the border, fraction of W
+const JAWDEF_W_OUT   = 0.014; // shadow band width below the border, fraction of W (v42: 0.028 -> 0.014,
+                              // plus a hard 2.5 sigma cutoff so the step never smears onto neck/clothing)
 const JAWDEF_GATE_LO = 14;    // brightening gate on current luma: 0 at or below
 const JAWDEF_GATE_HI = 40;    // fully open above
 const JAWDEF_IDX     = [397,365,379,378,400,377,152,148,176,149,150,136,172]; // gonion -> chin -> gonion
@@ -993,6 +1006,7 @@ function applyJawDefinition(o, w, h, L, f, t, Wpx){
   if(pts.length<2) return;
   const sigA=JAWDEF_W_IN*Wpx, sigB=JAWDEF_W_OUT*Wpx;
   const twoSigA=2*sigA*sigA||1e-6, twoSigB=2*sigB*sigB||1e-6;
+  const cutB=(2.5*sigB)*(2.5*sigB); // v42: hard stop for the shadow step
   const pad=3*Math.max(sigA, sigB);
   let x0=w, y0=h, x1=0, y1=0;
   for(const p of pts){
@@ -1025,6 +1039,7 @@ function applyJawDefinition(o, w, h, L, f, t, Wpx){
       const p4=(y*w+x)*4;
       let addv;
       if(sd>=0){
+        if(best > cutB) continue; // v42: the step hugs the border, never the neck
         addv = -JAWDEF_DARK*Math.exp(-best/twoSigB)*s;
       } else {
         const Y=0.299*o[p4]+0.587*o[p4+1]+0.114*o[p4+2];
@@ -2027,8 +2042,10 @@ export async function compositeSculptra(beforeImg, aiImg, opts){
     const Wpx = faceWidthPx(landmarks, w, h);
     applyLiftWarp(a, src, w, h, lift, intensity);
     applyWarpShadeFix(a, buildLowLuma(b, w, h, Wpx), lift, w);
-    applyWarpSharpen(a, w, h, lift, intensity, Wpx); // M9.2: restore pore-scale crispness in the moved band
-    applyJawDefinition(a, w, h, landmarks, lift, intensity, Wpx); // M9.6: structural border light
+    if(!(opts && opts.warpSharpen === false))
+      applyWarpSharpen(a, w, h, lift, intensity, Wpx); // M9.2: restore pore-scale crispness in the moved band
+    if(!(opts && opts.jawDef === false))
+      applyJawDefinition(a, w, h, landmarks, lift, intensity, Wpx); // M9.6: structural border light
   }
   cx.putImageData(ai, 0, 0);
   return c.toDataURL("image/jpeg", 0.92);
@@ -2135,8 +2152,10 @@ export async function makeSculptraCompositor(beforeImg, aiImg, opts){
       warpSrc.set(o);
       applyLiftWarp(o, warpSrc, w, h, lift, t);
       applyWarpShadeFix(o, lowY, lift, w);
-      applyWarpSharpen(o, w, h, lift, t, sharpW); // M9.2: restore pore-scale crispness in the moved band
-      applyJawDefinition(o, w, h, landmarks, lift, t, sharpW); // M9.6: structural border light
+      if(!(opts && opts.warpSharpen === false))
+        applyWarpSharpen(o, w, h, lift, t, sharpW); // M9.2: restore pore-scale crispness in the moved band
+      if(!(opts && opts.jawDef === false))
+        applyJawDefinition(o, w, h, landmarks, lift, t, sharpW); // M9.6: structural border light
     }
     cx.putImageData(out, 0, 0);
     return c.toDataURL("image/jpeg", 0.92);

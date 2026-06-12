@@ -507,7 +507,7 @@ const FREE_REGEN_MS = 60000;
 // stay the same module instance (shared face-detection cache). v35 = M9.0
 // jowl blending (alpha lobes over marionette/jowl shadows + prejowl notch-fill
 // warp kernels) (v34 = M8.2 shade reconciliation; v33 = M8.1 convex chin).
-const MASK_MODULE_VERSION = '41';
+const MASK_MODULE_VERSION = '42';
 
 /* M7: a case is one or more ANGLES, each with its own photo, QC result, job,
    and compositor. Treatment settings are shared across the case; the response
@@ -1503,6 +1503,7 @@ async function prepAndStartSlot(angleId, auth, isRegen){
 async function finishSlot(angleId, auth){
   const sl = state.slots[angleId];
   sl.resultDataUrl = await pollForResult(sl.jobId, auth);
+  sl.rawAiDataUrl = sl.resultDataUrl; // M9.7: pre-composite frame for ?debug=layers
 
   // Masked compositor per angle: AI inside the treatment mask, the original
   // photo everywhere else, exposing apply(0..1) -> jpegDataURL for the shared
@@ -1529,7 +1530,9 @@ async function finishSlot(angleId, auth){
       // M9.1 A/B hook: append ?jowltex=off to disable the jowl-lobe texture
       // release and compare against exact v35 composite behavior.
       const jowlTexOn = !/[?&]jowltex=off\b/i.test(location.search);
-      const apply = await makeSculptraCompositor(beforeImg, aiImg, { scope:compScope, sex:state.sex, warp:warpOn, jowlTexRelease:jowlTexOn });
+      // M9.7 A/B hook: ?jawdef=off disables the deterministic border light.
+      const jawDefOn = !/[?&]jawdef=off\b/i.test(location.search);
+      const apply = await makeSculptraCompositor(beforeImg, aiImg, { scope:compScope, sex:state.sex, warp:warpOn, jowlTexRelease:jowlTexOn, jawDef:jawDefOn });
       if(apply){
         sl.apply = apply;
         sl.resultDataUrl = apply(state.intensityPct / 100);
@@ -1594,6 +1597,7 @@ async function runGeneration(isRegen){
     if(!doneIds.includes(state.activeAngle)) state.activeAngle = doneIds[0];
     renderTabs();
     renderActiveSlot();
+    if(/[?&]debug=layers\b/i.test(location.search)) buildLayerDebugSheet(state.activeAngle); // M9.7
     document.getElementById('outputSection').classList.add('visible');
     document.getElementById('outputSection').scrollIntoView({ behavior:'smooth', block:'start' });
     updateRegenNote();
@@ -1744,6 +1748,66 @@ window.addEventListener('touchend', e => {
   if(e.touches.length < 2) zoomState.pinching = false;
   if(e.touches.length === 0) endDrag();
 });
+
+/* ───────── M9.7 layer attribution sheet (?debug=layers) ───────── */
+// One generation, every layer isolated, one downloaded contact sheet. Renders
+// the active angle six ways at the CURRENT slider value: original, raw AI,
+// composite without warp, plus warp (no sharpen, no border light), plus
+// sharpen, and the full pipeline. Diagnosis by evidence instead of guesswork.
+async function buildLayerDebugSheet(angleId){
+  try {
+    const sl = state.slots[angleId];
+    const compScope = (state.type === 'biostim' && state.product === 'sculptra') ? 'full'
+                    : (state.type === 'filler') ? 'chin_jaw'
+                    : null;
+    if(!sl || !compScope || !sl.rawAiDataUrl) return;
+    const t = (state.intensityPct || 70) / 100;
+    const beforeImg = await loadImage(sl.beforeDataUrl || sl.originalDataUrl);
+    const aiImg = await loadImage(sl.rawAiDataUrl);
+    const { compositeSculptra } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
+    const base = { scope: compScope, sex: state.sex, intensity: t };
+    setStatus('Building the layer attribution sheet (4 composites)…', 'spin');
+    const v3 = await compositeSculptra(beforeImg, aiImg, { ...base, warp:false });
+    const v4 = await compositeSculptra(beforeImg, aiImg, { ...base, warpSharpen:false, jawDef:false });
+    const v5 = await compositeSculptra(beforeImg, aiImg, { ...base, jawDef:false });
+    const v6 = await compositeSculptra(beforeImg, aiImg, { ...base });
+    const cells = [
+      { src: sl.beforeDataUrl || sl.originalDataUrl, label: '1. Original' },
+      { src: sl.rawAiDataUrl,                        label: '2. Raw AI output' },
+      { src: v3,                                     label: '3. Composite, warp off' },
+      { src: v4,                                     label: '4. + warp (no sharpen, no border light)' },
+      { src: v5,                                     label: '5. + sharpen' },
+      { src: v6,                                     label: '6. Full pipeline' }
+    ];
+    const imgs = await Promise.all(cells.map(c => c.src ? loadImage(c.src) : null));
+    const pw = 512, gap = 12, labelH = 34;
+    const ph = Math.round(pw * (imgs[0].height / imgs[0].width));
+    const canvas = document.createElement('canvas');
+    canvas.width = 3 * pw + 4 * gap;
+    canvas.height = 2 * (ph + labelH) + 3 * gap;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#1C1714';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.font = '600 16px "DM Sans", sans-serif';
+    ctx.textBaseline = 'middle';
+    for(let k = 0; k < cells.length; k++){
+      const col = k % 3, row = (k / 3) | 0;
+      const x = gap + col * (pw + gap);
+      const y = gap + row * (ph + labelH + gap);
+      if(imgs[k]) ctx.drawImage(imgs[k], x, y, pw, ph);
+      ctx.fillStyle = '#FAF7F2';
+      ctx.fillText(cells[k].label + '  ·  slider ' + (state.intensityPct || 70), x + 4, y + ph + labelH / 2);
+    }
+    const a = document.createElement('a');
+    a.download = 'visualize-layer-sheet-' + angleId + '.jpg';
+    a.href = canvas.toDataURL('image/jpeg', 0.92);
+    a.click();
+    setStatus('Layer attribution sheet downloaded.', 'ok');
+  } catch(err){
+    console.error('[Visualize] layer debug sheet failed:', err);
+    setStatus('Layer sheet failed: ' + ((err && err.message) || err), 'warn');
+  }
+}
 
 /* ───────── Export (canvas) ───────── */
 // Clinic-facing treatment name for tags and export kickers. The footer line
