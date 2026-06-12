@@ -46,6 +46,32 @@ function checkKey(event) {
   return provided === expected;
 }
 
+// M8: refund reserved credits when a metered generation fails (errors and
+// moderation rejections alike). The `<jobId>:billing` blob is written by
+// start-visualization and outlives the job payload. Idempotent end to end:
+// the visualize_refund_credits RPC refuses a second refund for the same job,
+// so retries and double invocations are safe. Beta-key jobs have no billing
+// blob and are untouched. When the Supabase env vars are absent (beta-only
+// deploy), this is a clean no-op.
+async function refundIfBilled(store, jobId, note) {
+  const SUPABASE_URL = process.env.SUPABASE_URL || '';
+  const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+  if (!SUPABASE_URL || !SERVICE_KEY) return;
+  try {
+    const billing = await store.get(jobId + ':billing', { type: 'json' });
+    if (!billing || !billing.userId || !(billing.cost > 0)) return;
+    const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/visualize_refund_credits', {
+      method: 'POST',
+      headers: { apikey: SERVICE_KEY, Authorization: 'Bearer ' + SERVICE_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_user: billing.userId, p_cost: billing.cost, p_job: jobId, p_note: note || 'generation failed' })
+    });
+    if (!res.ok) console.error('refund RPC failed: HTTP ' + res.status, (await res.text()).slice(0, 200));
+    else console.log('refunded ' + billing.cost + ' credit(s) for job ' + jobId + ' (' + (note || 'generation failed') + ')');
+  } catch (e) {
+    console.error('refundIfBilled failed:', (e && e.message) || e);
+  }
+}
+
 exports.handler = async (event) => {
   connectLambda(event); // wire Blobs context into the classic handler signature
   let jobId;
@@ -62,7 +88,11 @@ exports.handler = async (event) => {
 
   try {
     const job = await store.get(jobId + ':job', { type: 'json' });
-    if (!job) { await fail('Job payload not found (it may have expired).', 'not_found'); return { statusCode: 200 }; }
+    if (!job) {
+      await fail('Job payload not found (it may have expired).', 'not_found');
+      await refundIfBilled(store, jobId, 'job payload expired');
+      return { statusCode: 200 };
+    }
 
     const f = job.params || {};
 
@@ -145,8 +175,10 @@ exports.handler = async (event) => {
     const blocked = code === 'moderation_blocked' || /safety system|moderation|not allowed/i.test(msg);
     if (blocked) {
       await fail('The AI provider blocked this specific edit under its safety system (the image-edit endpoint is strict and this cannot be turned down). Lip edits are a frequent trigger. Try a different area, or adjust the wording of the custom note.', 'moderation_blocked');
+      await refundIfBilled(store, jobId, 'moderation blocked');
     } else {
       await fail(msg || 'Image generation failed', code || 'error');
+      await refundIfBilled(store, jobId, (code ? String(code) : 'generation failed'));
     }
     return { statusCode: 200 };
   }
