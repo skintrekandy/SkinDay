@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Refund Policy — SkinDay Visualize</title>
+  <meta name="description" content="Refund and credit policy for SkinDay Visualize, the AI treatment visualization tool for cosmetic clinic consultations." />
+  <meta name="robots" content="noindex, follow" />
+  <link rel="canonical" href="https://skinday.ca/refund.html" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --cream:   #FAF7F2;
+      --warm:    #F4EDE4;
+      --deep:    #1C1714;
+      --deep2:   #241E1A;
+      --rose:    #C8725A;
+      --rose-m:  #D4896E;
+      --gold:    #C9A96E;
+      --muted:   #8A7B72;
+      --dim:     #B5A89F;
+      --border:  #EAE2D8;
+      --hero-border: rgba(201,169,110,0.25);
+    }
+    html { scroll-behavior: smooth; overflow-x: hidden; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--cream);
+      color: var(--deep);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* NAV */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: rgba(28,23,20,0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--hero-border);
+      padding: 0 5%;
+      display: flex; align-items: center; justify-content: space-between;
+      height: 64px;
+    }
+    .nav-logo {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.6rem; font-weight: 400;
+      color: var(--cream); letter-spacing: 0.04em; text-decoration: none;
+    }
+    .nav-logo span { color: var(--gold); }
+    .nav-links {
+      display: flex; gap: 1.5rem; align-items: center; list-style: none;
+    }
+    .nav-links a {
+      color: var(--dim); text-decoration: none;
+      font-size: 0.85rem; font-weight: 400;
+      letter-spacing: 0.03em; transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--cream); }
+    .nav-cta {
+      background: var(--rose); color: #fff;
+      padding: 0.3rem 0.75rem; border-radius: 4px;
+      font-size: 0.78rem; font-weight: 500;
+      text-decoration: none; white-space: nowrap;
+      transition: background 0.2s;
+    }
+    .nav-cta:hover { background: var(--rose-m); color: #fff; }
+    @media (max-width: 640px) {
+      .nav-links { display: none; }
+    }
+
+    /* PAGE */
+    .page {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 112px 24px 80px;
+    }
+
+    /* HEADER */
+    .page-eyebrow {
+      font-size: 0.72rem; font-weight: 500;
+      letter-spacing: 0.16em; text-transform: uppercase;
+      color: var(--gold); margin-bottom: 1rem;
+    }
+    .page-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-weight: 300; line-height: 1.1;
+      color: var(--deep); margin-bottom: 0.75rem;
+    }
+    .page-meta {
+      font-size: 0.82rem; color: var(--dim);
+      margin-bottom: 2.5rem;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* CONTENT */
+    .policy-body {
+      display: flex; flex-direction: column; gap: 2rem;
+    }
+    .policy-section h2 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.35rem; font-weight: 400;
+      color: var(--deep); margin-bottom: 0.75rem;
+    }
+    .policy-section p {
+      font-size: 0.92rem; color: var(--muted);
+      line-height: 1.75; margin-bottom: 0.75rem;
+    }
+    .policy-section p:last-child { margin-bottom: 0; }
+    .policy-section ul {
+      list-style: none; display: flex; flex-direction: column; gap: 0.5rem;
+      margin: 0.5rem 0;
+    }
+    .policy-section ul li {
+      font-size: 0.92rem; color: var(--muted);
+      line-height: 1.7; padding-left: 1.2rem; position: relative;
+    }
+    .policy-section ul li::before {
+      content: '';
+      position: absolute; left: 0; top: 0.65em;
+      width: 5px; height: 5px;
+      border-radius: 50%; background: var(--gold);
+    }
+    .policy-highlight {
+      background: var(--warm);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.2rem 1.4rem;
+      margin: 0.25rem 0 0.75rem;
+    }
+    .policy-highlight p {
+      font-size: 0.9rem; color: var(--deep);
+      line-height: 1.65; margin: 0;
+    }
+    .policy-highlight strong { color: var(--rose); font-weight: 600; }
+    .divider {
+      border: none; border-top: 1px solid var(--border);
+    }
+    .contact-block {
+      background: var(--deep);
+      border-radius: 10px;
+      padding: 1.6rem 1.8rem;
+      margin-top: 0.5rem;
+    }
+    .contact-block h3 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.2rem; font-weight: 400;
+      color: var(--cream); margin-bottom: 0.5rem;
+    }
+    .contact-block p {
+      font-size: 0.88rem; color: var(--dim); line-height: 1.65; margin: 0;
+    }
+    .contact-block a { color: var(--gold); text-decoration: none; }
+    .contact-block a:hover { text-decoration: underline; }
+
+    /* FOOTER */
+    footer {
+      background: var(--deep);
+      padding: 48px 5% 32px;
+      border-top: 1px solid rgba(201,169,110,0.15);
+      margin-top: 80px;
+    }
+    .footer-top {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      flex-wrap: wrap; gap: 2.5rem;
+      max-width: 1280px; margin: 0 auto 3rem;
+    }
+    .footer-brand {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.5rem; font-weight: 400;
+      color: var(--cream); margin-bottom: 0.6rem;
+    }
+    .footer-brand span { color: var(--gold); }
+    .footer-tagline { font-size: 0.88rem; color: var(--muted); max-width: 220px; line-height: 1.6; }
+    .footer-links h4 {
+      font-size: 0.75rem; font-weight: 600; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--dim); margin-bottom: 0.9rem;
+    }
+    .footer-links ul { list-style: none; }
+    .footer-links li { margin-bottom: 0.6rem; }
+    .footer-links a { font-size: 0.88rem; color: var(--muted); text-decoration: none; transition: color 0.2s; }
+    .footer-links a:hover { color: var(--cream); }
+    .footer-bottom {
+      max-width: 1280px; margin: 0 auto;
+      border-top: 1px solid rgba(181,168,159,0.1);
+      padding-top: 1.5rem;
+      display: flex; flex-direction: column; align-items: center;
+      gap: 0.5rem; text-align: center;
+    }
+    .footer-copy { font-size: 0.82rem; color: var(--muted); }
+    @media (max-width: 768px) {
+      .footer-top { flex-direction: column; gap: 2rem; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-logo">Skin<span>Day</span></a>
+  <ul class="nav-links">
+    <li><a href="/">Directory</a></li>
+    <li><a href="/insights">Insights</a></li>
+    <li><a href="/claim.html">For Clinics</a></li>
+    <li><a href="/visualize.html" class="nav-cta">Visualize</a></li>
+  </ul>
+</nav>
+
+<div class="page">
+
+  <div class="page-eyebrow">SkinDay Visualize</div>
+  <h1 class="page-title">Refund Policy</h1>
+  <p class="page-meta">Effective date: June 1, 2026</p>
+
+  <div class="policy-body">
+
+    <div class="policy-section">
+      <h2>How credits work</h2>
+      <p>SkinDay Visualize is a credit-based tool for cosmetic clinic consultation software. Credits are purchased in packs and spent when an AI visualization is generated. One credit is consumed per angle per generation for HA filler cases; two credits per angle for biostimulator cases such as Sculptra.</p>
+      <p>Credits are account-based and do not expire.</p>
+    </div>
+
+    <hr class="divider" />
+
+    <div class="policy-section">
+      <h2>Automatic refunds for failed generations</h2>
+      <div class="policy-highlight">
+        <p><strong>If a generation fails, your credits are returned automatically.</strong> You are never charged for a result you did not receive.</p>
+      </div>
+      <p>Credits are refunded automatically in the following situations:</p>
+      <ul>
+        <li>The generation fails due to a server or AI provider error</li>
+        <li>The image is blocked by the AI provider's content moderation system</li>
+        <li>The generation times out before producing a result</li>
+      </ul>
+      <p>Refunds in these cases are processed within seconds and credited back to your account balance without any action required on your part. You can verify your balance at any time from the Visualize tool after signing in.</p>
+    </div>
+
+    <hr class="divider" />
+
+    <div class="policy-section">
+      <h2>Free re-generates</h2>
+      <p>Within 60 seconds of a completed generation, you may re-generate the same case at no additional credit cost. This allows you to try a different setting or angle immediately after reviewing a result without being charged again.</p>
+    </div>
+
+    <hr class="divider" />
+
+    <div class="policy-section">
+      <h2>Purchased credit packs are non-refundable</h2>
+      <p>Credit pack purchases are final and non-refundable once payment is completed, except in the following circumstances:</p>
+      <ul>
+        <li>A technical error resulted in a charge without credits being delivered to your account</li>
+        <li>A duplicate charge occurred for the same transaction</li>
+        <li>A charge was made in error that you did not authorize</li>
+      </ul>
+      <p>If any of these apply, contact us at <a href="mailto:hello@skinday.ca" style="color:var(--rose);text-decoration:none;">hello@skinday.ca</a> within 30 days of the charge and we will investigate and resolve it promptly.</p>
+      <p>Credits are a digital software good consumed at the moment of use. Because each generation immediately incurs a cost with our AI provider (OpenAI), we are not able to offer discretionary refunds for credits that have been spent on completed generations, including results you found unsatisfactory for clinical reasons.</p>
+    </div>
+
+    <hr class="divider" />
+
+    <div class="policy-section">
+      <h2>Beta access</h2>
+      <p>During the beta period, some accounts have been granted unmetered access via a beta key. Beta access does not involve credit purchases and this refund policy does not apply to beta accounts. When beta access ends and credit-based billing begins, this policy will apply.</p>
+    </div>
+
+    <hr class="divider" />
+
+    <div class="policy-section">
+      <h2>Stripe payments</h2>
+      <p>All payments are processed securely by Stripe in Canadian dollars (CAD). SkinDay does not store your card details. Purchases appear on your statement as <strong>SkinDay</strong>.</p>
+      <p>If you believe a charge on your statement is unauthorized or incorrect, you may contact us directly or initiate a dispute through your card issuer. We will cooperate fully with any dispute investigation.</p>
+    </div>
+
+    <hr class="divider" />
+
+    <div class="policy-section">
+      <h2>Changes to this policy</h2>
+      <p>We may update this policy as the product evolves. Material changes will be communicated to registered accounts by email at least 14 days before taking effect. The effective date at the top of this page will reflect the most recent revision.</p>
+    </div>
+
+    <div class="contact-block">
+      <h3>Questions about a charge?</h3>
+      <p>Email us at <a href="mailto:hello@skinday.ca">hello@skinday.ca</a> and include your account email and the approximate date of the charge. We respond within 2 business days.</p>
+    </div>
+
+  </div>
+</div>
+
+<footer>
+  <div class="footer-top">
+    <div>
+      <div class="footer-brand">Skin<span>Day</span></div>
+      <div class="footer-tagline">Not the best clinic. Just the right one for you.</div>
+    </div>
+    <div class="footer-links">
+      <h4>Discover</h4>
+      <ul>
+        <li><a href="/guide/botox-cost-toronto">Botox Guide Toronto</a></li>
+        <li><a href="/guide/botox-cost-vancouver">Botox Guide Vancouver</a></li>
+        <li><a href="/guide/botox-cost-london-ontario">Botox Guide London</a></li>
+        <li><a href="/guide/botox-cost-montreal">Botox Guide Montreal</a></li>
+        <li><a href="/insights">SkinDay Insights</a></li>
+      </ul>
+    </div>
+    <div class="footer-links">
+      <h4>For Clinics</h4>
+      <ul>
+        <li><a href="/claim.html">Claim Your Listing</a></li>
+        <li><a href="/studio.html" style="color:var(--gold);">Studio</a></li>
+        <li><a href="/visualize.html" style="color:var(--gold);">Visualize</a></li>
+      </ul>
+    </div>
+    <div class="footer-links">
+      <h4>Company</h4>
+      <ul>
+        <li><a href="/about.html">About SkinDay</a></li>
+        <li><a href="/contact.html">Contact</a></li>
+        <li><a href="/privacy.html">Privacy Policy</a></li>
+        <li><a href="/terms.html">Terms of Service</a></li>
+        <li><a href="/refund.html" style="color:var(--cream);">Refund Policy</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <div class="footer-copy">
+      &copy; 2026 SkinDay &nbsp;&middot;&nbsp;
+      <a href="/privacy.html" style="color:var(--muted);text-decoration:none;">Privacy</a> &nbsp;&middot;&nbsp;
+      <a href="/terms.html" style="color:var(--muted);text-decoration:none;">Terms</a> &nbsp;&middot;&nbsp;
+      <a href="/refund.html" style="color:var(--muted);text-decoration:none;">Refund Policy</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
