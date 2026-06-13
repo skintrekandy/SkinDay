@@ -7,6 +7,14 @@
 // background). gpt-image-1's edit endpoint edits only the transparent region, so
 // this physically prevents the global beautification leak.
 //
+// M10.1 (v49): calibration pass. Lateral vector cut, anterior and superior
+// raised. Expected -> Strong now reads as fuller and more projected, not wider.
+//
+// M10.1 (v48): calibration pass. SCULP_ZYGOMA_OUT 0.022 -> 0.032,
+// SCULP_MIDFACE_ANT 0.014 -> 0.020. Arch highlight and mid-cheek fill
+// both raised so the strong response reads to an untrained eye at consult,
+// not just to a trained injector. All other geometry unchanged.
+//
 // M10.1 (v47): SCULPTRA OBLIQUE CHEEK / MIDFACE PROJECTION KERNELS.
 // The M6 lift warp was gated to frontal only; obliques received AI shading with
 // no geometry change, so the zygomatic arch could not move forward in the 45
@@ -815,11 +823,25 @@ const WARP_EDGE_FADE     = 0.06;
 //                         decrease if it bleeds into the temple or eye zone.
 //   SCULP_MIDFACE_SIG  -- midface kernel breadth; increase for a more diffuse fill.
 //   SCULP_CAPSULE      -- capsule run; decrease toward 0 for a pure Gaussian.
-const SCULP_ZYGOMA_OUT  = 0.022; // lateral magnitude, fraction of W (FIRST LEVER)
-const SCULP_ZYGOMA_UP   = 0.008; // superior component, fraction of faceH
+// M10.1 (v48) calibration: v47 result confirmed warp active and mechanism
+// correct; arch highlight present but too subtle for an untrained eye at consult.
+// Raising SCULP_ZYGOMA_OUT 0.022 -> 0.032 (arch must stand visibly forward) and
+// SCULP_MIDFACE_ANT 0.014 -> 0.020 (mid-cheek fill must read as clearly fuller).
+// Both levers work on the same clinical change: bold cheek projection visible to
+// a patient, not just a trained injector.
+// M10.1 (v49) calibration: v48 clinical finding -- Expected response looks more
+// natural than Strong, meaning lateral vector dominates at high magnitudes and
+// reads as artificially wide rather than fuller. Real Sculptra strong response is
+// anterior projection and superior lift, not lateral width. Rebalancing:
+//   SCULP_ZYGOMA_OUT  0.032 -> 0.018 (less lateral, below even v47)
+//   SCULP_ZYGOMA_UP   0.008 -> 0.014 (more superior lift into convex highlight)
+//   SCULP_MIDFACE_ANT 0.020 -> 0.026 (anterior projection is the dominant channel)
+//   SCULP_MIDFACE_SIG 0.16  -> 0.20  (broader fill, whole midface reads fuller)
+const SCULP_ZYGOMA_OUT  = 0.018; // v49: 0.032 -> 0.018 (less lateral width)
+const SCULP_ZYGOMA_UP   = 0.014; // v49: 0.008 -> 0.014 (more superior lift)
 const SCULP_ZYGOMA_SIG  = 0.10;  // kernel breadth, fraction of W
-const SCULP_MIDFACE_ANT = 0.014; // anterior magnitude, fraction of W
-const SCULP_MIDFACE_SIG = 0.16;  // midface kernel breadth, fraction of W
+const SCULP_MIDFACE_ANT = 0.026; // v49: 0.020 -> 0.026 (anterior projection dominant)
+const SCULP_MIDFACE_SIG = 0.20;  // v49: 0.16  -> 0.20  (broader midface fill)
 const SCULP_CAPSULE     = 0.80;  // capsule run factor for zygoma kernel
 
 // Jowl kernel anchor landmarks: gonion and prejowl per side; the kernel sits
