@@ -7,6 +7,19 @@
 // background). gpt-image-1's edit endpoint edits only the transparent region, so
 // this physically prevents the global beautification leak.
 //
+// M9.10 (v45): WARP SATURATION for chin_jaw (clinical: angular, faceted chin
+// silhouette at Enhanced and above; zoom forensics show curvature kinks where
+// the chin, notch-fill, and gonial kernels join, a vector-path chin). The
+// silhouette is a union of capsule kernels, and above roughly 0.6 amplitude
+// the kernel geometry reads through. Fix by construction, not tuning: the
+// WARP's intensity saturates at CHINW_WARP_SAT (0.55, the amplitude that
+// passed clinical review), while the AI shading/fill alpha continues scaling
+// to 100. Enhanced and Overfilled therefore show the validated silhouette
+// plus progressively stronger fill. A smooth, spline-based silhouette target
+// that can carry full amplitude is M10 geometry work; a dedicated AI-heavy
+// Overfilled anchor (education zone) is the agreed companion design. Set
+// CHINW_WARP_SAT to 1.0 to restore exact v44 behavior.
+//
 // M9.9 (v44): EVIDENCE-DRIVEN RETIREMENT of the painted border light. Pixel
 // forensics on a real v43 Enhanced export (signed diff + local-contrast map
 // against the original panel) showed two things. (1) The jawdef pass renders
@@ -1198,6 +1211,9 @@ const CHINW_NOTCH_DOWN         = 0.004; // small accompanying drop, fraction of 
 // gonion moving slightly posterior and inferior, giving the border line a
 // defined corner to end at. Small on purpose; zero to disable.
 const GONW_DEF                 = 0.007; // posterior-inferior gonial move, fraction of W
+// M9.10 (v45): the chin_jaw warp's intensity ceiling. Silhouette amplitude
+// saturates here while AI shading continues to scale; 1.0 restores v44.
+const CHINW_WARP_SAT           = 0.55;
 
 function buildChinProjectionField(L, w, h, pose, sex){
   const lm = L.map(p=>({x:p.x*w, y:p.y*h}));
@@ -2136,12 +2152,13 @@ export async function compositeSculptra(beforeImg, aiImg, opts){
   if(lift && postWarp){
     const src = new Uint8ClampedArray(a);
     const Wpx = faceWidthPx(landmarks, w, h);
-    applyLiftWarp(a, src, w, h, lift, intensity);
+    const warpT = Math.min(intensity, CHINW_WARP_SAT); // M9.10: silhouette saturates
+    applyLiftWarp(a, src, w, h, lift, warpT);
     applyWarpShadeFix(a, buildLowLuma(b, w, h, Wpx), lift, w);
     if(!(opts && opts.warpSharpen === false))
-      applyWarpSharpen(a, w, h, lift, intensity, Wpx); // M9.2: restore pore-scale crispness in the moved band
+      applyWarpSharpen(a, w, h, lift, warpT, Wpx); // M9.2: restore pore-scale crispness in the moved band
     if(!(opts && opts.jawDef === false))
-      applyJawDefinition(a, w, h, landmarks, lift, intensity, Wpx); // M9.6: structural border light
+      applyJawDefinition(a, w, h, landmarks, lift, warpT, Wpx); // M9.6: structural border light
   }
   cx.putImageData(ai, 0, 0);
   return c.toDataURL("image/jpeg", 0.92);
@@ -2246,12 +2263,13 @@ export async function makeSculptraCompositor(beforeImg, aiImg, opts){
     // M8.2: then reconcile the moved band's shading with the local light field.
     if(lift && postWarp){
       warpSrc.set(o);
-      applyLiftWarp(o, warpSrc, w, h, lift, t);
+      const warpT = Math.min(t, CHINW_WARP_SAT); // M9.10: silhouette saturates
+      applyLiftWarp(o, warpSrc, w, h, lift, warpT);
       applyWarpShadeFix(o, lowY, lift, w);
       if(!(opts && opts.warpSharpen === false))
-        applyWarpSharpen(o, w, h, lift, t, sharpW); // M9.2: restore pore-scale crispness in the moved band
+        applyWarpSharpen(o, w, h, lift, warpT, sharpW); // M9.2: restore pore-scale crispness in the moved band
       if(!(opts && opts.jawDef === false))
-        applyJawDefinition(o, w, h, landmarks, lift, t, sharpW); // M9.6: structural border light
+        applyJawDefinition(o, w, h, landmarks, lift, warpT, sharpW); // M9.6: structural border light
     }
     cx.putImageData(out, 0, 0);
     return c.toDataURL("image/jpeg", 0.92);
