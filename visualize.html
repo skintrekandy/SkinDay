@@ -301,7 +301,7 @@
         </div>
         <div class="field">
           <label>Degree of correction</label>
-          <div class="privacy-note"><span>ℹ️</span><span>One preview is generated at a strong anchor, then you dial the displayed degree of correction with a slider on the result, from subtle to a deliberately overfilled view for patient education. No need to regenerate or compare separate versions.</span></div>
+          <div class="privacy-note"><span>ℹ️</span><span>One preview is generated at a strong anchor, then you dial the displayed degree of correction with a slider on the result, from subtle to balanced. No need to regenerate or compare separate versions.</span></div>
         </div>
       </div>
 
@@ -507,7 +507,7 @@ const FREE_REGEN_MS = 60000;
 // stay the same module instance (shared face-detection cache). v35 = M9.0
 // jowl blending (alpha lobes over marionette/jowl shadows + prejowl notch-fill
 // warp kernels) (v34 = M8.2 shade reconciliation; v33 = M8.1 convex chin).
-const MASK_MODULE_VERSION = '45';
+const MASK_MODULE_VERSION = '46';
 
 /* M7: a case is one or more ANGLES, each with its own photo, QC result, job,
    and compositor. Treatment settings are shared across the case; the response
@@ -1141,6 +1141,10 @@ function strengthLabel(pct){
 // Enhanced rather than Full because full reads as a completed treatment; at or
 // past FILLER_LEVELS.full the view is overfilled.
 const FILLER_LEVELS = { subtle:35, balanced:70, full:80 };
+// M9.11 (v46) beta stop-loss: the filler slider is capped at the top of
+// Balanced. Enhanced returns with M10's silhouette engine; Overfilled returns
+// with the dedicated AI education anchor. Set to 100 to restore the full range.
+const FILLER_BETA_MAX = 69;
 const OVERFILL_COLOR = '#A33524';
 function levelInfo(pct){
   const n = (typeof pct === 'number') ? pct : (parseInt(pct, 10) || 0);
@@ -1156,13 +1160,23 @@ function levelInfo(pct){
 // One place that renders every intensity-related element from state, so the
 // vocabulary cannot drift between the input handler and renderActiveSlot.
 function updateIntensityUI(){
-  const li = levelInfo(state.intensityPct);
   const isFiller = state.type === 'filler';
+  const slider = document.getElementById('intensitySlider');
+  if(isFiller){
+    slider.max = FILLER_BETA_MAX;
+    if(state.intensityPct > FILLER_BETA_MAX){
+      state.intensityPct = FILLER_BETA_MAX;
+      slider.value = FILLER_BETA_MAX;
+    }
+  } else {
+    slider.max = 100;
+  }
+  const li = levelInfo(state.intensityPct);
   document.getElementById('intensityLabel').textContent = isFiller ? 'Degree of correction' : 'Treatment response';
   document.getElementById('intensityMin').textContent = isFiller ? 'Subtle' : 'Conservative';
-  document.getElementById('intensityMax').textContent = isFiller ? 'Overfilled' : 'Strong';
+  document.getElementById('intensityMax').textContent = isFiller ? 'Balanced' : 'Strong';
   document.getElementById('intensityHelp').textContent = isFiller
-    ? 'Slide to preview less or more correction. The top of the range deliberately shows an overfilled result.'
+    ? 'Slide to preview less or more correction.'
     : 'Slide to preview a more conservative or stronger response. The simulation updates instantly.';
   const valEl = document.getElementById('intensityValue');
   valEl.textContent = li.name;

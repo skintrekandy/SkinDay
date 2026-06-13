@@ -7,6 +7,16 @@
 // background). gpt-image-1's edit endpoint edits only the transparent region, so
 // this physically prevents the global beautification leak.
 //
+// M9.11 (v46): BETA RANGE STOP-LOSS. Clinical review at 338-507% zoom failed
+// the chin tip at Enhanced: extending the silhouette stretches the original's
+// chin-to-shadow gradient into a wide featureless penumbra, a junction-shading
+// problem no resampling or band math can rebuild from a 2D photo. Per the
+// agreed stop-loss, the filler consultation range ships as Subtle through
+// Balanced (client caps the slider; see FILLER_BETA_MAX in visualize.html),
+// and the warp ceiling drops to 0.45, the historically eye-passed amplitude.
+// Enhanced returns on M10's spline silhouette with synthesized junction
+// shading; Overfilled returns on the dedicated AI-heavy education anchor.
+//
 // M9.10 (v45): WARP SATURATION for chin_jaw (clinical: angular, faceted chin
 // silhouette at Enhanced and above; zoom forensics show curvature kinks where
 // the chin, notch-fill, and gonial kernels join, a vector-path chin). The
@@ -1213,7 +1223,7 @@ const CHINW_NOTCH_DOWN         = 0.004; // small accompanying drop, fraction of 
 const GONW_DEF                 = 0.007; // posterior-inferior gonial move, fraction of W
 // M9.10 (v45): the chin_jaw warp's intensity ceiling. Silhouette amplitude
 // saturates here while AI shading continues to scale; 1.0 restores v44.
-const CHINW_WARP_SAT           = 0.55;
+const CHINW_WARP_SAT           = 0.45; // v46: 0.55 -> 0.45, the eye-passed amplitude
 
 function buildChinProjectionField(L, w, h, pose, sex){
   const lm = L.map(p=>({x:p.x*w, y:p.y*h}));
