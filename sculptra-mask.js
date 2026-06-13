@@ -7,6 +7,41 @@
 // background). gpt-image-1's edit endpoint edits only the transparent region, so
 // this physically prevents the global beautification leak.
 //
+// M10.1 (v47): SCULPTRA OBLIQUE CHEEK / MIDFACE PROJECTION KERNELS.
+// The M6 lift warp was gated to frontal only; obliques received AI shading with
+// no geometry change, so the zygomatic arch could not move forward in the 45
+// degree view regardless of slider position. M10.1 adds an oblique branch inside
+// buildLiftField that fires when detectPose returns three_quarter.
+//
+// Two kernel groups per oblique side:
+//   (1) Zygoma projection: capsule kernel anchored at lm[123] (right) / lm[352]
+//       (left), the zygomatic arch apex -- the highest, most anterior point of the
+//       cheekbone visible at a three-quarter angle. Vector is predominantly lateral
+//       (outward, same sign as the near-side lateral axis) with a small superior
+//       component. The capsule extends in the displacement direction (SCULP_CAPSULE
+//       run factor), so the arch edge translates rigidly rather than smearing. The
+//       oval guard is ON (face oval with blurred edge), so the silhouette cannot
+//       actually move outward; only interior pixels shift, creating a new convex
+//       highlight on the arch that matches the clinical before/afters (Cases A and C
+//       uploaded June 13). Sigma SCULP_ZYGOMA_SIG ~0.10W; tight enough to be an
+//       arch-specific highlight, wide enough not to read as a painted disc.
+//   (2) Anterior midface: Gaussian kernel (no capsule) anchored midway on the ogee
+//       curve between the zygion and the near-side ala, pointing anteriorly (toward
+//       the far cheek, same sign derivation as the chin projection). Wider sigma
+//       SCULP_MIDFACE_SIG ~0.16W. Fills the flat mid-cheek plane that deflation-
+//       and-descent produces, matching Cases B and E.
+//
+// Calibration standard: every round judged against the four real Sculptra cases
+// uploaded June 13, 2026. Andy is the clinical authority; Claude owns engineering.
+// One lever per round; first tunable lever is SCULP_ZYGOMA_OUT (the lateral
+// magnitude driving the arch highlight). Expect a v47-v50 arc matching v28-v34.
+//
+// The frontal lift (jowl + midface re-drape) is untouched; its vectors stay
+// exactly as calibrated in M6.2. The oblique branch adds NEW kernels alongside;
+// it does not reuse or modify the frontal ones. maybeBuildLift drops the
+// frontal-only gate and calls buildLiftField for both views; the function now
+// returns null on out_of_range (unchanged behavior for very steep profiles).
+//
 // M9.11 (v46): BETA RANGE STOP-LOSS. Clinical review at 338-507% zoom failed
 // the chin tip at Enhanced: extending the silhouette stretches the original's
 // chin-to-shadow gradient into a wide featureless penumbra, a junction-shading
@@ -767,6 +802,26 @@ const WARP_MIDFACE_LIFT  = 0.017;
 const WARP_MIDFACE_SIGMA = 0.12;
 const WARP_EDGE_FADE     = 0.06;
 
+// M10.1 (v47): oblique Sculptra cheek/midface projection kernels.
+// FIRST CALIBRATION LEVER: SCULP_ZYGOMA_OUT -- the lateral magnitude that drives
+// the zygomatic arch highlight. Increase to push the arch further; decrease if
+// the highlight reads as a painted disc rather than a natural convex form.
+// Other levers in order of expected need:
+//   SCULP_MIDFACE_ANT  -- anterior fill in the ogee zone; increase if the
+//                         mid-cheek plane still reads flat between arch and fold.
+//   SCULP_ZYGOMA_UP    -- superior component; increase slightly if the arch
+//                         highlight needs to shift higher toward the orbital rim.
+//   SCULP_ZYGOMA_SIG   -- kernel breadth; increase if the highlight is too focal,
+//                         decrease if it bleeds into the temple or eye zone.
+//   SCULP_MIDFACE_SIG  -- midface kernel breadth; increase for a more diffuse fill.
+//   SCULP_CAPSULE      -- capsule run; decrease toward 0 for a pure Gaussian.
+const SCULP_ZYGOMA_OUT  = 0.022; // lateral magnitude, fraction of W (FIRST LEVER)
+const SCULP_ZYGOMA_UP   = 0.008; // superior component, fraction of faceH
+const SCULP_ZYGOMA_SIG  = 0.10;  // kernel breadth, fraction of W
+const SCULP_MIDFACE_ANT = 0.014; // anterior magnitude, fraction of W
+const SCULP_MIDFACE_SIG = 0.16;  // midface kernel breadth, fraction of W
+const SCULP_CAPSULE     = 0.80;  // capsule run factor for zygoma kernel
+
 // Jowl kernel anchor landmarks: gonion and prejowl per side; the kernel sits
 // between them, nudged up onto the jowl pad itself.
 const GONION  = { r:172, l:397 };
@@ -778,7 +833,10 @@ const PREJOWL = { r:176, l:400 };
 // samples the original at (x + sx*t, y + sy*t). Tissue moving up by v means the
 // content came from below, so the offset is the inverse of the forward
 // displacement (exact enough at these few-pixel magnitudes).
-function buildLiftField(L, w, h){
+// M10.1: pose parameter added. At frontal the function builds the existing jowl +
+// midface re-drape kernels (M6, untouched). At three_quarter it builds the new
+// zygomatic arch projection + anterior midface kernels. At other views returns null.
+function buildLiftField(L, w, h, pose){
   const lm = L.map(p=>({x:p.x*w, y:p.y*h}));
   const p10=lm[10], p152=lm[152], zr=lm[ZYGION.r], zl=lm[ZYGION.l];
   if(!p10||!p152||!zr||!zl) return null;
@@ -816,24 +874,95 @@ function buildLiftField(L, w, h){
   // Displacement kernels, both sides. Each kernel is a Gaussian bump carrying a
   // fixed displacement vector; the field is their sum, attenuated by the guards.
   const kernels=[];
-  for(const s of ["r","l"]){
-    const g=lm[GONION[s]], pj=lm[PREJOWL[s]], zy=lm[ZYGION[s]];
-    if(!g||!pj||!zy) continue;
-    const sgn=Math.sign(dot(sub(zy,p152),dirOut)) || (s==="r"?-1:1);
-    const inw={ x:-sgn*dirOut.x, y:-sgn*dirOut.y };  // unit vector toward the midline
-    // Jowl re-drape: up + slightly inward, centered on the jowl pad.
-    const jowlC=add(lerp(g, pj, 0.45), mul(dirUp, 0.06*faceH));
-    const sigJ=WARP_JOWL_SIGMA*W;
-    kernels.push({ cx:jowlC.x, cy:jowlC.y, twoSig:2*sigJ*sigJ,
-      vx: dirUp.x*WARP_JOWL_LIFT*faceH + inw.x*WARP_JOWL_IN*W,
-      vy: dirUp.y*WARP_JOWL_LIFT*faceH + inw.y*WARP_JOWL_IN*W });
-    // Midface/submalar re-drape: straight up, centered below the cheek apex.
-    const midC=add(add(zy, mul(dirUp, -0.10*faceH)), mul(inw, 0.02*W));
-    const sigM=WARP_MIDFACE_SIGMA*W;
-    kernels.push({ cx:midC.x, cy:midC.y, twoSig:2*sigM*sigM,
-      vx: dirUp.x*WARP_MIDFACE_LIFT*faceH,
-      vy: dirUp.y*WARP_MIDFACE_LIFT*faceH });
+
+  const isOblique = pose && pose.view === 'three_quarter'
+    && (pose.nearSide === 'left' || pose.nearSide === 'right');
+
+  if(isOblique){
+    // M10.1: oblique branch. Kernels target the near-side (camera-facing) cheek
+    // only -- that is where the arch highlight and anterior midface projection are
+    // visible at a three-quarter view. The far side is foreshortened and the oval
+    // guard suppresses out-of-oval displacement in any case.
+    //
+    // Anterior direction sign: same derivation as buildChinProjectionField (v32).
+    // The nose tip is displaced anteriorly relative to the bridge; its lateral
+    // offset gives the forward direction unambiguously.
+    const tip = lm[1] || lm[4];
+    const bridge = lm[168] || p10;
+    let antSign = tip ? (Math.sign(dot(sub(tip, bridge), dirOut)) || 0) : 0;
+    if(!antSign){
+      const leftSign = Math.sign(dot(sub(lm[454], p152), dirOut)) || 1;
+      antSign = (pose.nearSide === 'left') ? -leftSign : leftSign;
+    }
+    const antDir = mul(dirOut, antSign);
+
+    // Near-side lateral sign (outward from midline on the camera-facing side).
+    const nearSide = pose.nearSide;
+    const nearZy = (nearSide === 'right') ? lm[ZYGION.r] : lm[ZYGION.l];
+    const nearZyApex = (nearSide === 'right') ? lm[123] : lm[352]; // zygomatic arch apex
+    if(!nearZy) return null;
+    const latSign = Math.sign(dot(sub(nearZy, p152), dirOut)) || (nearSide === 'right' ? -1 : 1);
+    const latDir = mul(dirOut, latSign);
+
+    // (1) Zygoma arch projection kernel.
+    // Anchor: the zygomatic arch apex (lm[123]/352). If the landmark is absent
+    // (older MediaPipe models), fall back to the zygion with a small superior
+    // and lateral nudge toward the arch apex position.
+    const zyApexC = nearZyApex
+      ? nearZyApex
+      : add(nearZy, add(mul(dirUp, 0.04*faceH), mul(latDir, 0.02*W)));
+    const zygomaV = add(mul(latDir, SCULP_ZYGOMA_OUT*W), mul(dirUp, SCULP_ZYGOMA_UP*faceH));
+    const sigZ = SCULP_ZYGOMA_SIG*W;
+    // Capsule: extend in the displacement direction so the plateau translates
+    // rigidly through and past the arch, not as a feathered dome.
+    const vLen = Math.hypot(zygomaV.x, zygomaV.y) || 1e-6;
+    const runZ = vLen * SCULP_CAPSULE;
+    kernels.push({
+      ax: zyApexC.x, ay: zyApexC.y,
+      bx: zyApexC.x + (zygomaV.x/vLen)*runZ,
+      by: zyApexC.y + (zygomaV.y/vLen)*runZ,
+      twoSig: 2*sigZ*sigZ, vx: zygomaV.x, vy: zygomaV.y,
+      capsule: true
+    });
+
+    // (2) Anterior midface kernel (ogee zone fill).
+    // Anchor: midpoint between the near-side zygion and the near-side ala,
+    // approximating the ogee inflection where anterior projection is most
+    // visible on a deflated face.
+    const nearAla = (nearSide === 'right') ? lm[ALA.r] : lm[ALA.l];
+    const ogeeC = nearAla
+      ? lerp(nearZy, nearAla, 0.55)
+      : add(nearZy, add(mul(dirUp, -0.12*faceH), mul(antDir, 0.03*W)));
+    const midfaceV = mul(antDir, SCULP_MIDFACE_ANT*W);
+    const sigM = SCULP_MIDFACE_SIG*W;
+    kernels.push({
+      ax: ogeeC.x, ay: ogeeC.y, bx: ogeeC.x, by: ogeeC.y, // point kernel (no capsule run)
+      twoSig: 2*sigM*sigM, vx: midfaceV.x, vy: midfaceV.y,
+      capsule: false
+    });
+
+  } else {
+    // Frontal branch: existing M6.2 calibrated kernels, untouched.
+    for(const s of ["r","l"]){
+      const g=lm[GONION[s]], pj=lm[PREJOWL[s]], zy=lm[ZYGION[s]];
+      if(!g||!pj||!zy) continue;
+      const sgn=Math.sign(dot(sub(zy,p152),dirOut)) || (s==="r"?-1:1);
+      const inw={ x:-sgn*dirOut.x, y:-sgn*dirOut.y };  // unit vector toward the midline
+      // Jowl re-drape: up + slightly inward, centered on the jowl pad.
+      const jowlC=add(lerp(g, pj, 0.45), mul(dirUp, 0.06*faceH));
+      const sigJ=WARP_JOWL_SIGMA*W;
+      kernels.push({ ax:jowlC.x, ay:jowlC.y, bx:jowlC.x, by:jowlC.y, twoSig:2*sigJ*sigJ,
+        vx: dirUp.x*WARP_JOWL_LIFT*faceH + inw.x*WARP_JOWL_IN*W,
+        vy: dirUp.y*WARP_JOWL_LIFT*faceH + inw.y*WARP_JOWL_IN*W, capsule:false });
+      // Midface/submalar re-drape: straight up, centered below the cheek apex.
+      const midC=add(add(zy, mul(dirUp, -0.10*faceH)), mul(inw, 0.02*W));
+      const sigM=WARP_MIDFACE_SIGMA*W;
+      kernels.push({ ax:midC.x, ay:midC.y, bx:midC.x, by:midC.y, twoSig:2*sigM*sigM,
+        vx: dirUp.x*WARP_MIDFACE_LIFT*faceH,
+        vy: dirUp.y*WARP_MIDFACE_LIFT*faceH, capsule:false });
+    }
   }
+
   if(!kernels.length) return null;
 
   const N=w*h;
@@ -845,8 +974,16 @@ function buildLiftField(L, w, h){
       if(guard<=0.01) continue;
       let dx=0, dy=0;
       for(let k=0;k<kernels.length;k++){
-        const K=kernels[k]; const ex=x-K.cx, ey=y-K.cy;
-        const gv=Math.exp(-(ex*ex+ey*ey)/K.twoSig);
+        const K=kernels[k];
+        // Capsule kernels use distance-to-segment; point kernels use distance-to-point.
+        const ex=x-K.ax, ey=y-K.ay;
+        let gv;
+        if(K.capsule && (K.bx !== K.ax || K.by !== K.ay)){
+          const dd=distToSeg(x, y, {x:K.ax, y:K.ay}, {x:K.bx, y:K.by});
+          gv=Math.exp(-(dd*dd)/K.twoSig);
+        } else {
+          gv=Math.exp(-(ex*ex+ey*ey)/K.twoSig);
+        }
         dx+=K.vx*gv; dy+=K.vy*gv;
       }
       // (dx,dy) is the forward tissue displacement; the backward sample offset
@@ -941,27 +1078,27 @@ function applyLiftWarpBicubic(wb, b, w, h, f, t){
   }
 }
 
-// Gate + build the lift field for a compositor run. Frontal Sculptra 'full'
-// scope only this milestone; everything else returns null (exact M5 behavior).
+// Gate + build the lift field for a compositor run. M10.1: fires for both
+// frontal and three_quarter views. out_of_range returns null (unchanged).
 // opts.warp === false is the A/B escape hatch. Never throws.
 async function maybeBuildLift(beforeImg, landmarks, w, h, scope, opts){
   if(scope !== 'full') return null;
   if(opts && opts.warp === false) return null;
   try {
     const pose = await detectPose(beforeImg);
-    if(!pose || pose.view !== 'frontal'){
-      console.log('%c[Visualize] M6 lift warp skipped: view is ' + ((pose && pose.view) || 'unknown') + ' (frontal only this milestone).', 'color:#888');
+    if(!pose || (pose.view !== 'frontal' && pose.view !== 'three_quarter')){
+      console.log('%c[Visualize] M6/M10.1 lift warp skipped: view is ' + ((pose && pose.view) || 'unknown') + ' (frontal and three_quarter only).', 'color:#888');
       return null;
     }
-    const f = buildLiftField(landmarks, w, h);
+    const f = buildLiftField(landmarks, w, h, pose);
     if(f){
-      console.log('%c[Visualize] M6 lift warp ACTIVE (frontal, yaw ~' + Math.round(pose.yawDeg) + ' deg): max displacement ' + f.maxPx.toFixed(1) + 'px at full strength.', 'color:#2e7d32;font-weight:bold');
+      console.log('%c[Visualize] M10.1 lift warp ACTIVE (' + pose.view + (pose.view === 'three_quarter' ? ', near side ' + pose.nearSide : '') + '): max displacement ' + f.maxPx.toFixed(1) + 'px at full strength.', 'color:#2e7d32;font-weight:bold');
     } else {
-      console.warn('[Visualize] M6 lift warp unavailable (landmarks incomplete); compositing without it.');
+      console.warn('[Visualize] M10.1 lift warp unavailable (landmarks incomplete); compositing without it.');
     }
     return f;
   } catch(e){
-    console.warn('[Visualize] M6 lift warp failed to build; compositing without it.', e);
+    console.warn('[Visualize] M10.1 lift warp failed to build; compositing without it.', e);
     return null;
   }
 }
