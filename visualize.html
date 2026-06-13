@@ -174,21 +174,6 @@
     .guide-card ul { padding-left:18px; display:flex; flex-direction:column; gap:4px; }
     .guide-svg { width:100%; max-width:400px; display:block; margin:12px auto 4px; }
     .guide-rule { font-size:.78rem; color:var(--muted); line-height:1.55; background:var(--warm); border-radius:6px; padding:9px 12px; }
-    /* M8: accounts, credits, checkout */
-    .lock-tabs { display:flex; gap:6px; margin-bottom:14px; justify-content:center; }
-    .lock-tabs button { flex:0 1 auto; padding:7px 14px; border-radius:999px; border:1px solid rgba(255,255,255,.25); background:transparent; color:rgba(250,247,242,.75); font-size:.78rem; cursor:pointer; font-family:'DM Sans',sans-serif; }
-    .lock-tabs button.active { background:var(--rose); border-color:var(--rose); color:#fff; }
-    .auth-form { display:flex; flex-direction:column; gap:10px; }
-    .auth-form input { padding:12px 14px; border-radius:8px; border:1px solid rgba(255,255,255,.25); background:rgba(255,255,255,.06); color:#FAF7F2; font-size:.9rem; font-family:'DM Sans',sans-serif; }
-    .auth-form input::placeholder { color:rgba(250,247,242,.45); }
-    .auth-hint { font-size:.72rem; color:rgba(250,247,242,.55); line-height:1.5; }
-    .acct-bar { display:none; justify-content:flex-end; align-items:center; gap:14px; padding:8px 28px; background:rgba(28,23,20,.04); border-bottom:1px solid rgba(28,23,20,.07); font-size:.76rem; color:var(--muted); }
-    .acct-bar .credits { color:var(--deep); font-weight:500; }
-    .linklike { border:none; background:transparent; color:var(--rose); cursor:pointer; font-size:.76rem; text-decoration:underline; padding:0; font-family:'DM Sans',sans-serif; }
-    .cost-note { text-align:center; font-size:.72rem; color:var(--muted); margin-top:8px; min-height:1em; }
-    .pack-row { display:flex; align-items:center; justify-content:space-between; gap:14px; border:1px solid rgba(28,23,20,.12); border-radius:10px; padding:14px 16px; margin-top:10px; }
-    .pack-row .pack-name { font-weight:500; color:var(--deep); font-size:.92rem; }
-    .pack-row .pack-sub { font-size:.74rem; color:var(--muted); margin-top:2px; }
     .hidden { display:none !important; }
     @media(max-width:720px){ .grid,.result-grid{grid-template-columns:1fr;} .page{padding-left:16px;padding-right:16px;} .pill-grid,.area-grid,.type-toggle{grid-template-columns:1fr;} .nav-link{display:none;} }
   </style>
@@ -200,26 +185,13 @@
   <div class="lock-card">
     <div class="lock-eyebrow">SkinDay</div>
     <h1>Visualize <span>·</span> Coming&nbsp;Soon</h1>
-    <p class="lock-soon" id="lockTagline">Treatment visualization for clinic consultations. Sign in to your clinic account.</p>
-    <div class="lock-tabs" id="lockTabs" style="display:none;">
-      <button type="button" data-mode="signin" class="active">Sign in</button>
-      <button type="button" data-mode="signup">Create account</button>
-      <button type="button" data-mode="beta">Beta key</button>
-    </div>
-    <div class="lock-form auth-form" id="authForm" style="display:none;">
-      <input type="text" id="authClinic" placeholder="Clinic name" autocomplete="organization" style="display:none;" />
-      <input type="email" id="authEmail" placeholder="Email" autocomplete="email" />
-      <input type="password" id="authPassword" placeholder="Password" autocomplete="current-password" />
-      <button id="authBtn" type="button">Sign in</button>
-      <div class="lock-err" id="authErr"></div>
-      <div class="auth-hint" id="authHint"></div>
-    </div>
-    <div class="lock-form" id="betaForm">
+    <p class="lock-soon">A private beta for trusted SkinDay clinics. Access by invitation.</p>
+    <div class="lock-form">
       <input type="password" id="betaKey" placeholder="Beta access password" autocomplete="off" />
       <button id="unlockBtn" type="button">Enter beta</button>
       <div class="lock-err" id="lockErr"></div>
     </div>
-    <div class="lock-foot">Questions about clinic access? Email <a href="mailto:hello@skinday.ca">hello@skinday.ca</a>.</div>
+    <div class="lock-foot">Want beta access for your clinic? Email <a href="mailto:hello@skinday.ca">hello@skinday.ca</a>.</div>
   </div>
 </div>
 
@@ -232,12 +204,6 @@
     <a href="/editor.html" class="nav-cta">Clinic Portal</a>
   </div>
 </nav>
-<div class="acct-bar" id="acctBar">
-  <span id="acctIdent"></span>
-  <span class="credits" id="creditChip"></span>
-  <button class="linklike" id="buyBtn" type="button" style="display:none;">Buy credits</button>
-  <button class="linklike" id="signOutBtn" type="button" style="display:none;">Sign out</button>
-</div>
 
 <div class="page">
   <section class="hero">
@@ -341,7 +307,6 @@
       <div class="status"><div class="dot" id="dot"></div><span id="statusText">Choose a treatment, then add the patient photos</span></div>
 
       <div class="btn-row"><button class="btn btn-primary" id="generateBtn" disabled>Generate simulated preview</button></div>
-      <div class="cost-note" id="costNote"></div>
     </div>
   </section>
 
@@ -397,17 +362,6 @@
   <div class="brand">Skin<span>Day</span></div>
   <div>Visualize AI Beta · Consultation previews only · AI-generated, not a prediction of results</div>
 </footer>
-<!-- ───────── BUY CREDITS ───────── -->
-<div class="guide-modal hidden" id="buyModal">
-  <div class="guide-card">
-    <h2>Buy credits</h2>
-    <p>Credits power generations: 1 credit per angle for HA filler, 2 per angle for Sculptra and other biostimulators. A failed or moderation-blocked generation is refunded automatically, and a re-generate within the free window costs nothing.</p>
-    <div id="packList"></div>
-    <p class="auth-hint" style="margin-top:12px;color:var(--muted);">Payments are processed by Stripe in CAD. Credits land on your account the moment payment completes.</p>
-    <div class="btn-row guide-close"><button class="btn btn-light" id="buyCloseBtn" type="button">Close</button></div>
-  </div>
-</div>
-
 <!-- ───────── CAPTURE GUIDE ───────── -->
 <div class="guide-modal hidden" id="guideModal">
   <div class="guide-card">
@@ -479,10 +433,10 @@ const FREE_REGEN_MS = 60000;
 
 // Bump this whenever sculptra-mask.js changes, so the browser fetches the new
 // module instead of a stale disk-cached copy. Both imports below use it, so they
-// stay the same module instance (shared face-detection cache). v34 = M8.2
-// warp shading reconciliation (one-sided luma pull-back in the moved band;
-// fixes the left-45 pale lighting patch) (v33 = M8.1 convex chin; earlier=v32-).
-const MASK_MODULE_VERSION = '34';
+// stay the same module instance (shared face-detection cache). v29 = M7.7
+// capsule warp kernels (crisp moved edge), subject-aware outline gate, bolder
+// oblique chin/jaw magnitudes (v28 = M7.6 geometry; v27-v22 = earlier).
+const MASK_MODULE_VERSION = '29';
 
 /* M7: a case is one or more ANGLES, each with its own photo, QC result, job,
    and compositor. Treatment settings are shared across the case; the response
@@ -533,84 +487,11 @@ async function verifyKey(key){
   return res.ok;
 }
 
-/* ───────── M8: access (clinic accounts + beta bypass) ─────────
-   Two modes. 'account' = Supabase auth, metered with credits; 'beta' = the
-   existing password, unmetered. visualize-config supplies the Supabase keys
-   and the credit packs from env; when it reports authDisabled (env not set,
-   e.g. a fresh staging deploy), the UI falls back to beta-only, the exact
-   pre-M8 behavior. */
-let SD_CFG = { authDisabled:true };
-let sb = null;                  // supabase client (account mode)
-let accessMode = null;          // 'beta' | 'account'
-let creditBalance = null;
-
-function unlock(mode){
-  accessMode = mode;
+function unlock(){
   lockScreen.classList.add('hidden');
   app.classList.remove('hidden');
-  renderAcctBar();
-  syncGenerateBtn();
 }
 
-// Headers for every generation/poll call: the beta key, or the (auto-refreshed)
-// Supabase access token.
-async function authHeaders(){
-  if(accessMode === 'beta'){
-    return { 'x-beta-key': sessionStorage.getItem(KEY_STORE) || '' };
-  }
-  if(sb){
-    const { data } = await sb.auth.getSession();
-    if(data && data.session) return { 'Authorization': 'Bearer ' + data.session.access_token };
-  }
-  return {};
-}
-
-// A 401 mid-flight: beta key revoked, or the account session is truly gone.
-async function handleAuthFailure(){
-  if(accessMode === 'beta'){ sessionStorage.removeItem(KEY_STORE); }
-  else if(sb){ try { await sb.auth.signOut(); } catch(e){} }
-  location.reload();
-}
-
-function renderAcctBar(){
-  const bar = document.getElementById('acctBar');
-  const ident = document.getElementById('acctIdent');
-  const chip = document.getElementById('creditChip');
-  const buy = document.getElementById('buyBtn');
-  const out = document.getElementById('signOutBtn');
-  if(accessMode === 'beta'){
-    bar.style.display = 'flex';
-    ident.textContent = 'Beta access';
-    chip.textContent = 'Unmetered';
-    buy.style.display = 'none'; out.style.display = 'none';
-  } else if(accessMode === 'account'){
-    bar.style.display = 'flex';
-    ident.textContent = (sb && sb.__email) || '';
-    chip.textContent = creditBalance == null ? 'Credits: …' : ('Credits: ' + creditBalance);
-    buy.style.display = ''; out.style.display = '';
-  } else {
-    bar.style.display = 'none';
-  }
-}
-
-async function refreshCredits(retries){
-  if(accessMode !== 'account') return;
-  for(let i = 0; i <= (retries || 0); i++){
-    try {
-      const res = await fetch('/.netlify/functions/get-credits', { headers: await authHeaders() });
-      if(res.ok){
-        const d = await res.json();
-        creditBalance = d.balance;
-        renderAcctBar(); syncGenerateBtn();
-        return d.balance;
-      }
-    } catch(e){ /* retry */ }
-    if(i < (retries || 0)) await new Promise(r => setTimeout(r, 1500));
-  }
-  return null;
-}
-
-/* Beta path (unchanged mechanics) */
 async function attemptUnlock(){
   const key = betaKey.value.trim();
   if(!key){ lockErr.textContent = 'Enter the beta password.'; return; }
@@ -619,7 +500,7 @@ async function attemptUnlock(){
     if(await verifyKey(key)){
       sessionStorage.setItem(KEY_STORE, key);
       lockErr.textContent = '';
-      unlock('beta');
+      unlock();
     } else {
       lockErr.textContent = 'That password is not recognised.';
     }
@@ -632,151 +513,9 @@ async function attemptUnlock(){
 unlockBtn.addEventListener('click', attemptUnlock);
 betaKey.addEventListener('keydown', e => { if(e.key === 'Enter') attemptUnlock(); });
 
-/* Account path */
-let authMode = 'signin';
-function setLockMode(mode){
-  authMode = (mode === 'signup') ? 'signup' : (mode === 'beta' ? 'beta' : 'signin');
-  document.querySelectorAll('#lockTabs button').forEach(btn =>
-    btn.classList.toggle('active', btn.dataset.mode === authMode));
-  document.getElementById('authForm').style.display = (authMode === 'beta') ? 'none' : 'flex';
-  document.getElementById('betaForm').style.display = (authMode === 'beta') ? '' : 'none';
-  document.getElementById('authClinic').style.display = (authMode === 'signup') ? '' : 'none';
-  document.getElementById('authBtn').textContent = (authMode === 'signup') ? 'Create account' : 'Sign in';
-  document.getElementById('authHint').textContent = (authMode === 'signup' && SD_CFG.signupGrant > 0)
-    ? ('New accounts start with ' + SD_CFG.signupGrant + ' free credits.')
-    : '';
-  document.getElementById('authErr').textContent = '';
-}
-
-async function onSignedIn(session){
-  if(!session || !session.user) return;
-  sb.__email = session.user.email || '';
-  unlock('account');
-  refreshCredits(0);
-}
-
-async function submitAuth(){
-  const email = document.getElementById('authEmail').value.trim();
-  const password = document.getElementById('authPassword').value;
-  const err = document.getElementById('authErr');
-  const btn = document.getElementById('authBtn');
-  if(!email || !password){ err.textContent = 'Enter your email and password.'; return; }
-  btn.disabled = true; err.textContent = 'One moment…';
-  try {
-    if(authMode === 'signup'){
-      const clinic = document.getElementById('authClinic').value.trim();
-      const { data, error } = await sb.auth.signUp({ email, password, options: { data: { clinic_name: clinic } } });
-      if(error){ err.textContent = error.message; return; }
-      if(data && data.session){ err.textContent = ''; onSignedIn(data.session); }
-      else { err.textContent = 'Check your email to confirm the account, then sign in here.'; }
-    } else {
-      const { data, error } = await sb.auth.signInWithPassword({ email, password });
-      if(error){ err.textContent = error.message; return; }
-      err.textContent = '';
-      onSignedIn(data.session);
-    }
-  } catch(e){
-    err.textContent = 'Could not reach the sign-in service. Try again.';
-  } finally {
-    btn.disabled = false;
-  }
-}
-document.getElementById('authBtn').addEventListener('click', submitAuth);
-document.getElementById('authPassword').addEventListener('keydown', e => { if(e.key === 'Enter') submitAuth(); });
-document.querySelectorAll('#lockTabs button').forEach(btn =>
-  btn.addEventListener('click', () => setLockMode(btn.dataset.mode)));
-document.getElementById('signOutBtn').addEventListener('click', async () => {
-  if(sb){ try { await sb.auth.signOut(); } catch(e){} }
-  location.reload();
-});
-
-/* Buy credits */
-function openBuyModal(){
-  const list = document.getElementById('packList');
-  list.innerHTML = '';
-  (SD_CFG.packs || []).forEach(pk => {
-    const row = document.createElement('div'); row.className = 'pack-row';
-    const left = document.createElement('div');
-    left.innerHTML = '<div class="pack-name">' + pk.label + ' · ' + pk.credits + ' credits</div>'
-      + '<div class="pack-sub">CA$' + (pk.cad/100).toFixed(2) + ' · about $' + (pk.cad/100/pk.credits).toFixed(2) + ' per credit</div>';
-    const btn = document.createElement('button'); btn.className = 'btn btn-primary'; btn.type = 'button';
-    btn.textContent = 'Buy';
-    btn.addEventListener('click', async () => {
-      btn.disabled = true; btn.textContent = 'Opening…';
-      try {
-        const res = await fetch('/.netlify/functions/create-checkout-session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
-          body: JSON.stringify({ packId: pk.id })
-        });
-        const d = await res.json().catch(() => ({}));
-        if(res.ok && d.url){ window.location.href = d.url; return; }
-        btn.textContent = 'Buy';
-        btn.disabled = false;
-        setStatus(d.error || 'Could not start the checkout. Please try again.', 'warn');
-        closeBuyModal();
-      } catch(e){
-        btn.textContent = 'Buy'; btn.disabled = false;
-        setStatus('Could not start the checkout. Please try again.', 'warn');
-        closeBuyModal();
-      }
-    });
-    row.appendChild(left); row.appendChild(btn);
-    list.appendChild(row);
-  });
-  document.getElementById('buyModal').classList.remove('hidden');
-}
-function closeBuyModal(){ document.getElementById('buyModal').classList.add('hidden'); }
-document.getElementById('buyBtn').addEventListener('click', openBuyModal);
-document.getElementById('buyCloseBtn').addEventListener('click', closeBuyModal);
-document.getElementById('buyModal').addEventListener('click', e => { if(e.target === document.getElementById('buyModal')) closeBuyModal(); });
-
-/* Boot: config, then saved beta key, then account session, then the lock UI. */
-(async function initAccess(){
-  try {
-    SD_CFG = await (await fetch('/.netlify/functions/visualize-config')).json();
-  } catch(e){ SD_CFG = { authDisabled:true }; }
-  if(!SD_CFG || !SD_CFG.supabaseUrl || !SD_CFG.supabaseAnonKey) SD_CFG = { ...(SD_CFG||{}), authDisabled:true };
-
-  // Returning from Stripe?
-  const qp = new URLSearchParams(location.search);
-  const purchase = qp.get('purchase');
-  if(purchase){ history.replaceState({}, '', location.pathname); }
-
-  // Saved beta key wins (internal use).
+(async function initLock(){
   const saved = sessionStorage.getItem(KEY_STORE);
-  if(saved && await verifyKey(saved).catch(() => false)){ unlock('beta'); return; }
-
-  if(SD_CFG.authDisabled){
-    // Pre-M8 behavior: beta password only.
-    document.getElementById('lockTagline').textContent = 'A private beta for trusted SkinDay clinics. Access by invitation.';
-    document.getElementById('betaForm').style.display = '';
-    return;
-  }
-
-  document.getElementById('lockTabs').style.display = 'flex';
-  setLockMode('signin');
-  try {
-    const mod = await import('https://esm.sh/@supabase/supabase-js@2');
-    sb = mod.createClient(SD_CFG.supabaseUrl, SD_CFG.supabaseAnonKey);
-    const { data } = await sb.auth.getSession();
-    if(data && data.session){
-      await onSignedIn(data.session);
-      if(purchase === 'success'){
-        setStatus('Payment received. Updating your credit balance…', 'spin');
-        const bal = await refreshCredits(4);
-        setStatus(bal != null ? ('Payment received. Credit balance: ' + bal + '.') : 'Payment received. Your balance will update shortly.', 'ok');
-      } else if(purchase === 'cancelled'){
-        setStatus('Checkout cancelled. No charge was made.', 'idle');
-      }
-    }
-    sb.auth.onAuthStateChange((_evt, session) => {
-      if(session && !accessMode) onSignedIn(session);
-    });
-  } catch(e){
-    console.error('[Visualize] account auth unavailable; beta key still works.', e);
-    setLockMode('beta');
-  }
+  if(saved && await verifyKey(saved).catch(()=>false)){ unlock(); }
 })();
 
 /* ───────── Helpers ───────── */
@@ -802,20 +541,6 @@ function syncGenerateBtn(){
   generateBtn.textContent = ids.length > 1
     ? ('Generate ' + ids.length + ' simulated previews')
     : 'Generate simulated preview';
-
-  // M8: cost preview for metered accounts (HA 1 credit per angle, biostim 2).
-  const note = document.getElementById('costNote');
-  if(note){
-    if(accessMode === 'account' && ids.length){
-      const per = (state.type === 'biostim') ? 2 : 1;
-      const total = per * ids.length;
-      note.textContent = 'Uses ' + total + ' credit' + (total > 1 ? 's' : '')
-        + ' (' + ids.length + ' angle' + (ids.length > 1 ? 's' : '') + ' × ' + per + ')'
-        + (creditBalance != null ? ' · balance ' + creditBalance : '');
-    } else {
-      note.textContent = '';
-    }
-  }
 }
 
 function fileToDataUrl(file){
@@ -1298,7 +1023,7 @@ compareCard.addEventListener('pointercancel', () => { cmpDragging = false; });
 // Poll the background job until it finishes. The slow gpt-image-1 call now runs
 // in a Netlify background function (15-min budget), so this replaces the single
 // synchronous request that used to 504.
-async function pollForResult(jobId, auth){
+async function pollForResult(jobId, key){
   const startedAt = Date.now();
   const MAX_MS = 4 * 60 * 1000;   // hard stop after 4 minutes
   const INTERVAL_MS = 3000;
@@ -1307,9 +1032,9 @@ async function pollForResult(jobId, auth){
     // status text is owned by the per-case ticker in runGeneration (M7: several
     // angles poll concurrently, so a per-poll status line would fight itself).
     let res;
-    try { res = await fetch('/.netlify/functions/get-visualization?jobId=' + encodeURIComponent(jobId), { headers: auth }); }
+    try { res = await fetch('/.netlify/functions/get-visualization?jobId=' + encodeURIComponent(jobId), { headers:{ 'x-beta-key':key } }); }
     catch { continue; }   // transient network blip; keep polling
-    if(res.status === 401){ await handleAuthFailure(); throw new Error('Session expired.'); }
+    if(res.status === 401){ sessionStorage.removeItem(KEY_STORE); location.reload(); throw new Error('Session expired.'); }
 
     let data; try { data = JSON.parse(await res.text()); } catch { data = null; }
     if(data){
@@ -1323,9 +1048,8 @@ async function pollForResult(jobId, auth){
   }
 }
 
-async function prepAndStartSlot(angleId, auth, isRegen){
+async function prepAndStartSlot(angleId, key){
   const sl = state.slots[angleId];
-  const prevJobId = sl.jobId; // M8: lineage for the server-enforced free regen window
   sl.status = 'generating'; sl.error = null; sl.apply = null;
 
   // Black background per photo, applied at generation time, never on upload.
@@ -1381,27 +1105,21 @@ async function prepAndStartSlot(angleId, auth, isRegen){
   const jobId = (window.crypto && crypto.randomUUID && crypto.randomUUID()) ||
                 (Date.now() + '-' + Math.random().toString(36).slice(2));
   form.append('jobId', jobId);
-  if(isRegen && prevJobId) form.append('regenOf', prevJobId);
   sl.jobId = jobId;
 
   const startRes = await fetch('/.netlify/functions/start-visualization', {
-    method:'POST', headers: auth, body:form
+    method:'POST', headers:{ 'x-beta-key':key }, body:form
   });
-  if(startRes.status === 401){ await handleAuthFailure(); throw new Error('Session expired.'); }
-  if(startRes.status === 402){
-    creditShortfall = true;
-    let e; try { e = JSON.parse(await startRes.text()); } catch {}
-    throw new Error((e && e.error) || 'Not enough credits for this generation.');
-  }
+  if(startRes.status === 401){ sessionStorage.removeItem(KEY_STORE); location.reload(); throw new Error('Session expired.'); }
   if(!startRes.ok){
     let e; try { e = JSON.parse(await startRes.text()); } catch {}
     throw new Error((e && e.error) || ('Could not start generation (HTTP ' + startRes.status + ').'));
   }
 }
 
-async function finishSlot(angleId, auth){
+async function finishSlot(angleId, key){
   const sl = state.slots[angleId];
-  sl.resultDataUrl = await pollForResult(sl.jobId, auth);
+  sl.resultDataUrl = await pollForResult(sl.jobId, key);
 
   // Masked compositor per angle: AI inside the treatment mask, the original
   // photo everywhere else, exposing apply(0..1) -> jpegDataURL for the shared
@@ -1431,11 +1149,8 @@ async function finishSlot(angleId, auth){
   sl.status = 'done';
 }
 
-let creditShortfall = false; // M8: set on any 402 during a run
-
 async function runGeneration(isRegen){
-  const auth = await authHeaders();
-  creditShortfall = false;
+  const key = sessionStorage.getItem(KEY_STORE) || '';
   const angles = state.selectedAngles.filter(id => state.slots[id].originalDataUrl);
   if(!angles.length) return;
   generateBtn.disabled = true; regenBtn.disabled = true;
@@ -1455,7 +1170,7 @@ async function runGeneration(isRegen){
     // themselves then run in parallel server-side and are polled concurrently.
     const started = [];
     for(const id of angles){
-      try { await prepAndStartSlot(id, auth, isRegen); started.push(id); }
+      try { await prepAndStartSlot(id, key); started.push(id); }
       catch(err){
         console.error('[Visualize] ' + id + ' failed to start:', err);
         const sl = state.slots[id]; sl.status = 'error'; sl.error = (err && err.message) || 'Could not start generation.';
@@ -1463,7 +1178,7 @@ async function runGeneration(isRegen){
     }
     if(started.length){
       await Promise.allSettled(started.map(id =>
-        finishSlot(id, auth).catch(err => {
+        finishSlot(id, key).catch(err => {
           const sl = state.slots[id];
           sl.status = 'error'; sl.error = (err && err.message) || 'Generation failed.';
         })
@@ -1494,16 +1209,6 @@ async function runGeneration(isRegen){
     setStatus('Generation failed: ' + state.slots[failIds[0]].error, 'warn');
   }
   syncGenerateBtn(); regenBtn.disabled = false;
-
-  // M8: settle the visible balance after a metered run; failed angles are
-  // refunded server-side and show up here within a moment.
-  if(accessMode === 'account'){
-    refreshCredits(failIds.length ? 2 : 0);
-    if(creditShortfall){
-      setStatus('Not enough credits to run ' + (failIds.length > 1 ? 'these angles' : 'this generation') + '. Top up to continue.', 'warn');
-      openBuyModal();
-    }
-  }
 }
 
 /* ───────── M7: angle tabs + active-slot rendering ───────── */
