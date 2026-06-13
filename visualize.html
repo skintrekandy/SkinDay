@@ -200,6 +200,104 @@
     .launch-badge { display:inline-block; margin:2px 0 4px; padding:5px 12px; border-radius:999px; background:rgba(201,169,110,.14); border:1px solid rgba(201,169,110,.35); color:#8A6D3B; font-size:.72rem; letter-spacing:.04em; }
     .hidden { display:none !important; }
     @media(max-width:720px){ .grid,.result-grid{grid-template-columns:1fr;} .page{padding-left:16px;padding-right:16px;} .pill-grid,.area-grid,.type-toggle{grid-template-columns:1fr;} .nav-link{display:none;} }
+
+    /* ── Mobile slider bar ── */
+    #mobileSliderBar {
+      display: none;
+    }
+    @media(max-width:767px){
+      /* Extra bottom padding so the sticky bar never covers output content */
+      body.slider-bar-active .page { padding-bottom: 116px; }
+      #mobileSliderBar {
+        display: flex;
+        position: fixed;
+        bottom: 0; left: 0; right: 0;
+        z-index: 90;
+        flex-direction: column;
+        gap: 6px;
+        padding: 10px 18px 14px;
+        background: rgba(28,23,20,.97);
+        border-top: 1px solid rgba(201,169,110,.2);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+      }
+      #mobileSliderBar.bar-hidden { display: none !important; }
+      .msb-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      .msb-label {
+        font-size: .68rem;
+        letter-spacing: .12em;
+        text-transform: uppercase;
+        color: var(--dim);
+        flex-shrink: 0;
+      }
+      #msbValue {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 1.15rem;
+        color: var(--cream);
+      }
+      .msb-ends {
+        display: flex;
+        justify-content: space-between;
+        font-size: .62rem;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+        color: rgba(181,168,159,.6);
+        margin-top: 2px;
+      }
+      #mobileSlider {
+        width: 100%;
+        accent-color: var(--rose);
+        height: 4px;
+        cursor: pointer;
+      }
+      #msbActionBtn {
+        display: block;
+        width: 100%;
+        padding: 11px;
+        background: var(--rose);
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        font-family: 'DM Sans', sans-serif;
+        font-size: .86rem;
+        font-weight: 500;
+        cursor: pointer;
+        text-align: center;
+        margin-top: 2px;
+      }
+      #msbActionBtn:disabled { background: var(--dim); opacity: .65; cursor: not-allowed; }
+      #msbActionBtn.btn-regen { background: var(--deep); color: var(--cream); }
+    }
+
+    /* ── Larger touch target for all range thumbs on touch screens ── */
+    @media(pointer: coarse){
+      input[type=range] { height: 28px; }
+      input[type=range]::-webkit-slider-thumb {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: var(--rose);
+        border: 2px solid #fff;
+        box-shadow: 0 1px 4px rgba(0,0,0,.3);
+        -webkit-appearance: none;
+        appearance: none;
+        cursor: pointer;
+      }
+      input[type=range]::-moz-range-thumb {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: var(--rose);
+        border: 2px solid #fff;
+        box-shadow: 0 1px 4px rgba(0,0,0,.3);
+        cursor: pointer;
+      }
+    }
   </style>
 </head>
 <body>
@@ -495,6 +593,18 @@
     <p>Use the same angles, distance, and lighting at every visit so before and after photos stay comparable over time.</p>
     <div class="btn-row guide-close"><button class="btn btn-primary" id="guideCloseBtn" type="button">Got it</button></div>
   </div>
+</div>
+<!-- ───────── Mobile sticky slider bar ───────── -->
+<div id="mobileSliderBar" class="bar-hidden" aria-hidden="true">
+  <div class="msb-row">
+    <span class="msb-label" id="msbLabel">Treatment response</span>
+    <span id="msbValue">Expected</span>
+  </div>
+  <input type="range" id="mobileSlider" min="0" max="100" step="1" value="70" aria-hidden="true" tabindex="-1" />
+  <div class="msb-ends">
+    <span id="msbMin">Conservative</span><span id="msbMax">Strong</span>
+  </div>
+  <button id="msbActionBtn" type="button" class="bar-hidden" disabled>Generate simulated preview</button>
 </div>
 </div><!-- /#app -->
 
@@ -1219,6 +1329,165 @@ function updateIntensityUI(){
       }
     }
   });
+})();
+
+/* ───────── Mobile sticky slider bar ─────────
+   A fixed panel that mirrors the canonical intensitySlider on small screens.
+   The canonical slider remains the single source of truth; the mobile slider
+   and action button are lightweight projections that delegate to it. */
+(function(){
+  const MOBILE_BP = 767;
+  const bar       = document.getElementById('mobileSliderBar');
+  const mslider   = document.getElementById('mobileSlider');
+  const msbValue  = document.getElementById('msbValue');
+  const msbLabel  = document.getElementById('msbLabel');
+  const msbMin    = document.getElementById('msbMin');
+  const msbMax    = document.getElementById('msbMax');
+  const msbBtn    = document.getElementById('msbActionBtn');
+  const canonical = document.getElementById('intensitySlider');
+  if(!bar || !mslider || !canonical) return;
+
+  // ── Snap stops for Sculptra: Conservative=35 Expected=65 Strong=100
+  //    and for HA filler: Subtle=17 Balanced=52 (top capped at FILLER_BETA_MAX)
+  // These are the midpoints of the named bands, matching strengthLabel() / levelInfo().
+  // Snap fires within SNAP_WINDOW percent of the stop.
+  const SNAP_WINDOW = 8;
+  function snapStops(){
+    if(state.type === 'filler'){
+      return [0, 17, 35, 52, 69]; // Subtle midpoint=17, Balanced midpoint=52
+    }
+    return [0, 22, 62, 100];      // Conservative mid=22, Expected mid=62
+  }
+  function nearestStop(val, stops){
+    let best = null, bestDist = Infinity;
+    for(const s of stops){
+      const d = Math.abs(val - s);
+      if(d < bestDist){ bestDist = d; best = s; }
+    }
+    return (bestDist <= SNAP_WINDOW) ? best : null;
+  }
+
+  // ── Sync mobile slider display from state (called from updateIntensityUI)
+  function syncMobileDisplay(){
+    mslider.min = canonical.min;
+    mslider.max = canonical.max;
+    mslider.value = state.intensityPct;
+    const li = levelInfo(state.intensityPct);
+    msbValue.textContent = li.name;
+    msbValue.style.color = li.over ? OVERFILL_COLOR : 'var(--cream)';
+    mslider.style.accentColor = li.over ? OVERFILL_COLOR : 'var(--rose)';
+    const isFiller = state.type === 'filler';
+    msbLabel.textContent = isFiller ? 'Degree of correction' : 'Treatment response';
+    msbMin.textContent   = isFiller ? 'Subtle' : 'Conservative';
+    msbMax.textContent   = isFiller ? 'Balanced' : 'Strong';
+  }
+  // Patch updateIntensityUI to also sync the mobile bar
+  const _origUpdateUI = updateIntensityUI;
+  updateIntensityUI = function(){
+    _origUpdateUI();
+    syncMobileDisplay();
+  };
+
+  // ── Mobile slider drives canonical slider (and all existing listeners fire)
+  mslider.addEventListener('input', () => {
+    canonical.value = mslider.value;
+    canonical.dispatchEvent(new Event('input', { bubbles:true }));
+  });
+  mslider.addEventListener('change', () => {
+    canonical.value = mslider.value;
+    canonical.dispatchEvent(new Event('change', { bubbles:true }));
+  });
+
+  // ── Snap nudge: on touchend, find the nearest named stop and jump to it
+  function applySnap(sliderEl){
+    const val = parseInt(sliderEl.value, 10) || 0;
+    const snapped = nearestStop(val, snapStops());
+    if(snapped !== null && snapped !== val){
+      sliderEl.value = snapped;
+      sliderEl.dispatchEvent(new Event('input', { bubbles:true }));
+      sliderEl.dispatchEvent(new Event('change', { bubbles:true }));
+    }
+  }
+  mslider.addEventListener('touchend', () => applySnap(mslider), { passive:true });
+  canonical.addEventListener('touchend', () => applySnap(canonical), { passive:true });
+
+  // ── Bar visibility: show when output is visible and screen is mobile
+  function isMobile(){ return window.innerWidth <= MOBILE_BP; }
+
+  // Action button: mirrors generate (pre-output) or re-generate (post-output)
+  // The bar detects which phase the UI is in and wires the button accordingly.
+  function updateBarState(){
+    if(!isMobile()){ bar.classList.add('bar-hidden'); document.body.classList.remove('slider-bar-active'); return; }
+    const outputVisible = document.getElementById('outputSection').classList.contains('visible');
+    const sliderVisible = document.getElementById('intensityWrap').style.display !== 'none';
+
+    if(outputVisible){
+      // Post-output phase: show slider + re-generate button
+      bar.classList.remove('bar-hidden');
+      document.body.classList.add('slider-bar-active');
+      syncMobileDisplay();
+      if(sliderVisible){
+        mslider.style.display = '';
+        msbMin.parentElement.style.display = '';
+      } else {
+        mslider.style.display = 'none';
+        msbMin.parentElement.style.display = 'none';
+      }
+      const regenBtnEl = document.getElementById('regenBtn');
+      if(regenBtnEl && !regenBtnEl.disabled){
+        msbBtn.classList.remove('bar-hidden');
+        msbBtn.disabled = false;
+        msbBtn.textContent = 'Re-generate';
+        msbBtn.className = 'btn-regen';
+        msbBtn.onclick = () => document.getElementById('regenBtn').click();
+      } else {
+        msbBtn.classList.add('bar-hidden');
+      }
+    } else {
+      // Pre-output (setup) phase: show generate button only, no slider
+      bar.classList.remove('bar-hidden');
+      document.body.classList.add('slider-bar-active');
+      mslider.style.display = 'none';
+      msbMin.parentElement.style.display = 'none';
+      msbLabel.style.display = 'none';
+      msbValue.style.display = 'none';
+      const genBtnEl = document.getElementById('generateBtn');
+      msbBtn.classList.remove('bar-hidden');
+      msbBtn.disabled = genBtnEl ? genBtnEl.disabled : true;
+      msbBtn.textContent = genBtnEl ? genBtnEl.textContent : 'Generate simulated preview';
+      msbBtn.className = '';
+      msbBtn.style.background = msbBtn.disabled ? '' : 'var(--rose)';
+      msbBtn.onclick = () => { if(genBtnEl && !genBtnEl.disabled) genBtnEl.click(); };
+    }
+  }
+
+  // Restore label/value visibility when switching back to output view
+  function restoreBarLabels(){
+    msbLabel.style.display = '';
+    msbValue.style.display = '';
+  }
+
+  // Observe output section visibility changes
+  const outputSection = document.getElementById('outputSection');
+  const obsOutput = new MutationObserver(() => { restoreBarLabels(); updateBarState(); });
+  obsOutput.observe(outputSection, { attributes:true, attributeFilter:['class'] });
+
+  // Observe generateBtn disabled state (re-check bar button)
+  const genBtnEl = document.getElementById('generateBtn');
+  if(genBtnEl){
+    const obsGen = new MutationObserver(updateBarState);
+    obsGen.observe(genBtnEl, { attributes:true, attributeFilter:['disabled','textContent'] });
+  }
+
+  // Observe intensityWrap visibility
+  const intWrap = document.getElementById('intensityWrap');
+  if(intWrap){
+    const obsSlider = new MutationObserver(updateBarState);
+    obsSlider.observe(intWrap, { attributes:true, attributeFilter:['style'] });
+  }
+
+  window.addEventListener('resize', updateBarState, { passive:true });
+  updateBarState();
 })();
 
 document.getElementById('blackBgChk').addEventListener('change', e => {
