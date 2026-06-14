@@ -697,6 +697,9 @@
     <button class="nav-tab" data-tab="practitioners" onclick="switchTab('practitioners')">
       👤 Practitioners
     </button>
+    <button class="nav-tab" data-tab="costs" onclick="switchTab('costs')">
+      $ Costs
+    </button>
   </nav>
 
   <main class="admin-main">
@@ -944,6 +947,74 @@
       </div>
     </div>
 
+    <!-- COSTS PANEL -->
+    <div id="costs-panel" style="display:none">
+      <div class="add-clinic-form" style="max-width:1000px;">
+        <div class="form-title">Visualize Cost Dashboard</div>
+        <div class="form-subtitle">OpenAI spend vs credit revenue, last 30 days. Data populates once generation logging is active.</div>
+        <div id="costs-loading" style="text-align:center;padding:40px 0;color:var(--muted);font-size:.9rem;">Loading...</div>
+        <div id="costs-error" style="display:none;color:var(--rose);padding:20px 0;font-size:.85rem;"></div>
+        <div id="costs-content" style="display:none;">
+
+          <!-- Overview cards -->
+          <div style="font-size:.72rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin:1.5rem 0 .75rem;">30-day overview</div>
+          <div id="costs-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-bottom:1.5rem;"></div>
+
+          <!-- Pack margins -->
+          <div style="font-size:.72rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin:1.5rem 0 .75rem;">Credit pack margins</div>
+          <div id="costs-packs" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;margin-bottom:1.5rem;"></div>
+
+          <!-- By type + angle -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:1.5rem;">
+            <div>
+              <div style="font-size:.72rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:.75rem;">By treatment type</div>
+              <div style="overflow-x:auto;"><table id="costs-type-table" style="width:100%;border-collapse:collapse;font-size:.82rem;">
+                <thead><tr>
+                  <th style="text-align:left;padding:6px 10px;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);border-bottom:1px solid rgba(201,169,110,.18);white-space:nowrap;">Type</th>
+                  <th style="text-align:right;padding:6px 10px;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);border-bottom:1px solid rgba(201,169,110,.18);">Gens</th>
+                  <th style="text-align:right;padding:6px 10px;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);border-bottom:1px solid rgba(201,169,110,.18);">Cost (USD)</th>
+                  <th style="text-align:right;padding:6px 10px;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);border-bottom:1px solid rgba(201,169,110,.18);">Avg/gen</th>
+                </tr></thead>
+                <tbody></tbody>
+              </table></div>
+            </div>
+            <div>
+              <div style="font-size:.72rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:.75rem;">By angle</div>
+              <div style="overflow-x:auto;"><table id="costs-angle-table" style="width:100%;border-collapse:collapse;font-size:.82rem;">
+                <thead><tr>
+                  <th style="text-align:left;padding:6px 10px;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);border-bottom:1px solid rgba(201,169,110,.18);">Angle</th>
+                  <th style="text-align:right;padding:6px 10px;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);border-bottom:1px solid rgba(201,169,110,.18);">Gens</th>
+                  <th style="text-align:right;padding:6px 10px;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);border-bottom:1px solid rgba(201,169,110,.18);">Cost (USD)</th>
+                  <th style="text-align:right;padding:6px 10px;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);border-bottom:1px solid rgba(201,169,110,.18);">Avg/gen</th>
+                </tr></thead>
+                <tbody></tbody>
+              </table></div>
+            </div>
+          </div>
+
+          <!-- Daily table -->
+          <div style="font-size:.72rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin:1.5rem 0 .75rem;">Daily breakdown</div>
+          <div style="overflow-x:auto;"><table id="costs-daily-table" style="width:100%;border-collapse:collapse;font-size:.82rem;">
+            <thead><tr>
+              <th style="text-align:left;padding:6px 10px;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);border-bottom:1px solid rgba(201,169,110,.18);white-space:nowrap;">Date</th>
+              <th style="text-align:right;padding:6px 10px;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);border-bottom:1px solid rgba(201,169,110,.18);white-space:nowrap;">Total</th>
+              <th style="text-align:right;padding:6px 10px;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);border-bottom:1px solid rgba(201,169,110,.18);white-space:nowrap;">OK</th>
+              <th style="text-align:right;padding:6px 10px;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);border-bottom:1px solid rgba(201,169,110,.18);white-space:nowrap;">Failed</th>
+              <th style="text-align:right;padding:6px 10px;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);border-bottom:1px solid rgba(201,169,110,.18);white-space:nowrap;">Cost USD</th>
+              <th style="text-align:right;padding:6px 10px;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);border-bottom:1px solid rgba(201,169,110,.18);white-space:nowrap;">Wasted</th>
+              <th style="text-align:right;padding:6px 10px;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);border-bottom:1px solid rgba(201,169,110,.18);white-space:nowrap;">Avg/gen</th>
+              <th style="text-align:right;padding:6px 10px;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);border-bottom:1px solid rgba(201,169,110,.18);white-space:nowrap;">Credits</th>
+            </tr></thead>
+            <tbody></tbody>
+          </table></div>
+
+          <div style="text-align:right;margin-top:1rem;">
+            <button onclick="loadCosts()" style="background:none;border:1px solid rgba(201,169,110,.3);color:var(--dim);padding:.4rem 1rem;border-radius:5px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:.8rem;">Refresh</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -1106,17 +1177,20 @@ function switchTab(tab) {
   const isAddClinic     = tab === 'add-clinic';
   const isPriceIntake   = tab === 'price-intake';
   const isPractitioners = tab === 'practitioners';
-  const isClaims        = !isAddClinic && !isPriceIntake && !isPractitioners;
+  const isCosts         = tab === 'costs';
+  const isClaims        = !isAddClinic && !isPriceIntake && !isPractitioners && !isCosts;
 
   document.getElementById('claims-container').style.display      = isClaims        ? 'block' : 'none';
   document.getElementById('add-clinic-panel').style.display      = isAddClinic      ? 'block' : 'none';
   document.getElementById('price-intake-panel').style.display    = isPriceIntake    ? 'block' : 'none';
   document.getElementById('practitioners-panel').style.display   = isPractitioners  ? 'block' : 'none';
+  document.getElementById('costs-panel').style.display           = isCosts          ? 'block' : 'none';
   document.getElementById('stats-bar').style.display             = isClaims && Object.values(allClaims).flat().length > 0 ? 'grid' : 'none';
 
   if (isClaims) renderTab(tab);
   if (isPriceIntake && !piClinicsLoaded) piLoadClinics();
   if (isPractitioners && !pracClinicsLoaded) pracLoadClinics();
+  if (isCosts && !costsLoaded) loadCosts();
 }
 
 // ── RENDER ───────────────────────────────────────────────────
@@ -1862,6 +1936,106 @@ document.addEventListener('click', e => {
     if (el) el.style.display = 'none';
   }
 });
+
+// ── COSTS TAB ────────────────────────────────────────────────
+let costsLoaded = false;
+
+async function loadCosts(){
+  document.getElementById('costs-loading').style.display = 'block';
+  document.getElementById('costs-error').style.display   = 'none';
+  document.getElementById('costs-content').style.display = 'none';
+  try {
+    const res = await fetch('/api/admin-costs', {
+      headers: { 'Authorization': 'Bearer ' + adminSecret }
+    });
+    if(!res.ok) throw new Error('Server returned ' + res.status);
+    const data = await res.json();
+    renderCosts(data);
+    costsLoaded = true;
+    document.getElementById('costs-loading').style.display = 'none';
+    document.getElementById('costs-content').style.display = 'block';
+  } catch(err){
+    document.getElementById('costs-loading').style.display = 'none';
+    document.getElementById('costs-error').style.display   = 'block';
+    document.getElementById('costs-error').textContent     = 'Failed to load cost data: ' + err.message + '. Make sure admin-costs.js is deployed to netlify/functions/.';
+  }
+}
+
+function fmtUSD(n, d){ return n == null ? '--' : '$' + Number(n).toFixed(d == null ? 4 : d); }
+function fmtPct(a, b){ return b ? (a/b*100).toFixed(1) + '%' : '--'; }
+
+function renderCosts(data){
+  const t = data.totals;
+
+  // Overview cards
+  const cardDefs = [
+    { label:'Total generations',    val: t.total_generations,                                 sub: '30 days' },
+    { label:'Successful',           val: t.successful,           color:'var(--green)',         sub: fmtPct(t.successful, t.total_generations) + ' success rate' },
+    { label:'Failed / refunded',    val: t.failed,               color: t.failed>10 ? 'var(--rose)' : '', sub:'' },
+    { label:'Avg cost / gen',       val: fmtUSD(t.avg_cost_per_gen),                          sub: 'successful only' },
+    { label:'Total OpenAI cost',    val: fmtUSD(t.total_cost_usd, 2),                         sub: 'USD' },
+    { label:'Wasted cost',          val: fmtUSD(t.wasted_cost_usd, 2), color: (t.wasted_cost_usd||0)>5 ? 'var(--rose)' : '', sub: fmtPct(t.wasted_cost_usd, t.total_cost_usd) + ' of total' },
+    { label:'Est. revenue',         val: 'CA$' + Number(t.revenue_est_cad||0).toFixed(2),    color:'var(--green)', sub: 'from credits used' },
+    { label:'Est. margin',          val: fmtUSD(t.margin_est_usd, 2), color: (t.margin_est_usd||0) < 0 ? 'var(--rose)' : 'var(--green)', sub: 'USD after OpenAI' },
+  ];
+  document.getElementById('costs-cards').innerHTML = cardDefs.map(c => `
+    <div style="background:rgba(255,255,255,.04);border:1px solid rgba(201,169,110,.15);border-radius:8px;padding:14px 16px;">
+      <div style="font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin-bottom:.35rem;">${c.label}</div>
+      <div style="font-size:1.35rem;font-weight:500;color:${c.color||'var(--cream)'};">${c.val}</div>
+      ${c.sub ? `<div style="font-size:.72rem;color:var(--muted);margin-top:.3rem;">${c.sub}</div>` : ''}
+    </div>`).join('');
+
+  // Pack margins
+  document.getElementById('costs-packs').innerHTML = (data.pack_margins||[]).map(p => {
+    const barPct = Math.max(0, Math.min(100, (p.margin_if_all_filler / p.revenue_usd) * 100));
+    const mColor = p.margin_if_all_filler >= 0 ? 'var(--green)' : 'var(--rose)';
+    return `<div style="background:rgba(255,255,255,.04);border:1px solid rgba(201,169,110,.15);border-radius:8px;padding:14px 16px;">
+      <div style="font-weight:600;color:var(--cream);margin-bottom:.75rem;">${p.pack.charAt(0).toUpperCase()+p.pack.slice(1)} - CA$${p.price_cad} / ${p.credits} cr</div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:.3rem;font-size:.8rem;"><span style="color:var(--muted);">Revenue (USD)</span><span style="color:var(--cream);">${fmtUSD(p.revenue_usd,2)}</span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:.3rem;font-size:.8rem;"><span style="color:var(--muted);">Cost if all filler</span><span>${fmtUSD(p.cost_if_all_filler,2)}</span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:.3rem;font-size:.8rem;"><span style="color:var(--muted);">Cost if all Sculptra</span><span>${fmtUSD(p.cost_if_all_biostim,2)}</span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:.5rem;font-size:.8rem;"><span style="color:var(--muted);">Margin (filler mix)</span><span style="color:${mColor};font-weight:600;">${fmtUSD(p.margin_if_all_filler,2)}</span></div>
+      <div style="height:5px;background:rgba(255,255,255,.08);border-radius:3px;"><div style="height:5px;border-radius:3px;background:var(--green);width:${barPct}%;"></div></div>
+      <div style="font-size:.7rem;color:var(--muted);margin-top:.35rem;">${barPct.toFixed(0)}% margin on filler mix</div>
+    </div>`;
+  }).join('');
+
+  // Type table
+  const typeTbody = document.querySelector('#costs-type-table tbody');
+  typeTbody.innerHTML = Object.entries(data.by_type||{}).map(([type, v]) => `
+    <tr>
+      <td style="padding:8px 10px;border-bottom:1px solid rgba(234,226,216,.06);color:var(--cream);">${type}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid rgba(234,226,216,.06);color:var(--dim);text-align:right;">${v.count}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid rgba(234,226,216,.06);color:var(--dim);text-align:right;">${fmtUSD(v.cost)}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid rgba(234,226,216,.06);color:var(--dim);text-align:right;">${fmtUSD(v.count ? v.cost/v.count : null)}</td>
+    </tr>`).join('') || '<tr><td colspan="4" style="padding:20px;text-align:center;color:var(--muted);">No data yet</td></tr>';
+
+  // Angle table
+  const angleTbody = document.querySelector('#costs-angle-table tbody');
+  angleTbody.innerHTML = Object.entries(data.by_angle||{}).map(([angle, v]) => `
+    <tr>
+      <td style="padding:8px 10px;border-bottom:1px solid rgba(234,226,216,.06);color:var(--cream);">${angle}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid rgba(234,226,216,.06);color:var(--dim);text-align:right;">${v.count}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid rgba(234,226,216,.06);color:var(--dim);text-align:right;">${fmtUSD(v.cost)}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid rgba(234,226,216,.06);color:var(--dim);text-align:right;">${fmtUSD(v.count ? v.cost/v.count : null)}</td>
+    </tr>`).join('') || '<tr><td colspan="4" style="padding:20px;text-align:center;color:var(--muted);">No data yet</td></tr>';
+
+  // Daily table
+  const dailyTbody = document.querySelector('#costs-daily-table tbody');
+  dailyTbody.innerHTML = (data.daily||[]).map(row => {
+    const day = new Date(row.day).toLocaleDateString('en-CA', { month:'short', day:'numeric' });
+    return `<tr>
+      <td style="padding:8px 10px;border-bottom:1px solid rgba(234,226,216,.06);color:var(--cream);white-space:nowrap;">${day}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid rgba(234,226,216,.06);color:var(--dim);text-align:right;">${row.total_generations||0}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid rgba(234,226,216,.06);color:var(--green);text-align:right;">${row.successful||0}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid rgba(234,226,216,.06);color:${(row.failed_or_refunded||0)>3?'var(--rose)':'var(--dim)'};text-align:right;">${row.failed_or_refunded||0}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid rgba(234,226,216,.06);color:var(--dim);text-align:right;">${fmtUSD(row.total_cost_usd)}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid rgba(234,226,216,.06);color:${(row.wasted_cost_usd||0)>1?'var(--rose)':'var(--dim)'};text-align:right;">${fmtUSD(row.wasted_cost_usd)}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid rgba(234,226,216,.06);color:var(--dim);text-align:right;">${fmtUSD(row.avg_cost_per_success)}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid rgba(234,226,216,.06);color:var(--dim);text-align:right;">${row.credits_charged||0}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="8" style="padding:20px;text-align:center;color:var(--muted);">No data yet</td></tr>';
+}
 </script>
 </body>
 </html>
