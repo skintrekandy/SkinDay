@@ -7,13 +7,15 @@
 // background). gpt-image-1's edit endpoint edits only the transparent region, so
 // this physically prevents the global beautification leak.
 //
-// M10.1 (v49): calibration pass. Lateral vector cut, anterior and superior
-// raised. Expected -> Strong now reads as fuller and more projected, not wider.
+// M10.1 (v50): calibration pass + temple + pose threshold fix.
+//   SCULP_ZYGOMA_UP 0.014->0.018, SCULP_MIDFACE_ANT 0.026->0.034.
+//   Frontal temple convexity kernel added to buildLiftField frontal branch.
+//   VIEW_TQ_MAX_DEG raised 50->60 (51-degree photos no longer rejected).
 //
-// M10.1 (v48): calibration pass. SCULP_ZYGOMA_OUT 0.022 -> 0.032,
-// SCULP_MIDFACE_ANT 0.014 -> 0.020. Arch highlight and mid-cheek fill
-// both raised so the strong response reads to an untrained eye at consult,
-// not just to a trained injector. All other geometry unchanged.
+// M10.1 (v49): lateral cut, anterior and superior raised.
+//
+// M10.1 (v48): calibration pass. SCULP_ZYGOMA_OUT 0.022->0.032,
+// SCULP_MIDFACE_ANT 0.014->0.020.
 //
 // M10.1 (v47): SCULPTRA OBLIQUE CHEEK / MIDFACE PROJECTION KERNELS.
 // The M6 lift warp was gated to frontal only; obliques received AI shading with
@@ -823,25 +825,23 @@ const WARP_EDGE_FADE     = 0.06;
 //                         decrease if it bleeds into the temple or eye zone.
 //   SCULP_MIDFACE_SIG  -- midface kernel breadth; increase for a more diffuse fill.
 //   SCULP_CAPSULE      -- capsule run; decrease toward 0 for a pure Gaussian.
-// M10.1 (v48) calibration: v47 result confirmed warp active and mechanism
-// correct; arch highlight present but too subtle for an untrained eye at consult.
-// Raising SCULP_ZYGOMA_OUT 0.022 -> 0.032 (arch must stand visibly forward) and
-// SCULP_MIDFACE_ANT 0.014 -> 0.020 (mid-cheek fill must read as clearly fuller).
-// Both levers work on the same clinical change: bold cheek projection visible to
-// a patient, not just a trained injector.
-// M10.1 (v49) calibration: v48 clinical finding -- Expected response looks more
-// natural than Strong, meaning lateral vector dominates at high magnitudes and
-// reads as artificially wide rather than fuller. Real Sculptra strong response is
-// anterior projection and superior lift, not lateral width. Rebalancing:
-//   SCULP_ZYGOMA_OUT  0.032 -> 0.018 (less lateral, below even v47)
-//   SCULP_ZYGOMA_UP   0.008 -> 0.014 (more superior lift into convex highlight)
-//   SCULP_MIDFACE_ANT 0.020 -> 0.026 (anterior projection is the dominant channel)
-//   SCULP_MIDFACE_SIG 0.16  -> 0.20  (broader fill, whole midface reads fuller)
-const SCULP_ZYGOMA_OUT  = 0.018; // v49: 0.032 -> 0.018 (less lateral width)
-const SCULP_ZYGOMA_UP   = 0.014; // v49: 0.008 -> 0.014 (more superior lift)
+// M10.1 (v48): SCULP_ZYGOMA_OUT 0.022->0.032, SCULP_MIDFACE_ANT 0.014->0.020.
+// M10.1 (v49): lateral cut (0.032->0.018), superior raised (0.008->0.014),
+//   anterior raised (0.020->0.026), midface sigma widened (0.16->0.20).
+//   Clinical finding: Expected looked better than Strong -- lateral was dominant
+//   and read as width not fullness. Anterior + superior are the real channels.
+// M10.1 (v50): continuing anterior push. Real case comparison (Case A left 45)
+//   shows arch highlight still too diffuse and midface fill still underweight vs
+//   real Sculptra result. Raising SCULP_MIDFACE_ANT 0.026->0.034 and
+//   SCULP_ZYGOMA_UP 0.014->0.018. Lateral held at 0.018 (no change).
+//   Also: frontal temple kernel added to buildLiftField frontal branch (M10
+//   scope, assessed as one-round addition). VIEW_TQ_MAX_DEG raised 50->60 so
+//   photos at ~51 degrees are accepted (one-degree rejection was too tight).
+const SCULP_ZYGOMA_OUT  = 0.018; // held from v49 (lateral restrained)
+const SCULP_ZYGOMA_UP   = 0.018; // v50: 0.014 -> 0.018 (more superior lift)
 const SCULP_ZYGOMA_SIG  = 0.10;  // kernel breadth, fraction of W
-const SCULP_MIDFACE_ANT = 0.026; // v49: 0.020 -> 0.026 (anterior projection dominant)
-const SCULP_MIDFACE_SIG = 0.20;  // v49: 0.16  -> 0.20  (broader midface fill)
+const SCULP_MIDFACE_ANT = 0.034; // v50: 0.026 -> 0.034 (anterior projection bolder)
+const SCULP_MIDFACE_SIG = 0.20;  // midface kernel breadth, fraction of W
 const SCULP_CAPSULE     = 0.80;  // capsule run factor for zygoma kernel
 
 // Jowl kernel anchor landmarks: gonion and prejowl per side; the kernel sits
@@ -965,11 +965,19 @@ function buildLiftField(L, w, h, pose){
 
   } else {
     // Frontal branch: existing M6.2 calibrated kernels, untouched.
+    // M10 addition: temple convexity kernel (frontal only). Anchored at the
+    // temporal oval landmark, vector upward and slightly lateral. Restores
+    // the convex temple volume that deflation-and-descent removes frontally.
+    // Sigma wider than cheek to blend naturally with the hairline.
+    const SCULP_TEMPLE_UP  = 0.014; // fraction of faceH
+    const SCULP_TEMPLE_OUT = 0.008; // fraction of W (slight lateral, not dominant)
+    const SCULP_TEMPLE_SIG = 0.13;  // wider than midface, blends to hairline
     for(const s of ["r","l"]){
       const g=lm[GONION[s]], pj=lm[PREJOWL[s]], zy=lm[ZYGION[s]];
       if(!g||!pj||!zy) continue;
       const sgn=Math.sign(dot(sub(zy,p152),dirOut)) || (s==="r"?-1:1);
-      const inw={ x:-sgn*dirOut.x, y:-sgn*dirOut.y };  // unit vector toward the midline
+      const inw={ x:-sgn*dirOut.x, y:-sgn*dirOut.y };
+      const outw={ x:sgn*dirOut.x, y:sgn*dirOut.y };
       // Jowl re-drape: up + slightly inward, centered on the jowl pad.
       const jowlC=add(lerp(g, pj, 0.45), mul(dirUp, 0.06*faceH));
       const sigJ=WARP_JOWL_SIGMA*W;
@@ -982,6 +990,16 @@ function buildLiftField(L, w, h, pose){
       kernels.push({ ax:midC.x, ay:midC.y, bx:midC.x, by:midC.y, twoSig:2*sigM*sigM,
         vx: dirUp.x*WARP_MIDFACE_LIFT*faceH,
         vy: dirUp.y*WARP_MIDFACE_LIFT*faceH, capsule:false });
+      // Temple convexity kernel (M10): upward + slight lateral at the temporal
+      // oval, restoring the convex temple volume visible frontally.
+      const to=lm[TEMPLE_OVAL[s]];
+      if(to){
+        const tempC=add(to, mul(inw, 0.01*W)); // slight medial offset from the hairline
+        const sigT=SCULP_TEMPLE_SIG*W;
+        kernels.push({ ax:tempC.x, ay:tempC.y, bx:tempC.x, by:tempC.y, twoSig:2*sigT*sigT,
+          vx: dirUp.x*SCULP_TEMPLE_UP*faceH + outw.x*SCULP_TEMPLE_OUT*W,
+          vy: dirUp.y*SCULP_TEMPLE_UP*faceH + outw.y*SCULP_TEMPLE_OUT*W, capsule:false });
+      }
     }
   }
 
@@ -1688,7 +1706,7 @@ async function detectFace(imgEl){
 // returned so the shakedown can confirm the matrix path agrees with the proxy
 // before HA-oblique leans on the matrix for the projection axis.
 const VIEW_FRONTAL_MAX_DEG = 15;   // |yaw| at or below this = frontal
-const VIEW_TQ_MAX_DEG      = 50;   // frontal..this = three_quarter; above = out_of_range
+const VIEW_TQ_MAX_DEG      = 60;   // frontal..this = three_quarter; above = out_of_range (raised from 50 in v50)
 
 export async function detectPose(imgEl){
   const lm = await detectFace(imgEl);

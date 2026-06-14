@@ -205,7 +205,7 @@
     #mobileSliderBar {
       display: none;
     }
-    @media(max-width:767px){
+    @media(pointer: coarse){
       /* Extra bottom padding so the sticky bar never covers output content */
       body.slider-bar-active .page { padding-bottom: 116px; }
       #mobileSliderBar {
@@ -617,7 +617,7 @@ const FREE_REGEN_MS = 60000;
 // stay the same module instance (shared face-detection cache). v35 = M9.0
 // jowl blending (alpha lobes over marionette/jowl shadows + prejowl notch-fill
 // warp kernels) (v34 = M8.2 shade reconciliation; v33 = M8.1 convex chin).
-const MASK_MODULE_VERSION = '49';
+const MASK_MODULE_VERSION = '50';
 
 /* M7: a case is one or more ANGLES, each with its own photo, QC result, job,
    and compositor. Treatment settings are shared across the case; the response
@@ -1411,8 +1411,8 @@ function updateIntensityUI(){
   mslider.addEventListener('touchend', () => applySnap(mslider), { passive:true });
   canonical.addEventListener('touchend', () => applySnap(canonical), { passive:true });
 
-  // ── Bar visibility: show when output is visible and screen is mobile
-  function isMobile(){ return window.innerWidth <= MOBILE_BP; }
+  // ── Bar visibility: show on any touch device regardless of orientation
+  function isMobile(){ return window.matchMedia('(pointer: coarse)').matches; }
 
   // Action button: mirrors generate (pre-output) or re-generate (post-output)
   // The bar detects which phase the UI is in and wires the button accordingly.
