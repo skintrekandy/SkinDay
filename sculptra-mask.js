@@ -7,20 +7,14 @@
 // background). gpt-image-1's edit endpoint edits only the transparent region, so
 // this physically prevents the global beautification leak.
 //
-// M10.2 (v54): MANDIBULAR BORDER SUSPENSION KERNELS (oblique only).
-// Three point kernels at 25/50/75% along the near-side prejowl-to-gonion
-// polyline. Vector is superior + slightly inward, moving border pixels
-// upward so the jowl reads as suspended into the mandibular line -- the
-// continuous chin-to-gonion arc that real Sculptra strong responders show.
-// Superior vector moves away from the jowl shadow below so no shade
-// discontinuity artifact (unlike the retired frontal jowl kernel).
-// Sigma SCULP_BORDER_SIG=0.055W: tight to the border, does not bleed into
-// the jowl shadow zone. SCULP_LIFT_SAT=0.60 cap remains active so the
-// border kernels also saturate at Expected (artifact-safe).
-// Calibration target: Cases A and C from the June 13 upload -- after shows
-// a clean chin-to-gonion arc with the jowl mass lifted into the border.
+// M10.3 (v55): HA ENHANCED CORRECTION RE-ENABLED.
+// FILLER_BETA_MAX raised 69->79 in visualize.html (opens the 70-79 band).
+// CHINW_WARP_SAT raised 0.45->0.60 so the chin/jaw warp reaches Enhanced
+// amplitude. Gated on M10.2 mandibular border (v54). Clinical acceptance:
+// chin tip passes 300%+ zoom at both 45s; one-constant reversal if it fails.
+// Mobile bar max label and snap stop updated to reflect Enhanced as new top.
 //
-// M10.1 (v53): cap Sculptra lift warp at SCULP_LIFT_SAT=0.60. M10.1 closed.
+// M10.2 (v54): mandibular border suspension kernels. M10.2 closed.
 //
 // M10.1 (v49): lateral cut, anterior and superior raised.
 //
@@ -1457,7 +1451,7 @@ const CHINW_NOTCH_DOWN         = 0.004; // small accompanying drop, fraction of 
 const GONW_DEF                 = 0.007; // posterior-inferior gonial move, fraction of W
 // M9.10 (v45): the chin_jaw warp's intensity ceiling. Silhouette amplitude
 // saturates here while AI shading continues to scale; 1.0 restores v44.
-const CHINW_WARP_SAT           = 0.45; // v46: 0.55 -> 0.45, the eye-passed amplitude
+const CHINW_WARP_SAT           = 0.60; // M10.3: 0.45 -> 0.60, opens Enhanced band (70-79)
 
 function buildChinProjectionField(L, w, h, pose, sex){
   const lm = L.map(p=>({x:p.x*w, y:p.y*h}));

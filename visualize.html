@@ -666,7 +666,7 @@ const FREE_REGEN_MS = 60000;
 // stay the same module instance (shared face-detection cache). v35 = M9.0
 // jowl blending (alpha lobes over marionette/jowl shadows + prejowl notch-fill
 // warp kernels) (v34 = M8.2 shade reconciliation; v33 = M8.1 convex chin).
-const MASK_MODULE_VERSION = '54';
+const MASK_MODULE_VERSION = '55';
 
 /* M7: a case is one or more ANGLES, each with its own photo, QC result, job,
    and compositor. Treatment settings are shared across the case; the response
@@ -1300,10 +1300,12 @@ function strengthLabel(pct){
 // Enhanced rather than Full because full reads as a completed treatment; at or
 // past FILLER_LEVELS.full the view is overfilled.
 const FILLER_LEVELS = { subtle:35, balanced:70, full:80 };
-// M9.11 (v46) beta stop-loss: the filler slider is capped at the top of
-// Balanced. Enhanced returns with M10's silhouette engine; Overfilled returns
-// with the dedicated AI education anchor. Set to 100 to restore the full range.
-const FILLER_BETA_MAX = 69;
+// M10.3 (v55): Enhanced correction re-enabled. FILLER_BETA_MAX raised from
+// 69 to 79 -- opens the 70-79 band (Enhanced correction). Gated on M10.2
+// delivering spline-quality mandibular border (v54). Clinical acceptance
+// criterion: chin tip passes 300%+ zoom at both 45s. One-constant reversal
+// if it fails: set FILLER_BETA_MAX back to 69.
+const FILLER_BETA_MAX = 79;
 const OVERFILL_COLOR = '#A33524';
 function levelInfo(pct){
   const n = (typeof pct === 'number') ? pct : (parseInt(pct, 10) || 0);
@@ -1333,7 +1335,7 @@ function updateIntensityUI(){
   const li = levelInfo(state.intensityPct);
   document.getElementById('intensityLabel').textContent = isFiller ? 'Degree of correction' : 'Treatment response';
   document.getElementById('intensityMin').textContent = isFiller ? 'Subtle' : 'Conservative';
-  document.getElementById('intensityMax').textContent = isFiller ? 'Balanced' : 'Strong';
+  document.getElementById('intensityMax').textContent = isFiller ? 'Enhanced' : 'Strong';
   document.getElementById('intensityHelp').textContent = isFiller
     ? 'Slide to preview less or more correction.'
     : 'Slide to preview a more conservative or stronger response. The simulation updates instantly.';
@@ -1397,13 +1399,13 @@ function updateIntensityUI(){
   if(!bar || !mslider || !canonical) return;
 
   // ── Snap stops for Sculptra: Conservative=35 Expected=65 Strong=100
-  //    and for HA filler: Subtle=17 Balanced=52 (top capped at FILLER_BETA_MAX)
+  //    and for HA filler: Subtle=17 Balanced=52 Enhanced=74 (M10.3)
   // These are the midpoints of the named bands, matching strengthLabel() / levelInfo().
   // Snap fires within SNAP_WINDOW percent of the stop.
   const SNAP_WINDOW = 8;
   function snapStops(){
     if(state.type === 'filler'){
-      return [0, 17, 35, 52, 69]; // Subtle midpoint=17, Balanced midpoint=52
+      return [0, 17, 35, 52, 74]; // Subtle~17, Balanced~52, Enhanced~74
     }
     return [0, 22, 62, 100];      // Conservative mid=22, Expected mid=62
   }
@@ -1428,7 +1430,7 @@ function updateIntensityUI(){
     const isFiller = state.type === 'filler';
     msbLabel.textContent = isFiller ? 'Degree of correction' : 'Treatment response';
     msbMin.textContent   = isFiller ? 'Subtle' : 'Conservative';
-    msbMax.textContent   = isFiller ? 'Balanced' : 'Strong';
+    msbMax.textContent   = isFiller ? 'Enhanced' : 'Strong';
   }
   // Patch updateIntensityUI to also sync the mobile bar
   const _origUpdateUI = updateIntensityUI;
