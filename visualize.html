@@ -452,7 +452,7 @@
         <div class="field">
           <label>Product</label>
           <div class="pill-grid" id="biostimProduct">
-            <button class="pill active" data-product="sculptra" type="button"><strong>Sculptra</strong></button>
+            <button class="pill active" data-product="sculptra" type="button"><strong>Biostimulator</strong></button>
           </div>
         </div>
         <div class="field">
@@ -555,7 +555,7 @@
 <div class="guide-modal hidden" id="creditsInfoModal">
   <div class="guide-card">
     <h2>How credits work</h2>
-    <p>Credits are spent only when a simulation is generated. Each angle of a case is one generation: <strong>HA filler costs <span id="ciFiller">1</span> credit(s) per angle</strong> and <strong>Sculptra (and other biostimulators) costs <span id="ciBiostim">2</span> credit(s) per angle</strong>, so a full 3-angle HA case is <span id="ciCaseF">3</span> credits and a 3-angle Sculptra case is <span id="ciCaseB">6</span>.</p>
+    <p>Credits are spent only when a simulation is generated. Each angle of a case is one generation: <strong>HA filler costs <span id="ciFiller">1</span> credit(s) per angle</strong> and <strong>biostimulator costs <span id="ciBiostim">2</span> credit(s) per angle</strong>, so a full 3-angle HA case is <span id="ciCaseF">3</span> credits and a 3-angle biostimulator case is <span id="ciCaseB">6</span>.</p>
     <p>Everything after generation is free: adjusting the response slider, comparing angles, exporting and downloading, and re-generating within 60 seconds of a result. If a generation fails or is blocked by the AI provider's safety system, its credits are refunded to your balance automatically.</p>
     <p>Purchased credits do not expire. New accounts start with a small free balance so you can try the tool on a real consultation first.</p>
     <p><strong>Independence note:</strong> Visualize credits are a clinic tool purchase only. Buying credits never affects a clinic's ranking, search placement, reviews, or visibility anywhere on SkinDay.</p>
@@ -1236,7 +1236,7 @@ function updatePhotoGuide(){
   const base = 'Even, diffuse light, neutral expression, hair off the face, face filling most of the frame.';
   let tip;
   if(state.type === 'biostim'){
-    tip = 'Frontal plus both 45° angles shows the full Sculptra effect (temple and cheek read best on the obliques). Same angles every visit.';
+    tip = 'Frontal plus both 45° angles shows the full biostimulator effect (temple and cheek read best on the obliques). Same angles every visit.';
   } else {
     const a = state.areas || [];
     if(a.includes('nose') || a.includes('chin_jawline') || a.includes('jawline') || a.includes('chin')){
@@ -1578,7 +1578,7 @@ const INTENSITY_TEXT = {
   enhanced:'Make the change more pronounced but still anatomically realistic, never exaggerated.'
 };
 const PRODUCT_TEXT = {
-  sculptra:'a subtle Sculptra biostimulation effect: a slight, diffuse improvement in firmness and contour of the treated area only. Do not change skin texture detail or apparent age.',
+  sculptra:'a subtle biostimulation effect: a slight, diffuse improvement in firmness and contour of the treated area only. Do not change skin texture detail or apparent age.',
   hdr:'a subtle hyperdilute Radiesse effect: a slight firming of the treated area only. Do not change skin texture detail or apparent age.'
 };
 const PROJECTION_TEXT = {
@@ -2191,7 +2191,7 @@ async function hiResResultFor(angleId){
 // still carries the AI-generated disclosure, so the kicker can lead with the
 // treatment the patient is actually considering.
 function treatmentName(){
-  if(state.type === 'biostim') return state.product === 'hdr' ? 'Hyperdilute Radiesse' : 'Sculptra';
+  if(state.type === 'biostim') return state.product === 'hdr' ? 'Hyperdilute Radiesse' : 'Biostimulator';
   if(state.type === 'filler') return 'HA Filler';
   return 'AI Visualization';
 }
