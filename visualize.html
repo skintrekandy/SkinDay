@@ -1283,9 +1283,11 @@ updatePhotoGuide();
 // vial count; dose is discussed verbally by the clinician).
 function strengthLabel(pct){
   const n = (typeof pct === 'number') ? pct : (parseInt(pct, 10) || 0);
-  if(n < 45) return 'Conservative';
-  if(n < 80) return 'Expected';
-  return 'Strong';
+  // M11.1: timeline vocabulary for biostimulator -- frames slider as treatment
+  // progression over time, not magnitude claim. Early / 6 months / Full response.
+  if(n < 45) return 'Early response';
+  if(n < 80) return '6 months';
+  return 'Full response';
 }
 
 // M9.2: HA filler speaks a different slider vocabulary than Sculptra. Biostim
@@ -1336,12 +1338,12 @@ function updateIntensityUI(){
     slider.max = 100;
   }
   const li = levelInfo(state.intensityPct);
-  document.getElementById('intensityLabel').textContent = isFiller ? 'Degree of correction' : 'Treatment response';
-  document.getElementById('intensityMin').textContent = isFiller ? 'Subtle' : 'Conservative';
-  document.getElementById('intensityMax').textContent = isFiller ? 'Enhanced' : 'Strong';
+  document.getElementById('intensityLabel').textContent = isFiller ? 'Degree of correction' : 'Treatment timeline';
+  document.getElementById('intensityMin').textContent = isFiller ? 'Subtle' : 'Early';
+  document.getElementById('intensityMax').textContent = isFiller ? 'Enhanced' : 'Full response';
   document.getElementById('intensityHelp').textContent = isFiller
     ? 'Slide to preview less or more correction.'
-    : 'Slide to preview a more conservative or stronger response. The simulation updates instantly.';
+    : 'Slide to preview an earlier or more complete treatment response. The simulation updates instantly.';
   const valEl = document.getElementById('intensityValue');
   valEl.textContent = li.name;
   valEl.style.color = li.over ? OVERFILL_COLOR : '';
@@ -1401,7 +1403,7 @@ function updateIntensityUI(){
   const canonical = document.getElementById('intensitySlider');
   if(!bar || !mslider || !canonical) return;
 
-  // ── Snap stops for Sculptra: Conservative=35 Expected=65 Strong=100
+  // ── Snap stops for Sculptra: Early=22 6months=62 Full=100 (M11.1 timeline)
   //    and for HA filler: Subtle=17 Balanced=52 Enhanced=74 (M10.3)
   // These are the midpoints of the named bands, matching strengthLabel() / levelInfo().
   // Snap fires within SNAP_WINDOW percent of the stop.
@@ -1432,8 +1434,8 @@ function updateIntensityUI(){
     mslider.style.accentColor = li.over ? OVERFILL_COLOR : 'var(--rose)';
     const isFiller = state.type === 'filler';
     msbLabel.textContent = isFiller ? 'Degree of correction' : 'Treatment response';
-    msbMin.textContent   = isFiller ? 'Subtle' : 'Conservative';
-    msbMax.textContent   = isFiller ? 'Enhanced' : 'Strong';
+    msbMin.textContent   = isFiller ? 'Subtle' : 'Early';
+    msbMax.textContent   = isFiller ? 'Enhanced' : 'Full response';
   }
   // Patch updateIntensityUI to also sync the mobile bar
   const _origUpdateUI = updateIntensityUI;
@@ -1617,7 +1619,7 @@ const PROJECTION_INSIGHT = {
 // Clinician-facing label for each wire value. The wire keeps conservative/
 // expected/optimistic because buildSculptraPrompt routes on them; the UI shows
 // Subtle/Expected/Strong.
-const STRENGTH_LABEL = { conservative:'Conservative', expected:'Expected', optimistic:'Strong' };
+const STRENGTH_LABEL = { conservative:'Early response', expected:'6 months', optimistic:'Full response' };
 
 function buildInsights(){
   const out = [];
@@ -2210,7 +2212,7 @@ function simKicker(angleId){
       const li = levelInfo(state.intensityPct || 70);
       parts.push(li.over ? 'Overfilled · shown for education' : li.name);
     } else {
-      parts.push(strengthLabel(state.intensityPct || 70) + ' response');
+      parts.push(strengthLabel(state.intensityPct || 70)); // Early response / 6 months / Full response
     }
   }
   return parts.join(' · ');
