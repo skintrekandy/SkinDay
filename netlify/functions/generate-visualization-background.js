@@ -20,6 +20,7 @@
 const OpenAI = require('openai');
 const { getStore, connectLambda } = require('@netlify/blobs');
 const { buildCorePrompt, CHIN_JAW_SAFETY, usesChinJawSafety } = require('./prompts');
+const { logGeneration } = require('./log-generation');
 
 // === VERBATIM from generate-visualization.js. Do not diverge this copy in isolation. ===
 const SERVER_SAFETY =
@@ -164,6 +165,26 @@ exports.handler = async (event) => {
     await store.set(jobId + ':result', 'data:image/jpeg;base64,' + b64);
     await store.setJSON(jobId + ':status', { state: 'done', updatedAt: Date.now() });
     try { await store.delete(jobId + ':job'); } catch (e) { /* free the large input payload */ }
+
+    // Log cost for this successful generation (non-blocking).
+    try {
+      const billing = await store.get(jobId + ':billing', { type: 'json' }).catch(() => null);
+      await logGeneration({
+        jobId,
+        userId:         billing ? billing.userId : null,
+        betaKeyUsed:    !billing,
+        treatmentType:  f.type || null,
+        angle:          f.angle || null,
+        isRegen:        billing ? (billing.cost === 0) : false,
+        model:          'gpt-image-1',
+        imageSize:      editParams.size || 'auto',
+        imageQuality:   editParams.input_fidelity || 'high',
+        openAIUsage:    result.usage || null,
+        creditsCharged: billing ? billing.cost : null,
+        status:         'success',
+      });
+    } catch (logErr) { console.error('[logGeneration] success log failed:', logErr.message); }
+
     return { statusCode: 200 };
   } catch (err) {
     const code = err && (err.code || (err.error && err.error.code));
@@ -176,9 +197,11 @@ exports.handler = async (event) => {
     if (blocked) {
       await fail('The AI provider blocked this specific edit under its safety system (the image-edit endpoint is strict and this cannot be turned down). Lip edits are a frequent trigger. Try a different area, or adjust the wording of the custom note.', 'moderation_blocked');
       await refundIfBilled(store, jobId, 'moderation blocked');
+      await logGeneration({ jobId, status: 'blocked', failureReason: 'moderation_blocked', model: 'gpt-image-1' }).catch(() => {});
     } else {
       await fail(msg || 'Image generation failed', code || 'error');
       await refundIfBilled(store, jobId, (code ? String(code) : 'generation failed'));
+      await logGeneration({ jobId, status: 'failed', failureReason: code || msg || 'unknown', model: 'gpt-image-1' }).catch(() => {});
     }
     return { statusCode: 200 };
   }

@@ -8,6 +8,7 @@ const OpenAI = require('openai');
 const Busboy = require('busboy');
 const { Readable } = require('stream');
 const { buildCorePrompt, CHIN_JAW_SAFETY, usesChinJawSafety } = require('./prompts');
+const { logGeneration } = require('./log-generation');
 
 // Non-negotiable constraints appended to EVERY prompt server-side, so a tampered
 // client cannot strip identity/ethnicity preservation or push the model to over-promise.
@@ -145,6 +146,17 @@ exports.handler = async (event) => {
     const b64 = result.data && result.data[0] && result.data[0].b64_json;
     if (!b64) throw new Error('No image returned by model');
 
+    await logGeneration({
+      betaKeyUsed:    true,
+      treatmentType:  fields.type || null,
+      angle:          fields.angle || null,
+      model:          'gpt-image-1',
+      imageSize:      'auto',
+      imageQuality:   'high',
+      openAIUsage:    result.usage || null,
+      status:         'success',
+    }).catch(() => {});
+
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
@@ -156,9 +168,14 @@ exports.handler = async (event) => {
     const msg = (err && err.message) || '';
     console.error('generate-visualization failed:', JSON.stringify({ status, code, msg }));
 
-    // The image EDIT endpoint applies strict moderation that cannot be lowered.
-    // Lip edits on a real face are a common trigger. Surface this clearly.
     const blocked = code === 'moderation_blocked' || /safety system|moderation|not allowed/i.test(msg);
+    await logGeneration({
+      betaKeyUsed:   true,
+      model:         'gpt-image-1',
+      status:        blocked ? 'blocked' : 'failed',
+      failureReason: code || msg || 'unknown',
+    }).catch(() => {});
+
     if (blocked) {
       return {
         statusCode: 422,
