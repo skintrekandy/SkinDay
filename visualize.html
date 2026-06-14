@@ -472,15 +472,15 @@
           <div class="area-chip" data-angle="l45"><span class="tick">✓</span>Left 45°</div>
         </div>
       </div>
-      <div class="photo-guide" id="photoGuide"><strong>Best photos:</strong> Even, diffuse light, neutral expression, hair off the face, face filling most of the frame.</div>
+      <div class="photo-guide" id="photoGuide"><strong>Best photos:</strong> Even, diffuse light, neutral expression, hair off the face, face filling most of the frame. <strong>Photo quality directly affects result quality</strong> -- clinic-standard photos (consistent lighting, neutral background, consultation distance) produce the best simulations. Tight crops, harsh shadows, or low resolution will limit accuracy.</div>
       <button class="guide-link" id="guideBtn" type="button">Photo guide: how to shoot each angle (each photo is checked automatically)</button>
       <div class="slot-grid" id="uploadSlots"></div>
       <label class="bg-toggle"><input type="checkbox" id="blackBgChk" checked /><span>Replace background with black on the generated image.</span></label>
       <div class="privacy-note"><span>🔒</span><span>The photo stays in this browser until you press Generate. Generating sends the photo to the AI image provider (OpenAI) for that single request only. It is not used to train the model. You must have the patient's consent before uploading.</span></div>
 
       <div class="field" style="margin-top:14px;">
-        <label>Clinic name (optional, appears on export)</label>
-        <input id="clinicName" placeholder="Your clinic name" maxlength="60" />
+        <label>Your name or clinic (optional, appears on export)</label>
+        <input id="clinicName" placeholder="e.g. Dr. Smith · Skin Trek" maxlength="60" />
       </div>
 
       <label class="consent" id="consentBox">
@@ -662,7 +662,7 @@ const FREE_REGEN_MS = 60000;
 // stay the same module instance (shared face-detection cache). v35 = M9.0
 // jowl blending (alpha lobes over marionette/jowl shadows + prejowl notch-fill
 // warp kernels) (v34 = M8.2 shade reconciliation; v33 = M8.1 convex chin).
-const MASK_MODULE_VERSION = '59';
+const MASK_MODULE_VERSION = '60';
 
 /* M7: a case is one or more ANGLES, each with its own photo, QC result, job,
    and compositor. Treatment settings are shared across the case; the response
@@ -680,7 +680,9 @@ const ANGLE_ORDER = ['frontal','r45','l45'];
 // Upload QC thresholds. Pose and face size are hard gates (a wrong pose or a
 // tiny face wastes a generation); exposure and sharpness are warnings only,
 // since those heuristics can false-positive on legitimate clinic photos.
-const QC = { MIN_FACE_FRAC:0.05, LUMA_LO:55, LUMA_HI:205, SHARP_MIN:16 };
+// M11.1: MAX_FACE_FRAC added -- tight crops (face > 75% of frame) clip the
+// warp window and reduce oblique accuracy; flagged as a warning.
+const QC = { MIN_FACE_FRAC:0.05, MAX_FACE_FRAC:0.75, LUMA_LO:55, LUMA_HI:205, SHARP_MIN:16 };
 
 function makeSlot(){
   return { file:null, originalDataUrl:null, beforeDataUrl:null, blackBgCache:null,
@@ -1176,6 +1178,7 @@ async function onSlotFile(angleId, file){
       if(a.meanLuma != null && a.meanLuma < QC.LUMA_LO) warns.push('photo is quite dark');
       if(a.meanLuma != null && a.meanLuma > QC.LUMA_HI) warns.push('photo is very bright');
       if(a.sharpness != null && a.sharpness < QC.SHARP_MIN) warns.push('may be slightly blurry');
+      if(a.faceFrac != null && a.faceFrac > QC.MAX_FACE_FRAC) warns.push('face fills too much of the frame -- step back slightly for best oblique accuracy');
       sl.status = 'ready';
       sl.qcMsg = '✓ ' + gate.msg + (warns.length ? ' Note: ' + warns.join('; ') + '. Even light and a steady shot give the best result.' : '');
     }

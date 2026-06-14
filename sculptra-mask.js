@@ -1630,10 +1630,31 @@ function buildChinProjectionField(L, w, h, pose, sex){
   const wx0=Math.max(0, Math.floor(kx0-padK)), wy0=Math.max(0, Math.floor(ky0-padK));
   const wx1=Math.min(w-1, Math.ceil(kx1+padK)), wy1=Math.min(h-1, Math.ceil(ky1+padK));
 
+  // M11.1: mentum floor clamp. Zero the warp field below a landmark-relative
+  // y-threshold so it never reaches the neck zone. The artifact on male faces
+  // (fringe below the chin at oblique Enhanced) is the warp kernel's lower tail
+  // reaching past the menton into the neck. The floor is set at CHIN_FLOOR_F
+  // face-heights below p152 (the menton landmark), with a soft blend zone of
+  // CHIN_FLOOR_BLEND face-heights so the zeroing is not a hard step.
+  // Female anatomy: the shorter chin sits higher so the 0.12F floor has headroom.
+  // Male anatomy: the taller mentum needed more room -- 0.16F gives the same
+  // physical clearance. Both are clamped well above the neck.
+  const CHIN_FLOOR_F     = (sex === 'male') ? 0.16 : 0.12; // fraction of faceH below p152
+  const CHIN_FLOOR_BLEND = 0.04; // soft blend zone, fraction of faceH
+  const yFloor    = p152.y + CHIN_FLOOR_F * faceH;
+  const yFloorTop = p152.y + (CHIN_FLOOR_F - CHIN_FLOOR_BLEND) * faceH;
+
   const N=w*h;
   const sx=new Float32Array(N), sy=new Float32Array(N);
   let x0=w, y0=h, x1=-1, y1=-1, maxPx=0;
   for(let y=wy0;y<=wy1;y++){
+    // Floor clamp: below yFloor the warp is fully zeroed; between yFloorTop and
+    // yFloor it fades linearly to zero. This is landmark-relative so it adapts
+    // to the patient's anatomy rather than a fixed pixel constant.
+    const floorGate = (y <= yFloorTop) ? 1 :
+                      (y >= yFloor)    ? 0 :
+                      1 - (y - yFloorTop) / (yFloor - yFloorTop);
+    if(floorGate <= 0) continue;
     for(let x=wx0;x<=wx1;x++){
       const i=y*w+x;
       let dx=0, dy=0;
@@ -1644,7 +1665,7 @@ function buildChinProjectionField(L, w, h, pose, sex){
         dx+=K.vx*gv; dy+=K.vy*gv;
       }
       const guard=1-(protA[i*4]/255);
-      const ox=-dx*guard, oy=-dy*guard;
+      const ox=-dx*guard*floorGate, oy=-dy*guard*floorGate;
       const mag=Math.hypot(ox,oy);
       if(mag<0.25) continue;
       sx[i]=ox; sy[i]=oy;
