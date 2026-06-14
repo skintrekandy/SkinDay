@@ -7,6 +7,14 @@
 // background). gpt-image-1's edit endpoint edits only the transparent region, so
 // this physically prevents the global beautification leak.
 //
+// M10.4 (v57): OVERFILL COMPOSITOR PATH.
+// opts.overfill = true disables the outline gate (buildOutlineGate) and the
+// deterministic warp in both compositeSculptra and makeSculptraCompositor, so
+// the AI's overcorrected silhouette is not clipped or geometry-corrected.
+// Chroma lock and texture restore are retained (identity and skin character
+// survive). Used exclusively for the HA chin/jawline Overfilled education
+// anchor; all other paths are unaffected.
+//
 // M10.3 (v55): HA ENHANCED CORRECTION RE-ENABLED.
 // FILLER_BETA_MAX raised 69->79 in visualize.html (opens the 70-79 band).
 // CHINW_WARP_SAT raised 0.45->0.60 so the chin/jaw warp reaches Enhanced
@@ -2348,15 +2356,19 @@ export async function compositeSculptra(beforeImg, aiImg, opts){
 
   // M7.6/7.7: outline gate (chin_jaw only): zero AI contribution outside the
   // true silhouette; the projected outline comes from the warp instead.
-  const outlineGate = (scope === 'chin_jaw') ? buildOutlineGate(landmarks, w, h, b) : null;
+  // M10.4: overfill mode loosens the gate so the AI may extend the silhouette
+  // itself (the overcorrection IS the visualization -- excess projection is the point).
+  const isOverfill = !!(opts && opts.overfill);
+  const outlineGate = (scope === 'chin_jaw' && !isOverfill) ? buildOutlineGate(landmarks, w, h, b) : null;
 
   // Geometry layer. Sculptra 'full': the M6 frontal lift (jowl + midface
   // re-drape, silhouette locked), applied to the BASE before blending. HA
   // chin_jaw: the M7.6 projection warp, applied AFTER blending (M7.9,
   // composite-then-warp) so the AI's shading travels with the moved tissue.
+  // M10.4: overfill path skips the deterministic warp entirely (AI-heavy).
   // Null (other scopes, opts.warp false, or any error) means this is exactly
   // the M5 composite.
-  const lift = await buildWarpForScope(beforeImg, landmarks, w, h, scope, sex, opts);
+  const lift = (isOverfill) ? null : await buildWarpForScope(beforeImg, landmarks, w, h, scope, sex, opts);
   const postWarp = (scope === 'chin_jaw');
   const wb = (lift && !postWarp) ? new Uint8ClampedArray(b) : b;
   if(lift && !postWarp) applyLiftWarp(wb, b, w, h, lift, Math.min(intensity, SCULP_LIFT_SAT));
@@ -2448,7 +2460,10 @@ export async function makeSculptraCompositor(beforeImg, aiImg, opts){
 
   // M7.6/7.7: outline gate (chin_jaw only): zero AI contribution outside the
   // true silhouette; the projected outline comes from the warp instead.
-  const outlineGate = (scope === 'chin_jaw') ? buildOutlineGate(landmarks, w, h, b) : null;
+  // M10.4: overfill mode loosens the gate so the AI may extend the silhouette
+  // itself (the overcorrection IS the visualization -- excess projection is the point).
+  const isOverfill = !!(opts && opts.overfill);
+  const outlineGate = (scope === 'chin_jaw' && !isOverfill) ? buildOutlineGate(landmarks, w, h, b) : null;
 
   // M5.1: precompute the texture-restore delta once. apply() then writes
   // out = original + al*delta, which dials the AI volume with the slider while
@@ -2476,7 +2491,8 @@ export async function makeSculptraCompositor(beforeImg, aiImg, opts){
   // calibrated, untouched). chin_jaw blends in the original frame then warps
   // the FINISHED composite, so the AI's border shadow and edge shading travel
   // outward with the projected tissue instead of staying at the old outline.
-  const lift = await buildWarpForScope(beforeImg, landmarks, w, h, scope, sex, opts);
+  // M10.4: overfill path skips the deterministic warp entirely (AI-heavy).
+  const lift = isOverfill ? null : await buildWarpForScope(beforeImg, landmarks, w, h, scope, sex, opts);
   const postWarp = (scope === 'chin_jaw');
   const wb = (lift && !postWarp) ? new Uint8ClampedArray(b) : b;
   const warpSrc = (lift && postWarp) ? new Uint8ClampedArray(b.length) : null;
