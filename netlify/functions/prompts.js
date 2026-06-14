@@ -87,23 +87,48 @@ const FILLER_AREAS = {
 // PRIMARY frontal change is vertical chin elongation (lengthening the lower
 // third), which is what chin filler reads as from the front; earlier wording
 // forbade lengthening and so produced almost no visible frontal change.
-const FILLER_CHIN_JAWLINE = {
+// M11.1: split into male and female variants. The previous single prompt buried
+// sex guidance in a subordinate clause; the model defaulted to female geometry
+// (shorter, tapered, rounded chin) on male faces. Male chin filler has a
+// fundamentally different aesthetic target: square mentum, preserved jaw width,
+// taller and more projected chin, crisper border -- not a tapered V-line.
+const FILLER_CHIN_JAWLINE_FEMALE = {
   expected: 'a clearly restructured, better-balanced and more defined lower third, treating the chin and jawline as one unit. ' +
             'The main change, clearly visible from the front, is a confident vertical lengthening and forward projection of the chin: ' +
             'bring the chin point clearly lower and forward so the lower third looks longer, stronger, and better balanced and the face reads distinctly more oval and defined, ' +
-            'with clean, crisp definition along the mandibular border and clear prejowl support so the chin-to-jaw line is smooth and continuous. ' +
-            'Where jowls or a prejowl hollow are present, fill the prejowl hollow and visibly soften the jowl, prejowl, and marionette shadows so the jowl blends into the new continuous jawline as one smooth line; the jowl itself is never enlarged. ' +
-            'As the chin lengthens and projects, the soft tissue of the lower face follows it, so the lateral lower-face contour (below the cheekbone, along the jowl and jaw) tapers inward and the jowl lifts and reduces, so the lower third reads visibly more refined, defined, and sculpted, not just longer. ' +
-            'For a female face let this inward taper and refinement read clearly (a softer, more tapered, more elegant lower face); for a male face keep the jaw width and strength and let the change come from a longer, stronger, more projected chin and a crisper, cleaner jawline. ' +
+            'with clean definition along the mandibular border and clear prejowl support so the chin-to-jaw line is smooth and continuous. ' +
+            'Where jowls or a prejowl hollow are present, fill the prejowl hollow and visibly soften the jowl shadow so it blends into a smooth, continuous jawline; the jowl itself is never enlarged. ' +
+            'As the chin lengthens and projects, the soft tissue of the lower face follows it so the lateral lower-face contour tapers inward and the lower third reads more refined, elegant, and sculpted. ' +
+            'Let the inward taper and softening read clearly: a softer, more tapered, more elegant lower face with a refined oval silhouette. ' +
             'The mid-cheek width and cheekbones are unchanged; only the lower face follows the chin. ' +
             'The change comes only from added chin volume and structural support',
   avoid: 'do not over-lengthen into a long, narrow, pointed, jutting, or witch-like chin, and keep the chin width natural; ' +
-         'do not create a hard, angular, or "superhero" jawline; ' +
+         'do not create a hard, angular, or square jawline; ' +
          'do not slim, hollow, or carve the cheeks or cheekbones to fake jaw definition; ' +
-         'a clear but natural inward taper and refinement of the lower face as the chin lengthens is expected and good, but do not over-narrow or carve the lower face into a hard, artificial, sharply pointed V-line, and do not widen the lower face; ' +
+         'a clear but natural inward taper and refinement of the lower face as the chin lengthens is expected and good, but do not over-narrow or carve the lower face into a hard, sharply pointed V-line, and do not widen the lower face; ' +
          'do not add a double chin and do not alter the neck below the new chin point; ' +
-         'keep the change proportionate to the patient\'s bone structure and sex (a male chin can be longer, squarer, and more projected with the jaw width preserved; a female chin softer, more tapered, with the lower face allowed to taper), and keep it unmistakably the same person'
+         'keep it unmistakably the same person'
 };
+
+const FILLER_CHIN_JAWLINE_MALE = {
+  expected: 'a clearly restructured, stronger, and better-balanced lower third on a male face, treating the chin and jawline as one unit. ' +
+            'The main change, clearly visible from the front, is a confident forward projection and vertical strengthening of the chin: ' +
+            'bring the chin point forward and slightly lower so the lower third reads stronger, more defined, and better balanced with the upper face. ' +
+            'The chin should be wider and squarer at the mentum -- a male chin is broad and squared, never tapered or pointed -- with crisp, clean definition along the mandibular border and a strong, continuous chin-to-jaw arc. ' +
+            'Preserve the full jaw width and gonial angle: do not narrow or taper the lower face -- the male aesthetic goal is structural definition, not an oval or V-line silhouette. ' +
+            'The border from chin to gonion should read as a single, clean, confident line with clear prejowl support. ' +
+            'Where jowls or a prejowl hollow are present, fill the prejowl hollow so the chin-to-jaw line is smooth and continuous; the jowl itself is never enlarged. ' +
+            'The change comes only from added chin volume and structural support; the cheeks, cheekbones, and mid-face are unchanged',
+  avoid: 'do not produce a female or androgynous chin shape -- no tapered, pointed, rounded, soft, or V-shaped chin; ' +
+         'do not narrow or slim the jaw; do not produce a long, jutting, or protruding chin; ' +
+         'do not slim, hollow, or carve the cheeks or cheekbones; ' +
+         'do not create an artificial or "superhero" jawline; ' +
+         'do not add a double chin and do not alter the neck below the new chin point; ' +
+         'preserve the patient\'s ethnicity, facial hair, and overall identity; keep it unmistakably the same person'
+};
+
+// Legacy alias used by the overfill path (female default)
+const FILLER_CHIN_JAWLINE = FILLER_CHIN_JAWLINE_FEMALE;
 
 // ---- Filler: overfilled education anchor (M10.4) --------------------------
 // Deliberately overcorrected lower-face result, fired lazily when the slider
@@ -222,9 +247,10 @@ const TIMELINE = {
 
 // Version log so we know which prompt produced which result during tuning.
 const VERSIONS = {
-  base: 'v3', chin: 'v1', jawline: 'v1', chin_jawline: 'v8', nose: 'v1', lips: 'v2',
-  cheeks: 'v2', tear_trough: 'v1', nasolabial_folds: 'v1', sculptra: 'v13', sculptra_oblique: 'v13', hdr: 'v1', timeline: 'v2',
-  chin_jawline_overfilled: 'v1' // M10.4
+  base: 'v3', chin: 'v1', jawline: 'v1', chin_jawline_female: 'v1', chin_jawline_male: 'v1', // M11.1: sex-branched
+  nose: 'v1', lips: 'v2', cheeks: 'v2', tear_trough: 'v1', nasolabial_folds: 'v1',
+  sculptra: 'v13', sculptra_oblique: 'v13', hdr: 'v1', timeline: 'v2',
+  chin_jawline_overfilled: 'v1'
 };
 
 function sanitizeNote(note) {
@@ -373,11 +399,14 @@ function buildCorePrompt(sel) {
   }
 
   // Chin + jawline are treated as a single lower-face unit when both selected.
+  // M11.1: branched on sex -- male and female have different aesthetic targets.
   // Any other selected areas still append as their own clauses (full-face cases).
   let expected, avoid;
   if (areas.includes('chin') && areas.includes('jawline')) {
-    expected = FILLER_CHIN_JAWLINE.expected;
-    avoid = FILLER_CHIN_JAWLINE.avoid;
+    const isMale = sel_.sex === 'male';
+    const cjPrompt = isMale ? FILLER_CHIN_JAWLINE_MALE : FILLER_CHIN_JAWLINE_FEMALE;
+    expected = cjPrompt.expected;
+    avoid = cjPrompt.avoid;
     const extra = areas.filter(a => a !== 'chin' && a !== 'jawline');
     if (extra.length) {
       expected += '; ' + extra.map(a => FILLER_AREAS[a].expected).join('; ');
