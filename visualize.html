@@ -525,7 +525,7 @@
         <span id="intensityMin">Conservative</span><span id="intensityMax">Strong</span>
       </div>
       <div class="small" id="intensityHelp" style="margin-top:6px;">Slide to preview a more conservative or stronger response. The simulation updates instantly.</div>
-      <div class="small" id="overfillNote" style="display:none;margin-top:4px;color:#A33524;font-weight:600;">Shown for education: deliberately overfilled, not a treatment goal. <span id="overfillCreditNote" style="font-weight:400;color:#A33524;"></span></div>
+      <div class="small" id="overfillNote" style="display:none;margin-top:4px;color:#A33524;font-weight:600;">Shown for education: deliberately overfilled, not a treatment goal.</div>
     </div>
     <div class="compare-wrap" id="compareWrap" style="display:none;">
       <div class="compare-card" id="compareCard">
@@ -666,7 +666,7 @@ const FREE_REGEN_MS = 60000;
 // stay the same module instance (shared face-detection cache). v35 = M9.0
 // jowl blending (alpha lobes over marionette/jowl shadows + prejowl notch-fill
 // warp kernels) (v34 = M8.2 shade reconciliation; v33 = M8.1 convex chin).
-const MASK_MODULE_VERSION = '57';
+const MASK_MODULE_VERSION = '56';
 
 /* M7: a case is one or more ANGLES, each with its own photo, QC result, job,
    and compositor. Treatment settings are shared across the case; the response
@@ -689,9 +689,7 @@ const QC = { MIN_FACE_FRAC:0.05, LUMA_LO:55, LUMA_HI:205, SHARP_MIN:16 };
 function makeSlot(){
   return { file:null, originalDataUrl:null, beforeDataUrl:null, blackBgCache:null,
            resultDataUrl:null, apply:null, jobId:null, error:null,
-           status:'empty', qcMsg:'',
-           // M10.4: overfill education anchor -- cached per case, cleared on regen
-           overfillCache:null, overfillPending:false };
+           status:'empty', qcMsg:'' };
 }
 
 const state = {
@@ -1307,7 +1305,11 @@ const FILLER_LEVELS = { subtle:35, balanced:70, full:80 };
 // delivering spline-quality mandibular border (v54). Clinical acceptance
 // criterion: chin tip passes 300%+ zoom at both 45s. One-constant reversal
 // if it fails: set FILLER_BETA_MAX back to 69.
-const FILLER_BETA_MAX = 79;
+// M10.4 (v57): FILLER_BETA_MAX raised from 79 to 100 so the slider reaches
+// the Overfilled zone (>= 80). The stop-loss function is now served by the
+// overfill zone itself (dedicated AI-heavy education anchor, 1 credit,
+// clearly stamped), not by capping the slider short.
+const FILLER_BETA_MAX = 100;
 const OVERFILL_COLOR = '#A33524';
 function levelInfo(pct){
   const n = (typeof pct === 'number') ? pct : (parseInt(pct, 10) || 0);
@@ -1337,7 +1339,7 @@ function updateIntensityUI(){
   const li = levelInfo(state.intensityPct);
   document.getElementById('intensityLabel').textContent = isFiller ? 'Degree of correction' : 'Treatment response';
   document.getElementById('intensityMin').textContent = isFiller ? 'Subtle' : 'Conservative';
-  document.getElementById('intensityMax').textContent = isFiller ? 'Enhanced' : 'Strong';
+  document.getElementById('intensityMax').textContent = isFiller ? 'Overfilled' : 'Strong';
   document.getElementById('intensityHelp').textContent = isFiller
     ? 'Slide to preview less or more correction.'
     : 'Slide to preview a more conservative or stronger response. The simulation updates instantly.';
@@ -1346,113 +1348,6 @@ function updateIntensityUI(){
   valEl.style.color = li.over ? OVERFILL_COLOR : '';
   document.getElementById('intensitySlider').style.accentColor = li.over ? OVERFILL_COLOR : '';
   document.getElementById('overfillNote').style.display = li.over ? '' : 'none';
-  // M10.4: update the credit note text based on overfill cache state
-  const creditNoteEl = document.getElementById('overfillCreditNote');
-  if(creditNoteEl && li.over){
-    const sl = activeSlot();
-    if(!sl) creditNoteEl.textContent = '';
-    else if(sl.overfillCache) creditNoteEl.textContent = '1 credit used.';
-    else if(sl.overfillPending) creditNoteEl.textContent = 'Generating overfill preview (1 credit)...';
-    else if(isOverfillEligible() && sl.status === 'done') creditNoteEl.textContent = 'Will use 1 additional credit to generate overfill preview.';
-    else creditNoteEl.textContent = '';
-  } else if(creditNoteEl){
-    creditNoteEl.textContent = '';
-  }
-}
-
-/* ─────────  M10.4: Overfill education anchor ─────────────────────────────
-   When the HA chin/jawline slider first enters the Overfilled zone (>= 80),
-   fire one additional generation per case per angle using intensity='overfilled'.
-   The result is billed as 1 credit (reserved via the normal start-visualization
-   machinery) and is cached; re-generate clears all overfill caches.
-
-   While the overfill generation is pending the UI stays on the normal Enhanced
-   composite so the slider remains live. On completion, if the slider is still
-   in the Overfill zone, the aiResult image switches to the overfilled render.
-   The compositor uses opts.overfill=true (loosened outline gate, no warp). */
-
-function isOverfillEligible(){
-  return state.type === 'filler' &&
-         state.areas && (state.areas.includes('chin_jawline') ||
-           (state.areas.includes('chin') && state.areas.includes('jawline')));
-}
-
-async function triggerOverfillGeneration(angleId){
-  const sl = state.slots[angleId];
-  if(!sl || sl.overfillCache || sl.overfillPending) return;
-  if(!sl.beforeDataUrl && !sl.originalDataUrl) return;
-  if(sl.status !== 'done') return;
-
-  sl.overfillPending = true;
-  const creditNoteEl = document.getElementById('overfillCreditNote');
-  if(creditNoteEl) creditNoteEl.textContent = 'Generating overfill preview (1 credit)…';
-
-  try {
-    const auth = await authHeaders();
-    const beforeDataUrl = sl.beforeDataUrl || sl.originalDataUrl;
-    const blob = await resizeToUpload(beforeDataUrl);
-    const form = new FormData();
-    form.append('image', blob, 'patient-' + angleId + '.jpg');
-    form.append('type', 'filler');
-    const postAreas = (['chin','jawline']); // overfill is always chin+jawline
-    form.append('areas', postAreas.join(','));
-    form.append('intensity', 'overfilled'); // routes to FILLER_CHIN_JAWLINE_OVERFILLED in prompts.js
-    // Mask: same chin_jaw scope; wider-area coverage sent to server so AI has room
-    try {
-      const beforeImg = await loadImage(beforeDataUrl);
-      const mod = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
-      const maskBlob = await mod.buildSculptraMaskBlob(beforeImg, { maxDim:1024, scope:'chin_jaw', sex:state.sex });
-      if(maskBlob) form.append('mask', maskBlob, 'mask.png');
-    } catch(maskErr){ console.warn('[Visualize] overfill mask build failed; sending without mask.', maskErr); }
-
-    const jobId = (window.crypto && crypto.randomUUID && crypto.randomUUID()) ||
-                  (Date.now() + '-' + Math.random().toString(36).slice(2));
-    form.append('jobId', jobId);
-    // Tag as overfill so the server can log it; regenOf intentionally absent
-    form.append('overfill', '1');
-
-    const startRes = await fetch('/.netlify/functions/start-visualization', {
-      method:'POST', headers:auth, body:form
-    });
-    if(!startRes.ok){
-      let e; try { e = JSON.parse(await startRes.text()); } catch {}
-      throw new Error((e && e.error) || 'Overfill generation could not start (HTTP ' + startRes.status + ').');
-    }
-
-    // Poll for result
-    const rawAiUrl = await pollForResult(jobId, auth);
-
-    // Composite with overfill opts (loosened gate, no warp)
-    let overfillUrl = rawAiUrl;
-    try {
-      const beforeImg = await loadImage(beforeDataUrl);
-      const aiImg = await loadImage(rawAiUrl);
-      const { makeSculptraCompositor } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
-      const applyOv = await makeSculptraCompositor(beforeImg, aiImg, {
-        scope:'chin_jaw', sex:state.sex, overfill:true, angleId
-      });
-      if(applyOv) overfillUrl = applyOv(1); // full AI at intensity=1, no warp
-    } catch(compErr){ console.warn('[Visualize] overfill compositor failed; using raw AI.', compErr); }
-
-    sl.overfillCache = overfillUrl;
-    sl.overfillPending = false;
-    if(creditNoteEl) creditNoteEl.textContent = '1 credit used.';
-
-    // If the slider is still in the Overfill zone and this is still the active angle, display it
-    const li = levelInfo(state.intensityPct);
-    if(li.over && state.activeAngle === angleId){
-      sl.resultDataUrl = overfillUrl;
-      document.getElementById('aiResult').src = overfillUrl;
-    }
-
-    // Refresh credit balance display
-    if(accessMode === 'account') refreshCredits(0);
-
-  } catch(err){
-    sl.overfillPending = false;
-    console.warn('[Visualize] overfill generation failed:', err && err.message);
-    if(creditNoteEl) creditNoteEl.textContent = 'Overfill preview unavailable. ' + ((err && err.message) || '');
-  }
 }
 
 // Live response slider: re-blend the cached per-angle apply() with no
@@ -1470,25 +1365,8 @@ async function triggerOverfillGeneration(angleId){
     updateIntensityUI();
     const sl = activeSlot();
     if(!sl || !sl.apply) return;
-
-    // M10.4: overfill zone -- show cached overfill render if available, else
-    // trigger a lazy generation (once per case per angle) and show the normal
-    // Enhanced composite in the meantime.
-    const li = levelInfo(pct);
-    if(li.over && isOverfillEligible() && sl.status === 'done'){
-      if(sl.overfillCache){
-        sl.resultDataUrl = sl.overfillCache;
-        document.getElementById('aiResult').src = sl.overfillCache;
-        return; // skip normal compositor path; overfill render is static at intensity=1
-      }
-      // Not cached yet -- fire the lazy generation (non-blocking)
-      triggerOverfillGeneration(state.activeAngle);
-      // Fall through: normal compositor path shows the Enhanced composite while pending
-    }
-
     if(raf) cancelAnimationFrame(raf);
     raf = requestAnimationFrame(() => {
-      // Normal compositor path (not overfill, or overfill generation pending)
       const url = sl.apply(pct / 100);
       sl.resultDataUrl = url;
       document.getElementById('aiResult').src = url;
@@ -1502,12 +1380,7 @@ async function triggerOverfillGeneration(angleId){
       if(id === state.activeAngle) continue;
       const sl = state.slots[id];
       if(sl.apply && sl.status === 'done'){
-        const li = levelInfo(pct);
-        if(li.over && sl.overfillCache){
-          setTimeout(() => { sl.resultDataUrl = sl.overfillCache; }, 0);
-        } else {
-          setTimeout(() => { sl.resultDataUrl = sl.apply(pct / 100); }, 0);
-        }
+        setTimeout(() => { sl.resultDataUrl = sl.apply(pct / 100); }, 0);
       }
     }
   });
@@ -1530,13 +1403,13 @@ async function triggerOverfillGeneration(angleId){
   if(!bar || !mslider || !canonical) return;
 
   // ── Snap stops for Sculptra: Conservative=35 Expected=65 Strong=100
-  //    and for HA filler: Subtle=17 Balanced=52 Enhanced=74 (M10.3)
+  //    and for HA filler: Subtle=17 Balanced=52 Enhanced=74 Overfilled=90 (M10.4)
   // These are the midpoints of the named bands, matching strengthLabel() / levelInfo().
   // Snap fires within SNAP_WINDOW percent of the stop.
   const SNAP_WINDOW = 8;
   function snapStops(){
     if(state.type === 'filler'){
-      return [0, 17, 35, 52, 74]; // Subtle~17, Balanced~52, Enhanced~74
+      return [0, 17, 35, 52, 74, 90]; // Subtle~17, Balanced~52, Enhanced~74, Overfilled~90
     }
     return [0, 22, 62, 100];      // Conservative mid=22, Expected mid=62
   }
@@ -1561,7 +1434,7 @@ async function triggerOverfillGeneration(angleId){
     const isFiller = state.type === 'filler';
     msbLabel.textContent = isFiller ? 'Degree of correction' : 'Treatment response';
     msbMin.textContent   = isFiller ? 'Subtle' : 'Conservative';
-    msbMax.textContent   = isFiller ? 'Enhanced' : 'Strong';
+    msbMax.textContent   = isFiller ? 'Overfilled' : 'Strong';
   }
   // Patch updateIntensityUI to also sync the mobile bar
   const _origUpdateUI = updateIntensityUI;
@@ -1902,8 +1775,6 @@ async function prepAndStartSlot(angleId, auth, isRegen){
   const sl = state.slots[angleId];
   const prevJobId = sl.jobId; // M8: lineage for the server-enforced free regen window
   sl.status = 'generating'; sl.error = null; sl.apply = null;
-  // M10.4: clear overfill cache so a new base generation gets a fresh overfill anchor
-  sl.overfillCache = null; sl.overfillPending = false;
 
   // Black background per photo, applied at generation time, never on upload.
   let beforeDataUrl = sl.originalDataUrl;
@@ -2301,15 +2172,7 @@ function exportCompScope(){
 async function hiResResultFor(angleId){
   const sl = state.slots[angleId];
   const compScope = exportCompScope();
-  if(!sl || !compScope) return null;
-
-  // M10.4: overfill zone -- export the cached overfill anchor directly (it is
-  // already AI-heavy and needs no hi-res re-composite; the 1024 grid is adequate
-  // for consultation exports and avoids a second model call).
-  const li = levelInfo(state.intensityPct || 70);
-  if(li.over && sl.overfillCache) return sl.overfillCache;
-
-  if(!sl.rawAiDataUrl || !sl.apply) return null;
+  if(!sl || !compScope || !sl.rawAiDataUrl || !sl.apply) return null;
   const pct = state.intensityPct || 70;
   if(sl.hiRes && sl.hiRes.pct === pct) return sl.hiRes.url;
   const beforeImg = await loadImage(sl.beforeDataUrl || sl.originalDataUrl);
