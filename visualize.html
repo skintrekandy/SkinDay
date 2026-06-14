@@ -354,14 +354,13 @@
   <div class="lock-card">
     <div class="lock-eyebrow">SkinDay</div>
     <h1>Visualize <span>·</span> Coming&nbsp;Soon</h1>
-    <p class="lock-soon" id="lockTagline">Treatment visualization for clinic consultations. Sign in to your clinic account.</p>
+    <p class="lock-soon" id="lockTagline">AI-powered treatment previews for anyone considering aesthetic treatments.</p>
     <div class="lock-tabs" id="lockTabs" style="display:none;">
       <button type="button" data-mode="signin" class="active">Sign in</button>
       <button type="button" data-mode="signup">Create account</button>
       <button type="button" data-mode="beta">Beta key</button>
     </div>
     <div class="lock-form auth-form" id="authForm" style="display:none;">
-      <input type="text" id="authClinic" placeholder="Clinic name" autocomplete="organization" style="display:none;" />
       <input type="email" id="authEmail" placeholder="Email" autocomplete="email" />
       <input type="password" id="authPassword" placeholder="Password" autocomplete="current-password" />
       <button id="authBtn" type="button">Sign in</button>
@@ -373,7 +372,7 @@
       <button id="unlockBtn" type="button">Enter beta</button>
       <div class="lock-err" id="lockErr"></div>
     </div>
-    <div class="lock-foot">Questions about clinic access? Email <a href="mailto:hello@skinday.ca">hello@skinday.ca</a>.</div>
+    <div class="lock-foot">Questions? Email <a href="mailto:hello@skinday.ca">hello@skinday.ca</a>.</div>
   </div>
 </div>
 
@@ -383,8 +382,7 @@
   <a href="/" class="nav-logo">Skin<span>Day</span></a>
   <div class="nav-ctas">
     <button class="nav-credits" id="navCredits" type="button" title="Credit balance"></button>
-    <a href="/studio.html" class="nav-link">Before &amp; After</a>
-    <a href="/editor.html" class="nav-cta">Clinic Portal</a>
+    <button class="nav-link" id="navAccountBtn" type="button" style="display:none;">Account</button>
   </div>
 </nav>
 <div class="acct-bar" id="acctBar">
@@ -404,7 +402,6 @@
   </section>
 
   <div class="tabs" aria-label="SkinDay tools">
-    <a class="tab" href="/studio.html" style="text-decoration:none;">Before &amp; After Builder</a>
     <button class="tab active" type="button">Visualize</button>
   </div>
 
@@ -774,6 +771,7 @@ function renderAcctBar(){
   const buy = document.getElementById('buyBtn');
   const out = document.getElementById('signOutBtn');
   const navPill = document.getElementById('navCredits');
+  const navAcct = document.getElementById('navAccountBtn');
   const info = document.getElementById('creditsInfoBtn');
   if(accessMode === 'beta'){
     bar.style.display = 'flex';
@@ -781,6 +779,7 @@ function renderAcctBar(){
     chip.textContent = 'Unmetered';
     buy.style.display = 'none'; out.style.display = 'none'; info.style.display = 'none';
     navPill.style.display = 'none';
+    if(navAcct) navAcct.style.display = 'none';
   } else if(accessMode === 'account'){
     bar.style.display = 'flex';
     ident.textContent = (sb && sb.__email) || '';
@@ -788,9 +787,11 @@ function renderAcctBar(){
     buy.style.display = ''; out.style.display = ''; info.style.display = '';
     navPill.style.display = 'inline-flex';
     navPill.innerHTML = 'Credits: <strong>' + (creditBalance == null ? '…' : creditBalance) + '</strong>';
+    if(navAcct) navAcct.style.display = '';
   } else {
     bar.style.display = 'none';
     navPill.style.display = 'none';
+    if(navAcct) navAcct.style.display = 'none';
   }
 }
 
@@ -841,7 +842,6 @@ function setLockMode(mode){
     btn.classList.toggle('active', btn.dataset.mode === authMode));
   document.getElementById('authForm').style.display = (authMode === 'beta') ? 'none' : 'flex';
   document.getElementById('betaForm').style.display = (authMode === 'beta') ? '' : 'none';
-  document.getElementById('authClinic').style.display = (authMode === 'signup') ? '' : 'none';
   document.getElementById('authBtn').textContent = (authMode === 'signup') ? 'Create account' : 'Sign in';
   document.getElementById('authHint').textContent = (authMode === 'signup' && SD_CFG.signupGrant > 0)
     ? ('New accounts start with ' + SD_CFG.signupGrant + ' free credits.')
@@ -865,8 +865,7 @@ async function submitAuth(){
   btn.disabled = true; err.textContent = 'One moment…';
   try {
     if(authMode === 'signup'){
-      const clinic = document.getElementById('authClinic').value.trim();
-      const { data, error } = await sb.auth.signUp({ email, password, options: { data: { clinic_name: clinic } } });
+      const { data, error } = await sb.auth.signUp({ email, password });
       if(error){ err.textContent = error.message; return; }
       if(data && data.session){ err.textContent = ''; onSignedIn(data.session); }
       else { err.textContent = 'Check your email to confirm the account, then sign in here.'; }
@@ -934,6 +933,8 @@ function openBuyModal(){
 function closeBuyModal(){ document.getElementById('buyModal').classList.add('hidden'); }
 document.getElementById('buyBtn').addEventListener('click', openBuyModal);
 document.getElementById('navCredits').addEventListener('click', openBuyModal);
+const navAccountBtn = document.getElementById('navAccountBtn');
+if(navAccountBtn) navAccountBtn.addEventListener('click', openBuyModal);
 document.getElementById('buyCloseBtn').addEventListener('click', closeBuyModal);
 document.getElementById('creditsInfoBtn').addEventListener('click', () => document.getElementById('creditsInfoModal').classList.remove('hidden'));
 document.getElementById('creditsInfoCloseBtn').addEventListener('click', () => document.getElementById('creditsInfoModal').classList.add('hidden'));
@@ -959,7 +960,7 @@ document.getElementById('buyModal').addEventListener('click', e => { if(e.target
 
   if(SD_CFG.authDisabled){
     // Pre-M8 behavior: beta password only.
-    document.getElementById('lockTagline').textContent = 'A private beta for trusted SkinDay clinics. Access by invitation.';
+    document.getElementById('lockTagline').textContent = 'Early access. Enter your beta password to try SkinDay Visualize.';
     document.getElementById('betaForm').style.display = '';
     return;
   }
