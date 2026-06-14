@@ -7,11 +7,20 @@
 // background). gpt-image-1's edit endpoint edits only the transparent region, so
 // this physically prevents the global beautification leak.
 //
-// M10.1 (v52): frontal jowl kernel removed. Artifact diagnostic -- if frontal
-// result is clinically acceptable without jowl geometry, done. If not, shade
-// reconciliation (option 2) is next. Midface and temple kernels unchanged.
+// M10.2 (v54): MANDIBULAR BORDER SUSPENSION KERNELS (oblique only).
+// Three point kernels at 25/50/75% along the near-side prejowl-to-gonion
+// polyline. Vector is superior + slightly inward, moving border pixels
+// upward so the jowl reads as suspended into the mandibular line -- the
+// continuous chin-to-gonion arc that real Sculptra strong responders show.
+// Superior vector moves away from the jowl shadow below so no shade
+// discontinuity artifact (unlike the retired frontal jowl kernel).
+// Sigma SCULP_BORDER_SIG=0.055W: tight to the border, does not bleed into
+// the jowl shadow zone. SCULP_LIFT_SAT=0.60 cap remains active so the
+// border kernels also saturate at Expected (artifact-safe).
+// Calibration target: Cases A and C from the June 13 upload -- after shows
+// a clean chin-to-gonion arc with the jowl mass lifted into the border.
 //
-// M10.1 (v51): jowl sigma widened 0.085->0.115, lift reduced 0.026->0.020.
+// M10.1 (v53): cap Sculptra lift warp at SCULP_LIFT_SAT=0.60. M10.1 closed.
 //
 // M10.1 (v49): lateral cut, anterior and superior raised.
 //
@@ -819,6 +828,25 @@ const WARP_MIDFACE_LIFT  = 0.017;
 const WARP_MIDFACE_SIGMA = 0.12;
 const WARP_EDGE_FADE     = 0.06;
 
+// v53: Sculptra lift warp saturates at SCULP_LIFT_SAT so Strong-response
+// artifacts (zygoma disc, gonial shadow) never reach the exported image.
+// Expected band tops at ~0.62; cap at 0.60 keeps the full Expected range.
+// One-constant reversal to restore Strong: set to 1.0.
+const SCULP_LIFT_SAT = 0.60;
+
+// M10.2: mandibular border suspension kernels (oblique only).
+// Three point kernels along the near-side prejowl-to-gonion polyline, each
+// carrying a superior + slightly inward vector. Displaces pixels upward along
+// the border so the jowl reads as suspended into the mandibular line --
+// the chin-to-gonion arc that real Sculptra strong responders show.
+// Narrow sigma (tight to the border) so the kernel does not bleed into the
+// jowl shadow below. Superior vector means displacement moves away from the
+// shadow, so no shade-discontinuity artifact (unlike the old frontal jowl
+// kernel which displaced toward the shadow boundary).
+const SCULP_BORDER_UP  = 0.018; // superior component, fraction of faceH
+const SCULP_BORDER_IN  = 0.006; // inward component, fraction of W (slight medial)
+const SCULP_BORDER_SIG = 0.055; // kernel breadth, fraction of W (tight to border)
+
 // M10.1 (v47): oblique Sculptra cheek/midface projection kernels.
 // FIRST CALIBRATION LEVER: SCULP_ZYGOMA_OUT -- the lateral magnitude that drives
 // the zygomatic arch highlight. Increase to push the arch further; decrease if
@@ -969,6 +997,32 @@ function buildLiftField(L, w, h, pose){
       twoSig: 2*sigM*sigM, vx: midfaceV.x, vy: midfaceV.y,
       capsule: false
     });
+
+    // (3) M10.2: mandibular border suspension kernels.
+    // Three point kernels at 25/50/75% along the near-side prejowl-to-gonion
+    // polyline. Vector: superior + slightly inward. Displaces border pixels
+    // upward so the jowl reads as lifted into the mandibular line.
+    // Superior vector moves away from the jowl shadow below, so no shade
+    // discontinuity (safe unlike the old frontal jowl kernel).
+    const nearGonion  = (nearSide === 'right') ? lm[GONION.r]  : lm[GONION.l];
+    const nearPrejowl = (nearSide === 'right') ? lm[PREJOWL.r] : lm[PREJOWL.l];
+    if(nearGonion && nearPrejowl){
+      const inwB = { x: -latSign*dirOut.x, y: -latSign*dirOut.y }; // toward midline
+      const borderV = {
+        x: dirUp.x*SCULP_BORDER_UP*faceH + inwB.x*SCULP_BORDER_IN*W,
+        y: dirUp.y*SCULP_BORDER_UP*faceH + inwB.y*SCULP_BORDER_IN*W
+      };
+      const sigB = SCULP_BORDER_SIG*W;
+      const twoSigB = 2*sigB*sigB;
+      for(const frac of [0.25, 0.50, 0.75]){
+        const bc = lerp(nearPrejowl, nearGonion, frac);
+        kernels.push({
+          ax: bc.x, ay: bc.y, bx: bc.x, by: bc.y,
+          twoSig: twoSigB, vx: borderV.x, vy: borderV.y,
+          capsule: false
+        });
+      }
+    }
 
   } else {
     // Frontal branch: midface re-drape and temple convexity kernels.
@@ -2301,7 +2355,7 @@ export async function compositeSculptra(beforeImg, aiImg, opts){
   const lift = await buildWarpForScope(beforeImg, landmarks, w, h, scope, sex, opts);
   const postWarp = (scope === 'chin_jaw');
   const wb = (lift && !postWarp) ? new Uint8ClampedArray(b) : b;
-  if(lift && !postWarp) applyLiftWarp(wb, b, w, h, lift, intensity);
+  if(lift && !postWarp) applyLiftWarp(wb, b, w, h, lift, Math.min(intensity, SCULP_LIFT_SAT));
 
   if(textureRestore){
     // Keep the AI low band (volume), restore the original high band (texture);
@@ -2426,7 +2480,7 @@ export async function makeSculptraCompositor(beforeImg, aiImg, opts){
 
   return function apply(intensity){
     const t = Math.max(0, Math.min(1, (typeof intensity === "number" ? intensity : 1)));
-    if(lift && !postWarp) applyLiftWarp(wb, b, w, h, lift, t);
+    if(lift && !postWarp) applyLiftWarp(wb, b, w, h, lift, Math.min(t, SCULP_LIFT_SAT));
     if(textureRestore){
       // M6.2: al carries the response gain (delta extrapolation at the top).
       // M6.3: the glow term is scaled by mask and slider only, never by gain.
