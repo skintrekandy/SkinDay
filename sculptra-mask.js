@@ -1492,9 +1492,10 @@ const GONW_DEF                 = 0.007; // posterior-inferior gonial move, fract
 // M9.10 (v45): the chin_jaw warp's intensity ceiling. Silhouette amplitude
 // saturates here while AI shading continues to scale; 1.0 restores v44.
 const CHINW_WARP_SAT           = 0.60; // M10.3: 0.45 -> 0.60, opens Enhanced band (70-79)
-const CHINW_WARP_SAT_OBLIQUE   = 0.50; // M11.1 (v58): 0.45 -> 0.50; shadow reconciliation
-                                       // anchors the junction so the extra warp amplitude passes.
-                                       // One-constant reversal: set back to 0.45 if penumbra fails.
+const CHINW_WARP_SAT_OBLIQUE   = 0.45; // M11.1 reverting 0.50 -> 0.45: oblique artifact on male
+                                       // anatomy confirmed. Male chin geometry (taller mentum,
+                                       // wider gonial arc) causes warp kernel to overshoot at
+                                       // Enhanced oblique. Re-raise after male calibration.
 
 function buildChinProjectionField(L, w, h, pose, sex){
   const lm = L.map(p=>({x:p.x*w, y:p.y*h}));
