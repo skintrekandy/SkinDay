@@ -105,6 +105,31 @@ const FILLER_CHIN_JAWLINE = {
          'keep the change proportionate to the patient\'s bone structure and sex (a male chin can be longer, squarer, and more projected with the jaw width preserved; a female chin softer, more tapered, with the lower face allowed to taper), and keep it unmistakably the same person'
 };
 
+// ---- Filler: overfilled education anchor (M10.4) --------------------------
+// Deliberately overcorrected lower-face result, fired lazily when the slider
+// first enters the Overfilled zone (>= 80). The goal is to show the patient
+// why more is not better: excess chin projection, a shelf-like jawline, an
+// overdone look that no experienced injector would produce. The compositor
+// path for this anchor is AI-heavy (outline gate loosened so the model may
+// extend the silhouette; chroma lock and texture restore are retained so
+// identity and skin character survive, but the border is not guarded).
+// Deterministic warp is NOT applied; the AI carries the overcorrection.
+const FILLER_CHIN_JAWLINE_OVERFILLED = {
+  core: 'Simulate an overfilled hyaluronic acid result in the chin and jawline for patient education. ' +
+        'This is INTENTIONALLY overcorrected to show why excessive filler is problematic. ' +
+        'Show: a chin that projects too far forward and hangs lower than natural anatomy allows, reading as augmented and disproportionate; ' +
+        'a jawline that reads as a hard, artificial shelf rather than a natural mandibular border, with the border too sharply defined and too linearly continuous from chin to gonion; ' +
+        'prejowl overfill that smooths the jowl transition too aggressively so the lower face reads as swollen and unnatural; ' +
+        'an overall lower third that reads as too long, too projected, too defined, and visibly filled rather than natural. ' +
+        'The overcorrection should be obvious to a patient in a consultation setting and clearly read as "too much," but must remain anatomically coherent (no cartoon distortion, no grotesque result): ' +
+        'the kind of overfilled outcome an inexperienced or aggressive injector might produce, not a caricature.',
+  avoid: 'do not produce a natural or tasteful result; the point is that this looks overfilled and excessive. ' +
+         'Do not change the eyes, brows, nose, skin texture, skin tone, hairstyle, expression, lighting, or background. ' +
+         'Preserve identity, ethnicity, and apparent age; the result must be unmistakably the same person, just with too much filler in the lower face. ' +
+         'Do not add text, labels, watermarks, or cartoon distortion. ' +
+         'The overcorrection is confined to the chin, jawline, and lower-face contour: cheeks, midface, and upper face are unchanged.'
+};
+
 // ---- Filler: goal modifiers (v1) ------------------------------------------
 const GOALS = {
   natural_refinement: 'Keep the overall effect minimal and natural.',
@@ -198,7 +223,8 @@ const TIMELINE = {
 // Version log so we know which prompt produced which result during tuning.
 const VERSIONS = {
   base: 'v3', chin: 'v1', jawline: 'v1', chin_jawline: 'v8', nose: 'v1', lips: 'v2',
-  cheeks: 'v2', tear_trough: 'v1', nasolabial_folds: 'v1', sculptra: 'v13', sculptra_oblique: 'v13', hdr: 'v1', timeline: 'v2'
+  cheeks: 'v2', tear_trough: 'v1', nasolabial_folds: 'v1', sculptra: 'v13', sculptra_oblique: 'v13', hdr: 'v1', timeline: 'v2',
+  chin_jawline_overfilled: 'v1' // M10.4
 };
 
 function sanitizeNote(note) {
@@ -338,6 +364,14 @@ function buildCorePrompt(sel) {
   areas = areas.map(a => a.trim()).filter(a => FILLER_AREAS[a]);
   if (!areas.length) areas = ['chin'];
 
+  // M10.4: overfilled education anchor. Fires when intensity is 'overfilled'
+  // and the selection is chin + jawline. Returns a dedicated AI-heavy prompt
+  // that deliberately shows overcorrection for patient education.
+  if (sel_.intensity === 'overfilled' && areas.includes('chin') && areas.includes('jawline')) {
+    const ov = FILLER_CHIN_JAWLINE_OVERFILLED;
+    return `${BASE_FRAMING} ${ov.core} Avoid: ${ov.avoid}`;
+  }
+
   // Chin + jawline are treated as a single lower-face unit when both selected.
   // Any other selected areas still append as their own clauses (full-face cases).
   let expected, avoid;
@@ -398,4 +432,4 @@ function usesChinJawSafety(type, areasField){
   return areas.includes('chin') && areas.includes('jawline');
 }
 
-module.exports = { buildCorePrompt, VERSIONS, CHIN_JAW_SAFETY, usesChinJawSafety };
+module.exports = { buildCorePrompt, VERSIONS, CHIN_JAW_SAFETY, usesChinJawSafety, FILLER_CHIN_JAWLINE_OVERFILLED };
