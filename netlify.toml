@@ -42,6 +42,11 @@
   status = 200
 
 [[redirects]]
+  from   = "/api/admin-costs"
+  to     = "/.netlify/functions/admin-costs"
+  status = 200
+
+[[redirects]]
   from   = "/api/save-clinic"
   to     = "/.netlify/functions/save-clinic"
   status = 200
