@@ -662,7 +662,7 @@ const FREE_REGEN_MS = 60000;
 // stay the same module instance (shared face-detection cache). v35 = M9.0
 // jowl blending (alpha lobes over marionette/jowl shadows + prejowl notch-fill
 // warp kernels) (v34 = M8.2 shade reconciliation; v33 = M8.1 convex chin).
-const MASK_MODULE_VERSION = '60';
+const MASK_MODULE_VERSION = '61';
 
 /* M7: a case is one or more ANGLES, each with its own photo, QC result, job,
    and compositor. Treatment settings are shared across the case; the response
@@ -687,7 +687,8 @@ const QC = { MIN_FACE_FRAC:0.05, MAX_FACE_FRAC:0.75, LUMA_LO:55, LUMA_HI:205, SH
 function makeSlot(){
   return { file:null, originalDataUrl:null, beforeDataUrl:null, blackBgCache:null,
            resultDataUrl:null, apply:null, jobId:null, error:null,
-           status:'empty', qcMsg:'' };
+           status:'empty', qcMsg:'',
+           faceBbox:null, cropCache:null }; // M11.1: bbox for head crop display
 }
 
 const state = {
@@ -1160,7 +1161,7 @@ async function onSlotFile(angleId, file){
   if(!file.type.startsWith('image/')){ setStatus('Please upload an image file.', 'warn'); return; }
   sl.file = file;
   sl.originalDataUrl = await fileToDataUrl(file);
-  sl.blackBgCache = null; sl.beforeDataUrl = null; sl.resultDataUrl = null; sl.apply = null; sl.error = null; sl.hiRes = null; sl.rawAiDataUrl = null;
+  sl.blackBgCache = null; sl.beforeDataUrl = null; sl.resultDataUrl = null; sl.apply = null; sl.error = null; sl.hiRes = null; sl.rawAiDataUrl = null; sl.cropCache = null;
   sl.status = 'checking'; sl.qcMsg = 'Checking pose and photo quality…';
   renderSlots(); syncGenerateBtn();
   try {
@@ -1169,6 +1170,7 @@ async function onSlotFile(angleId, file){
     const a = await mod.analyzePhoto(img);
     console.log('%c[Visualize] QC ' + angleId + ': view=' + (a && a.view) + ' yaw≈' + (a && a.yawDeg != null ? Math.round(a.yawDeg) : '?') + '° nearSide=' + (a && a.nearSide) + ' faceFrac=' + (a && a.faceFrac != null ? a.faceFrac.toFixed(3) : '?') + ' luma=' + (a && a.meanLuma != null ? Math.round(a.meanLuma) : '?') + ' sharp=' + (a && a.sharpness != null ? Math.round(a.sharpness) : '?'), 'color:#C8725A');
     const gate = poseMatches(angleId, a);
+    if(a && a.faceBbox) sl.faceBbox = a.faceBbox; // M11.1: store for display crop
     if(!gate.ok){
       sl.status = 'bad'; sl.qcMsg = '✗ ' + gate.msg;
     } else if(a.faceFrac != null && a.faceFrac < QC.MIN_FACE_FRAC){
@@ -1988,11 +1990,72 @@ function renderTabs(){
   }
 }
 
+/* ─────────  M11.1: Face crop for result display ──────────────────────────
+   Crops a dataUrl to a tight head+neck bounding box derived from the face
+   oval landmarks. The margin extends the box: horiz adds W*MARGIN_H on each
+   side, vert adds W*MARGIN_TOP above and W*MARGIN_BOT below (extra for neck).
+   Returns a JPEG dataUrl at the original pixel density, or the original dataUrl
+   if the bbox is unavailable or the crop fails. */
+const FACE_CROP_MARGIN_H   = 0.22;  // horizontal margin each side, fraction of face width
+const FACE_CROP_MARGIN_TOP = 0.55;  // above face top (hair/forehead room)
+const FACE_CROP_MARGIN_BOT = 0.65;  // below face bottom (neck room)
+
+async function cropToFace(dataUrl, bbox){
+  if(!bbox) return dataUrl;
+  try {
+    const img = await loadImage(dataUrl);
+    const iw = img.naturalWidth, ih = img.naturalHeight;
+    const fx0 = bbox.x0 * iw, fy0 = bbox.y0 * ih;
+    const fx1 = bbox.x1 * iw, fy1 = bbox.y1 * ih;
+    const fw = fx1 - fx0, fh = fy1 - fy0;
+    const mh  = fw * FACE_CROP_MARGIN_H;
+    const mtop = fw * FACE_CROP_MARGIN_TOP;
+    const mbot = fw * FACE_CROP_MARGIN_BOT;
+    const cx0 = Math.max(0, Math.round(fx0 - mh));
+    const cy0 = Math.max(0, Math.round(fy0 - mtop));
+    const cx1 = Math.min(iw, Math.round(fx1 + mh));
+    const cy1 = Math.min(ih, Math.round(fy1 + mbot));
+    const cw = cx1 - cx0, ch = cy1 - cy0;
+    if(cw < 32 || ch < 32) return dataUrl; // degenerate: skip
+    const c = document.createElement('canvas');
+    c.width = cw; c.height = ch;
+    c.getContext('2d').drawImage(img, cx0, cy0, cw, ch, 0, 0, cw, ch);
+    return c.toDataURL('image/jpeg', 0.93);
+  } catch(e){
+    console.warn('[Visualize] cropToFace failed; using original.', e);
+    return dataUrl;
+  }
+}
+
 function renderActiveSlot(){
   const sl = activeSlot();
   const multi = state.selectedAngles.length > 1;
-  document.getElementById('originalResult').src = sl.beforeDataUrl || sl.originalDataUrl || '';
-  document.getElementById('aiResult').src = sl.resultDataUrl || sl.beforeDataUrl || sl.originalDataUrl || '';
+  // M11.1: apply face crop to display images (result display only; original
+  // full-res goes to the server and export). Async: set original immediately
+  // then swap in cropped version once ready.
+  const beforeSrc = sl.beforeDataUrl || sl.originalDataUrl || '';
+  const afterSrc  = sl.resultDataUrl || beforeSrc;
+  document.getElementById('originalResult').src = beforeSrc;
+  document.getElementById('aiResult').src = afterSrc;
+  if(sl.faceBbox && beforeSrc){
+    (async () => {
+      try {
+        // Cache the crop per slot so tab switches are instant
+        if(!sl.cropCache || sl.cropCache.src !== beforeSrc){
+          const croppedBefore = await cropToFace(beforeSrc, sl.faceBbox);
+          const croppedAfter  = afterSrc && afterSrc !== beforeSrc
+            ? await cropToFace(afterSrc, sl.faceBbox)
+            : croppedBefore;
+          sl.cropCache = { src: beforeSrc, before: croppedBefore, after: croppedAfter };
+        }
+        // Only apply if this slot is still the active one
+        if(state.activeAngle === Object.keys(state.slots).find(k => state.slots[k] === sl)){
+          document.getElementById('originalResult').src = sl.cropCache.before;
+          document.getElementById('aiResult').src = sl.cropCache.after || sl.cropCache.before;
+        }
+      } catch(e){ /* fail silently; full-frame display is already shown */ }
+    })();
+  }
   let tag = 'Simulated · ' + treatmentName();
   if(multi) tag += ' · ' + ANGLE_DEF[state.activeAngle].short;
   if(state.type === 'biostim') tag += ' · ' + (state.timeline === '12' ? '12 months' : state.timeline + ' months');
@@ -2222,11 +2285,17 @@ function simKicker(angleId){
 // single-angle export and the multi-angle case sheet (one row per angle).
 async function drawPair(ctx, angleId, yOff, panelW, panelH, gap, includeText){
   const sl = state.slots[angleId];
-  const before = await loadImage(sl.beforeDataUrl || sl.originalDataUrl);
-  // M9.9: exports render at the hi-res grid; the live 1024 frame is the fallback.
+  // M11.1: apply face crop to export images using stored faceBbox
+  const beforeSrc = sl.beforeDataUrl || sl.originalDataUrl;
   let hiRes = null;
   try { hiRes = await hiResResultFor(angleId); } catch(e){ console.warn('[Visualize] hi-res export render failed; using live frame.', e); }
-  const after = await loadImage(hiRes || sl.resultDataUrl);
+  const afterSrc = hiRes || sl.resultDataUrl;
+
+  const croppedBeforeSrc = sl.faceBbox ? await cropToFace(beforeSrc, sl.faceBbox) : beforeSrc;
+  const croppedAfterSrc  = sl.faceBbox && afterSrc ? await cropToFace(afterSrc, sl.faceBbox) : afterSrc;
+
+  const before = await loadImage(croppedBeforeSrc || beforeSrc);
+  const after  = await loadImage(croppedAfterSrc  || afterSrc);
 
   function cover(img, x, y, w, h){
     const scale = Math.max(w/img.width, h/img.height);

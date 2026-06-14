@@ -1900,7 +1900,8 @@ export async function analyzePhoto(imgEl){
     for(let y=1;y<ch-1;y++){ for(let x=1;x<cw-1;x++){ const i=y*cw+x;
       const L=4*g[i]-g[i-1]-g[i+1]-g[i-cw]-g[i+cw]; lsum+=L; l2+=L*L; n++; } }
     const meanL=lsum/n, sharpness=l2/n-meanL*meanL;
-    return { ...pose, faceFrac, meanLuma, sharpness };
+    return { ...pose, faceFrac, meanLuma, sharpness,
+             faceBbox: { x0, y0, x1, y1 } }; // M11.1: normalized face oval bbox for display crop
   } catch(err){
     console.warn('[Visualize] analyzePhoto metrics failed; returning pose only.', err);
     return { ...pose, faceFrac:null, meanLuma:null, sharpness:null };
