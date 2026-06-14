@@ -14,6 +14,15 @@
 // chin tip passes 300%+ zoom at both 45s; one-constant reversal if it fails.
 // Mobile bar max label and snap stop updated to reflect Enhanced as new top.
 //
+// M10.3 (v56): OBLIQUE-SPECIFIC WARP SAT CAP.
+// Frontal Enhanced passed 300%+ zoom; oblique Enhanced failed (chin tip
+// penumbra stretch). Fix: CHINW_WARP_SAT_OBLIQUE = 0.45 holds the oblique
+// warp at the proven Balanced ceiling while frontal keeps 0.60 (Enhanced).
+// angleId passed through opts from visualize.html; compositor selects the
+// correct cap per angle. FILLER_BETA_MAX stays at 79 -- users can still
+// slide to Enhanced and the frontal export shows it; oblique silhouette
+// just saturates at Balanced geometry, which is clean.
+//
 // M10.2 (v54): mandibular border suspension kernels. M10.2 closed.
 //
 // M10.1 (v49): lateral cut, anterior and superior raised.
@@ -1452,6 +1461,7 @@ const GONW_DEF                 = 0.007; // posterior-inferior gonial move, fract
 // M9.10 (v45): the chin_jaw warp's intensity ceiling. Silhouette amplitude
 // saturates here while AI shading continues to scale; 1.0 restores v44.
 const CHINW_WARP_SAT           = 0.60; // M10.3: 0.45 -> 0.60, opens Enhanced band (70-79)
+const CHINW_WARP_SAT_OBLIQUE   = 0.45; // M10.3 v56: oblique holds at Balanced (chin tip penumbra)
 
 function buildChinProjectionField(L, w, h, pose, sex){
   const lm = L.map(p=>({x:p.x*w, y:p.y*h}));
@@ -2390,7 +2400,9 @@ export async function compositeSculptra(beforeImg, aiImg, opts){
   if(lift && postWarp){
     const src = new Uint8ClampedArray(a);
     const Wpx = faceWidthPx(landmarks, w, h);
-    const warpT = Math.min(intensity, CHINW_WARP_SAT); // M9.10: silhouette saturates
+    const isOblique45 = opts && (opts.angleId === 'l45' || opts.angleId === 'r45');
+    const warpCap = isOblique45 ? CHINW_WARP_SAT_OBLIQUE : CHINW_WARP_SAT;
+    const warpT = Math.min(intensity, warpCap); // M9.10 / M10.3 v56: oblique cap differs from frontal
     applyLiftWarp(a, src, w, h, lift, warpT);
     applyWarpShadeFix(a, buildLowLuma(b, w, h, Wpx), lift, w);
     if(!(opts && opts.warpSharpen === false))
@@ -2501,7 +2513,9 @@ export async function makeSculptraCompositor(beforeImg, aiImg, opts){
     // M8.2: then reconcile the moved band's shading with the local light field.
     if(lift && postWarp){
       warpSrc.set(o);
-      const warpT = Math.min(t, CHINW_WARP_SAT); // M9.10: silhouette saturates
+      const isOblique45 = opts && (opts.angleId === 'l45' || opts.angleId === 'r45');
+      const warpCap = isOblique45 ? CHINW_WARP_SAT_OBLIQUE : CHINW_WARP_SAT;
+      const warpT = Math.min(t, warpCap); // M9.10 / M10.3 v56: oblique cap differs from frontal
       applyLiftWarp(o, warpSrc, w, h, lift, warpT);
       applyWarpShadeFix(o, lowY, lift, w);
       if(!(opts && opts.warpSharpen === false))

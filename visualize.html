@@ -666,7 +666,7 @@ const FREE_REGEN_MS = 60000;
 // stay the same module instance (shared face-detection cache). v35 = M9.0
 // jowl blending (alpha lobes over marionette/jowl shadows + prejowl notch-fill
 // warp kernels) (v34 = M8.2 shade reconciliation; v33 = M8.1 convex chin).
-const MASK_MODULE_VERSION = '55';
+const MASK_MODULE_VERSION = '56';
 
 /* M7: a case is one or more ANGLES, each with its own photo, QC result, job,
    and compositor. Treatment settings are shared across the case; the response
@@ -1875,7 +1875,7 @@ async function finishSlot(angleId, auth){
       const jowlTexOn = !/[?&]jowltex=off\b/i.test(location.search);
       // M9.7 A/B hook: ?jawdef=off disables the deterministic border light.
       const jawDefOn = !/[?&]jawdef=off\b/i.test(location.search);
-      const apply = await makeSculptraCompositor(beforeImg, aiImg, { scope:compScope, sex:state.sex, warp:warpOn, jowlTexRelease:jowlTexOn, jawDef:jawDefOn });
+      const apply = await makeSculptraCompositor(beforeImg, aiImg, { scope:compScope, sex:state.sex, warp:warpOn, jowlTexRelease:jowlTexOn, jawDef:jawDefOn, angleId });
       if(apply){
         sl.apply = apply;
         sl.resultDataUrl = apply(state.intensityPct / 100);
