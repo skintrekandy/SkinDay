@@ -117,10 +117,12 @@ const FILLER_CHIN_JAWLINE_MALE = {
             'The chin should be wider and squarer at the mentum -- a male chin is broad and squared, never tapered or pointed -- with crisp, clean definition along the mandibular border and a strong, continuous chin-to-jaw arc. ' +
             'Preserve the full jaw width and gonial angle: do not narrow or taper the lower face -- the male aesthetic goal is structural definition, not an oval or V-line silhouette. ' +
             'The border from chin to gonion should read as a single, clean, confident line with clear prejowl support. ' +
+            'At oblique angle: the chin projection reads as a squared, blunt chin tip advancing anteriorly, not a rounded or tapered tip; the near-side mandibular border is crisp and reads as a structural jawline; the chin tip should remain wide and squared even in three-quarter view. ' +
             'Where jowls or a prejowl hollow are present, fill the prejowl hollow so the chin-to-jaw line is smooth and continuous; the jowl itself is never enlarged. ' +
             'The change comes only from added chin volume and structural support; the cheeks, cheekbones, and mid-face are unchanged',
-  avoid: 'do not produce a female or androgynous chin shape -- no tapered, pointed, rounded, soft, or V-shaped chin; ' +
+  avoid: 'do not produce a female or androgynous chin shape -- no tapered, pointed, rounded, soft, or V-shaped chin at any angle; ' +
          'do not narrow or slim the jaw; do not produce a long, jutting, or protruding chin; ' +
+         'do not round the chin tip at oblique angle -- it must remain squared and blunt; ' +
          'do not slim, hollow, or carve the cheeks or cheekbones; ' +
          'do not create an artificial or "superhero" jawline; ' +
          'do not add a double chin and do not alter the neck below the new chin point; ' +
