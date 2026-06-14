@@ -7,13 +7,11 @@
 // background). gpt-image-1's edit endpoint edits only the transparent region, so
 // this physically prevents the global beautification leak.
 //
-// M10.1 (v51): jowl artifact fix. WARP_JOWL_SIGMA 0.085->0.115,
-// WARP_JOWL_LIFT 0.026->0.020. Wider sigma eliminates the hard tonal
-// discontinuity at the inferior jowl kernel boundary that was reading as
-// an artifact arc at gonial angles (oblique) and lower-face puffiness
-// (frontal). All oblique M10.1 geometry unchanged.
+// M10.1 (v52): frontal jowl kernel removed. Artifact diagnostic -- if frontal
+// result is clinically acceptable without jowl geometry, done. If not, shade
+// reconciliation (option 2) is next. Midface and temple kernels unchanged.
 //
-// M10.1 (v50): calibration pass + temple + pose threshold fix.
+// M10.1 (v51): jowl sigma widened 0.085->0.115, lift reduced 0.026->0.020.
 //
 // M10.1 (v49): lateral cut, anterior and superior raised.
 //
@@ -973,37 +971,33 @@ function buildLiftField(L, w, h, pose){
     });
 
   } else {
-    // Frontal branch: existing M6.2 calibrated kernels, untouched.
-    // M10 addition: temple convexity kernel (frontal only). Anchored at the
-    // temporal oval landmark, vector upward and slightly lateral. Restores
-    // the convex temple volume that deflation-and-descent removes frontally.
-    // Sigma wider than cheek to blend naturally with the hairline.
-    const SCULP_TEMPLE_UP  = 0.014; // fraction of faceH
-    const SCULP_TEMPLE_OUT = 0.008; // fraction of W (slight lateral, not dominant)
-    const SCULP_TEMPLE_SIG = 0.13;  // wider than midface, blends to hairline
+    // Frontal branch: midface re-drape and temple convexity kernels.
+    // v52: jowl re-drape kernel REMOVED from frontal. The kernel was creating
+    // a tonal discontinuity artifact at the inferior jowl boundary on frontal
+    // because the AI shadow and the warp displacement were operating on the same
+    // zone with contradictory assumptions. The midface and temple kernels are
+    // retained -- they do not cross a shadow boundary and are artifact-free.
+    // If the frontal jowl improvement reads as clinically insufficient without
+    // the kernel, shade reconciliation (option 2) is the next step.
+    const SCULP_TEMPLE_UP  = 0.014;
+    const SCULP_TEMPLE_OUT = 0.008;
+    const SCULP_TEMPLE_SIG = 0.13;
     for(const s of ["r","l"]){
-      const g=lm[GONION[s]], pj=lm[PREJOWL[s]], zy=lm[ZYGION[s]];
-      if(!g||!pj||!zy) continue;
+      const zy=lm[ZYGION[s]];
+      if(!zy) continue;
       const sgn=Math.sign(dot(sub(zy,p152),dirOut)) || (s==="r"?-1:1);
       const inw={ x:-sgn*dirOut.x, y:-sgn*dirOut.y };
       const outw={ x:sgn*dirOut.x, y:sgn*dirOut.y };
-      // Jowl re-drape: up + slightly inward, centered on the jowl pad.
-      const jowlC=add(lerp(g, pj, 0.45), mul(dirUp, 0.06*faceH));
-      const sigJ=WARP_JOWL_SIGMA*W;
-      kernels.push({ ax:jowlC.x, ay:jowlC.y, bx:jowlC.x, by:jowlC.y, twoSig:2*sigJ*sigJ,
-        vx: dirUp.x*WARP_JOWL_LIFT*faceH + inw.x*WARP_JOWL_IN*W,
-        vy: dirUp.y*WARP_JOWL_LIFT*faceH + inw.y*WARP_JOWL_IN*W, capsule:false });
       // Midface/submalar re-drape: straight up, centered below the cheek apex.
       const midC=add(add(zy, mul(dirUp, -0.10*faceH)), mul(inw, 0.02*W));
       const sigM=WARP_MIDFACE_SIGMA*W;
       kernels.push({ ax:midC.x, ay:midC.y, bx:midC.x, by:midC.y, twoSig:2*sigM*sigM,
         vx: dirUp.x*WARP_MIDFACE_LIFT*faceH,
         vy: dirUp.y*WARP_MIDFACE_LIFT*faceH, capsule:false });
-      // Temple convexity kernel (M10): upward + slight lateral at the temporal
-      // oval, restoring the convex temple volume visible frontally.
+      // Temple convexity kernel: upward + slight lateral at the temporal oval.
       const to=lm[TEMPLE_OVAL[s]];
       if(to){
-        const tempC=add(to, mul(inw, 0.01*W)); // slight medial offset from the hairline
+        const tempC=add(to, mul(inw, 0.01*W));
         const sigT=SCULP_TEMPLE_SIG*W;
         kernels.push({ ax:tempC.x, ay:tempC.y, bx:tempC.x, by:tempC.y, twoSig:2*sigT*sigT,
           vx: dirUp.x*SCULP_TEMPLE_UP*faceH + outw.x*SCULP_TEMPLE_OUT*W,
