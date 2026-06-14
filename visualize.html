@@ -272,6 +272,53 @@
       }
       #msbActionBtn:disabled { background: var(--dim); opacity: .65; cursor: not-allowed; }
       #msbActionBtn.btn-regen { background: var(--deep); color: var(--cream); }
+      /* Download button: primary CTA in post-output phase */
+      #msbDownloadBtn {
+        display: none;
+        width: 100%;
+        padding: 11px;
+        background: var(--rose);
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        font-family: 'DM Sans', sans-serif;
+        font-size: .86rem;
+        font-weight: 500;
+        cursor: pointer;
+        text-align: center;
+        margin-top: 2px;
+      }
+      #msbRegenLink {
+        display: none;
+        text-align: center;
+        font-size: .78rem;
+        color: var(--dim);
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 4px 0 0;
+        font-family: 'DM Sans', sans-serif;
+        text-decoration: underline;
+      }
+    }
+    /* Landscape phone: compact nav + single-row bar */
+    @media(pointer: coarse) and (orientation: landscape){
+      body.slider-bar-active .page { padding-bottom: 72px; }
+      /* Nav collapses to 44px */
+      nav { height: 44px; }
+      /* Bar goes single row: label + slider + download inline */
+      #mobileSliderBar {
+        flex-direction: row;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 16px;
+        flex-wrap: nowrap;
+      }
+      .msb-row { flex: 1; min-width: 0; gap: 6px; }
+      .msb-ends { display: none; }
+      #mobileSlider { margin-top: 0; }
+      #msbActionBtn, #msbDownloadBtn { width: auto; flex-shrink: 0; padding: 8px 14px; margin-top: 0; font-size: .8rem; }
+      #msbRegenLink { padding: 0; flex-shrink: 0; font-size: .75rem; }
     }
 
     /* ── Larger touch target for all range thumbs on touch screens ── */
@@ -605,6 +652,8 @@
     <span id="msbMin">Conservative</span><span id="msbMax">Strong</span>
   </div>
   <button id="msbActionBtn" type="button" class="bar-hidden" disabled>Generate simulated preview</button>
+  <button id="msbDownloadBtn" type="button">Download</button>
+  <button id="msbRegenLink" type="button">Re-generate</button>
 </div>
 </div><!-- /#app -->
 
@@ -617,7 +666,7 @@ const FREE_REGEN_MS = 60000;
 // stay the same module instance (shared face-detection cache). v35 = M9.0
 // jowl blending (alpha lobes over marionette/jowl shadows + prejowl notch-fill
 // warp kernels) (v34 = M8.2 shade reconciliation; v33 = M8.1 convex chin).
-const MASK_MODULE_VERSION = '50';
+const MASK_MODULE_VERSION = '51';
 
 /* M7: a case is one or more ANGLES, each with its own photo, QC result, job,
    and compositor. Treatment settings are shared across the case; the response
@@ -1414,15 +1463,16 @@ function updateIntensityUI(){
   // ── Bar visibility: show on any touch device regardless of orientation
   function isMobile(){ return window.matchMedia('(pointer: coarse)').matches; }
 
-  // Action button: mirrors generate (pre-output) or re-generate (post-output)
-  // The bar detects which phase the UI is in and wires the button accordingly.
+  const msbDownloadBtn = document.getElementById('msbDownloadBtn');
+  const msbRegenLink   = document.getElementById('msbRegenLink');
+
+  // Action button: mirrors generate (pre-output) or download+regen (post-output)
   function updateBarState(){
     if(!isMobile()){ bar.classList.add('bar-hidden'); document.body.classList.remove('slider-bar-active'); return; }
     const outputVisible = document.getElementById('outputSection').classList.contains('visible');
     const sliderVisible = document.getElementById('intensityWrap').style.display !== 'none';
 
     if(outputVisible){
-      // Post-output phase: show slider + re-generate button
       bar.classList.remove('bar-hidden');
       document.body.classList.add('slider-bar-active');
       syncMobileDisplay();
@@ -1433,26 +1483,33 @@ function updateIntensityUI(){
         mslider.style.display = 'none';
         msbMin.parentElement.style.display = 'none';
       }
+      // Post-output: Download is primary, Re-generate is secondary text link
+      msbBtn.classList.add('bar-hidden');
+      msbBtn.style.display = 'none';
+      // Wire download button to the existing desktop download button
+      const dlBtnEl = document.getElementById('downloadBtn') || document.querySelector('[data-action="download"]');
+      msbDownloadBtn.style.display = 'block';
+      msbDownloadBtn.onclick = () => { if(dlBtnEl) dlBtnEl.click(); else triggerDownload(); };
+      // Re-generate as secondary link
       const regenBtnEl = document.getElementById('regenBtn');
       if(regenBtnEl && !regenBtnEl.disabled){
-        msbBtn.classList.remove('bar-hidden');
-        msbBtn.disabled = false;
-        msbBtn.textContent = 'Re-generate';
-        msbBtn.className = 'btn-regen';
-        msbBtn.onclick = () => document.getElementById('regenBtn').click();
+        msbRegenLink.style.display = 'block';
+        msbRegenLink.onclick = () => regenBtnEl.click();
       } else {
-        msbBtn.classList.add('bar-hidden');
+        msbRegenLink.style.display = 'none';
       }
     } else {
-      // Pre-output (setup) phase: show generate button only, no slider
       bar.classList.remove('bar-hidden');
       document.body.classList.add('slider-bar-active');
       mslider.style.display = 'none';
       msbMin.parentElement.style.display = 'none';
       msbLabel.style.display = 'none';
       msbValue.style.display = 'none';
+      msbDownloadBtn.style.display = 'none';
+      msbRegenLink.style.display = 'none';
       const genBtnEl = document.getElementById('generateBtn');
       msbBtn.classList.remove('bar-hidden');
+      msbBtn.style.display = 'block';
       msbBtn.disabled = genBtnEl ? genBtnEl.disabled : true;
       msbBtn.textContent = genBtnEl ? genBtnEl.textContent : 'Generate simulated preview';
       msbBtn.className = '';

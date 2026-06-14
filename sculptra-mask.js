@@ -7,10 +7,13 @@
 // background). gpt-image-1's edit endpoint edits only the transparent region, so
 // this physically prevents the global beautification leak.
 //
+// M10.1 (v51): jowl artifact fix. WARP_JOWL_SIGMA 0.085->0.115,
+// WARP_JOWL_LIFT 0.026->0.020. Wider sigma eliminates the hard tonal
+// discontinuity at the inferior jowl kernel boundary that was reading as
+// an artifact arc at gonial angles (oblique) and lower-face puffiness
+// (frontal). All oblique M10.1 geometry unchanged.
+//
 // M10.1 (v50): calibration pass + temple + pose threshold fix.
-//   SCULP_ZYGOMA_UP 0.014->0.018, SCULP_MIDFACE_ANT 0.026->0.034.
-//   Frontal temple convexity kernel added to buildLiftField frontal branch.
-//   VIEW_TQ_MAX_DEG raised 50->60 (51-degree photos no longer rejected).
 //
 // M10.1 (v49): lateral cut, anterior and superior raised.
 //
@@ -805,9 +808,15 @@ function buildTextureDelta(b,a0,w,h,W,opts){
 // re-drape) that the M6.1 values, further attenuated by the old 0.7 slider cap,
 // could not reach. The slider now spans the full 0..1, so these are the true
 // full-strength figures.
-const WARP_JOWL_LIFT     = 0.026;
+// v51 jowl fix: WARP_JOWL_SIGMA 0.085->0.115 (wider kernel reduces hard tonal
+// edge at inferior boundary), WARP_JOWL_LIFT 0.026->0.020 (gentler magnitude
+// so the re-drape reads as a natural lift rather than a puffed lower face).
+// Root cause: tight sigma created a sharp pixel-displacement boundary at the
+// jowl-shadow edge; AI shading across that boundary reads as an artifact arc
+// at both frontal and oblique gonial angles.
+const WARP_JOWL_LIFT     = 0.020; // v51: 0.026 -> 0.020
 const WARP_JOWL_IN       = 0.011;
-const WARP_JOWL_SIGMA    = 0.085;
+const WARP_JOWL_SIGMA    = 0.115; // v51: 0.085 -> 0.115
 const WARP_MIDFACE_LIFT  = 0.017;
 const WARP_MIDFACE_SIGMA = 0.12;
 const WARP_EDGE_FADE     = 0.06;
