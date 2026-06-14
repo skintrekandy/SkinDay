@@ -7,6 +7,16 @@
 // background). gpt-image-1's edit endpoint edits only the transparent region, so
 // this physically prevents the global beautification leak.
 //
+// M11.1 (v58): OBLIQUE JAWLINE SHADOW RECONCILIATION.
+// Re-enables applyJawDefinition shadow step at oblique only, with
+// oblique-specific constants (JAWDEF_DARK_OBLIQUE). The frontal retirement
+// (v44: drawn-stroke artifact) stands; at 45 degrees the border is viewed
+// edge-on so the shadow reads as genuine underside shadow, not a painted line.
+// Also raises CHINW_WARP_SAT_OBLIQUE from 0.45 to 0.50: with shadow now
+// anchoring the junction, the penumbra failure is partly a shading problem
+// rather than a pure silhouette physics limit. One-constant reversal if it
+// fails: set CHINW_WARP_SAT_OBLIQUE back to 0.45 and JAWDEF_DARK_OBLIQUE to 0.
+//
 // M10.4 (v57): OVERFILL COMPOSITOR PATH.
 // opts.overfill = true disables the outline gate (buildOutlineGate) and the
 // deterministic warp in both compositeSculptra and makeSculptraCompositor, so
@@ -1305,6 +1315,15 @@ function applyWarpSharpen(o, w, h, f, t, Wpx){
 // below; zero JAWDEF_BRIGHT and JAWDEF_DARK to disable the pass entirely.
 const JAWDEF_BRIGHT  = 0;     // v44: retired at consultation levels (see header); was 9
 const JAWDEF_DARK    = 0;     // v44: retired at consultation levels (see header); was 10
+// M11.1 (v58): oblique-specific shadow step. At 45 degrees the border is
+// viewed edge-on; the shadow reads as genuine underside shadow (not a drawn
+// line), so the frontal retirement does not apply here. JAWDEF_BRIGHT_OBLIQUE
+// stays 0 (brightening above the border still reads as a stroke at oblique);
+// only the shadow below the new border is enabled. Levers: set
+// JAWDEF_DARK_OBLIQUE to 0 to disable oblique shadow entirely (one-constant
+// reversal), or raise toward 18 for a more defined step.
+const JAWDEF_DARK_OBLIQUE  = 10;  // M11.1: shadow step below the displaced oblique border
+const JAWDEF_BRIGHT_OBLIQUE = 0;  // stays 0: brightening above border reads as stroke even at oblique
 const JAWDEF_W_IN    = 0.018; // bright band width above the border, fraction of W
 const JAWDEF_W_OUT   = 0.014; // shadow band width below the border, fraction of W (v42: 0.028 -> 0.014,
                               // plus a hard 2.5 sigma cutoff so the step never smears onto neck/clothing)
@@ -1320,8 +1339,12 @@ const JAWDEF_LIGHT_HI = 95;
 const JAWDEF_LIGHT_IN = 2.2;  // sampling point: this many bright-sigmas inside the border
 const JAWDEF_IDX     = [397,365,379,378,400,377,152,148,176,149,150,136,172]; // gonion -> chin -> gonion
 
-function applyJawDefinition(o, w, h, L, f, t, Wpx){
-  if((JAWDEF_BRIGHT<=0 && JAWDEF_DARK<=0) || !f || !Wpx) return;
+function applyJawDefinition(o, w, h, L, f, t, Wpx, isOblique){
+  // M11.1: at oblique, use oblique-specific constants (shadow only, no brightening).
+  // At frontal both are 0 (retired v44); early-exit if both are zero.
+  const dark   = isOblique ? JAWDEF_DARK_OBLIQUE   : JAWDEF_DARK;
+  const bright = isOblique ? JAWDEF_BRIGHT_OBLIQUE : JAWDEF_BRIGHT;
+  if((bright<=0 && dark<=0) || !f || !Wpx) return;
   const s=Math.max(0, Math.min(1, t));
   if(s<=0) return;
   const lm=L.map(p=>({x:p.x*w, y:p.y*h}));
@@ -1394,12 +1417,12 @@ function applyJawDefinition(o, w, h, L, f, t, Wpx){
       let addv;
       if(sd>=0){
         if(best > cutB) continue; // v42: the step hugs the border, never the neck
-        addv = -JAWDEF_DARK*Math.exp(-best/twoSigB)*s*light;
+        addv = -dark*Math.exp(-best/twoSigB)*s*light;
       } else {
         const Y=0.299*o[p4]+0.587*o[p4+1]+0.114*o[p4+2];
         const subj=smoothstep(JAWDEF_GATE_LO, JAWDEF_GATE_HI, Y);
         if(subj<=0) continue;
-        addv = JAWDEF_BRIGHT*Math.exp(-best/twoSigA)*s*subj*light;
+        addv = bright*Math.exp(-best/twoSigA)*s*subj*light;
       }
       if(addv===0) continue;
       o[p4]+=addv; o[p4+1]+=addv; o[p4+2]+=addv;  // clamped by the typed array
@@ -1469,7 +1492,9 @@ const GONW_DEF                 = 0.007; // posterior-inferior gonial move, fract
 // M9.10 (v45): the chin_jaw warp's intensity ceiling. Silhouette amplitude
 // saturates here while AI shading continues to scale; 1.0 restores v44.
 const CHINW_WARP_SAT           = 0.60; // M10.3: 0.45 -> 0.60, opens Enhanced band (70-79)
-const CHINW_WARP_SAT_OBLIQUE   = 0.45; // M10.3 v56: oblique holds at Balanced (chin tip penumbra)
+const CHINW_WARP_SAT_OBLIQUE   = 0.50; // M11.1 (v58): 0.45 -> 0.50; shadow reconciliation
+                                       // anchors the junction so the extra warp amplitude passes.
+                                       // One-constant reversal: set back to 0.45 if penumbra fails.
 
 function buildChinProjectionField(L, w, h, pose, sex){
   const lm = L.map(p=>({x:p.x*w, y:p.y*h}));
@@ -2420,7 +2445,7 @@ export async function compositeSculptra(beforeImg, aiImg, opts){
     if(!(opts && opts.warpSharpen === false))
       applyWarpSharpen(a, w, h, lift, warpT, Wpx); // M9.2: restore pore-scale crispness in the moved band
     if(!(opts && opts.jawDef === false))
-      applyJawDefinition(a, w, h, landmarks, lift, warpT, Wpx); // M9.6: structural border light
+      applyJawDefinition(a, w, h, landmarks, lift, warpT, Wpx, isOblique45); // M11.1: angle-aware shadow
   }
   cx.putImageData(ai, 0, 0);
   return c.toDataURL("image/jpeg", 0.92);
@@ -2537,7 +2562,7 @@ export async function makeSculptraCompositor(beforeImg, aiImg, opts){
       if(!(opts && opts.warpSharpen === false))
         applyWarpSharpen(o, w, h, lift, warpT, sharpW); // M9.2: restore pore-scale crispness in the moved band
       if(!(opts && opts.jawDef === false))
-        applyJawDefinition(o, w, h, landmarks, lift, warpT, sharpW); // M9.6: structural border light
+        applyJawDefinition(o, w, h, landmarks, lift, warpT, sharpW, isOblique45); // M11.1: angle-aware shadow
     }
     cx.putImageData(out, 0, 0);
     return c.toDataURL("image/jpeg", 0.92);
