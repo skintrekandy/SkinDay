@@ -11,10 +11,12 @@ const SUPABASE_URL = process.env.SUPABASE_URL || '';
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const STRIPE_KEY = process.env.STRIPE_SECRET_KEY || '';
 
+// Must mirror visualize-config.js. `cad` is the charged (launch) price;
+// `regularCad` is display-only and never charged.
 const DEFAULT_PACKS = [
-  { id: 'starter', label: 'Starter', credits: 20,  cad: 5900  },
-  { id: 'clinic',  label: 'Clinic',  credits: 60,  cad: 14900 },
-  { id: 'studio',  label: 'Studio',  credits: 150, cad: 32900 }
+  { id: 'starter', label: 'Starter', credits: 20,  cad: 2900,  regularCad: 5900  },
+  { id: 'clinic',  label: 'Clinic',  credits: 60,  cad: 6900,  regularCad: 14900 },
+  { id: 'studio',  label: 'Studio',  credits: 150, cad: 13900, regularCad: 32900 }
 ];
 
 function packs() {
@@ -58,8 +60,11 @@ exports.handler = async (event) => {
   const pack = packs().find(p => p.id === packId);
   if (!pack) return json(400, { error: 'Unknown credit pack.' });
 
-  const base = process.env.URL || process.env.DEPLOY_PRIME_URL ||
-               ('https://' + (event.headers.host || event.headers.Host));
+  // The request's own host is the only context-correct base: Netlify's URL
+  // env var is ALWAYS the production URL, even on branch deploys, which sent
+  // checkout returns from staging back to skinday.ca. Host header first.
+  const base = 'https://' + (event.headers.host || event.headers.Host ||
+               (process.env.DEPLOY_PRIME_URL || process.env.URL || '').replace(/^https?:\/\//, ''));
 
   const params = new URLSearchParams();
   params.append('mode', 'payment');

@@ -13,10 +13,13 @@
 // [{"id":"starter","label":"Starter","credits":20,"cad":5900}, ...]
 // (cad is in cents).
 
+// cad = what is charged today (launch price). regularCad = the post-beta list
+// price, shown struck through in the buy modal as forward-looking framing
+// ("regular after beta"), never as a fake former price.
 const DEFAULT_PACKS = [
-  { id: 'starter', label: 'Starter', credits: 20,  cad: 5900  },
-  { id: 'clinic',  label: 'Clinic',  credits: 60,  cad: 14900 },
-  { id: 'studio',  label: 'Studio',  credits: 150, cad: 32900 }
+  { id: 'starter', label: 'Starter', credits: 20,  cad: 2900,  regularCad: 5900  },
+  { id: 'clinic',  label: 'Clinic',  credits: 60,  cad: 6900,  regularCad: 14900 },
+  { id: 'studio',  label: 'Studio',  credits: 150, cad: 13900, regularCad: 32900 }
 ];
 
 function packs() {
@@ -41,6 +44,10 @@ exports.handler = async () => {
         supabaseUrl,
         supabaseAnonKey,
         packs: packs(),
+        costs: {
+          filler:  parseInt(process.env.VISUALIZE_COST_FILLER  || '1', 10) || 1,
+          biostim: parseInt(process.env.VISUALIZE_COST_BIOSTIM || '2', 10) || 2
+        },
         signupGrant: parseInt(process.env.VISUALIZE_SIGNUP_GRANT || '6', 10) || 0
       }
     : { authDisabled: true };
