@@ -595,7 +595,7 @@
 <div class="guide-modal hidden" id="buyModal">
   <div class="guide-card">
     <h2>Add credits</h2>
-    <span class="launch-badge">Launch pricing for founding clinics · regular pricing applies after beta</span>
+    <span class="launch-badge">Launch pricing for beta</span>
     <p id="buyIntro">Credits are used only when a new preview is generated. Slider adjustments, exports, and re-generates within the free window cost nothing, and a failed or blocked generation is refunded automatically.</p>
     <div id="packList"></div>
     <p class="auth-hint" style="margin-top:12px;color:var(--muted);">Payments are processed by Stripe in CAD. Credits land on your account the moment payment completes.</p>
@@ -1060,7 +1060,9 @@ function closeBuyModal(){ document.getElementById('buyModal').classList.add('hid
 document.getElementById('buyBtn').addEventListener('click', openBuyModal);
 document.getElementById('navCredits').addEventListener('click', openBuyModal);
 const navAccountBtn = document.getElementById('navAccountBtn');
-if(navAccountBtn) navAccountBtn.addEventListener('click', openBuyModal);
+if(navAccountBtn) navAccountBtn.addEventListener('click', () => {
+  window.location.href = '/account.html';
+});
 document.getElementById('buyCloseBtn').addEventListener('click', closeBuyModal);
 document.getElementById('creditsInfoBtn').addEventListener('click', () => document.getElementById('creditsInfoModal').classList.remove('hidden'));
 document.getElementById('creditsInfoCloseBtn').addEventListener('click', () => document.getElementById('creditsInfoModal').classList.add('hidden'));
