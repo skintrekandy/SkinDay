@@ -417,8 +417,8 @@
     <div class="card">
       <div class="step-num">Step 1 · What do you want to visualize?</div>
       <div class="type-toggle quad" id="typeToggle">
-        <button class="type-btn active" data-type="filler" type="button"><strong>HA Fillers</strong></button>
-        <button class="type-btn" data-type="biostim" type="button"><strong>Biostimulation</strong></button>
+        <button class="type-btn soon" data-type="filler" type="button" disabled><strong>HA Fillers</strong><em class="soon-tag">Coming soon</em></button>
+        <button class="type-btn active" data-type="biostim" type="button"><strong>Biostimulation</strong></button>
         <button class="type-btn soon" data-type="neurotoxin" type="button" disabled><strong>Neurotoxin</strong><em class="soon-tag">Coming soon</em></button>
         <button class="type-btn soon" data-type="laser" type="button" disabled><strong>Skin &amp; Laser</strong><em class="soon-tag">Coming soon</em></button>
       </div>
@@ -429,7 +429,7 @@
       <div class="step-num">Step 2 · Treatment details</div>
 
       <!-- FILLER controls -->
-      <div id="fillerControls">
+      <div id="fillerControls" class="hidden">
         <div class="field">
           <label>Areas (select one or more)</label>
           <div class="area-grid" id="areaGrid">
@@ -455,7 +455,7 @@
       </div>
 
       <!-- BIOSTIM controls -->
-      <div id="biostimControls" class="hidden">
+      <div id="biostimControls">
         <div class="field">
           <label>Product</label>
           <div class="pill-grid" id="biostimProduct">
@@ -498,6 +498,7 @@
       </label>
 
       <div class="disclaimer"><span>⚠️</span><span>Every export is labelled and carries a permanent consultation-only disclaimer. Outputs are simulations for communication, never a guaranteed result or medical prediction.</span></div>
+      <p style="font-size:.72rem;color:var(--muted);margin:8px 0 0;line-height:1.5;">Early access · We're continuously improving results. Quality varies by photo — see the photo guide for best outcomes.</p>
 
       <div class="status"><div class="dot" id="dot"></div><span id="statusText">Choose a treatment, then add the patient photos</span></div>
 
@@ -781,7 +782,7 @@ function makeSlot(){
 }
 
 const state = {
-  type:'filler', areas:['chin_jawline'], intensity:'enhanced', sex:'female',
+  type:'biostim', areas:['chin_jawline'], intensity:'enhanced', sex:'female',
   product:'sculptra', projection:'optimistic', timeline:'6',
   blackBg:true, lastGenAt:0, intensityPct:70,
   selectedAngles:['frontal'], activeAngle:'frontal',
@@ -2359,9 +2360,8 @@ function simKicker(angleId){
       // educational so it can never read as the recommended plan.
       const li = levelInfo(state.intensityPct || 70);
       parts.push(li.over ? 'Overfilled · shown for education' : li.name);
-    } else {
-      parts.push(strengthLabel(state.intensityPct || 70)); // Early response / 6 months / Full response
     }
+    // Biostim: timeline already pushed above; strengthLabel would duplicate it.
   }
   return parts.join(' · ');
 }
