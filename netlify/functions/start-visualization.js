@@ -53,8 +53,11 @@ const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const SIGNUP_GRANT = parseInt(process.env.VISUALIZE_SIGNUP_GRANT || '6', 10) || 0;
 const REGEN_WINDOW_MS = 90 * 1000; // server window; the client advertises 60s
 
+// Per-generation costs, env-tunable so pricing changes never need code edits.
+const COST_FILLER  = parseInt(process.env.VISUALIZE_COST_FILLER  || '1', 10) || 1;
+const COST_BIOSTIM = parseInt(process.env.VISUALIZE_COST_BIOSTIM || '2', 10) || 2;
 function creditCost(fields) {
-  return (fields && fields.type === 'biostim') ? 2 : 1;
+  return (fields && fields.type === 'biostim') ? COST_BIOSTIM : COST_FILLER;
 }
 
 async function verifyUser(event) {
@@ -188,8 +191,11 @@ exports.handler = async (event) => {
     // Fire the background worker. It re-reads the job from Blobs, so we send
     // only the id (background-function request bodies are capped at 256KB,
     // which the photo would exceed).
-    const base = process.env.URL || process.env.DEPLOY_PRIME_URL ||
-                 ('https://' + (event.headers.host || event.headers.Host));
+    // Host header first: Netlify's URL env var is ALWAYS the production URL,
+    // even on branch deploys, which made staging trigger PRODUCTION's worker
+    // (whose context lacks the Supabase vars, silently disabling refunds).
+    const base = 'https://' + (event.headers.host || event.headers.Host ||
+                 (process.env.DEPLOY_PRIME_URL || process.env.URL || '').replace(/^https?:\/\//, ''));
     // M8: the internal trigger authenticates with the server's own beta key
     // (account users have no key to forward; the server trusts itself).
     const trigger = await fetch(base + '/.netlify/functions/generate-visualization-background', {

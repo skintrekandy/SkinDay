@@ -87,21 +87,83 @@ const FILLER_AREAS = {
 // PRIMARY frontal change is vertical chin elongation (lengthening the lower
 // third), which is what chin filler reads as from the front; earlier wording
 // forbade lengthening and so produced almost no visible frontal change.
-const FILLER_CHIN_JAWLINE = {
+// M11.1: split into male and female variants. The previous single prompt buried
+// sex guidance in a subordinate clause; the model defaulted to female geometry
+// (shorter, tapered, rounded chin) on male faces. Male chin filler has a
+// fundamentally different aesthetic target: square mentum, preserved jaw width,
+// taller and more projected chin, crisper border -- not a tapered V-line.
+const FILLER_CHIN_JAWLINE_FEMALE = {
   expected: 'a clearly restructured, better-balanced and more defined lower third, treating the chin and jawline as one unit. ' +
             'The main change, clearly visible from the front, is a confident vertical lengthening and forward projection of the chin: ' +
             'bring the chin point clearly lower and forward so the lower third looks longer, stronger, and better balanced and the face reads distinctly more oval and defined, ' +
-            'with clean, crisp definition along the mandibular border and clear prejowl support so the chin-to-jaw line is smooth and continuous. ' +
-            'As the chin lengthens and projects, the soft tissue of the lower face follows it, so the lateral lower-face contour (below the cheekbone, along the jowl and jaw) tapers inward and the jowl lifts and reduces, so the lower third reads visibly more refined, defined, and sculpted, not just longer. ' +
-            'For a female face let this inward taper and refinement read clearly (a softer, more tapered, more elegant lower face); for a male face keep the jaw width and strength and let the change come from a longer, stronger, more projected chin and a crisper, cleaner jawline. ' +
+            'with clean definition along the mandibular border and clear prejowl support so the chin-to-jaw line is smooth and continuous. ' +
+            'Where jowls or a prejowl hollow are present, fill the prejowl hollow and visibly soften the jowl shadow so it blends into a smooth, continuous jawline; the jowl itself is never enlarged. ' +
+            'As the chin lengthens and projects, the soft tissue of the lower face follows it so the lateral lower-face contour tapers inward and the lower third reads more refined, elegant, and sculpted. ' +
+            'Let the inward taper and softening read clearly: a softer, more tapered, more elegant lower face with a refined oval silhouette. ' +
             'The mid-cheek width and cheekbones are unchanged; only the lower face follows the chin. ' +
             'The change comes only from added chin volume and structural support',
   avoid: 'do not over-lengthen into a long, narrow, pointed, jutting, or witch-like chin, and keep the chin width natural; ' +
-         'do not create a hard, angular, or "superhero" jawline; ' +
+         'do not create a hard, angular, or square jawline; ' +
          'do not slim, hollow, or carve the cheeks or cheekbones to fake jaw definition; ' +
-         'a clear but natural inward taper and refinement of the lower face as the chin lengthens is expected and good, but do not over-narrow or carve the lower face into a hard, artificial, sharply pointed V-line, and do not widen the lower face; ' +
+         'a clear but natural inward taper and refinement of the lower face as the chin lengthens is expected and good, but do not over-narrow or carve the lower face into a hard, sharply pointed V-line, and do not widen the lower face; ' +
          'do not add a double chin and do not alter the neck below the new chin point; ' +
-         'keep the change proportionate to the patient\'s bone structure and sex (a male chin can be longer, squarer, and more projected with the jaw width preserved; a female chin softer, more tapered, with the lower face allowed to taper), and keep it unmistakably the same person'
+         'keep it unmistakably the same person'
+};
+
+// M10.5 Track 2: hard negative gate front-loaded as the absolute first sentence,
+// before any positive description. Mirrors the SCULPTRA_NLF_CONSTRAINT strategy:
+// the model weights the first lines most, and the previous all-positive male prompt
+// was losing to the model's aesthetic bias toward tapered, refined lower faces
+// (the female ideal). The negative gate acts as a hard prohibition BEFORE the
+// positive description can be read through that prior. Also added: a pixel-geometry
+// reference anchor specifying that chin width in the output must not be less than
+// chin width in the original photograph -- an empirical anchor, not a style word.
+const FILLER_CHIN_JAWLINE_MALE = {
+  expected: 'HARD CONSTRAINT -- MALE CHIN SHAPE: The result MUST NOT taper to a point, narrow into a V-shape, or read as feminine, soft, delicate, or androgynous in any way. If the simulated chin reads as a female chin at any angle, the result is wrong regardless of everything else. The chin tip in the simulated image must be at least as wide as the chin tip in the original photograph -- do not reduce chin width, do not reduce jaw width. ' +
+            'With that constraint established: a clearly restructured, stronger, and better-balanced lower third on a male face, treating the chin and jawline as one unit. ' +
+            'The main change, clearly visible from the front, is a confident forward projection and vertical strengthening of the chin: ' +
+            'bring the chin point forward and slightly lower so the lower third reads stronger, more defined, and better balanced with the upper face. ' +
+            'The chin should be wider and squarer at the mentum -- a male chin is broad and squared, never tapered or pointed -- with crisp, clean definition along the mandibular border and a strong, continuous chin-to-jaw arc. ' +
+            'Preserve the full jaw width and gonial angle: do not narrow or taper the lower face -- the male aesthetic goal is structural definition, not an oval or V-line silhouette. ' +
+            'The border from chin to gonion should read as a single, clean, confident line with clear prejowl support. ' +
+            'At oblique angle: the chin projection reads as a squared, blunt chin tip advancing anteriorly, not a rounded or tapered tip; the near-side mandibular border is crisp and reads as a structural jawline; the chin tip should remain wide and squared even in three-quarter view. ' +
+            'Where jowls or a prejowl hollow are present, fill the prejowl hollow so the chin-to-jaw line is smooth and continuous; the jowl itself is never enlarged. ' +
+            'The change comes only from added chin volume and structural support; the cheeks, cheekbones, and mid-face are unchanged',
+  avoid: 'do not produce a female or androgynous chin shape -- no tapered, pointed, rounded, soft, or V-shaped chin at any angle; ' +
+         'do not narrow or slim the jaw; do not produce a long, jutting, or protruding chin; ' +
+         'do not round the chin tip at oblique angle -- it must remain squared and blunt; ' +
+         'do not slim, hollow, or carve the cheeks or cheekbones; ' +
+         'do not create an artificial or "superhero" jawline; ' +
+         'do not add a double chin and do not alter the neck below the new chin point; ' +
+         'preserve the patient\'s ethnicity, facial hair, and overall identity; keep it unmistakably the same person'
+};
+
+// Legacy alias used by the overfill path (female default)
+const FILLER_CHIN_JAWLINE = FILLER_CHIN_JAWLINE_FEMALE;
+
+// ---- Filler: overfilled education anchor (M10.4) --------------------------
+// Deliberately overcorrected lower-face result, fired lazily when the slider
+// first enters the Overfilled zone (>= 80). The goal is to show the patient
+// why more is not better: excess chin projection, a shelf-like jawline, an
+// overdone look that no experienced injector would produce. The compositor
+// path for this anchor is AI-heavy (outline gate loosened so the model may
+// extend the silhouette; chroma lock and texture restore are retained so
+// identity and skin character survive, but the border is not guarded).
+// Deterministic warp is NOT applied; the AI carries the overcorrection.
+const FILLER_CHIN_JAWLINE_OVERFILLED = {
+  core: 'Simulate an overfilled hyaluronic acid result in the chin and jawline for patient education. ' +
+        'This is INTENTIONALLY overcorrected to show why excessive filler is problematic. ' +
+        'Show: a chin that projects too far forward and hangs lower than natural anatomy allows, reading as augmented and disproportionate; ' +
+        'a jawline that reads as a hard, artificial shelf rather than a natural mandibular border, with the border too sharply defined and too linearly continuous from chin to gonion; ' +
+        'prejowl overfill that smooths the jowl transition too aggressively so the lower face reads as swollen and unnatural; ' +
+        'an overall lower third that reads as too long, too projected, too defined, and visibly filled rather than natural. ' +
+        'The overcorrection should be obvious to a patient in a consultation setting and clearly read as "too much," but must remain anatomically coherent (no cartoon distortion, no grotesque result): ' +
+        'the kind of overfilled outcome an inexperienced or aggressive injector might produce, not a caricature.',
+  avoid: 'do not produce a natural or tasteful result; the point is that this looks overfilled and excessive. ' +
+         'Do not change the eyes, brows, nose, skin texture, skin tone, hairstyle, expression, lighting, or background. ' +
+         'Preserve identity, ethnicity, and apparent age; the result must be unmistakably the same person, just with too much filler in the lower face. ' +
+         'Do not add text, labels, watermarks, or cartoon distortion. ' +
+         'The overcorrection is confined to the chin, jawline, and lower-face contour: cheeks, midface, and upper face are unchanged.'
 };
 
 // ---- Filler: goal modifiers (v1) ------------------------------------------
@@ -151,7 +213,7 @@ const BIOSTIM = {
            'Age: do not reduce apparent age; forehead lines, crow\'s feet, perioral lines, and the neck stay unchanged unless diffuse support naturally softens a fold. ' +
            'Symmetry: do not correct facial symmetry beyond the volume effect. ' +
            'Placement and shape: the support is LATERAL (lateral temple and lateral cheek fat pads) and produces an upward, outward lift, not central fill. Do not add volume to the central midface, anterior cheek, under-eye, or tear trough. Round or full front: a face that reads round, full, or heavy from the front WITH signs of descent (an older face, flattened temples and lateral cheeks, a jowl, volume slid downward and centrally) is showing deflation and descent, not excess volume, so it is a strong candidate for more lateral lift, not a reason to hold back; a young or well-supported full face with no jowl and no lateral hollowing is youthful or constitutional fullness, not descent, and must stay near baseline (do not narrow, lift, or slim it); restore lateral support so the descended central and lower-face fullness is drawn up and outward and the front becomes narrower, more lifted, and more defined. That central and lower-face fullness must DECREASE only as a consequence of the lateral lift, never from actively deflating, hollowing, slimming, carving, or skin-tightening the front. Never read a full face as needing central volume: adding central volume is the exact opposite of this treatment. Do not add filler-like or localized volume; the jowl should subtly REDUCE and the jawline read cleaner and smoother as a result of the lateral lift, but do not carve a sharp, angular, V-shaped, or superhero jawline, and never leave the jowl unchanged or make it heavier or more pronounced. Do not enlarge or round the cheeks or change facial shape, do not lift, pull, or tighten like a facelift. Never make the front of the face look fuller, rounder, swollen, or puffy: support should read as firmer and lifted, and if the choice is between too much and too little, choose less. Soften folds only partially and never fully erase nasolabial folds, marionette lines, or under-eye hollows. ' +
-           'Projection scaling: the ONLY thing that changes between Conservative, Expected, and Optimistic is the amount of diffuse subcutaneous soft-tissue support in the temples, midface, and prejowl; more support means more restored volume and softer folds, nothing else. Do not increase brightness, smoothness, symmetry, eye openness, brow definition, lip color, grooming, or apparent youth at any level. At 12 months or the Optimistic projection the extra strength shows as more support only, and must NOT bring back any skin smoothing, brightening, pigment or melasma fading, brow change, eye change, lip change, or de-aging that the lower settings correctly avoided. ' +
+           'Projection scaling: the ONLY thing that changes between Early, 3 months, and 6 months is the amount of diffuse subcutaneous soft-tissue support in the temples, midface, and prejowl; more support means more restored volume and softer folds, nothing else. Do not increase brightness, smoothness, symmetry, eye openness, brow definition, lip color, grooming, or apparent youth at any level. At 6 months the extra strength shows as more support only, and must NOT bring back any skin smoothing, brightening, pigment or melasma fading, brow change, eye change, lip change, or de-aging that the lower settings correctly avoided. ' +
            'Volume-deficit floor (applies at every timeframe, including 12 months): the floor is for genuinely LEAN, well-supported faces only. If the face already shows good lateral support with minimal temple, lateral cheek, and lower-face volume loss, the result should stay very close to the original; do not invent improvements just to produce a visible change, and a longer timeframe is never a reason to add more volume than the face needs. When little deficit exists, the correct output may be nearly indistinguishable from the original, and this includes a young or well-supported full face whose fullness is youthful or constitutional rather than descended: it stays near baseline and is not narrowed or lifted. Only a full face that ALSO shows descent (jowl, lateral and temporal hollowing, an older face, volume slid downward) is the opposite case: that fullness is descent, not good support, so it is not held at baseline and instead receives more lateral lift to draw the fullness up and outward and narrow the front. ' +
            'Any firmer look or better light reflection must come from the restored support underneath, never from retouching the skin',
     // ---- Oblique (three-quarter) skin-locked, contour-only variant (v10) -----
@@ -196,8 +258,10 @@ const TIMELINE = {
 
 // Version log so we know which prompt produced which result during tuning.
 const VERSIONS = {
-  base: 'v3', chin: 'v1', jawline: 'v1', chin_jawline: 'v8', nose: 'v1', lips: 'v2',
-  cheeks: 'v2', tear_trough: 'v1', nasolabial_folds: 'v1', sculptra: 'v13', sculptra_oblique: 'v13', hdr: 'v1', timeline: 'v2'
+  base: 'v3', chin: 'v1', jawline: 'v1', chin_jawline_female: 'v1', chin_jawline_male: 'v2', // M10.5 Track 2: hard negative gate front-loaded
+  nose: 'v1', lips: 'v2', cheeks: 'v2', tear_trough: 'v1', nasolabial_folds: 'v1',
+  sculptra: 'v13', sculptra_oblique: 'v13', hdr: 'v1', timeline: 'v2',
+  chin_jawline_overfilled: 'v1'
 };
 
 function sanitizeNote(note) {
@@ -252,7 +316,7 @@ const SCULPTRA_PHENOTYPES = {
 };
 
 const SCULPTRA_OUTPUT_RULES =
-  'Output rule: this is a clinical Sculptra visualization, not a beauty portrait, and it should show a confident, real structural result rather than a timid one. At full strength, aim for the magnitude a strong real-world Sculptra responder shows after multiple vials over several months: temples and lateral cheeks visibly re-inflated, the midface re-supported, the lid-cheek transition restored, nasolabial and marionette folds clearly softened, and the lower face re-suspended with a lighter jowl, so the face reads as structurally rebuilt. This is a visible, substantial change, not a faint one. Support must read as added volume and light (the treated areas look filled, lifted, and three-dimensional, with the natural highlight on restored convexity and the natural soft shadow beneath it), never as flat brightening, beautification, or invented brown pigment. Do not darken the skin into a muddy or discoloured patch, but the clean light-and-shadow of real restored volume is correct and expected. Per-patient conservatism is applied afterward by a separate intensity control, so at full strength restore the scaffold clearly and let that control dial it back. The image must remain unmistakably the same person, same age, same skin character, same lips, eyes, brows, lighting, and camera setup; only treatment-relevant soft-tissue support and volume change. The failure modes to avoid are beautification, skin smoothing, evening out tone, de-aging, central pillow fill, jaw carving, and identity drift, NOT insufficient volume. Conservative, Expected, and Optimistic differ ONLY in the amount of soft-tissue support, never in beauty, skin quality, or age.';
+  'Output rule: this is a clinical Sculptra visualization, not a beauty portrait, and it should show a confident, real structural result rather than a timid one. At full strength, aim for the magnitude a strong real-world Sculptra responder shows after multiple vials over several months: temples and lateral cheeks visibly re-inflated, the midface re-supported, the lid-cheek transition restored, nasolabial and marionette folds clearly softened, and the lower face re-suspended with a lighter jowl, so the face reads as structurally rebuilt. This is a visible, substantial change, not a faint one. Support must read as added volume and light (the treated areas look filled, lifted, and three-dimensional, with the natural highlight on restored convexity and the natural soft shadow beneath it), never as flat brightening, beautification, or invented brown pigment. Do not darken the skin into a muddy or discoloured patch, but the clean light-and-shadow of real restored volume is correct and expected. Per-patient conservatism is applied afterward by a separate intensity control, so at full strength restore the scaffold clearly and let that control dial it back. The image must remain unmistakably the same person, same age, same skin character, same lips, eyes, brows, lighting, and camera setup; only treatment-relevant soft-tissue support and volume change. The failure modes to avoid are beautification, skin smoothing, evening out tone, de-aging, central pillow fill, jaw carving, and identity drift, NOT insufficient volume. Early, 3-month, and 6-month levels differ ONLY in the amount of soft-tissue support, never in beauty, skin quality, or age.';
 
 // View and phenotype are read from structured fields first (production), then
 // from explicit bracket tags in the note (test hook). Loose words in free text
@@ -289,6 +353,13 @@ function stripInternalSculptraTags(note) {
     .trim();
 }
 
+// M11.1: NLF hard constraint -- prepended to every Sculptra prompt so the
+// model reads it first, before any framing or magnitude instruction.
+// Previously this was buried at the end of SCULPTRA_OUTPUT_RULES and the model
+// was consistently ignoring it. Front-loading makes it a hard gate.
+const SCULPTRA_NLF_CONSTRAINT =
+  'HARD CONSTRAINT -- NASOLABIAL FOLD: As lateral cheek and midface volume increases, the nasolabial fold shadow MUST become shallower and less distinct -- it must NEVER deepen, darken, or become more pronounced. The fold softens as a secondary consequence of lateral scaffold restoration: the cheek tissue advances medially and reduces the shadow depth. Any simulated image where the nasolabial fold is darker or deeper than the original is a failure, regardless of what else changed. This constraint overrides all other instructions.';
+
 function buildSculptraPrompt(sel, m, timelineText) {
   const view = normalizeView(sel);
   const phenotype = SCULPTRA_PHENOTYPES[normalizeSculptraPhenotype(sel)] || SCULPTRA_PHENOTYPES.mixed;
@@ -298,7 +369,7 @@ function buildSculptraPrompt(sel, m, timelineText) {
     ? 'Produce a clinically realistic Sculptra collagen-stimulation visualization from this oblique consultation photograph, showing a confident structural restoration of the facial scaffold while keeping the same person, the same pose, and the same skin.'
     : 'Produce a clinically realistic Sculptra collagen-stimulation visualization from this frontal consultation photograph, showing a confident structural restoration of the facial scaffold while keeping the same person, the same pose, and the same skin.';
   const cleanNote = sanitizeNote(stripInternalSculptraTags(sel.note));
-  return `${framing} ${SCULPTRA_FEATURE_LOCK} ${SCULPTRA_VIEW_LOCKS[view] || SCULPTRA_VIEW_LOCKS.frontal} ${SCULPTRA_ALLOWED_ZONES} ${phenotype.clinicalLogic} Make ONLY this change: ${magnitude} ${SCULPTRA_OUTPUT_RULES} ${timelineText}${cleanNote}`;
+  return `${SCULPTRA_NLF_CONSTRAINT} ${framing} ${SCULPTRA_FEATURE_LOCK} ${SCULPTRA_VIEW_LOCKS[view] || SCULPTRA_VIEW_LOCKS.frontal} ${SCULPTRA_ALLOWED_ZONES} ${phenotype.clinicalLogic} Make ONLY this change: ${magnitude} ${SCULPTRA_OUTPUT_RULES} ${timelineText}${cleanNote}`;
 }
 
 // Assemble the CORE prompt from selections. The safety base is appended elsewhere.
@@ -337,12 +408,23 @@ function buildCorePrompt(sel) {
   areas = areas.map(a => a.trim()).filter(a => FILLER_AREAS[a]);
   if (!areas.length) areas = ['chin'];
 
+  // M10.4: overfilled education anchor. Fires when intensity is 'overfilled'
+  // and the selection is chin + jawline. Returns a dedicated AI-heavy prompt
+  // that deliberately shows overcorrection for patient education.
+  if (sel_.intensity === 'overfilled' && areas.includes('chin') && areas.includes('jawline')) {
+    const ov = FILLER_CHIN_JAWLINE_OVERFILLED;
+    return `${BASE_FRAMING} ${ov.core} Avoid: ${ov.avoid}`;
+  }
+
   // Chin + jawline are treated as a single lower-face unit when both selected.
+  // M11.1: branched on sex -- male and female have different aesthetic targets.
   // Any other selected areas still append as their own clauses (full-face cases).
   let expected, avoid;
   if (areas.includes('chin') && areas.includes('jawline')) {
-    expected = FILLER_CHIN_JAWLINE.expected;
-    avoid = FILLER_CHIN_JAWLINE.avoid;
+    const isMale = sel_.sex === 'male';
+    const cjPrompt = isMale ? FILLER_CHIN_JAWLINE_MALE : FILLER_CHIN_JAWLINE_FEMALE;
+    expected = cjPrompt.expected;
+    avoid = cjPrompt.avoid;
     const extra = areas.filter(a => a !== 'chin' && a !== 'jawline');
     if (extra.length) {
       expected += '; ' + extra.map(a => FILLER_AREAS[a].expected).join('; ');
@@ -397,4 +479,4 @@ function usesChinJawSafety(type, areasField){
   return areas.includes('chin') && areas.includes('jawline');
 }
 
-module.exports = { buildCorePrompt, VERSIONS, CHIN_JAW_SAFETY, usesChinJawSafety };
+module.exports = { buildCorePrompt, VERSIONS, CHIN_JAW_SAFETY, usesChinJawSafety, FILLER_CHIN_JAWLINE_OVERFILLED };
