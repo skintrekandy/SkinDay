@@ -17,6 +17,14 @@
 // Sculptra oblique discolouration: SCULPTRA_BRIGHT_CAP_FULL 18 -> 12.
 //
 // M10.5 (v66): MALE CHIN TIP EXCLUDED FROM AI MASK.
+// M10.5 (v69): DARK BLOB FIX -- removed wrong mag>8 gate on undershoot correction.
+// The gate was blocking the dark-undershoot reconciliation in the transition band
+// where chin shadow pixels land on the neck zone -- exactly the pixels producing
+// the dark blob artifact. The undershoot condition (Yo - MARGIN - Yr > 0) is the
+// correct discriminator: it only fires when the destination was brighter than the
+// arriving pixel, which is specific to the shadow-on-neck failure mode. No mag
+// gate needed. WARP_SHADE_DARK_PULL raised 0.40 -> 0.55 to match bright correction.
+//
 // M10.5 (v68): FOUR TARGETED FIXES based on batch review.
 // (1) Outline gate menton floor corrected: v67 used p152.y + |faceH|*factor but
 //     faceH is a dot-product projection underestimating actual pixel height at
@@ -1312,11 +1320,9 @@ function buildLowLuma(b, w, h, W){
 // The undershoot correction brightens these back toward the destination light
 // field, gated on the destination being lighter than the arriving pixel by more
 // than WARP_SHADE_MARGIN. Both directions are one-sided and pull-rate controlled.
-// WARP_SHADE_DARK_PULL: how aggressively to brighten undershooting pixels.
-// Lower than WARP_SHADE_PULL (bright) because the chin shadow arriving on the
-// neck should be partially allowed (it is real anatomy); only extreme undershoots
-// need correction.
-const WARP_SHADE_DARK_PULL = 0.40;
+// M10.5 v69: raised 0.40 -> 0.55 (matching bright correction strength) after
+// removing the wrong mag>8 gate. The undershoot condition itself is the discriminator.
+const WARP_SHADE_DARK_PULL = 0.55;
 function applyWarpShadeFix(o, lowY, f, w){
   for(let y=f.y0; y<=f.y1; y++){
     const row=y*w;
@@ -1337,15 +1343,16 @@ function applyWarpShadeFix(o, lowY, f, w){
         const fct=target/Math.max(1, Yr);
         o[p4]*=fct; o[p4+1]*=fct; o[p4+2]*=fct;
       } else {
-        // Dark correction: displaced pixels too dark for destination (chin shadow on neck)
-        // Only fire where destination is appreciably brighter than arriving pixel
+        // Dark correction: displaced pixels too dark for destination (chin shadow on neck).
+        // Only fires when destination Yo was appreciably brighter than arrived pixel Yr --
+        // i.e., chin shadow landed on a zone that was lighter in the original. This
+        // discriminates the artifact without a mag gate (the condition itself is specific).
+        // M10.5 v69: removed the mag>8 gate (was wrong -- it blocked correction in the
+        // transition band where the artifact actually lives) and raised pull to 0.55.
         const undershoot=Yo - WARP_SHADE_MARGIN - Yr;
         if(undershoot <= 0) continue;
-        // Gate further: only in the decay zone of the warp field (moderate mag),
-        // not at the peak displacement (where the chin is actually projecting there).
-        if(mag > 8) continue; // skip high-displacement pixels -- those are chin projecting legitimately
         const addv = WARP_SHADE_DARK_PULL * undershoot * subj * band;
-        o[p4]+=addv; o[p4+1]+=addv; o[p4+2]+=addv;  // clamped by typed array
+        o[p4]+=addv; o[p4+1]+=addv; o[p4+2]+=addv;
       }
     }
   }
