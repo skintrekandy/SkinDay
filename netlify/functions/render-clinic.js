@@ -292,7 +292,41 @@ function patchTemplate(html, clinic) {
 
 // ── HANDLER ──────────────────────────────────────────────────────
 
+// Hard timeout: return 503 (retry-able) instead of letting Netlify's 10s limit
+// fire a 500 (which Search Console logs as a server error and can hurt rankings).
+// 8 seconds gives the main logic 8s to complete; the remaining 2s is buffer for
+// Netlify's own response overhead. 503 tells Google "temporarily unavailable" —
+// it will retry and the page stays in good standing.
+function withTimeout(promise, ms) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`render-clinic timeout after ${ms}ms`)), ms)
+    ),
+  ]);
+}
+
 exports.handler = async (event) => {
+  try {
+    return await withTimeout(_handler(event), 8000);
+  } catch (err) {
+    if (err.message && err.message.includes('timeout')) {
+      console.error('render-clinic timeout:', err.message);
+      return {
+        statusCode: 503,
+        headers: {
+          'Content-Type': 'text/plain',
+          'Retry-After': '30',
+        },
+        body: 'Service temporarily unavailable. Please try again.',
+      };
+    }
+    console.error('render-clinic unhandled error:', err);
+    return { statusCode: 500, body: 'Internal error' };
+  }
+};
+
+async function _handler(event) {
   try {
     // Slug arrives via path splat from netlify.toml redirect.
     // Netlify can deliver this in several places depending on routing config,
@@ -370,35 +404,39 @@ exports.handler = async (event) => {
 
     // Case (a): approved → fall through and render normally.
 
-    // Optional: attach expertise for richer SEO body
-    try {
-      const { data: expertiseRows } = await supabase
+    // Run the two optional enrichment queries in parallel rather than sequentially.
+    // Sequential adds ~200-400ms per request; under a Google crawl burst this was
+    // the primary cause of Netlify function timeouts (5xx in Search Console).
+    // Both are non-fatal — if either fails the page still renders with base data.
+    const [expertiseResult, priceResult] = await Promise.allSettled([
+      supabase
         .from('clinic_expertise')
         .select('value, is_other, other_text')
         .eq('clinic_id', String(clinic.id))
-        .limit(10);
-      if (expertiseRows && expertiseRows.length) {
-        clinic.identity = {
-          expertise: expertiseRows.map(r => ({
-            label: r.is_other ? r.other_text : r.value
-          })),
-        };
-      }
-    } catch (_) { /* non-fatal */ }
-
-    // Sync lowest price from clinic_prices, since clinics.price snapshot
-    // can lag behind the breakdown table (matches get-clinics.js behavior).
-    try {
-      const { data: priceRows } = await supabase
+        .limit(10),
+      supabase
         .from('clinic_prices')
         .select('price')
         .eq('clinic_id', String(clinic.id))
         .order('price', { ascending: true })
-        .limit(1);
-      if (priceRows && priceRows.length && priceRows[0].price != null) {
-        clinic.price = priceRows[0].price;
+        .limit(1),
+    ]);
+
+    if (expertiseResult.status === 'fulfilled') {
+      const rows = expertiseResult.value.data;
+      if (rows && rows.length) {
+        clinic.identity = {
+          expertise: rows.map(r => ({ label: r.is_other ? r.other_text : r.value })),
+        };
       }
-    } catch (_) { /* non-fatal */ }
+    }
+
+    if (priceResult.status === 'fulfilled') {
+      const rows = priceResult.value.data;
+      if (rows && rows.length && rows[0].price != null) {
+        clinic.price = rows[0].price;
+      }
+    }
 
     const template = loadTemplate();
     const rendered = patchTemplate(template, clinic);
@@ -423,6 +461,6 @@ exports.handler = async (event) => {
     };
   } catch (err) {
     console.error('render-clinic error:', err);
-    return { statusCode: 500, body: 'Internal error' };
+    throw err; // re-throw so outer handler's catch picks it up
   }
-};
+}
