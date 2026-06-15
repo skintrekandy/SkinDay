@@ -11,5 +11,9 @@ Disallow: /api/
 Disallow: /claim2.html
 Disallow: /editor.html
 
+# Block query-string filter variants of the homepage
+Disallow: /*?province=*
+Disallow: /*?city=*
+
 # Sitemap
 Sitemap: https://skinday.ca/sitemap.xml
