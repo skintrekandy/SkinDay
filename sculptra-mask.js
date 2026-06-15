@@ -7,7 +7,25 @@
 // background). gpt-image-1's edit endpoint edits only the transparent region, so
 // this physically prevents the global beautification leak.
 //
-// M11.1 (v58): OBLIQUE JAWLINE SHADOW RECONCILIATION.
+// M10.5 (v64): MALE CHIN/JAWLINE ARCHITECTURAL FIX -- TRACKS 1 & 2.
+// Track 1 (mask geometry): sex parameter is now active in buildChinProjectionField.
+// Oblique male: sigC widened (0.085W -> 0.115W) so the editable region is
+// physically broader at the mentum, biasing the AI toward a wide flat geometry.
+// Oblique male: inferior component of chinV zeroed (chinDown = 0 for male vs
+// CHINW_DOWN = 0.012 for female): the downward pull was the primary driver of
+// the tapered-tip shape by biasing the warp field inferiorly; removing it forces
+// purely anterior projection and keeps the warp footprint flat and wide.
+// Frontal male: added lateral chin kernels at commissure-width points, pushing
+// the warp footprint outward so the AI cannot narrow the lower third into a
+// V-line while filling the moved region.
+// centralExt tightened for male: 0.08 -> 0.04. The submental column extension
+// was still opening enough room for AI artifact painting; closing it further
+// blocks the region at the mask level before the AI sees it.
+// Track 2 (prompts.js): hard negative gate front-loaded as the absolute first
+// sentence of FILLER_CHIN_JAWLINE_MALE.expected, before any positive description.
+// Mirrors the SCULPTRA_NLF_CONSTRAINT strategy. Also added a pixel-geometry
+// reference anchor: chin width in the output must not be less than chin width
+// in the original photograph.
 // Re-enables applyJawDefinition shadow step at oblique only, with
 // oblique-specific constants (JAWDEF_DARK_OBLIQUE). The frontal retirement
 // (v44: drawn-stroke artifact) stands; at 45 degrees the border is viewed
@@ -1506,9 +1524,18 @@ function buildChinProjectionField(L, w, h, pose, sex){
   const W = Math.abs(dot(sub(zl, zr), dirOut)) || 1;
   const faceH = (dot(sub(p10, p152), dirUp)) || 1;
   const down = { x:-dirUp.x, y:-dirUp.y };
-  // (sex is currently unused here: male jaw WIDTH is a frontal attribute and
-  // returns as a frontal feature; the parameter is kept for that.)
-  void sex;
+  // M10.5 Track 1: sex is now active in this function.
+  // Male chin geometry has a fundamentally different warp target: the editable
+  // region must be wider and flatter so the AI is forced to work within a
+  // geometry that biases toward male chin anatomy even when it fights the prompt.
+  // For oblique: sigC is widened (more lateral sigma) and the inferior component
+  // of chinV is zeroed for male (CHINW_DOWN drives the tapered-tip shape by
+  // pulling the warp field downward at the menton; removing it keeps the
+  // projection horizontal and biases the warp footprint wider).
+  // For frontal: additional lateral kernels at commissure-width points flanking
+  // the chin push the warp footprint wide so the AI cannot narrow the lower third
+  // into a V-line while filling the moved region.
+  const isMaleWarp = (sex === 'male');
 
   // Capsule kernel: the field is exp(-d^2/twoSig) of the distance to a short
   // SEGMENT from the anchor along the displacement direction (length
@@ -1539,11 +1566,23 @@ function buildChinProjectionField(L, w, h, pose, sex){
       antSign = (pose.nearSide === 'left') ? -leftSign : leftSign;
     }
     const antDir = mul(dirOut, antSign);
-    const chinV = add(mul(antDir, CHINW_FWD*W), mul(down, CHINW_DOWN*faceH));
+    // M10.5 Track 1: for male, zero the inferior component. The downward
+    // component biases the warp field inferiorly, which the AI reads as space
+    // to taper the chin downward (toward a point). Removing it forces the
+    // projection to be purely anterior, keeping the warp footprint wide and
+    // preventing the tapered-tip bias. Female retains the original drop.
+    const chinDown = isMaleWarp ? 0 : CHINW_DOWN;
+    const chinV = add(mul(antDir, CHINW_FWD*W), mul(down, chinDown*faceH));
     const paraNear = (pose.nearSide === 'right') ? lm[148] : lm[377];
     const pjNear   = (pose.nearSide === 'right') ? lm[PREJOWL.r] : lm[PREJOWL.l];
     const goNear   = (pose.nearSide === 'right') ? lm[GONION.r]  : lm[GONION.l];
-    const sigC=CHINW_SIG_CHIN*W, sigJ=CHINW_SIG_JAW*W;
+    // M10.5 Track 1: for male, widen sigC (lateral sigma of the chin kernels).
+    // A wider sigma increases the editable region's lateral extent, which forces
+    // the AI to fill a geometry that is already wide and flat at the mentum.
+    // Female retains the standard CHINW_SIG_CHIN. Lever: 0.085 -> 0.115 for male.
+    // One-constant reversal if it over-widens: set mSigC back to CHINW_SIG_CHIN.
+    const mSigC = isMaleWarp ? 0.115*W : CHINW_SIG_CHIN*W;
+    const sigC=mSigC, sigJ=CHINW_SIG_JAW*W;
     // Pogonion leads the projection: anchored just above the menton on the
     // anterior chin contour. The menton follows at reduced weight (continuous
     // underside, no independent downward slide), para-menton carries the front
@@ -1588,6 +1627,32 @@ function buildChinProjectionField(L, w, h, pose, sex){
     for(const idx of [148, 377]){
       const p=lm[idx]; if(!p) continue;
       kernels.push(capsule(p, chinV, sigC*0.8, 0.7));
+    }
+    // M10.5 Track 1: for male, add lateral chin-widening kernels at the
+    // commissure-width points flanking the chin (lm[61] right commissure,
+    // lm[291] left commissure, lowered onto the chin body). These push the warp
+    // footprint outward at the chin level so the AI cannot narrow the lower third
+    // into a V-line while filling the moved region. The vector is purely downward
+    // (matching chinV direction) -- no lateral displacement into the background --
+    // so the outline gate still governs the boundary; this just widens the moved
+    // region so the AI's fill reads as a broad, flat mentum rather than a taper.
+    // Female: these kernels are skipped (female taper is correct and approved).
+    if(isMaleWarp){
+      const comR = lm[61], comL = lm[291]; // oral commissure landmarks
+      for(const [com, sideSign] of [[comR, -1],[comL, 1]]){
+        if(!com) continue;
+        // Anchor the lateral kernel at the commissure x-position but dropped
+        // to chin-body level (p152 y) so it displaces chin-level tissue, not
+        // mouth tissue. Feature guard zeroes it above the lips already.
+        const lateralChin = { x: com.x, y: p152.y + 0.01*faceH };
+        // Mild lateral component (sideSign*outward) keeps the flat bottom wide;
+        // primary component is still downward (chinV) to match the chin extension.
+        // CHINW_MALE_LAT_FRONTAL: fraction of W for the lateral nudge.
+        // 0.015 is conservative -- raise toward 0.025 if the chin still tapers.
+        const CHINW_MALE_LAT_FRONTAL = 0.015;
+        const lateralV = add(chinV, mul(dirOut, sideSign*CHINW_MALE_LAT_FRONTAL*W));
+        kernels.push(capsule(lateralChin, lateralV, sigC*0.7, 0.6));
+      }
     }
     // M9.0: frontal prejowl notch fill, both sides slightly outward so the
     // border under the jowls straightens. Deliberately small (the approved
@@ -2111,7 +2176,15 @@ function buildTreatAlpha(L, w, h, scope, sex){
           // the same absolute extension that works for female anatomy overshoots
           // into the submental shadow on male faces, where the AI paints filler
           // artifacts in the neck zone. Female retains 0.12 (tested, artifact-safe).
-          const centralExt = (sex === 'male') ? 0.08 : 0.12;
+          // M10.5 Track 1: tightened further for male (0.08 -> 0.04). Even at
+          // 0.08 the mask was opening enough submental column for the AI to paint
+          // cream/pale artifacts below the chin on male anatomy. The compositor-
+          // level SUBMENT_FLOOR_F defence helps but the root cause is the mask
+          // giving the AI that zone at all. At 0.04 the column extends just enough
+          // for a small chin projection without opening the submental shadow region.
+          // Lever: raise back toward 0.08 only if male chin vertical extension
+          // reads visibly stunted after Track 1 calibration.
+          const centralExt = (sex === 'male') ? 0.04 : 0.12;
           const central=1-smoothstep(0.10,0.22,alat);     // 1 under the chin, 0 at the jaw/sides
           const floor=-0.02 - centralExt*central;         // jaw cuts at -0.02; chin column extends downward
           const neckTaper=smoothstep(floor, floor+0.05, hF);
