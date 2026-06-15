@@ -110,8 +110,17 @@ const FILLER_CHIN_JAWLINE_FEMALE = {
          'keep it unmistakably the same person'
 };
 
+// M10.5 Track 2: hard negative gate front-loaded as the absolute first sentence,
+// before any positive description. Mirrors the SCULPTRA_NLF_CONSTRAINT strategy:
+// the model weights the first lines most, and the previous all-positive male prompt
+// was losing to the model's aesthetic bias toward tapered, refined lower faces
+// (the female ideal). The negative gate acts as a hard prohibition BEFORE the
+// positive description can be read through that prior. Also added: a pixel-geometry
+// reference anchor specifying that chin width in the output must not be less than
+// chin width in the original photograph -- an empirical anchor, not a style word.
 const FILLER_CHIN_JAWLINE_MALE = {
-  expected: 'a clearly restructured, stronger, and better-balanced lower third on a male face, treating the chin and jawline as one unit. ' +
+  expected: 'HARD CONSTRAINT -- MALE CHIN SHAPE: The result MUST NOT taper to a point, narrow into a V-shape, or read as feminine, soft, delicate, or androgynous in any way. If the simulated chin reads as a female chin at any angle, the result is wrong regardless of everything else. The chin tip in the simulated image must be at least as wide as the chin tip in the original photograph -- do not reduce chin width, do not reduce jaw width. ' +
+            'With that constraint established: a clearly restructured, stronger, and better-balanced lower third on a male face, treating the chin and jawline as one unit. ' +
             'The main change, clearly visible from the front, is a confident forward projection and vertical strengthening of the chin: ' +
             'bring the chin point forward and slightly lower so the lower third reads stronger, more defined, and better balanced with the upper face. ' +
             'The chin should be wider and squarer at the mentum -- a male chin is broad and squared, never tapered or pointed -- with crisp, clean definition along the mandibular border and a strong, continuous chin-to-jaw arc. ' +
@@ -249,7 +258,7 @@ const TIMELINE = {
 
 // Version log so we know which prompt produced which result during tuning.
 const VERSIONS = {
-  base: 'v3', chin: 'v1', jawline: 'v1', chin_jawline_female: 'v1', chin_jawline_male: 'v1', // M11.1: sex-branched
+  base: 'v3', chin: 'v1', jawline: 'v1', chin_jawline_female: 'v1', chin_jawline_male: 'v2', // M10.5 Track 2: hard negative gate front-loaded
   nose: 'v1', lips: 'v2', cheeks: 'v2', tear_trough: 'v1', nasolabial_folds: 'v1',
   sculptra: 'v13', sculptra_oblique: 'v13', hdr: 'v1', timeline: 'v2',
   chin_jawline_overfilled: 'v1'
