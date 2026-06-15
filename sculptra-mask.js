@@ -7,6 +7,347 @@
 // background). gpt-image-1's edit endpoint edits only the transparent region, so
 // this physically prevents the global beautification leak.
 //
+// M10.5 (v65): CALIBRATION PASS after v64 results review.
+// Male chin: mSigC raised 0.115W -> 0.130W (tip still read slightly tapered).
+// Male submental mask: centralExt closed fully to 0.0 (from 0.04). Artifacts
+// appeared at early slider values, proving the mask was the source not the warp.
+// Warp field alone handles male chin projection; the mask must not open the
+// submental zone at all.
+// Male SUBMENT_FLOOR_F: 0.06 -> 0.03 in both compositor functions.
+// Sculptra oblique discolouration: SCULPTRA_BRIGHT_CAP_FULL 18 -> 12.
+//
+// M10.5 (v66): MALE CHIN TIP EXCLUDED FROM AI MASK.
+// M10.5 (v69): DARK BLOB FIX -- removed wrong mag>8 gate on undershoot correction.
+// The gate was blocking the dark-undershoot reconciliation in the transition band
+// where chin shadow pixels land on the neck zone -- exactly the pixels producing
+// the dark blob artifact. The undershoot condition (Yo - MARGIN - Yr > 0) is the
+// correct discriminator: it only fires when the destination was brighter than the
+// arriving pixel, which is specific to the shadow-on-neck failure mode. No mag
+// gate needed. WARP_SHADE_DARK_PULL raised 0.40 -> 0.55 to match bright correction.
+//
+// M10.5 (v68): FOUR TARGETED FIXES based on batch review.
+// (1) Outline gate menton floor corrected: v67 used p152.y + |faceH|*factor but
+//     faceH is a dot-product projection underestimating actual pixel height at
+//     oblique. v68 uses the actual lowest image-y coordinate among all face oval
+//     landmarks + 1.5%W margin. Pose-invariant; fixes persistent blob on tilted
+//     head oblique cases.
+// (2) applyWarpShadeFix now two-sided: added dark-undershoot correction for chin
+//     shadow pixels arriving too dark on the neck zone (the dark patch artifact).
+//     Gated on moderate displacement (mag<=8) and destination being lighter than
+//     source; WARP_SHADE_DARK_PULL=0.40 is conservative.
+// (3) SCULPTRA_DARK_FLOOR 20->12: reduces dark discolouration patches in the
+//     lateral lower-cheek zone on lighter-skinned patients at oblique view.
+// (4) NLF anterior push kernel added to oblique Sculptra buildLiftField: pushes
+//     near-side ala-to-commissure zone anteriorly to shallow the NLF shadow.
+//     SCULP_NLF_ANT=0.016W. Reinforces the prompt-level NLF constraint with
+//     deterministic geometry.
+//
+// M10.5 (v67): OUTLINE GATE HARDENING -- fixes white blob artifacts at chin on
+// oblique views for all sexes. Root cause: MediaPipe's face oval overshoots the
+// real jaw-neck boundary at oblique angles, and the luma gate passed chin-shadow
+// pixels (luma 40-80) as "plausible face." Two fixes: (1) GATE_LOWER_PULL_IN
+// raised 0.015->0.040 so the gate polygon hugs the actual jawline more tightly.
+// (2) Hard menton floor added to buildOutlineGate: any pixel below p152.y +
+// 0.04*|faceH| is zeroed regardless of luma. The warp handles everything below
+// the menton; the AI has no legitimate reason to paint there. Also: warp shade
+// reconciliation WARP_SHADE_MARGIN tightened 10->6 to close the frontal warp
+// seam visible as a bright patch at the chin body.
+// Root cause diagnosis: after v64 and v65 the chin tip still read feminine.
+// Every prompt and mask-sigma approach fights the model's visual prior because
+// gpt-image-1 has a strong aesthetic bias toward tapered lower faces (the female
+// ideal) and applies it to any chin region it can see, regardless of text
+// instruction. The only reliable architectural fix: remove the chin tip from the
+// AI's editable region entirely for male. The chin tip shape is now pure warp
+// geometry -- buildChinProjectionField displaces the patient's own pixels
+// anteriorly, so the tip carries correct male anatomy by construction (original
+// face). The AI sees only the jaw border tube and jowl lobes for shading/
+// definition; it cannot taper what it cannot see. Female path unchanged.
+// taperScale for male effectively zeroed in the pixel loop (isMale guard).
+// Re-enables applyJawDefinition shadow step at oblique only, with
+// oblique-specific constants (JAWDEF_DARK_OBLIQUE). The frontal retirement
+// (v44: drawn-stroke artifact) stands; at 45 degrees the border is viewed
+// edge-on so the shadow reads as genuine underside shadow, not a painted line.
+// Also raises CHINW_WARP_SAT_OBLIQUE from 0.45 to 0.50: with shadow now
+// anchoring the junction, the penumbra failure is partly a shading problem
+// rather than a pure silhouette physics limit. One-constant reversal if it
+// fails: set CHINW_WARP_SAT_OBLIQUE back to 0.45 and JAWDEF_DARK_OBLIQUE to 0.
+//
+// M10.4 (v57): OVERFILL COMPOSITOR PATH.
+// opts.overfill = true disables the outline gate (buildOutlineGate) and the
+// deterministic warp in both compositeSculptra and makeSculptraCompositor, so
+// the AI's overcorrected silhouette is not clipped or geometry-corrected.
+// Chroma lock and texture restore are retained (identity and skin character
+// survive). Used exclusively for the HA chin/jawline Overfilled education
+// anchor; all other paths are unaffected.
+//
+// M10.3 (v55): HA ENHANCED CORRECTION RE-ENABLED.
+// FILLER_BETA_MAX raised 69->79 in visualize.html (opens the 70-79 band).
+// CHINW_WARP_SAT raised 0.45->0.60 so the chin/jaw warp reaches Enhanced
+// amplitude. Gated on M10.2 mandibular border (v54). Clinical acceptance:
+// chin tip passes 300%+ zoom at both 45s; one-constant reversal if it fails.
+// Mobile bar max label and snap stop updated to reflect Enhanced as new top.
+//
+// M10.3 (v56): OBLIQUE-SPECIFIC WARP SAT CAP.
+// Frontal Enhanced passed 300%+ zoom; oblique Enhanced failed (chin tip
+// penumbra stretch). Fix: CHINW_WARP_SAT_OBLIQUE = 0.45 holds the oblique
+// warp at the proven Balanced ceiling while frontal keeps 0.60 (Enhanced).
+// angleId passed through opts from visualize.html; compositor selects the
+// correct cap per angle. FILLER_BETA_MAX stays at 79 -- users can still
+// slide to Enhanced and the frontal export shows it; oblique silhouette
+// just saturates at Balanced geometry, which is clean.
+//
+// M10.2 (v54): mandibular border suspension kernels. M10.2 closed.
+//
+// M10.1 (v49): lateral cut, anterior and superior raised.
+//
+// M10.1 (v48): calibration pass. SCULP_ZYGOMA_OUT 0.022->0.032,
+// SCULP_MIDFACE_ANT 0.014->0.020.
+//
+// M10.1 (v47): SCULPTRA OBLIQUE CHEEK / MIDFACE PROJECTION KERNELS.
+// The M6 lift warp was gated to frontal only; obliques received AI shading with
+// no geometry change, so the zygomatic arch could not move forward in the 45
+// degree view regardless of slider position. M10.1 adds an oblique branch inside
+// buildLiftField that fires when detectPose returns three_quarter.
+//
+// Two kernel groups per oblique side:
+//   (1) Zygoma projection: capsule kernel anchored at lm[123] (right) / lm[352]
+//       (left), the zygomatic arch apex -- the highest, most anterior point of the
+//       cheekbone visible at a three-quarter angle. Vector is predominantly lateral
+//       (outward, same sign as the near-side lateral axis) with a small superior
+//       component. The capsule extends in the displacement direction (SCULP_CAPSULE
+//       run factor), so the arch edge translates rigidly rather than smearing. The
+//       oval guard is ON (face oval with blurred edge), so the silhouette cannot
+//       actually move outward; only interior pixels shift, creating a new convex
+//       highlight on the arch that matches the clinical before/afters (Cases A and C
+//       uploaded June 13). Sigma SCULP_ZYGOMA_SIG ~0.10W; tight enough to be an
+//       arch-specific highlight, wide enough not to read as a painted disc.
+//   (2) Anterior midface: Gaussian kernel (no capsule) anchored midway on the ogee
+//       curve between the zygion and the near-side ala, pointing anteriorly (toward
+//       the far cheek, same sign derivation as the chin projection). Wider sigma
+//       SCULP_MIDFACE_SIG ~0.16W. Fills the flat mid-cheek plane that deflation-
+//       and-descent produces, matching Cases B and E.
+//
+// Calibration standard: every round judged against the four real Sculptra cases
+// uploaded June 13, 2026. Andy is the clinical authority; Claude owns engineering.
+// One lever per round; first tunable lever is SCULP_ZYGOMA_OUT (the lateral
+// magnitude driving the arch highlight). Expect a v47-v50 arc matching v28-v34.
+//
+// The frontal lift (jowl + midface re-drape) is untouched; its vectors stay
+// exactly as calibrated in M6.2. The oblique branch adds NEW kernels alongside;
+// it does not reuse or modify the frontal ones. maybeBuildLift drops the
+// frontal-only gate and calls buildLiftField for both views; the function now
+// returns null on out_of_range (unchanged behavior for very steep profiles).
+//
+// M9.11 (v46): BETA RANGE STOP-LOSS. Clinical review at 338-507% zoom failed
+// the chin tip at Enhanced: extending the silhouette stretches the original's
+// chin-to-shadow gradient into a wide featureless penumbra, a junction-shading
+// problem no resampling or band math can rebuild from a 2D photo. Per the
+// agreed stop-loss, the filler consultation range ships as Subtle through
+// Balanced (client caps the slider; see FILLER_BETA_MAX in visualize.html),
+// and the warp ceiling drops to 0.45, the historically eye-passed amplitude.
+// Enhanced returns on M10's spline silhouette with synthesized junction
+// shading; Overfilled returns on the dedicated AI-heavy education anchor.
+//
+// M9.10 (v45): WARP SATURATION for chin_jaw (clinical: angular, faceted chin
+// silhouette at Enhanced and above; zoom forensics show curvature kinks where
+// the chin, notch-fill, and gonial kernels join, a vector-path chin). The
+// silhouette is a union of capsule kernels, and above roughly 0.6 amplitude
+// the kernel geometry reads through. Fix by construction, not tuning: the
+// WARP's intensity saturates at CHINW_WARP_SAT (0.55, the amplitude that
+// passed clinical review), while the AI shading/fill alpha continues scaling
+// to 100. Enhanced and Overfilled therefore show the validated silhouette
+// plus progressively stronger fill. A smooth, spline-based silhouette target
+// that can carry full amplitude is M10 geometry work; a dedicated AI-heavy
+// Overfilled anchor (education zone) is the agreed companion design. Set
+// CHINW_WARP_SAT to 1.0 to restore exact v44 behavior.
+//
+// M9.9 (v44): EVIDENCE-DRIVEN RETIREMENT of the painted border light. Pixel
+// forensics on a real v43 Enhanced export (signed diff + local-contrast map
+// against the original panel) showed two things. (1) The jawdef pass renders
+// as a literal drawn stroke: one isolated arc of ADDED contrast tracing the
+// border on the contrast map, visible in the photo as a pale line. A
+// hand-painted luminance band cannot pass a clinician's eye at consultation
+// levels; credible border definition comes from geometry changing what real
+// light does (proven by the chin arc, v31-v34, composite-then-warp), so that
+// job moves to the M10 geometry stack. JAWDEF_BRIGHT and JAWDEF_DARK default
+// to 0 (the pass and its levers remain for a possible overfill-education-only
+// revival). The GEOMETRIC gonial squaring (GONW_DEF) stays: it is the
+// legitimate mechanism and carries real pixels. (2) The simulated panel was
+// globally softer than the original panel, including pipeline-untouched
+// regions (forehead contrast ratio 0.93, blur-match sigma ~0.6px): the
+// compositor's 1024 grid was being UPSCALED into the larger export panel and
+// compared against the sharper original. That gap predates and underlies the
+// whole v37-v43 softness chase. Fixed client-side: exports re-render each
+// angle at maxDim 2048 (compositeSculptra already accepts maxDim; the high
+// band comes from the original, so output crispness scales with the grid).
+//
+// M9.8 (v43): organic mid band + photographic border light (clinical: the
+// Overfilled oblique still reads synthetically smooth between border and lower
+// cheek, and the border light reads drawn). Two causes, two fixes:
+// (1) THREE-BAND mid keep (chin_jaw only): the two-band restore preserves pore
+// detail (high band) but hands everything coarser to the AI's smooth fill, so
+// the patient's 8-30px organic skin variation vanishes at high alpha, which
+// is the synthetic-smoothness read. The luma path now splits a MID band
+// (between CHIN_JAW_TEX_RADIUS and CHIN_JAW_MID_RADIUS) and keeps
+// CHIN_JAW_MID_KEEP of the patient's own mid variation, suppressed inside the
+// jowl release lobes so the fold erasure is not undone. midKeep 0 reproduces
+// the v42 path bit for bit; Sculptra passes no midKeep and is untouched.
+// (2) LIGHT-MODULATED border pass: applyJawDefinition now samples the lit
+// face just inside the border at each polyline vertex and scales both the lit
+// band and the shadow step by that local illumination, so the structural light
+// breathes with the photo's lighting instead of tracing a uniform line.
+//
+// M9.7 (v42): jaw shadow containment + layer attribution. (1) The v41 shadow
+// step smeared: a 0.028W feather with no hard stop painted a soft dark band
+// past the border onto the neck and clothing. Real border shadow is a thin
+// crease hugging the border. JAWDEF_DARK 14 -> 10, JAWDEF_W_OUT 0.028 ->
+// 0.014, and the dark side now has a HARD cutoff at 2.5 sigma, so the step is
+// crisp and close and nothing below it is touched. (2) Post passes are now
+// individually addressable from the client: opts.jawDef === false skips the
+// border light, opts.warpSharpen === false skips the sharpen pass. Together
+// with the existing warp/textureRestore/jowlTexRelease flags, this powers the
+// client's ?debug=layers contact sheet (one generation rendered with each
+// layer isolated), which replaces diagnosis-by-correspondence with evidence.
+//
+// M9.6 (v41): DETERMINISTIC JAWLINE DEFINITION (clinical: jawline never made
+// stronger; structural rebuild is the point of chin/jawline HA in bone
+// resorption, and the persistent "blur" reading in the jowl/jaw region).
+// Re-diagnosis against the clinic's real before/afters: the treated jaw reads
+// sharp because it has STRUCTURE, a lit border plane with a crisp shadow step
+// below it running chin to gonion, not because of pore detail. Our composite
+// preserves pores (v37-v40) but fills the region with featureless smooth
+// brightness, and featureless reads as blurry; meanwhile the AI under-paints
+// the border light, especially posteriorly. Fix, two parts:
+// (1) applyJawDefinition: a photometric border pass on the FINISHED, warped
+// composite. Along the displaced chin-to-gonion border polyline it lifts a
+// narrow band just above the border (JAWDEF_BRIGHT over JAWDEF_W_IN) and
+// deepens a band just below (JAWDEF_DARK over JAWDEF_W_OUT), luminance only,
+// added equally to RGB (chroma locked), scaled by the slider, brightening
+// gated to lit subject so hair and backdrop are never lifted. This is the
+// light architecture of a structural jawline, drawn deterministically.
+// (2) Gonial squaring at oblique: a small posterior-inferior kernel at the
+// near gonion (GONW_DEF) restores the angle the way jawline filler does, so
+// the border line has a corner to end at. Both lever-tunable; zero either to
+// disable. Sculptra untouched (chin_jaw post-warp path only).
+//
+// M9.5 (v40): the two residual softeners at high intensity (clinical: "a bit
+// better but still not enough" after v39 closed all three texture-swap paths).
+// (1) STRETCH-AWARE sharpening: the warp's detail loss follows local
+// MAGNIFICATION, not displacement; the plateau translates rigidly and loses
+// almost nothing, while the decay zone stretches up to ~1.4x and thins detail.
+// The sharpen pass now weights by the local stretch of the offset field (sum
+// of absolute partial derivatives, the Jacobian deviation) with a small base
+// term for plain fractional-offset translation, and the ceiling rises 0.45 ->
+// 0.7. (2) MID-BAND tightening for chin_jaw only: detail coarser than the
+// texture-restore cutoff lives in the low band and takes the AI's smooth
+// version at high alpha, an airbrushed look at the 7px-and-coarser scale (fine
+// lines, skin mottling) even with pores intact. CHIN_JAW_TEX_RADIUS drops the
+// chin_jaw cutoff 0.016W -> 0.009W so that band stays the patient's own;
+// treatment shading is far coarser than 0.009W and is unaffected, and Sculptra
+// keeps 0.016W untouched. Attribution if any softness remains: ?warp=off at
+// the top of the slider; sharp there means raise WARP_SHARP_AMOUNT, soft
+// there means lower CHIN_JAW_TEX_RADIUS further.
+//
+// M9.4 (v39): micro-texture-PROTECTED guard, the third and final texture-
+// replacement path in the chin/jaw region (clinical: chin still blurry at the
+// top of the slider after v38). v37 fixed warp resampling, v38 fixed the
+// release lobes; both were real, but the original M5.1 moved-edge guard was
+// independently doing the same damage in a band along the jawline: the AI's
+// strong border shadow and local brightening (demanded by prompt v9, permitted
+// by the deep dark floor) create exactly the sharp low-band transition the
+// guard triggers on, so g collapses along the border and the AI's soft,
+// upscale-stretched high band replaces the patient's pores there, scaled by
+// alpha (hence worse to the right of the slider). Fix, same amplitude
+// separation as v38: the guard's fallback now only proceeds where there is
+// real STRUCTURE at the pixel in either image (max(|origHigh|,|aiHigh|) above
+// GUARD_DETAIL_LO..HI). Pore-scale pixels keep the original unconditionally.
+// Both of the guard's legitimate jobs survive intact, because both involve
+// structure: an old-edge ghost candidate has |origHigh| large (fallback still
+// proceeds, no ghost), and the AI's new shadow line has |aiHigh| large
+// (fallback still carries it). After this change, a pore pixel's luminance
+// delta is mathematically pure low band at every slider position; the only
+// remaining softener in the region is warp resampling, already bicubic plus
+// sharpened (v37). Sculptra is untouched (forceOriginalTexture already pins
+// its guard fully open).
+//
+// M9.3 (v38): crease-SELECTIVE lobe release (clinical: chin/jowl area still
+// blurry at the high end of the slider after v37; conservative end good).
+// That slider signature identifies the source: v36's release handed the WHOLE
+// lobe's high band to the AI, and the AI's in-mask fill is soft, so as alpha
+// climbed the patient's pore texture was progressively swapped for smooth AI
+// skin. The fix separates what the release was for (erasing the fold line)
+// from what it must never touch (pore-scale texture) by amplitude: a jowl or
+// marionette fold is a dark high-frequency structure many luma levels below
+// its local mean; pores are a few levels. The release now fires per pixel only
+// on dark structures deeper than JOWL_CREASE_LO..HI, so the fold is still
+// erased where the AI softened it while pores keep the original texture at
+// EVERY slider value. Tradeoff, documented: a deep pigment spot inside the
+// lobes (darker than JOWL_CREASE_HI below its surroundings) is treated like a
+// crease and can fade at the top of the slider; raise both thresholds if a
+// real spot visibly fades, at the cost of fold-erasure strength.
+//
+// M9.2 (v37): chin sharpness at oblique Strong (clinical: "blurry effects at
+// the chin area at strong"). Mechanism, two compounding resampling losses in
+// the chin_jaw post-warp, neither fixable by the texture restore because that
+// runs BEFORE the warp and its output gets resampled too:
+// (1) bilinear sampling averages 4 pixels at every fractional offset, and
+// (2) in the kernel decay zone the backward map locally MAGNIFIES (the chin
+// peak 0.06W over sigma 0.085W gives a local stretch up to ~1.4x), thinning
+// pore detail exactly where displacement is largest. Largest displacement is
+// the oblique chin at Strong, which is exactly where the blur was seen.
+// Fixes: (a) Catmull-Rom bicubic resampling for the chin_jaw field only (the
+// field carries bicubic:true; the approved Sculptra lift keeps its exact
+// bilinear path, zero change there), and (b) a displacement-weighted,
+// subject-gated self-unsharp pass on the warped result (luminance only, added
+// equally to RGB so chroma is locked; scaled by local displacement so it does
+// nothing outside the moved band; dark-gated so the backdrop and hair are
+// never haloed). Levers: WARP_SHARP_AMOUNT (0 disables, isolating the bicubic
+// change), WARP_SHARP_RADIUS, WARP_SHARP_DISP.
+//
+// M9.1 (v36): jowl-lobe TEXTURE RELEASE, the structural fix v35's lobes were
+// missing. Diagnosis (settled by the composite math, not by tuning): the
+// chroma-locked texture restore's high-frequency term reduces to
+//   highTerm = (1 - g) * (aiHighLuma - origHighLuma)
+// and on stationary skin the moved-edge guard gives g ~ 1, so highTerm ~ 0.
+// The output is original + alpha * delta; the jowl fold's sharp crease line
+// lives in the ORIGINAL's high band and therefore survives at full strength no
+// matter how well the AI softens it. v35's lobes opened the ALPHA, but alpha
+// multiplies a delta that structurally contains no crease correction. Only the
+// low band (cutoff TEX_RADIUS_FRAC, roughly 10-16 px) passes, which is exactly
+// why the broad frontal shadow mildly improved while the oblique fold (a sharp
+// line at 45 degrees, almost entirely high frequency) did not move. Fix: a
+// per-pixel RELEASE FIELD over the same v35 jowl lobes, passed into
+// buildTextureDelta, where it scales the guard down (g *= 1 - release). Inside
+// the lobes the high band becomes aiHigh - origHigh: where the original holds
+// a dark crease line and the AI flattened it, that term is POSITIVE
+// (brightening), passes the darkening gate untouched, and literally erases the
+// crease. AI attempts to ADD dark detail there stay governed by the existing
+// highDarkenScale. Chroma stays locked (luminance only, no invented pigment),
+// and the field is zero outside the lobes, so chin/border moved-edge behavior
+// is untouched. Lever: JOWL_TEX_RELEASE (0 restores v35 behavior); client
+// hook ?jowltex=off for the A/B. Also: CHINW_NOTCH_FILL 0.012 -> 0.022. The
+// undulating BORDER at oblique can only be the warp's (the outline gate zeroes
+// AI paint outside the silhouette and the lobes are oval-contained), and the
+// follower sum plus 0.012W still left a visible dip on a deep sulcus. Frontal
+// notch fill unchanged (frontal mildly improved on the v35 run).
+//
+// M9.0 (v35): jowl blending for the aging lower face. Clinical mechanism
+// (calibrated against real chin/jawline before/afters): on a jowled face the
+// treatment reads as jowl SOFTENING because the prejowl sulcus is filled and
+// the border becomes one continuous line from chin to gonion; the jowl is
+// blended into the line, never enlarged, never excised. v34 missed this twice:
+// (1) the treat alpha was a tube hugging the border, so the AI's softening of
+// the marionette/prejowl shadow and jowl shadow ABOVE the border was thrown
+// away at composite time; (2) the warp followers interpolate the border, so a
+// concave notch stays concave. v35 adds (a) jowl-blend alpha lobes (marionette
+// tube: mouth corner -> prejowl; jowl body tube: prejowl -> raised mid-jowl),
+// oval-contained so they are shading-only and can never move the contour, and
+// (b) a prejowl notch-fill kernel in the warp (anterior at oblique, outward at
+// frontal) that overfills the sulcus so the silhouette line straightens.
+// Levers: CHINW_NOTCH_FILL (oblique straightening), CHINW_NOTCH_FILL_FRONTAL
+// (frontal, keep small, frontal is approved), JOWL_SCALE / LF_JOWL_SIGMA
+// (how much AI shading the jowl region admits).
+//
 // M8.2 (v34): warp shading reconciliation. The one predictable residue of
 // warping real pixels: the warp can slide brighter mid-chin skin forward over
 // what used to be a darker zone (labiomental, under-jaw), so the moved band
@@ -317,6 +658,27 @@ const GLOW_LUMA        = 6;     // gentle lighten (glow), luma levels at full. M
 // natural contour shadow back under a strongly projected chin.
 const HIGH_DARKEN_SCALE = 0;
 
+// M9.3 (v38): crease detector for the jowl-lobe texture release. The release
+// (rel, from buildJowlReleaseField) only acts on dark high-frequency structure
+// between these depths, in luma levels below the local mean: at or below LO
+// nothing releases (pores, fine texture stay the patient's own at every
+// intensity); at HI and deeper the release is fully open (the fold line is
+// erased where the AI softened it). Raise both to protect deep pigment spots
+// inside the lobes; lower LO if a shallow fold survives at full intensity.
+const JOWL_CREASE_LO = 4;
+const JOWL_CREASE_HI = 12;
+
+// M9.4 (v39): structure detector for the moved-edge guard. The guard's
+// fallback to AI high-frequency detail only proceeds where the pixel carries
+// real structure in either image (max(|origHigh|,|aiHigh|), luma levels): at
+// or below LO the original texture is kept unconditionally (pores can never be
+// swapped for AI softness, at any slider value); at HI and above the guard
+// behaves exactly as before (old-edge ghost protection and the AI's border
+// shadow line both live above this). Raise LO if any AI softness still creeps
+// into skin; lower HI if a moved edge ever ghosts.
+const GUARD_DETAIL_LO = 4;
+const GUARD_DETAIL_HI = 10;
+
 // repeated separable box blur on a Float32 plane -> approximate gaussian
 function blurPlane(src,w,h,r,passes){
   if(r<=0) return src.slice();
@@ -367,6 +729,16 @@ function buildTextureDelta(b,a0,w,h,W,opts){
   // low-band dark floor, Sculptra skin can only hold or brighten. HA chin/jaw
   // keeps the guard (it has genuine moved edges) by leaving this false.
   const forceOrig = !!opts.forceOriginalTexture;
+  // M9.1/M9.3: optional per-pixel texture-release field (0..1). Where it is
+  // positive, the luma path's guard is scaled down crease-selectively (only on
+  // dark high-frequency structure deeper than JOWL_CREASE_LO..HI), letting the
+  // AI's flattened version replace the fold line while pores keep the original
+  // texture. Built over the jowl-blend lobes for chin_jaw; null everywhere
+  // else, so nothing outside the lobes changes.
+  const rel = opts.releaseField || null;
+  // M9.8 (v43): optional three-band mid keep (see CHIN_JAW_MID_KEEP).
+  const midK = (opts.midKeep==null ? 0 : Math.max(0, Math.min(1, opts.midKeep)));
+  const midR = Math.max(0, Math.round((opts.midRadiusFrac ?? 0)*W));
 
   const bR=new Float32Array(N),bG=new Float32Array(N),bB=new Float32Array(N);
   const aR=new Float32Array(N),aG=new Float32Array(N),aB=new Float32Array(N);
@@ -376,6 +748,18 @@ function buildTextureDelta(b,a0,w,h,W,opts){
   }
   const bRl=blurPlane(bR,w,h,r,passes), bGl=blurPlane(bG,w,h,r,passes), bBl=blurPlane(bB,w,h,r,passes);
   const aRl=blurPlane(aR,w,h,r,passes), aGl=blurPlane(aG,w,h,r,passes), aBl=blurPlane(aB,w,h,r,passes);
+  // M9.8: deep-low luma planes for the mid split (luma commutes with blur, so
+  // blurring the per-pixel luma equals the luma of the blurred channels).
+  let YoM=null, YaM=null;
+  if(midK>0 && midR>r){
+    const Yo=new Float32Array(N), Ya=new Float32Array(N);
+    for(let i=0;i<N;i++){
+      Yo[i]=0.299*bRl[i]+0.587*bGl[i]+0.114*bBl[i];
+      Ya[i]=0.299*aRl[i]+0.587*aGl[i]+0.114*aBl[i];
+    }
+    YoM=blurPlane(Yo,w,h,midR,1);
+    YaM=blurPlane(Ya,w,h,midR,1);
+  }
 
   // moved-edge guard: local variation of the low-band luma difference. A moved
   // silhouette produces a sharp transition in (aiLow - origLow); a broad volume
@@ -393,6 +777,8 @@ function buildTextureDelta(b,a0,w,h,W,opts){
   for(let i=0;i<N;i++){
     const edge=Math.abs(D[i]-Dl[i]);
     const g=forceOrig ? strength : (1-smoothstep(lo,hi,edge))*strength; // 1 = stationary skin -> full original texture
+    // (M9.3: the lobe release no longer scales this shared guard wholesale; it
+    // acts crease-selectively on the luma path below, so pores stay original.)
     const bHr=bR[i]-bRl[i], bHg=bG[i]-bGl[i], bHb=bB[i]-bBl[i];
     const aHr=aR[i]-aRl[i], aHg=aG[i]-aGl[i], aHb=aB[i]-aBl[i];
     const detHr=aHr+(bHr-aHr)*g, detHg=aHg+(bHg-aHg)*g, detHb=aHb+(bHb-aHb)*g;
@@ -413,13 +799,38 @@ function buildTextureDelta(b,a0,w,h,W,opts){
       const oY =0.299*bR[i] +0.587*bG[i] +0.114*bB[i];
       const aY =0.299*aR[i] +0.587*aG[i] +0.114*aB[i];
       const oYh=oY-oYl, aYh=aY-aYl;
-      const detY=aYh+(oYh-aYh)*g;
+      // M9.4 (v39): micro-texture-protected guard. The guard reduction (1-g)
+      // only applies where the pixel carries real structure in either image;
+      // pore-scale pixels (both high bands shallow) keep the original texture
+      // unconditionally, so the AI's soft fill can never replace pores no
+      // matter how hard the guard fires along the AI's border shading.
+      const structW=smoothstep(GUARD_DETAIL_LO, GUARD_DETAIL_HI, Math.max(Math.abs(oYh), Math.abs(aYh)));
+      let gY=1-(1-g)*structW;
+      // M9.3 (v38): crease-selective lobe release. Inside the jowl lobes the
+      // guard is scaled down ONLY on dark high-frequency structure (the fold
+      // line), gated by depth via JOWL_CREASE_LO..HI. Pores and fine texture
+      // (shallow |oYh|) keep the original at every intensity, which removes the
+      // v36 high-slider softness; the fold is still erased where the AI
+      // flattened it (release open -> detY ~ aYh ~ 0 -> the bright correction
+      // -oYh passes the darkening gate and cancels the crease).
+      if(rel && rel[i]>0 && oYh<0){
+        const creaseW=smoothstep(JOWL_CREASE_LO, JOWL_CREASE_HI, -oYh);
+        if(creaseW>0) gY*=(1-Math.min(1,rel[i])*creaseW);
+      }
+      const detY=aYh+(oYh-aYh)*gY;
       // Broad tone change from the AI volume. Real Sculptra lightens skin (glow)
       // and does not darken it, so floor any darkening of the broad tone and add
       // a gentle uniform glow lift. Texture (the high-band term below) and chroma
       // are untouched, so spots, pores, and pigment all stay; only the broad
       // luminance moves, and only upward.
       let lowShift = aYl - oYl;
+      // M9.8: keep midK of the patient's own mid band (deep volume still moves
+      // with the AI). kEff is suppressed inside the jowl release lobes so the
+      // fold erasure is never undone. midK 0 leaves this line a no-op.
+      if(YoM){
+        const kEff = midK * (rel ? (1 - Math.min(1, rel[i])) : 1);
+        if(kEff > 0) lowShift -= kEff * ((aYl - YaM[i]) - (oYl - YoM[i]));
+      }
       if(lowShift < -darkFloor) lowShift = -darkFloor;
       // M6.3: soft-knee the broad brightening so the response gain amplifies
       // shading structure, not flat brightness (see SCULPTRA_BRIGHT_CAP_FULL).
@@ -480,12 +891,69 @@ function buildTextureDelta(b,a0,w,h,W,opts){
 // re-drape) that the M6.1 values, further attenuated by the old 0.7 slider cap,
 // could not reach. The slider now spans the full 0..1, so these are the true
 // full-strength figures.
-const WARP_JOWL_LIFT     = 0.026;
+// v51 jowl fix: WARP_JOWL_SIGMA 0.085->0.115 (wider kernel reduces hard tonal
+// edge at inferior boundary), WARP_JOWL_LIFT 0.026->0.020 (gentler magnitude
+// so the re-drape reads as a natural lift rather than a puffed lower face).
+// Root cause: tight sigma created a sharp pixel-displacement boundary at the
+// jowl-shadow edge; AI shading across that boundary reads as an artifact arc
+// at both frontal and oblique gonial angles.
+const WARP_JOWL_LIFT     = 0.020; // v51: 0.026 -> 0.020
 const WARP_JOWL_IN       = 0.011;
-const WARP_JOWL_SIGMA    = 0.085;
+const WARP_JOWL_SIGMA    = 0.115; // v51: 0.085 -> 0.115
 const WARP_MIDFACE_LIFT  = 0.017;
 const WARP_MIDFACE_SIGMA = 0.12;
 const WARP_EDGE_FADE     = 0.06;
+
+// v53: Sculptra lift warp saturates at SCULP_LIFT_SAT so Strong-response
+// artifacts (zygoma disc, gonial shadow) never reach the exported image.
+// Expected band tops at ~0.62; cap at 0.60 keeps the full Expected range.
+// One-constant reversal to restore Strong: set to 1.0.
+const SCULP_LIFT_SAT = 0.60;
+
+// M10.2: mandibular border suspension kernels (oblique only).
+// Three point kernels along the near-side prejowl-to-gonion polyline, each
+// carrying a superior + slightly inward vector. Displaces pixels upward along
+// the border so the jowl reads as suspended into the mandibular line --
+// the chin-to-gonion arc that real Sculptra strong responders show.
+// Narrow sigma (tight to the border) so the kernel does not bleed into the
+// jowl shadow below. Superior vector means displacement moves away from the
+// shadow, so no shade-discontinuity artifact (unlike the old frontal jowl
+// kernel which displaced toward the shadow boundary).
+const SCULP_BORDER_UP  = 0.018; // superior component, fraction of faceH
+const SCULP_BORDER_IN  = 0.006; // inward component, fraction of W (slight medial)
+const SCULP_BORDER_SIG = 0.055; // kernel breadth, fraction of W (tight to border)
+
+// M10.1 (v47): oblique Sculptra cheek/midface projection kernels.
+// FIRST CALIBRATION LEVER: SCULP_ZYGOMA_OUT -- the lateral magnitude that drives
+// the zygomatic arch highlight. Increase to push the arch further; decrease if
+// the highlight reads as a painted disc rather than a natural convex form.
+// Other levers in order of expected need:
+//   SCULP_MIDFACE_ANT  -- anterior fill in the ogee zone; increase if the
+//                         mid-cheek plane still reads flat between arch and fold.
+//   SCULP_ZYGOMA_UP    -- superior component; increase slightly if the arch
+//                         highlight needs to shift higher toward the orbital rim.
+//   SCULP_ZYGOMA_SIG   -- kernel breadth; increase if the highlight is too focal,
+//                         decrease if it bleeds into the temple or eye zone.
+//   SCULP_MIDFACE_SIG  -- midface kernel breadth; increase for a more diffuse fill.
+//   SCULP_CAPSULE      -- capsule run; decrease toward 0 for a pure Gaussian.
+// M10.1 (v48): SCULP_ZYGOMA_OUT 0.022->0.032, SCULP_MIDFACE_ANT 0.014->0.020.
+// M10.1 (v49): lateral cut (0.032->0.018), superior raised (0.008->0.014),
+//   anterior raised (0.020->0.026), midface sigma widened (0.16->0.20).
+//   Clinical finding: Expected looked better than Strong -- lateral was dominant
+//   and read as width not fullness. Anterior + superior are the real channels.
+// M10.1 (v50): continuing anterior push. Real case comparison (Case A left 45)
+//   shows arch highlight still too diffuse and midface fill still underweight vs
+//   real Sculptra result. Raising SCULP_MIDFACE_ANT 0.026->0.034 and
+//   SCULP_ZYGOMA_UP 0.014->0.018. Lateral held at 0.018 (no change).
+//   Also: frontal temple kernel added to buildLiftField frontal branch (M10
+//   scope, assessed as one-round addition). VIEW_TQ_MAX_DEG raised 50->60 so
+//   photos at ~51 degrees are accepted (one-degree rejection was too tight).
+const SCULP_ZYGOMA_OUT  = 0.018; // held from v49 (lateral restrained)
+const SCULP_ZYGOMA_UP   = 0.018; // v50: 0.014 -> 0.018 (more superior lift)
+const SCULP_ZYGOMA_SIG  = 0.10;  // kernel breadth, fraction of W
+const SCULP_MIDFACE_ANT = 0.034; // v50: 0.026 -> 0.034 (anterior projection bolder)
+const SCULP_MIDFACE_SIG = 0.20;  // midface kernel breadth, fraction of W
+const SCULP_CAPSULE     = 0.80;  // capsule run factor for zygoma kernel
 
 // Jowl kernel anchor landmarks: gonion and prejowl per side; the kernel sits
 // between them, nudged up onto the jowl pad itself.
@@ -498,7 +966,10 @@ const PREJOWL = { r:176, l:400 };
 // samples the original at (x + sx*t, y + sy*t). Tissue moving up by v means the
 // content came from below, so the offset is the inverse of the forward
 // displacement (exact enough at these few-pixel magnitudes).
-function buildLiftField(L, w, h){
+// M10.1: pose parameter added. At frontal the function builds the existing jowl +
+// midface re-drape kernels (M6, untouched). At three_quarter it builds the new
+// zygomatic arch projection + anterior midface kernels. At other views returns null.
+function buildLiftField(L, w, h, pose){
   const lm = L.map(p=>({x:p.x*w, y:p.y*h}));
   const p10=lm[10], p152=lm[152], zr=lm[ZYGION.r], zl=lm[ZYGION.l];
   if(!p10||!p152||!zr||!zl) return null;
@@ -536,24 +1007,161 @@ function buildLiftField(L, w, h){
   // Displacement kernels, both sides. Each kernel is a Gaussian bump carrying a
   // fixed displacement vector; the field is their sum, attenuated by the guards.
   const kernels=[];
-  for(const s of ["r","l"]){
-    const g=lm[GONION[s]], pj=lm[PREJOWL[s]], zy=lm[ZYGION[s]];
-    if(!g||!pj||!zy) continue;
-    const sgn=Math.sign(dot(sub(zy,p152),dirOut)) || (s==="r"?-1:1);
-    const inw={ x:-sgn*dirOut.x, y:-sgn*dirOut.y };  // unit vector toward the midline
-    // Jowl re-drape: up + slightly inward, centered on the jowl pad.
-    const jowlC=add(lerp(g, pj, 0.45), mul(dirUp, 0.06*faceH));
-    const sigJ=WARP_JOWL_SIGMA*W;
-    kernels.push({ cx:jowlC.x, cy:jowlC.y, twoSig:2*sigJ*sigJ,
-      vx: dirUp.x*WARP_JOWL_LIFT*faceH + inw.x*WARP_JOWL_IN*W,
-      vy: dirUp.y*WARP_JOWL_LIFT*faceH + inw.y*WARP_JOWL_IN*W });
-    // Midface/submalar re-drape: straight up, centered below the cheek apex.
-    const midC=add(add(zy, mul(dirUp, -0.10*faceH)), mul(inw, 0.02*W));
-    const sigM=WARP_MIDFACE_SIGMA*W;
-    kernels.push({ cx:midC.x, cy:midC.y, twoSig:2*sigM*sigM,
-      vx: dirUp.x*WARP_MIDFACE_LIFT*faceH,
-      vy: dirUp.y*WARP_MIDFACE_LIFT*faceH });
+
+  const isOblique = pose && pose.view === 'three_quarter'
+    && (pose.nearSide === 'left' || pose.nearSide === 'right');
+
+  if(isOblique){
+    // M10.1: oblique branch. Kernels target the near-side (camera-facing) cheek
+    // only -- that is where the arch highlight and anterior midface projection are
+    // visible at a three-quarter view. The far side is foreshortened and the oval
+    // guard suppresses out-of-oval displacement in any case.
+    //
+    // Anterior direction sign: same derivation as buildChinProjectionField (v32).
+    // The nose tip is displaced anteriorly relative to the bridge; its lateral
+    // offset gives the forward direction unambiguously.
+    const tip = lm[1] || lm[4];
+    const bridge = lm[168] || p10;
+    let antSign = tip ? (Math.sign(dot(sub(tip, bridge), dirOut)) || 0) : 0;
+    if(!antSign){
+      const leftSign = Math.sign(dot(sub(lm[454], p152), dirOut)) || 1;
+      antSign = (pose.nearSide === 'left') ? -leftSign : leftSign;
+    }
+    const antDir = mul(dirOut, antSign);
+
+    // Near-side lateral sign (outward from midline on the camera-facing side).
+    const nearSide = pose.nearSide;
+    const nearZy = (nearSide === 'right') ? lm[ZYGION.r] : lm[ZYGION.l];
+    const nearZyApex = (nearSide === 'right') ? lm[123] : lm[352]; // zygomatic arch apex
+    if(!nearZy) return null;
+    const latSign = Math.sign(dot(sub(nearZy, p152), dirOut)) || (nearSide === 'right' ? -1 : 1);
+    const latDir = mul(dirOut, latSign);
+
+    // (1) Zygoma arch projection kernel.
+    // Anchor: the zygomatic arch apex (lm[123]/352). If the landmark is absent
+    // (older MediaPipe models), fall back to the zygion with a small superior
+    // and lateral nudge toward the arch apex position.
+    const zyApexC = nearZyApex
+      ? nearZyApex
+      : add(nearZy, add(mul(dirUp, 0.04*faceH), mul(latDir, 0.02*W)));
+    const zygomaV = add(mul(latDir, SCULP_ZYGOMA_OUT*W), mul(dirUp, SCULP_ZYGOMA_UP*faceH));
+    const sigZ = SCULP_ZYGOMA_SIG*W;
+    // Capsule: extend in the displacement direction so the plateau translates
+    // rigidly through and past the arch, not as a feathered dome.
+    const vLen = Math.hypot(zygomaV.x, zygomaV.y) || 1e-6;
+    const runZ = vLen * SCULP_CAPSULE;
+    kernels.push({
+      ax: zyApexC.x, ay: zyApexC.y,
+      bx: zyApexC.x + (zygomaV.x/vLen)*runZ,
+      by: zyApexC.y + (zygomaV.y/vLen)*runZ,
+      twoSig: 2*sigZ*sigZ, vx: zygomaV.x, vy: zygomaV.y,
+      capsule: true
+    });
+
+    // (2) Anterior midface kernel (ogee zone fill).
+    // Anchor: midpoint between the near-side zygion and the near-side ala,
+    // approximating the ogee inflection where anterior projection is most
+    // visible on a deflated face.
+    const nearAla = (nearSide === 'right') ? lm[ALA.r] : lm[ALA.l];
+    const ogeeC = nearAla
+      ? lerp(nearZy, nearAla, 0.55)
+      : add(nearZy, add(mul(dirUp, -0.12*faceH), mul(antDir, 0.03*W)));
+    const midfaceV = mul(antDir, SCULP_MIDFACE_ANT*W);
+    const sigM = SCULP_MIDFACE_SIG*W;
+    kernels.push({
+      ax: ogeeC.x, ay: ogeeC.y, bx: ogeeC.x, by: ogeeC.y, // point kernel (no capsule run)
+      twoSig: 2*sigM*sigM, vx: midfaceV.x, vy: midfaceV.y,
+      capsule: false
+    });
+
+    // (3) M10.2: mandibular border suspension kernels.
+    // Three point kernels at 25/50/75% along the near-side prejowl-to-gonion
+    // polyline. Vector: superior + slightly inward. Displaces border pixels
+    // upward so the jowl reads as lifted into the mandibular line.
+    // Superior vector moves away from the jowl shadow below, so no shade
+    // discontinuity (safe unlike the old frontal jowl kernel).
+    const nearGonion  = (nearSide === 'right') ? lm[GONION.r]  : lm[GONION.l];
+    const nearPrejowl = (nearSide === 'right') ? lm[PREJOWL.r] : lm[PREJOWL.l];
+    if(nearGonion && nearPrejowl){
+      const inwB = { x: -latSign*dirOut.x, y: -latSign*dirOut.y }; // toward midline
+      const borderV = {
+        x: dirUp.x*SCULP_BORDER_UP*faceH + inwB.x*SCULP_BORDER_IN*W,
+        y: dirUp.y*SCULP_BORDER_UP*faceH + inwB.y*SCULP_BORDER_IN*W
+      };
+      const sigB = SCULP_BORDER_SIG*W;
+      const twoSigB = 2*sigB*sigB;
+      for(const frac of [0.25, 0.50, 0.75]){
+        const bc = lerp(nearPrejowl, nearGonion, frac);
+        kernels.push({
+          ax: bc.x, ay: bc.y, bx: bc.x, by: bc.y,
+          twoSig: twoSigB, vx: borderV.x, vy: borderV.y,
+          capsule: false
+        });
+      }
+    }
+
+    // (4) M10.5 v68: NLF anterior push kernel.
+    // The nasolabial fold at oblique view is a shadow crease running from the
+    // near-side ala down toward the commissure. Pushing the midpoint of this
+    // zone anteriorly (toward the camera) shallows the crease shadow by bringing
+    // the fold wall forward -- the same mechanism as real Sculptra lateral support
+    // softening the fold secondarily. The kernel anchors at the midpoint between
+    // the near-side ala and near-side commissure. Vector is anterior only (no
+    // superior component -- the fold softens by advancing, not by lifting).
+    // SCULP_NLF_ANT: conservative magnitude. The NLF constraint in the prompt
+    // prohibits deepening; this kernel ensures the warp reinforces that by
+    // physically moving the fold zone forward.
+    // One-constant reversal: set SCULP_NLF_ANT to 0.
+    const SCULP_NLF_ANT = 0.016; // fraction of W, anterior push at the NLF midpoint
+    const SCULP_NLF_SIG = 0.12;  // kernel breadth, fraction of W
+    const nearCom = (nearSide === 'right') ? lm[COMMISSURE.r] : lm[COMMISSURE.l];
+    if(nearAla && nearCom){
+      const nlfC = lerp(nearAla, nearCom, 0.45); // slightly above midpoint, where shadow is deepest
+      const nlfV = mul(antDir, SCULP_NLF_ANT*W);
+      const sigNLF = SCULP_NLF_SIG*W;
+      kernels.push({
+        ax: nlfC.x, ay: nlfC.y, bx: nlfC.x, by: nlfC.y,
+        twoSig: 2*sigNLF*sigNLF, vx: nlfV.x, vy: nlfV.y,
+        capsule: false
+      });
+    }
+
+  } else {
+    // Frontal branch: midface re-drape and temple convexity kernels.
+    // v52: jowl re-drape kernel REMOVED from frontal. The kernel was creating
+    // a tonal discontinuity artifact at the inferior jowl boundary on frontal
+    // because the AI shadow and the warp displacement were operating on the same
+    // zone with contradictory assumptions. The midface and temple kernels are
+    // retained -- they do not cross a shadow boundary and are artifact-free.
+    // If the frontal jowl improvement reads as clinically insufficient without
+    // the kernel, shade reconciliation (option 2) is the next step.
+    const SCULP_TEMPLE_UP  = 0.014;
+    const SCULP_TEMPLE_OUT = 0.008;
+    const SCULP_TEMPLE_SIG = 0.13;
+    for(const s of ["r","l"]){
+      const zy=lm[ZYGION[s]];
+      if(!zy) continue;
+      const sgn=Math.sign(dot(sub(zy,p152),dirOut)) || (s==="r"?-1:1);
+      const inw={ x:-sgn*dirOut.x, y:-sgn*dirOut.y };
+      const outw={ x:sgn*dirOut.x, y:sgn*dirOut.y };
+      // Midface/submalar re-drape: straight up, centered below the cheek apex.
+      const midC=add(add(zy, mul(dirUp, -0.10*faceH)), mul(inw, 0.02*W));
+      const sigM=WARP_MIDFACE_SIGMA*W;
+      kernels.push({ ax:midC.x, ay:midC.y, bx:midC.x, by:midC.y, twoSig:2*sigM*sigM,
+        vx: dirUp.x*WARP_MIDFACE_LIFT*faceH,
+        vy: dirUp.y*WARP_MIDFACE_LIFT*faceH, capsule:false });
+      // Temple convexity kernel: upward + slight lateral at the temporal oval.
+      const to=lm[TEMPLE_OVAL[s]];
+      if(to){
+        const tempC=add(to, mul(inw, 0.01*W));
+        const sigT=SCULP_TEMPLE_SIG*W;
+        kernels.push({ ax:tempC.x, ay:tempC.y, bx:tempC.x, by:tempC.y, twoSig:2*sigT*sigT,
+          vx: dirUp.x*SCULP_TEMPLE_UP*faceH + outw.x*SCULP_TEMPLE_OUT*W,
+          vy: dirUp.y*SCULP_TEMPLE_UP*faceH + outw.y*SCULP_TEMPLE_OUT*W, capsule:false });
+      }
+    }
   }
+
   if(!kernels.length) return null;
 
   const N=w*h;
@@ -565,8 +1173,16 @@ function buildLiftField(L, w, h){
       if(guard<=0.01) continue;
       let dx=0, dy=0;
       for(let k=0;k<kernels.length;k++){
-        const K=kernels[k]; const ex=x-K.cx, ey=y-K.cy;
-        const gv=Math.exp(-(ex*ex+ey*ey)/K.twoSig);
+        const K=kernels[k];
+        // Capsule kernels use distance-to-segment; point kernels use distance-to-point.
+        const ex=x-K.ax, ey=y-K.ay;
+        let gv;
+        if(K.capsule && (K.bx !== K.ax || K.by !== K.ay)){
+          const dd=distToSeg(x, y, {x:K.ax, y:K.ay}, {x:K.bx, y:K.by});
+          gv=Math.exp(-(dd*dd)/K.twoSig);
+        } else {
+          gv=Math.exp(-(ex*ex+ey*ey)/K.twoSig);
+        }
         dx+=K.vx*gv; dy+=K.vy*gv;
       }
       // (dx,dy) is the forward tissue displacement; the backward sample offset
@@ -593,6 +1209,7 @@ function buildLiftField(L, w, h){
 // are untouched originals by construction.
 function applyLiftWarp(wb, b, w, h, f, t){
   if(!f) return;
+  if(f.bicubic) return applyLiftWarpBicubic(wb, b, w, h, f, t); // M9.2: chin_jaw
   const s = Math.max(0, Math.min(1, t));
   const sx=f.sx, sy=f.sy;
   for(let y=f.y0; y<=f.y1; y++){
@@ -616,27 +1233,71 @@ function applyLiftWarp(wb, b, w, h, f, t){
   }
 }
 
-// Gate + build the lift field for a compositor run. Frontal Sculptra 'full'
-// scope only this milestone; everything else returns null (exact M5 behavior).
+// M9.2 (v37): Catmull-Rom bicubic variant of applyLiftWarp, used when the
+// field carries bicubic:true (the chin_jaw projection warp). Bilinear averages
+// 4 pixels at every fractional offset, which compounds with the decay zone's
+// local magnification into the chin softness seen at oblique Strong; the
+// 16-tap Catmull-Rom kernel preserves edges and pore-scale detail through the
+// same map. Overshoot is clamped by the Uint8ClampedArray write. The Sculptra
+// lift never sets the flag, so its approved output is bit-identical to v36.
+function applyLiftWarpBicubic(wb, b, w, h, f, t){
+  const s = Math.max(0, Math.min(1, t));
+  const sx=f.sx, sy=f.sy;
+  for(let y=f.y0; y<=f.y1; y++){
+    const row=y*w;
+    for(let x=f.x0; x<=f.x1; x++){
+      const i=row+x, p=i*4;
+      const ox=sx[i], oy=sy[i];
+      if(ox===0 && oy===0){ wb[p]=b[p]; wb[p+1]=b[p+1]; wb[p+2]=b[p+2]; continue; }
+      let fx=x+ox*s, fy=y+oy*s;
+      if(fx<0) fx=0; else if(fx>w-1) fx=w-1;
+      if(fy<0) fy=0; else if(fy>h-1) fy=h-1;
+      const xi=Math.floor(fx), yi=Math.floor(fy);
+      const ax=fx-xi, ay=fy-yi;
+      const ax2=ax*ax, ax3=ax2*ax;
+      const wx0=-0.5*ax3+ax2-0.5*ax, wx1=1.5*ax3-2.5*ax2+1,
+            wx2=-1.5*ax3+2*ax2+0.5*ax, wx3=0.5*ax3-0.5*ax2;
+      const ay2=ay*ay, ay3=ay2*ay;
+      const wy0=-0.5*ay3+ay2-0.5*ay, wy1=1.5*ay3-2.5*ay2+1,
+            wy2=-1.5*ay3+2*ay2+0.5*ay, wy3=0.5*ay3-0.5*ay2;
+      const xA=xi-1<0?0:xi-1, xB=xi, xC=xi+1>w-1?w-1:xi+1, xD=xi+2>w-1?w-1:xi+2;
+      const yA=yi-1<0?0:yi-1, yB=yi, yC=yi+1>h-1?h-1:yi+1, yD=yi+2>h-1?h-1:yi+2;
+      let r=0, g=0, bb=0;
+      const rows=[yA,yB,yC,yD], wys=[wy0,wy1,wy2,wy3];
+      for(let k=0;k<4;k++){
+        const ro=rows[k]*w;
+        const pA=(ro+xA)*4, pB=(ro+xB)*4, pC=(ro+xC)*4, pD=(ro+xD)*4;
+        const wy=wys[k];
+        r +=wy*(wx0*b[pA]  +wx1*b[pB]  +wx2*b[pC]  +wx3*b[pD]);
+        g +=wy*(wx0*b[pA+1]+wx1*b[pB+1]+wx2*b[pC+1]+wx3*b[pD+1]);
+        bb+=wy*(wx0*b[pA+2]+wx1*b[pB+2]+wx2*b[pC+2]+wx3*b[pD+2]);
+      }
+      wb[p]=r; wb[p+1]=g; wb[p+2]=bb; // clamped by the typed array
+    }
+  }
+}
+
+// Gate + build the lift field for a compositor run. M10.1: fires for both
+// frontal and three_quarter views. out_of_range returns null (unchanged).
 // opts.warp === false is the A/B escape hatch. Never throws.
 async function maybeBuildLift(beforeImg, landmarks, w, h, scope, opts){
   if(scope !== 'full') return null;
   if(opts && opts.warp === false) return null;
   try {
     const pose = await detectPose(beforeImg);
-    if(!pose || pose.view !== 'frontal'){
-      console.log('%c[Visualize] M6 lift warp skipped: view is ' + ((pose && pose.view) || 'unknown') + ' (frontal only this milestone).', 'color:#888');
+    if(!pose || (pose.view !== 'frontal' && pose.view !== 'three_quarter')){
+      console.log('%c[Visualize] M6/M10.1 lift warp skipped: view is ' + ((pose && pose.view) || 'unknown') + ' (frontal and three_quarter only).', 'color:#888');
       return null;
     }
-    const f = buildLiftField(landmarks, w, h);
+    const f = buildLiftField(landmarks, w, h, pose);
     if(f){
-      console.log('%c[Visualize] M6 lift warp ACTIVE (frontal, yaw ~' + Math.round(pose.yawDeg) + ' deg): max displacement ' + f.maxPx.toFixed(1) + 'px at full strength.', 'color:#2e7d32;font-weight:bold');
+      console.log('%c[Visualize] M10.1 lift warp ACTIVE (' + pose.view + (pose.view === 'three_quarter' ? ', near side ' + pose.nearSide : '') + '): max displacement ' + f.maxPx.toFixed(1) + 'px at full strength.', 'color:#2e7d32;font-weight:bold');
     } else {
-      console.warn('[Visualize] M6 lift warp unavailable (landmarks incomplete); compositing without it.');
+      console.warn('[Visualize] M10.1 lift warp unavailable (landmarks incomplete); compositing without it.');
     }
     return f;
   } catch(e){
-    console.warn('[Visualize] M6 lift warp failed to build; compositing without it.', e);
+    console.warn('[Visualize] M10.1 lift warp failed to build; compositing without it.', e);
     return null;
   }
 }
@@ -649,9 +1310,19 @@ function buildLowLuma(b, w, h, W){
   return blurAlpha(m, w, h, Math.max(2, Math.round(WARP_SHADE_BLUR*W)));
 }
 
-// M8.2: one-sided shading reconciliation inside the warped band (see header).
+// M8.2: two-sided shading reconciliation inside the warped band.
 // o = composited+warped pixels (mutated), lowY = buildLowLuma of the original,
 // f = the warp field (its sx/sy mark moved destinations, its bbox bounds the pass).
+// M10.5 v68: added symmetric dark-undershoot correction. The original pass only
+// corrected pixels that arrived too bright (chin skin displacing over a darker
+// zone). The oblique chin artifact (dark patch below chin tip) is the inverse:
+// chin shadow pixels displacing over a lighter neck zone and arriving too dark.
+// The undershoot correction brightens these back toward the destination light
+// field, gated on the destination being lighter than the arriving pixel by more
+// than WARP_SHADE_MARGIN. Both directions are one-sided and pull-rate controlled.
+// M10.5 v69: raised 0.40 -> 0.55 (matching bright correction strength) after
+// removing the wrong mag>8 gate. The undershoot condition itself is the discriminator.
+const WARP_SHADE_DARK_PULL = 0.55;
 function applyWarpShadeFix(o, lowY, f, w){
   for(let y=f.y0; y<=f.y1; y++){
     const row=y*w;
@@ -661,15 +1332,204 @@ function applyWarpShadeFix(o, lowY, f, w){
       if(mag<0.5) continue;                       // outside the moved band
       const Yo=lowY[i];
       const subj=smoothstep(GATE_LUMA_LO, GATE_LUMA_HI, Yo);
-      if(subj<=0) continue;                       // backdrop/hair: never darken
+      if(subj<=0) continue;                       // backdrop/hair: skip
       const p4=i*4;
       const Yr=0.299*o[p4]+0.587*o[p4+1]+0.114*o[p4+2];
-      const excess=Yr-(Yo+WARP_SHADE_MARGIN);
-      if(excess<=0) continue;                     // one-sided: shadows untouched
       const band=Math.min(1, mag/2);              // feather at the band edge
-      const target=Yr - WARP_SHADE_PULL*excess*subj*band;
-      const fct=target/Math.max(1, Yr);
-      o[p4]*=fct; o[p4+1]*=fct; o[p4+2]*=fct;
+      const excess=Yr-(Yo+WARP_SHADE_MARGIN);
+      if(excess>0){
+        // Bright correction: displaced pixels too bright for destination
+        const target=Yr - WARP_SHADE_PULL*excess*subj*band;
+        const fct=target/Math.max(1, Yr);
+        o[p4]*=fct; o[p4+1]*=fct; o[p4+2]*=fct;
+      } else {
+        // Dark correction: displaced pixels too dark for destination (chin shadow on neck).
+        // Only fires when destination Yo was appreciably brighter than arrived pixel Yr --
+        // i.e., chin shadow landed on a zone that was lighter in the original. This
+        // discriminates the artifact without a mag gate (the condition itself is specific).
+        // M10.5 v69: removed the mag>8 gate (was wrong -- it blocked correction in the
+        // transition band where the artifact actually lives) and raised pull to 0.55.
+        const undershoot=Yo - WARP_SHADE_MARGIN - Yr;
+        if(undershoot <= 0) continue;
+        const addv = WARP_SHADE_DARK_PULL * undershoot * subj * band;
+        o[p4]+=addv; o[p4+1]+=addv; o[p4+2]+=addv;
+      }
+    }
+  }
+}
+
+// M9.2/M9.5: displacement-band self-unsharp on the warped result, weighted by
+// the LOCAL STRETCH of the map (v40). Bicubic preserves detail through rigid
+// translation; what thins detail is magnification in the kernel decay zone, so
+// the weight is the offset field's Jacobian deviation (sum of absolute partial
+// derivatives), with a small base term for plain fractional-offset softening.
+// Luminance only, added equally to RGB (chroma locked). Zero outside the moved
+// band; gated by blurred subject luma (backdrop, hair, and deep shadow are
+// never haloed). WARP_SHARP_AMOUNT 0 disables for the A/B.
+const WARP_SHARP_AMOUNT  = 0.7;   // ceiling; 0 = off (v40: 0.45 -> 0.7)
+const WARP_SHARP_RADIUS  = 0.0035; // high-band cutoff, fraction of W (pore scale)
+const WARP_SHARP_STRETCH = 0.25;  // local stretch at which the effect saturates
+const WARP_SHARP_BASE    = 0.2;   // fraction applied at zero stretch inside the band
+const WARP_SHARP_LUMA_LO = 22;    // blurred-luma dark gate: 0 at or below
+const WARP_SHARP_LUMA_HI = 48;    // fully open above
+
+function applyWarpSharpen(o, w, h, f, t, Wpx){
+  if(!f || WARP_SHARP_AMOUNT <= 0 || !Wpx) return;
+  const s = Math.max(0, Math.min(1, t));
+  if(s <= 0) return;
+  const N = w*h;
+  const Y = new Float32Array(N);
+  for(let i=0,p=0;i<N;i++,p+=4) Y[i]=0.299*o[p]+0.587*o[p+1]+0.114*o[p+2];
+  const r = Math.max(1, Math.round(WARP_SHARP_RADIUS*Wpx));
+  const Yl = blurAlpha(Y, w, h, r);
+  const sx=f.sx, sy=f.sy;
+  for(let y=f.y0; y<=f.y1; y++){
+    const row=y*w;
+    const yU=(y>f.y0? y-1 : y), yD=(y<f.y1? y+1 : y);
+    for(let x=f.x0; x<=f.x1; x++){
+      const i=row+x;
+      const d=(Math.abs(sx[i])+Math.abs(sy[i]))*s;
+      if(d < 0.75) continue;                      // outside the moved band
+      const subj=smoothstep(WARP_SHARP_LUMA_LO, WARP_SHARP_LUMA_HI, Yl[i]);
+      if(subj <= 0) continue;
+      // Local stretch of the backward map (central differences, clamped at
+      // the bounding box; the one-sided halving at the rim is harmless).
+      const iL=row+(x>f.x0? x-1 : x), iR=row+(x<f.x1? x+1 : x);
+      const iU=yU*w+x, iD=yD*w+x;
+      const stretch=s*0.5*(Math.abs(sx[iR]-sx[iL])+Math.abs(sy[iD]-sy[iU])
+                          +0.5*(Math.abs(sy[iR]-sy[iL])+Math.abs(sx[iD]-sx[iU])));
+      const wS=WARP_SHARP_BASE+(1-WARP_SHARP_BASE)*Math.min(1, stretch/WARP_SHARP_STRETCH);
+      const addv=WARP_SHARP_AMOUNT*wS*subj*(Y[i]-Yl[i]);
+      if(addv===0) continue;
+      const p4=i*4;
+      o[p4]+=addv; o[p4+1]+=addv; o[p4+2]+=addv;  // clamped by the typed array
+    }
+  }
+}
+
+// M9.6 (v41): deterministic jawline definition. Draws the light architecture
+// of a structural jawline onto the finished, warped composite: a narrow lit
+// band just above the chin-to-gonion border and a shadow step just below it.
+// The border polyline is taken from the landmarks and displaced by the warp
+// field (first order: a point at q lands at q - s*offset(q)), so the light
+// lands on the NEW border. Luminance only, added equally to RGB (chroma
+// locked). Brightening is gated to lit subject (hair, backdrop, deep shadow
+// never lifted); the shadow step is allowed to deepen the under-border region,
+// which is exactly the step that makes a jawline read as rebuilt. Levers
+// below; zero JAWDEF_BRIGHT and JAWDEF_DARK to disable the pass entirely.
+const JAWDEF_BRIGHT  = 0;     // v44: retired at consultation levels (see header); was 9
+const JAWDEF_DARK    = 0;     // v44: retired at consultation levels (see header); was 10
+// M11.1 (v58): oblique-specific shadow step. At 45 degrees the border is
+// viewed edge-on; the shadow reads as genuine underside shadow (not a drawn
+// line), so the frontal retirement does not apply here. JAWDEF_BRIGHT_OBLIQUE
+// stays 0 (brightening above the border still reads as a stroke at oblique);
+// only the shadow below the new border is enabled. Levers: set
+// JAWDEF_DARK_OBLIQUE to 0 to disable oblique shadow entirely (one-constant
+// reversal), or raise toward 18 for a more defined step.
+const JAWDEF_DARK_OBLIQUE  = 10;  // M11.1: shadow step below the displaced oblique border
+const JAWDEF_BRIGHT_OBLIQUE = 0;  // stays 0: brightening above border reads as stroke even at oblique
+const JAWDEF_W_IN    = 0.018; // bright band width above the border, fraction of W
+const JAWDEF_W_OUT   = 0.014; // shadow band width below the border, fraction of W (v42: 0.028 -> 0.014,
+                              // plus a hard 2.5 sigma cutoff so the step never smears onto neck/clothing)
+const JAWDEF_GATE_LO = 14;    // brightening gate on current luma: 0 at or below
+const JAWDEF_GATE_HI = 40;    // fully open above
+// M9.8 (v43): illumination modulation. The pass samples the lit face just
+// inside the border at each polyline vertex and scales the whole step by that
+// local light, so the border light follows the photo's illumination instead of
+// tracing a uniform drawn line. Below LIGHT_LO the step vanishes; above
+// LIGHT_HI it runs at full strength.
+const JAWDEF_LIGHT_LO = 35;
+const JAWDEF_LIGHT_HI = 95;
+const JAWDEF_LIGHT_IN = 2.2;  // sampling point: this many bright-sigmas inside the border
+const JAWDEF_IDX     = [397,365,379,378,400,377,152,148,176,149,150,136,172]; // gonion -> chin -> gonion
+
+function applyJawDefinition(o, w, h, L, f, t, Wpx, isOblique){
+  // M11.1: at oblique, use oblique-specific constants (shadow only, no brightening).
+  // At frontal both are 0 (retired v44); early-exit if both are zero.
+  const dark   = isOblique ? JAWDEF_DARK_OBLIQUE   : JAWDEF_DARK;
+  const bright = isOblique ? JAWDEF_BRIGHT_OBLIQUE : JAWDEF_BRIGHT;
+  if((bright<=0 && dark<=0) || !f || !Wpx) return;
+  const s=Math.max(0, Math.min(1, t));
+  if(s<=0) return;
+  const lm=L.map(p=>({x:p.x*w, y:p.y*h}));
+  const p10=lm[10], p152=lm[152];
+  if(!p10||!p152) return;
+  const cFace={x:(p10.x+p152.x)/2, y:(p10.y+p152.y)/2};
+  // Border polyline, displaced onto the warped border.
+  const pts=[];
+  for(const idx of JAWDEF_IDX){
+    const p=lm[idx]; if(!p) continue;
+    const xi=Math.max(0, Math.min(w-1, Math.round(p.x)));
+    const yi=Math.max(0, Math.min(h-1, Math.round(p.y)));
+    const i=yi*w+xi;
+    pts.push({x:p.x - s*f.sx[i], y:p.y - s*f.sy[i]});
+  }
+  if(pts.length<2) return;
+  const sigA=JAWDEF_W_IN*Wpx, sigB=JAWDEF_W_OUT*Wpx;
+  // M9.8: per-vertex illumination of the face just inside the border (small
+  // cross average on the warped composite), interpolated per pixel below.
+  const vLum=new Float32Array(pts.length);
+  for(let k=0;k<pts.length;k++){
+    const p=pts[k];
+    let ix=p.x+(cFace.x-p.x)/ (Math.hypot(cFace.x-p.x, cFace.y-p.y)||1) * JAWDEF_LIGHT_IN*sigA;
+    let iy=p.y+(cFace.y-p.y)/ (Math.hypot(cFace.x-p.x, cFace.y-p.y)||1) * JAWDEF_LIGHT_IN*sigA;
+    ix=Math.max(1, Math.min(w-2, Math.round(ix)));
+    iy=Math.max(1, Math.min(h-2, Math.round(iy)));
+    let acc=0;
+    for(const [ox,oy] of [[0,0],[1,0],[-1,0],[0,1],[0,-1]]){
+      const q4=((iy+oy)*w+(ix+ox))*4;
+      acc+=0.299*o[q4]+0.587*o[q4+1]+0.114*o[q4+2];
+    }
+    vLum[k]=acc/5;
+  }
+  const twoSigA=2*sigA*sigA||1e-6, twoSigB=2*sigB*sigB||1e-6;
+  const cutB=(2.5*sigB)*(2.5*sigB); // v42: hard stop for the shadow step
+  const pad=3*Math.max(sigA, sigB);
+  let x0=w, y0=h, x1=0, y1=0;
+  for(const p of pts){
+    if(p.x<x0)x0=p.x; if(p.x>x1)x1=p.x;
+    if(p.y<y0)y0=p.y; if(p.y>y1)y1=p.y;
+  }
+  x0=Math.max(0,Math.floor(x0-pad)); x1=Math.min(w-1,Math.ceil(x1+pad));
+  y0=Math.max(0,Math.floor(y0-pad)); y1=Math.min(h-1,Math.ceil(y1+pad));
+  const pad2=pad*pad;
+  for(let y=y0;y<=y1;y++){
+    for(let x=x0;x<=x1;x++){
+      // nearest border segment: distance, closest point, and direction
+      let best=1e18, qx=0, qy=0, dirx=0, diry=0, segK=0, segU=0;
+      for(let k=0;k+1<pts.length;k++){
+        const A=pts[k], B=pts[k+1];
+        const vx=B.x-A.x, vy=B.y-A.y;
+        const L2=vx*vx+vy*vy||1e-6;
+        let u=((x-A.x)*vx+(y-A.y)*vy)/L2;
+        if(u<0)u=0; else if(u>1)u=1;
+        const cx2=A.x+u*vx, cy2=A.y+u*vy;
+        const dx=x-cx2, dy=y-cy2;
+        const d2=dx*dx+dy*dy;
+        if(d2<best){ best=d2; qx=cx2; qy=cy2; dirx=vx; diry=vy; segK=k; segU=u; }
+      }
+      if(best > pad2) continue;
+      // signed side: normal oriented away from the face center = below border
+      let nx=-diry, ny=dirx;
+      if(nx*(qx-cFace.x)+ny*(qy-cFace.y) < 0){ nx=-nx; ny=-ny; }
+      const sd=(x-qx)*nx+(y-qy)*ny;
+      // M9.8: local illumination scale, interpolated along the border.
+      const lum=vLum[segK]+(vLum[Math.min(segK+1, pts.length-1)]-vLum[segK])*segU;
+      const light=smoothstep(JAWDEF_LIGHT_LO, JAWDEF_LIGHT_HI, lum);
+      if(light<=0) continue;
+      const p4=(y*w+x)*4;
+      let addv;
+      if(sd>=0){
+        if(best > cutB) continue; // v42: the step hugs the border, never the neck
+        addv = -dark*Math.exp(-best/twoSigB)*s*light;
+      } else {
+        const Y=0.299*o[p4]+0.587*o[p4+1]+0.114*o[p4+2];
+        const subj=smoothstep(JAWDEF_GATE_LO, JAWDEF_GATE_HI, Y);
+        if(subj<=0) continue;
+        addv = bright*Math.exp(-best/twoSigA)*s*subj*light;
+      }
+      if(addv===0) continue;
+      o[p4]+=addv; o[p4+1]+=addv; o[p4+2]+=addv;  // clamped by the typed array
     }
   }
 }
@@ -718,6 +1578,29 @@ const CHINW_SIG_JAW      = 0.055; // kernel radius of the jaw kernels, fraction 
 // silhouette edge translates rigidly (sharp) instead of stretching (smear).
 const CHINW_CAPSULE      = 1.25;
 
+// M9.0 (v35) prejowl notch fill: the followers interpolate the border, which
+// preserves a concave prejowl sulcus; these kernels OVERFILL the notch so the
+// chin-to-gonion silhouette reads as one straight, continuous line (the visual
+// mechanism of jowl softening). Oblique pushes the notch anterior; frontal
+// pushes both notches slightly outward. Zero either constant to disable.
+const CHINW_NOTCH_FILL         = 0.022; // oblique: extra anterior fill at the near prejowl, fraction of W
+                                        // (v36: 0.012 -> 0.022; the follower sum plus 0.012W still left a
+                                        // visible dip on a deep sulcus at 45 degrees)
+const CHINW_NOTCH_FILL_FRONTAL = 0.008; // frontal: outward fill at both prejowl points, fraction of W
+const CHINW_NOTCH_DOWN         = 0.004; // small accompanying drop, fraction of faceH
+// M9.6 (v41): gonial squaring at oblique. Jawline filler at the angle restores
+// the corner bone resorption took; in 2D at 45 degrees that reads as the
+// gonion moving slightly posterior and inferior, giving the border line a
+// defined corner to end at. Small on purpose; zero to disable.
+const GONW_DEF                 = 0.007; // posterior-inferior gonial move, fraction of W
+// M9.10 (v45): the chin_jaw warp's intensity ceiling. Silhouette amplitude
+// saturates here while AI shading continues to scale; 1.0 restores v44.
+const CHINW_WARP_SAT           = 0.60; // M10.3: 0.45 -> 0.60, opens Enhanced band (70-79)
+const CHINW_WARP_SAT_OBLIQUE   = 0.45; // M11.1 reverting 0.50 -> 0.45: oblique artifact on male
+                                       // anatomy confirmed. Male chin geometry (taller mentum,
+                                       // wider gonial arc) causes warp kernel to overshoot at
+                                       // Enhanced oblique. Re-raise after male calibration.
+
 function buildChinProjectionField(L, w, h, pose, sex){
   const lm = L.map(p=>({x:p.x*w, y:p.y*h}));
   const p10=lm[10], p152=lm[152], zr=lm[ZYGION.r], zl=lm[ZYGION.l];
@@ -727,9 +1610,18 @@ function buildChinProjectionField(L, w, h, pose, sex){
   const W = Math.abs(dot(sub(zl, zr), dirOut)) || 1;
   const faceH = (dot(sub(p10, p152), dirUp)) || 1;
   const down = { x:-dirUp.x, y:-dirUp.y };
-  // (sex is currently unused here: male jaw WIDTH is a frontal attribute and
-  // returns as a frontal feature; the parameter is kept for that.)
-  void sex;
+  // M10.5 Track 1: sex is now active in this function.
+  // Male chin geometry has a fundamentally different warp target: the editable
+  // region must be wider and flatter so the AI is forced to work within a
+  // geometry that biases toward male chin anatomy even when it fights the prompt.
+  // For oblique: sigC is widened (more lateral sigma) and the inferior component
+  // of chinV is zeroed for male (CHINW_DOWN drives the tapered-tip shape by
+  // pulling the warp field downward at the menton; removing it keeps the
+  // projection horizontal and biases the warp footprint wider).
+  // For frontal: additional lateral kernels at commissure-width points flanking
+  // the chin push the warp footprint wide so the AI cannot narrow the lower third
+  // into a V-line while filling the moved region.
+  const isMaleWarp = (sex === 'male');
 
   // Capsule kernel: the field is exp(-d^2/twoSig) of the distance to a short
   // SEGMENT from the anchor along the displacement direction (length
@@ -760,11 +1652,25 @@ function buildChinProjectionField(L, w, h, pose, sex){
       antSign = (pose.nearSide === 'left') ? -leftSign : leftSign;
     }
     const antDir = mul(dirOut, antSign);
-    const chinV = add(mul(antDir, CHINW_FWD*W), mul(down, CHINW_DOWN*faceH));
+    // M10.5 Track 1: for male, zero the inferior component. The downward
+    // component biases the warp field inferiorly, which the AI reads as space
+    // to taper the chin downward (toward a point). Removing it forces the
+    // projection to be purely anterior, keeping the warp footprint wide and
+    // preventing the tapered-tip bias. Female retains the original drop.
+    const chinDown = isMaleWarp ? 0 : CHINW_DOWN;
+    const chinV = add(mul(antDir, CHINW_FWD*W), mul(down, chinDown*faceH));
     const paraNear = (pose.nearSide === 'right') ? lm[148] : lm[377];
     const pjNear   = (pose.nearSide === 'right') ? lm[PREJOWL.r] : lm[PREJOWL.l];
     const goNear   = (pose.nearSide === 'right') ? lm[GONION.r]  : lm[GONION.l];
-    const sigC=CHINW_SIG_CHIN*W, sigJ=CHINW_SIG_JAW*W;
+    // M10.5 Track 1: for male, widen sigC (lateral sigma of the chin kernels).
+    // A wider sigma increases the editable region's lateral extent, which forces
+    // the AI to fill a geometry that is already wide and flat at the mentum.
+    // Female retains the standard CHINW_SIG_CHIN. Lever: 0.085 -> 0.130 for male.
+    // v64 used 0.115; raised to 0.130 (v65) after first calibration showed chin
+    // tip still reading slightly tapered -- more lateral sigma needed.
+    // One-constant reversal if it over-widens: set mSigC back to CHINW_SIG_CHIN.
+    const mSigC = isMaleWarp ? 0.130*W : CHINW_SIG_CHIN*W;
+    const sigC=mSigC, sigJ=CHINW_SIG_JAW*W;
     // Pogonion leads the projection: anchored just above the menton on the
     // anterior chin contour. The menton follows at reduced weight (continuous
     // underside, no independent downward slide), para-menton carries the front
@@ -783,11 +1689,22 @@ function buildChinProjectionField(L, w, h, pose, sex){
     // mid-border also carry a small drop that deepens the border-to-neck step.
     const jawDrop = mul(down, CHINW_JAW_DROP*faceH);
     if(pjNear) kernels.push(capsule(pjNear, add(mul(chinV, CHINW_PREJOWL_F), jawDrop), sigJ));
+    // M9.0: prejowl notch fill (sums with the follower above): straighten the
+    // chin-to-jowl silhouette line by overfilling the sulcus.
+    if(pjNear && CHINW_NOTCH_FILL > 0){
+      const fillV = add(mul(antDir, CHINW_NOTCH_FILL*W), mul(down, CHINW_NOTCH_DOWN*faceH));
+      kernels.push(capsule(pjNear, fillV, sigJ*0.85));
+    }
     if(pjNear && goNear){
       const mid = lerp(pjNear, goNear, 0.5);
       kernels.push(capsule(mid, add(mul(chinV, CHINW_MIDJAW_F), jawDrop), sigJ));
     }
     if(goNear) kernels.push(capsule(goNear, chinV, sigJ, CHINW_GONION_F));
+    // M9.6: gonial squaring, posterior-inferior, restoring the angle's corner.
+    if(goNear && GONW_DEF > 0){
+      const v = add(mul(antDir, -GONW_DEF*W), mul(down, GONW_DEF*0.8*W));
+      kernels.push(capsule(goNear, v, sigJ*0.7));
+    }
   } else if(pose && pose.view === 'frontal'){
     // Frontal: projection toward the camera is invisible head-on; what reads is
     // vertical lengthening of the lower third. Chin point plus both para-menton
@@ -798,6 +1715,43 @@ function buildChinProjectionField(L, w, h, pose, sex){
     for(const idx of [148, 377]){
       const p=lm[idx]; if(!p) continue;
       kernels.push(capsule(p, chinV, sigC*0.8, 0.7));
+    }
+    // M10.5 Track 1: for male, add lateral chin-widening kernels at the
+    // commissure-width points flanking the chin (lm[61] right commissure,
+    // lm[291] left commissure, lowered onto the chin body). These push the warp
+    // footprint outward at the chin level so the AI cannot narrow the lower third
+    // into a V-line while filling the moved region. The vector is purely downward
+    // (matching chinV direction) -- no lateral displacement into the background --
+    // so the outline gate still governs the boundary; this just widens the moved
+    // region so the AI's fill reads as a broad, flat mentum rather than a taper.
+    // Female: these kernels are skipped (female taper is correct and approved).
+    if(isMaleWarp){
+      const comR = lm[61], comL = lm[291]; // oral commissure landmarks
+      for(const [com, sideSign] of [[comR, -1],[comL, 1]]){
+        if(!com) continue;
+        // Anchor the lateral kernel at the commissure x-position but dropped
+        // to chin-body level (p152 y) so it displaces chin-level tissue, not
+        // mouth tissue. Feature guard zeroes it above the lips already.
+        const lateralChin = { x: com.x, y: p152.y + 0.01*faceH };
+        // Mild lateral component (sideSign*outward) keeps the flat bottom wide;
+        // primary component is still downward (chinV) to match the chin extension.
+        // CHINW_MALE_LAT_FRONTAL: fraction of W for the lateral nudge.
+        // 0.015 is conservative -- raise toward 0.025 if the chin still tapers.
+        const CHINW_MALE_LAT_FRONTAL = 0.015;
+        const lateralV = add(chinV, mul(dirOut, sideSign*CHINW_MALE_LAT_FRONTAL*W));
+        kernels.push(capsule(lateralChin, lateralV, sigC*0.7, 0.6));
+      }
+    }
+    // M9.0: frontal prejowl notch fill, both sides slightly outward so the
+    // border under the jowls straightens. Deliberately small (the approved
+    // frontal must not change character); zero CHINW_NOTCH_FILL_FRONTAL to disable.
+    if(CHINW_NOTCH_FILL_FRONTAL > 0){
+      for(const idx of [176, 400]){
+        const p=lm[idx]; if(!p) continue;
+        const sideSign = (dot(sub(p, p152), dirOut) >= 0) ? 1 : -1;
+        const v = add(mul(dirOut, sideSign*CHINW_NOTCH_FILL_FRONTAL*W), mul(down, CHINW_NOTCH_DOWN*faceH));
+        kernels.push(capsule(p, v, CHINW_SIG_JAW*W*0.9));
+      }
     }
   } else {
     return null; // out_of_range or no pose: no geometric projection
@@ -829,10 +1783,31 @@ function buildChinProjectionField(L, w, h, pose, sex){
   const wx0=Math.max(0, Math.floor(kx0-padK)), wy0=Math.max(0, Math.floor(ky0-padK));
   const wx1=Math.min(w-1, Math.ceil(kx1+padK)), wy1=Math.min(h-1, Math.ceil(ky1+padK));
 
+  // M11.1: mentum floor clamp. Zero the warp field below a landmark-relative
+  // y-threshold so it never reaches the neck zone. The artifact on male faces
+  // (fringe below the chin at oblique Enhanced) is the warp kernel's lower tail
+  // reaching past the menton into the neck. The floor is set at CHIN_FLOOR_F
+  // face-heights below p152 (the menton landmark), with a soft blend zone of
+  // CHIN_FLOOR_BLEND face-heights so the zeroing is not a hard step.
+  // Female anatomy: the shorter chin sits higher so the 0.12F floor has headroom.
+  // Male anatomy: the taller mentum needed more room -- 0.16F gives the same
+  // physical clearance. Both are clamped well above the neck.
+  const CHIN_FLOOR_F     = (sex === 'male') ? 0.16 : 0.12; // fraction of faceH below p152
+  const CHIN_FLOOR_BLEND = 0.04; // soft blend zone, fraction of faceH
+  const yFloor    = p152.y + CHIN_FLOOR_F * faceH;
+  const yFloorTop = p152.y + (CHIN_FLOOR_F - CHIN_FLOOR_BLEND) * faceH;
+
   const N=w*h;
   const sx=new Float32Array(N), sy=new Float32Array(N);
   let x0=w, y0=h, x1=-1, y1=-1, maxPx=0;
   for(let y=wy0;y<=wy1;y++){
+    // Floor clamp: below yFloor the warp is fully zeroed; between yFloorTop and
+    // yFloor it fades linearly to zero. This is landmark-relative so it adapts
+    // to the patient's anatomy rather than a fixed pixel constant.
+    const floorGate = (y <= yFloorTop) ? 1 :
+                      (y >= yFloor)    ? 0 :
+                      1 - (y - yFloorTop) / (yFloor - yFloorTop);
+    if(floorGate <= 0) continue;
     for(let x=wx0;x<=wx1;x++){
       const i=y*w+x;
       let dx=0, dy=0;
@@ -843,7 +1818,7 @@ function buildChinProjectionField(L, w, h, pose, sex){
         dx+=K.vx*gv; dy+=K.vy*gv;
       }
       const guard=1-(protA[i*4]/255);
-      const ox=-dx*guard, oy=-dy*guard;
+      const ox=-dx*guard*floorGate, oy=-dy*guard*floorGate;
       const mag=Math.hypot(ox,oy);
       if(mag<0.25) continue;
       sx[i]=ox; sy[i]=oy;
@@ -855,7 +1830,7 @@ function buildChinProjectionField(L, w, h, pose, sex){
   const pad=Math.ceil(maxPx)+2;
   x0=Math.max(0,x0-pad); y0=Math.max(0,y0-pad);
   x1=Math.min(w-1,x1+pad); y1=Math.min(h-1,y1+pad);
-  return { sx, sy, x0, y0, x1, y1, maxPx };
+  return { sx, sy, x0, y0, x1, y1, maxPx, bicubic:true }; // M9.2: chin_jaw resamples bicubic
 }
 
 // Gate + build the chin/jaw projection field. chin_jaw scope only; opts.warp
@@ -908,10 +1883,25 @@ async function buildWarpForScope(beforeImg, landmarks, w, h, scope, sex, opts){
 // hugs the real jawline. Light walls are still covered by the oval term.
 const GATE_LUMA_LO = 10;       // original luma at or below this: gate 0
 const GATE_LUMA_HI = 26;       // fully open above this
-const GATE_LOWER_PULL_IN = 0.015; // lower-face oval vertices toward centroid, fraction of W
+// M10.5 v67: GATE_LOWER_PULL_IN raised 0.015 -> 0.040. The previous value gave
+// ~6-9px inward pull at 1024px framing -- not enough when the face oval at an
+// oblique view overshoots the real jaw-neck boundary by 20-40px. The larger pull
+// keeps the gate polygon tight to the actual jawline. One-constant reversal: 0.015.
+const GATE_LOWER_PULL_IN = 0.040; // lower-face oval vertices toward centroid, fraction of W
+// M10.5 v67: hard menton floor. Any pixel more than GATE_MENTON_FLOOR_F face-
+// heights below p152 (the menton landmark) gets gate = 0 regardless of luma.
+// This is the chin projection zone where AI blobs have been appearing: the warp
+// handles everything below the menton, so the AI has no legitimate reason to
+// paint there. GATE_MENTON_FLOOR_F = 0.04 allows a small margin for the warp's
+// own displaced pixels to blend; below that is pure neck/background.
+const GATE_MENTON_FLOOR_F = 0.04; // fraction of faceH below p152: hard gate zero
 
 // M8.2 warp shading reconciliation (chin_jaw post-warp pass; see header).
-const WARP_SHADE_MARGIN = 10;  // luma overshoot allowed before correction starts
+// M10.5 v67: WARP_SHADE_MARGIN tightened 10 -> 6. The 10-level overshoot
+// allowance was producing a visible brightening step (warp seam) at the chin
+// body on frontal views with normal skin tone. 6 levels catches the overshoot
+// earlier without fighting legitimate warp-displaced skin.
+const WARP_SHADE_MARGIN = 6;   // luma overshoot allowed before correction starts
 const WARP_SHADE_PULL   = 0.55; // fraction of the excess pulled back
 const WARP_SHADE_BLUR   = 0.04; // low-frequency reference blur radius, fraction of W
 
@@ -922,6 +1912,20 @@ function buildOutlineGate(L, w, h, b){
   const dirOut = { x:-dirUp.y, y:dirUp.x };
   const W = Math.abs(dot(sub(lm[454], lm[234]), dirOut)) || 1;
   const faceH = (dot(sub(lm[10], p152), dirUp)) || 1;
+  // M10.5 v68: hard menton floor, corrected computation.
+  // v67 used p152.y + |faceH|*factor, but faceH is a projected dot-product
+  // (not raw pixel height) and at oblique angles it significantly underestimates
+  // the actual pixel distance, making the floor too conservative.
+  // Fix: find the actual lowest image-y coordinate among all face oval landmarks
+  // (largest y value = lowest pixel on screen), then add a fixed pixel margin
+  // scaled from W. This is pose-invariant and works correctly at any head tilt.
+  // The AI has no legitimate reason to paint below the oval's lowest vertex;
+  // the warp handles chin projection deterministically in that zone.
+  let ovalLowestY = p152.y;
+  for(const idx of FACE_OVAL){ const p=lm[idx]; if(p && p.y > ovalLowestY) ovalLowestY = p.y; }
+  // Add a small margin (1.5% of W) below the lowest oval point as a soft buffer
+  // for the warp's displaced pixels; anything below that is neck/background.
+  const mentonFloorY = ovalLowestY + 0.015 * W;
 
   // Oval polygon with the lower-face vertices pulled slightly inward.
   const pts = [];
@@ -952,6 +1956,11 @@ function buildOutlineGate(L, w, h, b){
   for(let i=0,p4=0;i<N;i++,p4+=4){
     const ov=oval[p4]/255;
     if(ov<=0){ g[i]=0; continue; }
+    // M10.5 v67: hard menton floor. The AI has no legitimate reason to paint
+    // below the menton; the warp handles chin projection geometrically.
+    // Pixels below mentonFloorY are zeroed regardless of luma or oval membership.
+    const py = (i/w)|0; // pixel row
+    if(py > mentonFloorY){ g[i]=0; continue; }
     const Y=0.299*b[p4]+0.587*b[p4+1]+0.114*b[p4+2];
     g[i]=ov*smoothstep(GATE_LUMA_LO, GATE_LUMA_HI, Y);
   }
@@ -1000,7 +2009,7 @@ async function detectFace(imgEl){
 // returned so the shakedown can confirm the matrix path agrees with the proxy
 // before HA-oblique leans on the matrix for the projection axis.
 const VIEW_FRONTAL_MAX_DEG = 15;   // |yaw| at or below this = frontal
-const VIEW_TQ_MAX_DEG      = 50;   // frontal..this = three_quarter; above = out_of_range
+const VIEW_TQ_MAX_DEG      = 60;   // frontal..this = three_quarter; above = out_of_range (raised from 50 in v50)
 
 export async function detectPose(imgEl){
   const lm = await detectFace(imgEl);
@@ -1078,7 +2087,8 @@ export async function analyzePhoto(imgEl){
     for(let y=1;y<ch-1;y++){ for(let x=1;x<cw-1;x++){ const i=y*cw+x;
       const L=4*g[i]-g[i-1]-g[i+1]-g[i-cw]-g[i+cw]; lsum+=L; l2+=L*L; n++; } }
     const meanL=lsum/n, sharpness=l2/n-meanL*meanL;
-    return { ...pose, faceFrac, meanLuma, sharpness };
+    return { ...pose, faceFrac, meanLuma, sharpness,
+             faceBbox: { x0, y0, x1, y1 } }; // M11.1: normalized face oval bbox for display crop
   } catch(err){
     console.warn('[Visualize] analyzePhoto metrics failed; returning pose only.', err);
     return { ...pose, faceFrac:null, meanLuma:null, sharpness:null };
@@ -1216,6 +2226,31 @@ function buildTreatAlpha(L, w, h, scope, sex){
     }
   }
 
+  // M9.0 (v35) jowl-blend lobes: open the alpha over the marionette/prejowl
+  // shadow and the jowl body so the AI's softening of those shadows survives
+  // the composite (v34's border tubes discarded it). Two tubes per side:
+  // mouth corner (dropped) -> prejowl, and prejowl -> raised mid-jowl point.
+  // Oval-contained in the pixel loop, so this is SHADING-ONLY coverage; the
+  // contour itself stays owned by the warp. Levers: JOWL_SCALE, LF_JOWL_SIGMA.
+  const LF_JOWL_SIGMA=0.060*W, JOWL_SCALE=0.9;
+  const twoSigJowl=2*LF_JOWL_SIGMA*LF_JOWL_SIGMA||1e-6;
+  const jowlSegs=[];
+  for(const pair of [[400,397],[176,172]]){ // [prejowl, gonion] per side
+    const pj=lm[pair[0]], go=lm[pair[1]];
+    if(!pj||!go) continue;
+    const cR=lm[COMMISSURE.r], cL=lm[COMMISSURE.l];
+    let corner=null;
+    if(cR&&cL) corner = (Math.hypot(cR.x-pj.x,cR.y-pj.y) <= Math.hypot(cL.x-pj.x,cL.y-pj.y)) ? cR : cL;
+    else corner = cR || cL;
+    if(corner){
+      const cDrop = add(corner, mul(dirUp, -0.04*faceH));
+      jowlSegs.push([cDrop, pj]);
+    }
+    const mid = { x:(pj.x+go.x)/2, y:(pj.y+go.y)/2 };
+    const jowlMid = add(mid, mul(dirUp, 0.05*faceH));
+    jowlSegs.push([pj, jowlMid]);
+  }
+
 
   const N=w*h, m=new Float32Array(N);
   for(let y=0,i=0;y<h;y++){
@@ -1233,30 +2268,39 @@ function buildTreatAlpha(L, w, h, scope, sex){
       if(scope==="chin_jaw"){
         if(hF <= LF_TOP+0.12 && hF >= -0.16){
           const protOnly=1-(protA[i*4]/255);
-          const dc=distToSeg(x,y,chinA,chinB);
-          let lf=Math.exp(-(dc*dc)/twoSigChin);
+          // M10.5 v66: for male, exclude the chin tip from the AI's editable
+          // region entirely. The chin tip shape is now pure warp geometry --
+          // the patient's own pixels displaced anteriorly by buildChinProjectionField.
+          // Those pixels carry the correct anatomy by construction (original face).
+          // The AI's trained prior tapers any chin region it sees regardless of
+          // prompt or mask sigma; the only reliable fix is to not show it the chin
+          // tip at all. Male mask opens ONLY jaw border tube and jowl lobes.
+          // Female retains the full chin tip capsule (female taper is correct).
+          let lf = 0;
+          if(!isMale){
+            const dc=distToSeg(x,y,chinA,chinB);
+            lf=Math.exp(-(dc*dc)/twoSigChin);
+          }
           for(let k=0;k<jawSegs.length;k++){ const sg=jawSegs[k]; const dd=distToSeg(x,y,sg[0],sg[1]); const g=Math.exp(-(dd*dd)/twoSigJaw); if(g>lf) lf=g; }
           for(let k=0;k<gonialPts.length;k++){ const gp=gonialPts[k]; const dx=x-gp.x, dy=y-gp.y; const g=Math.exp(-(dx*dx+dy*dy)/twoSigGonial); if(g>lf) lf=g; }
-          // Lateral taper, CONTAINED INSIDE the silhouette. Editing the taper band
-          // over the dark background outside the jaw was what produced the muddy
-          // dark halo (a tiny inward silhouette move the texture-restore correctly
-          // refused to sharpen). Gate it by the face oval so it can only shade the
-          // lower face inward within existing skin: a soft slim, never a contour
-          // move over background. The chin/jaw/gonial terms above are NOT gated,
-          // so genuine chin projection can still extend the outline.
           const ovalInside = ovalA[i*4]/255;
-          let taperVal=0;
-          for(let k=0;k<taperSegs.length;k++){ const sg=taperSegs[k]; const dd=distToSeg(x,y,sg[0],sg[1]); const g=taperScale*Math.exp(-(dd*dd)/twoSigTaper); if(g>taperVal) taperVal=g; }
-          taperVal*=ovalInside;
-          if(taperVal>lf) lf=taperVal;
+          // Lateral taper: male = 0 (AI must not touch lateral jaw contour;
+          // warp owns the border). Female = 0.85 (feminising taper is correct).
+          if(!isMale && taperScale>0){
+            let taperVal=0;
+            for(let k=0;k<taperSegs.length;k++){ const sg=taperSegs[k]; const dd=distToSeg(x,y,sg[0],sg[1]); const g=taperScale*Math.exp(-(dd*dd)/twoSigTaper); if(g>taperVal) taperVal=g; }
+            taperVal*=ovalInside;
+            if(taperVal>lf) lf=taperVal;
+          }
+          // M9.0 jowl-blend lobes (shading-only: oval-contained; both sexes)
+          let jowlVal=0;
+          for(let k=0;k<jowlSegs.length;k++){ const sg=jowlSegs[k]; const dd=distToSeg(x,y,sg[0],sg[1]); const g=JOWL_SCALE*Math.exp(-(dd*dd)/twoSigJowl); if(g>jowlVal) jowlVal=g; }
+          jowlVal*=ovalInside;
+          if(jowlVal>lf) lf=jowlVal;
           const topTaper=1-smoothstep(LF_TOP,LF_TOP+0.08,hF);
-          // Downward allowance depends on laterality: directly under the chin
-          // (central) the mask extends down so the chin can lengthen; toward the
-          // jaw and sides it stops at the jawline so the neck is never opened.
-          // The central extension is eased (0.12 -> 0.09) so chin elongation does
-          // not push a crescent down over the submental shadow.
-          const central=1-smoothstep(0.10,0.22,alat);     // 1 under the chin, 0 at the jaw/sides
-          const floor=-0.02 - 0.12*central;               // jaw cuts at -0.02; chin column extends to ~-0.14 for clear projection
+          const centralExt = (sex === 'male') ? 0.0 : 0.12;
+          const central=1-smoothstep(0.10,0.22,alat);
+          const floor=-0.02 - centralExt*central;
           const neckTaper=smoothstep(floor, floor+0.05, hF);
           m[i]=Math.min(1, lf*topTaper*neckTaper*protOnly);
         }
@@ -1338,10 +2382,16 @@ function buildTreatAlpha(L, w, h, scope, sex){
 // lock handles it independently. SCULPTRA_DARK_FLOOR is the single lever for how
 // much 3D form the volume is allowed: raise for bolder projection, lower toward 0
 // if a case ever reads hollow instead of full.
-const SCULPTRA_DARK_FLOOR = 20;
-// DARK_FLOOR 14 -> 20 (M6.3): more underside shadow allowance is what makes the
-// amplified volume read as 3D form instead of flat brightness. Chroma stays
-// locked, so this cannot reintroduce the brown mud.
+// M10.5 v68: SCULPTRA_DARK_FLOOR reduced 20 -> 12. The 20-level allowance was
+// producing visible dark discolouration patches in the lateral lower-cheek zone
+// on lighter-skinned patients at oblique view (image 10 red rectangle). The AI's
+// broad darkening in the lower_cheek zone with normal skin tone reads as a muddy
+// shadow patch rather than volume. At 12 levels the 3D form shading is still
+// present and clinically readable but the worst-case darkening on light skin is
+// halved. Chroma stays locked so no brown/colour shift is possible; this governs
+// only the luminance floor. Reversal: restore to 20 if volume reads flat on a
+// well-lit darker-skin case.
+const SCULPTRA_DARK_FLOOR = 12;
 //
 // M6.3 BRIGHT CAP. Broad brightening SATURATES perceptually: past a ceiling it
 // stops reading as restored volume and starts erasing the natural shading
@@ -1352,10 +2402,16 @@ const SCULPTRA_DARK_FLOOR = 20;
 // brightening component levels off. Defined as the maximum broad brightening in
 // luma levels reachable at the TOP of the slider; the pre-gain cap is derived
 // from it so retuning the gain does not silently change the ceiling.
-const SCULPTRA_BRIGHT_CAP_FULL = 18;
-// 26 -> 18 (M6.4): with the gain back at 1.0 this IS the full-slider ceiling.
-// 18 sits just above the broad brightening of the renders Andy judged decent
-// (about 13 levels effective) and well below the waxy zone (26+).
+const SCULPTRA_BRIGHT_CAP_FULL = 12;
+// 18 -> 12 (M10.5 v65): Sculptra oblique discolouration on poorly-lit clinic photos.
+// The AI's broad brightening was exceeding the local light field of the original face,
+// creating a warm/tan patch in the lateral cheek zone that reads as colour shift
+// even though chroma is locked. The soft-knee (tanh) cap at 12 limits flat brightness
+// lift earlier. Well-lit cases are unaffected: at typical bright deltas of 8-12 levels
+// the 12 and 18 caps produce nearly identical output. The 12 cap only bites when the
+// AI overbrightens on a poorly-lit region, which is the exact failure mode seen in
+// clinic snapshots with uneven lighting. Reversal: restore to 18 if volume reads
+// flat or insufficiently bright on a well-lit case.
 //
 // M6.4: EXTRAPOLATION RETIRED. The M6.2/M6.3 response gain (1.45, then 1.45
 // with form shaping) was tested against real before/after pairs across three
@@ -1371,6 +2427,25 @@ const SCULPTRA_BRIGHT_CAP_FULL = 18;
 // in post-hoc amplification. Do not raise this above 1.0 again.
 const SCULPTRA_DELTA_GAIN = 1.0;
 const CHIN_JAW_DELTA_GAIN = 1.0;
+// M9.5 (v40): chin_jaw texture-restore cutoff, tighter than the shared
+// TEX_RADIUS_FRAC (0.016). Detail coarser than the cutoff lives in the low
+// band and takes the AI's smooth version at high alpha; at 0.016W that
+// includes 7px-and-coarser skin character (fine lines, mottling), which read
+// as an airbrushed band at the top of the slider even with pores intact.
+// 0.009W keeps that band the patient's own. Treatment shading (border shadow
+// gradient, broad brightening) is far coarser than 0.009W and unaffected.
+// Sculptra keeps the shared 0.016 untouched. Raise back toward 0.016 only if
+// the AI's intended chin/jaw shading ever looks visibly band-limited.
+const CHIN_JAW_TEX_RADIUS = 0.009;
+// M9.8 (v43): three-band mid keep. The band between CHIN_JAW_TEX_RADIUS and
+// CHIN_JAW_MID_RADIUS carries the patient's organic mid-scale skin variation;
+// CHIN_JAW_MID_KEEP of it is kept (0 = the AI's smooth fill replaces it, the
+// v42 behavior; 1 = fully the patient's own). Suppressed inside the jowl
+// release lobes so fold erasure still wins there. Raise toward 0.75 if the
+// treated zone still reads synthetically smooth; lower toward 0.4 if the
+// patient's own shadows fight the volume change.
+const CHIN_JAW_MID_RADIUS = 0.022;
+const CHIN_JAW_MID_KEEP   = 0.6;
 // Sculptra glow applied at composite time, scaled by mask and slider but NOT by
 // the gain (see GLOW_LUMA note). Equal add to R,G,B, so chroma-exact.
 const SCULPTRA_GLOW_APPLY = 6;
@@ -1384,11 +2459,65 @@ const CHIN_JAW_DARK_FLOOR = 26;
 // 14 -> 22 (M7.7) -> 26 (M8.1, "jawline definition drastically"): the shadow
 // line under the border is what makes definition read; chroma stays locked so
 // this cannot discolor. Drop back toward 22 if a case reads harsh or dirty.
+// M9.1 (v36): jowl-lobe texture-release field for chin_jaw. Same geometry as
+// the v35 alpha lobes in buildTreatAlpha (marionette tube: dropped mouth
+// corner -> prejowl; jowl body tube: prejowl -> raised mid-jowl), rebuilt here
+// as a standalone Float32 plane so the composite can scale the moved-edge
+// guard down inside the lobes (see buildTextureDelta). Peak value is
+// JOWL_TEX_RELEASE: 1 means the AI's high-frequency luminance fully replaces
+// the original's at the lobe core (the crease line is erased where the AI
+// softened it); 0 disables and restores exact v35 behavior. Not oval-gated:
+// the field only acts through the delta, which the treat alpha (itself
+// oval-contained at the lobes) already gates.
+const JOWL_TEX_RELEASE = 0.9;
+function buildJowlReleaseField(L, w, h){
+  if(JOWL_TEX_RELEASE <= 0) return null;
+  const lm = L.map(p=>({x:p.x*w, y:p.y*h}));
+  const p10=lm[10], p152=lm[152], zr=lm[234], zl=lm[454];
+  if(!p10||!p152||!zr||!zl) return null;
+  const dirUp = norm(sub(p10, p152));
+  const dirOut = { x:-dirUp.y, y:dirUp.x };
+  const W = Math.abs(dot(sub(zl, zr), dirOut)) || 1;
+  const faceH = (dot(sub(p10, p152), dirUp)) || 1;
+  const sig = 0.060*W, twoSig = 2*sig*sig || 1e-6; // mirrors LF_JOWL_SIGMA
+  const segs=[];
+  for(const pair of [[400,397],[176,172]]){ // [prejowl, gonion] per side
+    const pj=lm[pair[0]], go=lm[pair[1]];
+    if(!pj||!go) continue;
+    const cR=lm[COMMISSURE.r], cL=lm[COMMISSURE.l];
+    let corner=null;
+    if(cR&&cL) corner = (Math.hypot(cR.x-pj.x,cR.y-pj.y) <= Math.hypot(cL.x-pj.x,cL.y-pj.y)) ? cR : cL;
+    else corner = cR || cL;
+    if(corner) segs.push([add(corner, mul(dirUp, -0.04*faceH)), pj]);
+    const mid = { x:(pj.x+go.x)/2, y:(pj.y+go.y)/2 };
+    segs.push([pj, add(mid, mul(dirUp, 0.05*faceH))]);
+  }
+  if(!segs.length) return null;
+  const f=new Float32Array(w*h);
+  let minX=w, minY=h, maxX=0, maxY=0;
+  for(const sg of segs){ for(const p of sg){
+    if(p.x<minX)minX=p.x; if(p.x>maxX)maxX=p.x;
+    if(p.y<minY)minY=p.y; if(p.y>maxY)maxY=p.y;
+  } }
+  const pad=3*sig;
+  minX=Math.max(0,Math.floor(minX-pad)); maxX=Math.min(w-1,Math.ceil(maxX+pad));
+  minY=Math.max(0,Math.floor(minY-pad)); maxY=Math.min(h-1,Math.ceil(maxY+pad));
+  for(let y=minY;y<=maxY;y++){
+    for(let x=minX;x<=maxX;x++){
+      let v=0;
+      for(let k=0;k<segs.length;k++){ const sg=segs[k]; const dd=distToSeg(x,y,sg[0],sg[1]); const g=Math.exp(-(dd*dd)/twoSig); if(g>v) v=g; }
+      f[y*w+x]=JOWL_TEX_RELEASE*v;
+    }
+  }
+  return f;
+}
+
 function sculptraTexOpts(scope, opts){
   const isHA = (scope === 'chin_jaw');
   const profile = isHA
     ? { forceOriginalTexture:false, darkFloor:CHIN_JAW_DARK_FLOOR, highDarkenScale:0.5, deltaGain:CHIN_JAW_DELTA_GAIN,
-        glowLuma:GLOW_LUMA, glowApply:0, brightCap:0 }
+        glowLuma:GLOW_LUMA, glowApply:0, brightCap:0, texRadiusFrac:CHIN_JAW_TEX_RADIUS,
+        midRadiusFrac:CHIN_JAW_MID_RADIUS, midKeep:CHIN_JAW_MID_KEEP }
     : { forceOriginalTexture:true,  darkFloor:SCULPTRA_DARK_FLOOR, highDarkenScale:0, deltaGain:SCULPTRA_DELTA_GAIN,
         glowLuma:0, glowApply:SCULPTRA_GLOW_APPLY,
         brightCap:SCULPTRA_BRIGHT_CAP_FULL/SCULPTRA_DELTA_GAIN };
@@ -1478,18 +2607,22 @@ export async function compositeSculptra(beforeImg, aiImg, opts){
 
   // M7.6/7.7: outline gate (chin_jaw only): zero AI contribution outside the
   // true silhouette; the projected outline comes from the warp instead.
-  const outlineGate = (scope === 'chin_jaw') ? buildOutlineGate(landmarks, w, h, b) : null;
+  // M10.4: overfill mode loosens the gate so the AI may extend the silhouette
+  // itself (the overcorrection IS the visualization -- excess projection is the point).
+  const isOverfill = !!(opts && opts.overfill);
+  const outlineGate = (scope === 'chin_jaw' && !isOverfill) ? buildOutlineGate(landmarks, w, h, b) : null;
 
   // Geometry layer. Sculptra 'full': the M6 frontal lift (jowl + midface
   // re-drape, silhouette locked), applied to the BASE before blending. HA
   // chin_jaw: the M7.6 projection warp, applied AFTER blending (M7.9,
   // composite-then-warp) so the AI's shading travels with the moved tissue.
+  // M10.4: overfill path skips the deterministic warp entirely (AI-heavy).
   // Null (other scopes, opts.warp false, or any error) means this is exactly
   // the M5 composite.
-  const lift = await buildWarpForScope(beforeImg, landmarks, w, h, scope, sex, opts);
+  const lift = (isOverfill) ? null : await buildWarpForScope(beforeImg, landmarks, w, h, scope, sex, opts);
   const postWarp = (scope === 'chin_jaw');
   const wb = (lift && !postWarp) ? new Uint8ClampedArray(b) : b;
-  if(lift && !postWarp) applyLiftWarp(wb, b, w, h, lift, intensity);
+  if(lift && !postWarp) applyLiftWarp(wb, b, w, h, lift, Math.min(intensity, SCULP_LIFT_SAT));
 
   if(textureRestore){
     // Keep the AI low band (volume), restore the original high band (texture);
@@ -1499,6 +2632,11 @@ export async function compositeSculptra(beforeImg, aiImg, opts){
     const a0 = new Uint8ClampedArray(a);
     const W = faceWidthPx(landmarks, w, h);
     const tdOpts = sculptraTexOpts(scope, opts);
+    // M9.1: jowl-lobe texture release (chin_jaw only; ?jowltex=off sets
+    // jowlTexRelease false for the v35 A/B).
+    if(scope === 'chin_jaw' && !(opts && opts.jowlTexRelease === false)){
+      try { tdOpts.releaseField = buildJowlReleaseField(landmarks, w, h); } catch(e){ /* release is optional */ }
+    }
     const gain = tdOpts.deltaGain || 1;
     const glowApply = tdOpts.glowApply || 0;
     const { dR, dG, dB } = buildTextureDelta(b, a0, w, h, W, tdOpts);
@@ -1524,15 +2662,65 @@ export async function compositeSculptra(beforeImg, aiImg, opts){
   // M8.2: then reconcile the moved band's shading with the local light field.
   if(lift && postWarp){
     const src = new Uint8ClampedArray(a);
-    applyLiftWarp(a, src, w, h, lift, intensity);
-    applyWarpShadeFix(a, buildLowLuma(b, w, h, faceWidthPx(landmarks, w, h)), lift, w);
+    const Wpx = faceWidthPx(landmarks, w, h);
+    const isOblique45 = opts && (opts.angleId === 'l45' || opts.angleId === 'r45');
+    const warpCap = isOblique45 ? CHINW_WARP_SAT_OBLIQUE : CHINW_WARP_SAT;
+    const warpT = Math.min(intensity, warpCap); // M9.10 / M10.3 v56: oblique cap differs from frontal
+    applyLiftWarp(a, src, w, h, lift, warpT);
+    applyWarpShadeFix(a, buildLowLuma(b, w, h, Wpx), lift, w);
+    if(!(opts && opts.warpSharpen === false))
+      applyWarpSharpen(a, w, h, lift, warpT, Wpx); // M9.2: restore pore-scale crispness in the moved band
+    if(!(opts && opts.jawDef === false))
+      applyJawDefinition(a, w, h, landmarks, lift, warpT, Wpx, isOblique45); // M11.1: angle-aware shadow
+  }
+  // M11.1 LAYER 2: Submental forced restore (ChatGPT layer-2 defence).
+  // Even after mask tightening the AI can paint cream/light artifacts below the
+  // menton. This pass restores original pixels in the submental zone AFTER all
+  // compositing and warping, guaranteeing the neck/submental core is never
+  // modified regardless of what the mask or AI produced.
+  // Only active for chin_jaw scope (submental leakage is only a chin/jaw issue).
+  // The protected zone: a soft band below p152 (menton), derived from anatomy,
+  // not a hard horizontal line. The central column (under the chin tip) starts
+  // at SUBMENT_FLOOR_F below p152 and feathers upward over SUBMENT_BLEND_F.
+  // Lateral regions are fully restored at the jawline (hF = -0.02).
+  if(scope === 'chin_jaw' && !isOverfill){
+    const p152 = landmarks[152];
+    const faceH = (landmarks[10].y - landmarks[152].y) * h; // negative: 10 is top, 152 is bottom
+    const absH = Math.abs(faceH) || (h * 0.35);
+    const cx0 = landmarks[234].x * w; // left cheek landmark
+    const cx1 = landmarks[454].x * w; // right cheek landmark
+    const faceW = Math.abs(cx1 - cx0) || (w * 0.4);
+    const mentonY = p152.y * h;
+    const mentonX = p152.x * w;
+    const SUBMENT_FLOOR_F = (sex === 'male') ? 0.03 : 0.09; // M10.5 v65: 0.06 -> 0.03 for male (artifacts at early slider) // tighter for male
+    const SUBMENT_BLEND_F = 0.07;
+    for(let y=0; y<h; y++){
+      if(y < mentonY) continue; // above menton: never restore
+      const dy = y - mentonY;
+      const dyF = dy / absH;
+      for(let x=0; x<w; x++){
+        const dx = Math.abs(x - mentonX) / faceW;
+        // Central column (under chin tip): restore below SUBMENT_FLOOR_F
+        // Lateral (toward jaw): restore below 0.02 (at the jawline)
+        const lateralFactor = smoothstep(0.10, 0.30, dx);
+        const floorF = SUBMENT_FLOOR_F * (1 - lateralFactor) + 0.02 * lateralFactor;
+        const blendF = SUBMENT_BLEND_F * (1 - lateralFactor) + 0.02 * lateralFactor;
+        if(dyF >= floorF){
+          // Fully restore original pixels in protected submental zone
+          const restoreAlpha = smoothstep(floorF - blendF, floorF, dyF);
+          const idx = (y * w + x) * 4;
+          a[idx]   = Math.round(b[idx]   * restoreAlpha + a[idx]   * (1 - restoreAlpha));
+          a[idx+1] = Math.round(b[idx+1] * restoreAlpha + a[idx+1] * (1 - restoreAlpha));
+          a[idx+2] = Math.round(b[idx+2] * restoreAlpha + a[idx+2] * (1 - restoreAlpha));
+        }
+      }
+    }
   }
   cx.putImageData(ai, 0, 0);
   return c.toDataURL("image/jpeg", 0.92);
 }
 
 /**
- * Build a reusable Sculptra compositor. Runs the expensive face detection,
  * mask build, and pixel reads ONCE, then returns an apply(intensity) function
  * that only re-blends, so an intensity slider can update the image live with no
  * regeneration and no MediaPipe re-run. intensity scales the in-mask alpha:
@@ -1565,7 +2753,10 @@ export async function makeSculptraCompositor(beforeImg, aiImg, opts){
 
   // M7.6/7.7: outline gate (chin_jaw only): zero AI contribution outside the
   // true silhouette; the projected outline comes from the warp instead.
-  const outlineGate = (scope === 'chin_jaw') ? buildOutlineGate(landmarks, w, h, b) : null;
+  // M10.4: overfill mode loosens the gate so the AI may extend the silhouette
+  // itself (the overcorrection IS the visualization -- excess projection is the point).
+  const isOverfill = !!(opts && opts.overfill);
+  const outlineGate = (scope === 'chin_jaw' && !isOverfill) ? buildOutlineGate(landmarks, w, h, b) : null;
 
   // M5.1: precompute the texture-restore delta once. apply() then writes
   // out = original + al*delta, which dials the AI volume with the slider while
@@ -1574,6 +2765,11 @@ export async function makeSculptraCompositor(beforeImg, aiImg, opts){
   if(textureRestore){
     const W = faceWidthPx(landmarks, w, h);
     const tdOpts = sculptraTexOpts(scope, opts);
+    // M9.1: jowl-lobe texture release (chin_jaw only; ?jowltex=off sets
+    // jowlTexRelease false for the v35 A/B).
+    if(scope === 'chin_jaw' && !(opts && opts.jowlTexRelease === false)){
+      try { tdOpts.releaseField = buildJowlReleaseField(landmarks, w, h); } catch(e){ /* release is optional */ }
+    }
     gain = tdOpts.deltaGain || 1;
     glowApply = tdOpts.glowApply || 0;
     const d = buildTextureDelta(b, a0, w, h, W, tdOpts);
@@ -1588,16 +2784,28 @@ export async function makeSculptraCompositor(beforeImg, aiImg, opts){
   // calibrated, untouched). chin_jaw blends in the original frame then warps
   // the FINISHED composite, so the AI's border shadow and edge shading travel
   // outward with the projected tissue instead of staying at the old outline.
-  const lift = await buildWarpForScope(beforeImg, landmarks, w, h, scope, sex, opts);
+  // M10.4: overfill path skips the deterministic warp entirely (AI-heavy).
+  const lift = isOverfill ? null : await buildWarpForScope(beforeImg, landmarks, w, h, scope, sex, opts);
   const postWarp = (scope === 'chin_jaw');
   const wb = (lift && !postWarp) ? new Uint8ClampedArray(b) : b;
   const warpSrc = (lift && postWarp) ? new Uint8ClampedArray(b.length) : null;
   // M8.2: reference light field for the post-warp shading reconciliation.
   const lowY = (lift && postWarp) ? buildLowLuma(b, w, h, faceWidthPx(landmarks, w, h)) : null;
+  const sharpW = (lift && postWarp) ? faceWidthPx(landmarks, w, h) : 0; // M9.2
+
+  // M11.1 LAYER 2: precompute submental geometry for the forced restore in apply().
+  // These are closed over by the returned apply() function.
+  const mentonY   = landmarks[152].y * h;
+  const mentonX   = landmarks[152].x * w;
+  const faceH_abs = Math.abs((landmarks[10].y - landmarks[152].y) * h) || (h * 0.35);
+  const faceW_abs = Math.abs((landmarks[454].x - landmarks[234].x) * w) || (w * 0.4);
+  // rename to avoid shadowing outer scope 'absH' / 'faceW' if they exist
+  const absH  = faceH_abs;
+  const faceW = faceW_abs;
 
   return function apply(intensity){
     const t = Math.max(0, Math.min(1, (typeof intensity === "number" ? intensity : 1)));
-    if(lift && !postWarp) applyLiftWarp(wb, b, w, h, lift, t);
+    if(lift && !postWarp) applyLiftWarp(wb, b, w, h, lift, Math.min(t, SCULP_LIFT_SAT));
     if(textureRestore){
       // M6.2: al carries the response gain (delta extrapolation at the top).
       // M6.3: the glow term is scaled by mask and slider only, never by gain.
@@ -1624,8 +2832,40 @@ export async function makeSculptraCompositor(beforeImg, aiImg, opts){
     // M8.2: then reconcile the moved band's shading with the local light field.
     if(lift && postWarp){
       warpSrc.set(o);
-      applyLiftWarp(o, warpSrc, w, h, lift, t);
+      const isOblique45 = opts && (opts.angleId === 'l45' || opts.angleId === 'r45');
+      const warpCap = isOblique45 ? CHINW_WARP_SAT_OBLIQUE : CHINW_WARP_SAT;
+      const warpT = Math.min(t, warpCap); // M9.10 / M10.3 v56: oblique cap differs from frontal
+      applyLiftWarp(o, warpSrc, w, h, lift, warpT);
       applyWarpShadeFix(o, lowY, lift, w);
+      if(!(opts && opts.warpSharpen === false))
+        applyWarpSharpen(o, w, h, lift, warpT, sharpW); // M9.2: restore pore-scale crispness in the moved band
+      if(!(opts && opts.jawDef === false))
+        applyJawDefinition(o, w, h, landmarks, lift, warpT, sharpW, isOblique45); // M11.1: angle-aware shadow
+    }
+    // M11.1 LAYER 2: Submental forced restore in the live compositor.
+    // Mirrors the same protection in compositeSculptra. Precomputed geometry
+    // values (mentonY, mentonX, absH, faceW) are closed over from setup.
+    if(scope === 'chin_jaw' && !isOverfill){
+      const SUBMENT_FLOOR_F = (sex === 'male') ? 0.03 : 0.09; // M10.5 v65: 0.06 -> 0.03 for male (artifacts at early slider)
+      const SUBMENT_BLEND_F = 0.07;
+      for(let y=0; y<h; y++){
+        if(y < mentonY) continue;
+        const dy = y - mentonY;
+        const dyF = dy / absH;
+        for(let x=0; x<w; x++){
+          const dx = Math.abs(x - mentonX) / faceW;
+          const lateralFactor = smoothstep(0.10, 0.30, dx);
+          const floorF = SUBMENT_FLOOR_F * (1 - lateralFactor) + 0.02 * lateralFactor;
+          const blendF = SUBMENT_BLEND_F * (1 - lateralFactor) + 0.02 * lateralFactor;
+          if(dyF >= floorF){
+            const restoreAlpha = smoothstep(floorF - blendF, floorF, dyF);
+            const idx = (y * w + x) * 4;
+            o[idx]   = Math.round(b[idx]   * restoreAlpha + o[idx]   * (1 - restoreAlpha));
+            o[idx+1] = Math.round(b[idx+1] * restoreAlpha + o[idx+1] * (1 - restoreAlpha));
+            o[idx+2] = Math.round(b[idx+2] * restoreAlpha + o[idx+2] * (1 - restoreAlpha));
+          }
+        }
+      }
     }
     cx.putImageData(out, 0, 0);
     return c.toDataURL("image/jpeg", 0.92);

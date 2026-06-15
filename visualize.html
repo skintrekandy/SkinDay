@@ -51,6 +51,15 @@
     .zone-tag { position:absolute; bottom:0; left:0; right:0; padding:9px 12px; background:linear-gradient(transparent,rgba(28,23,20,.72)); font-size:.7rem; letter-spacing:.12em; text-transform:uppercase; color:rgba(250,247,242,.86); pointer-events:none; }
     .photo-guide { font-size:.72rem; color:var(--muted); line-height:1.5; margin-top:10px; padding:9px 12px; background:var(--warm); border-radius:6px; }
     .photo-guide strong { color:var(--deep); font-weight:600; }
+    /* M11.1: guide modal layout helpers */
+    .guide-row { display:flex; gap:16px; margin:10px 0 16px; }
+    .guide-col { flex:1; display:flex; flex-direction:column; gap:6px; }
+    .guide-icon-svg { width:100%; border-radius:6px; }
+    .guide-caption { font-size:.74rem; color:var(--muted); line-height:1.45; margin:0; }
+    .guide-checklist { list-style:none; padding:0; margin:8px 0 14px; display:flex; flex-direction:column; gap:6px; }
+    .guide-checklist li { display:flex; gap:8px; font-size:.82rem; color:var(--deep); line-height:1.4; }
+    .guide-checklist .check { color:var(--rose); font-weight:700; flex-shrink:0; }
+    @media(max-width:540px){ .guide-row { flex-direction:column; } }
     .field { display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
     .field label { font-size:.68rem; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--dim); }
     .field input, .field select, .field textarea { background:#fff; border:1px solid var(--border); color:var(--deep); padding:10px 12px; font-size:.88rem; font-family:'DM Sans',sans-serif; border-radius:6px; outline:none; width:100%; }
@@ -174,8 +183,177 @@
     .guide-card ul { padding-left:18px; display:flex; flex-direction:column; gap:4px; }
     .guide-svg { width:100%; max-width:400px; display:block; margin:12px auto 4px; }
     .guide-rule { font-size:.78rem; color:var(--muted); line-height:1.55; background:var(--warm); border-radius:6px; padding:9px 12px; }
+    /* M8: accounts, credits, checkout */
+    .lock-tabs { display:flex; gap:6px; margin-bottom:14px; justify-content:center; }
+    .lock-tabs button { flex:0 1 auto; padding:7px 14px; border-radius:999px; border:1px solid rgba(255,255,255,.25); background:transparent; color:rgba(250,247,242,.75); font-size:.78rem; cursor:pointer; font-family:'DM Sans',sans-serif; }
+    .lock-tabs button.active { background:var(--rose); border-color:var(--rose); color:#fff; }
+    .auth-form { display:flex; flex-direction:column; gap:10px; }
+    .auth-form input { padding:12px 14px; border-radius:8px; border:1px solid rgba(255,255,255,.25); background:rgba(255,255,255,.06); color:#FAF7F2; font-size:.9rem; font-family:'DM Sans',sans-serif; }
+    .auth-form input::placeholder { color:rgba(250,247,242,.45); }
+    .auth-hint { font-size:.72rem; color:rgba(250,247,242,.55); line-height:1.5; }
+    .acct-bar { display:none; justify-content:flex-end; align-items:center; gap:14px; padding:8px 28px; background:rgba(28,23,20,.04); border-bottom:1px solid rgba(28,23,20,.07); font-size:.76rem; color:var(--muted); }
+    .acct-bar .credits { color:var(--deep); font-weight:500; }
+    .linklike { border:none; background:transparent; color:var(--rose); cursor:pointer; font-size:.76rem; text-decoration:underline; padding:0; font-family:'DM Sans',sans-serif; }
+    .nav-credits { display:none; align-items:center; gap:6px; padding:7px 16px; border-radius:999px; border:1px solid var(--hero-border); color:var(--gold); font-size:.8rem; cursor:pointer; background:transparent; font-family:'DM Sans',sans-serif; white-space:nowrap; }
+    .nav-credits strong { color:#FAF7F2; font-weight:600; }
+    .nav-credits:hover { border-color:var(--gold); }
+    .cost-note { display:flex; justify-content:center; margin-top:12px; min-height:1em; }
+    .cost-pill { display:inline-flex; align-items:center; gap:6px; padding:9px 18px; border-radius:999px; border:1px solid rgba(28,23,20,.14); background:rgba(28,23,20,.035); font-size:.86rem; color:var(--deep); }
+    .cost-pill strong { font-weight:600; }
+    .cost-pill.warn { border-color:var(--rose); background:rgba(196,106,86,.08); color:var(--rose); }
+    .pack-row { display:flex; align-items:center; justify-content:space-between; gap:14px; border:1px solid rgba(28,23,20,.12); border-radius:10px; padding:14px 16px; margin-top:10px; }
+    .pack-row .pack-name { font-weight:500; color:var(--deep); font-size:.92rem; }
+    .pack-row .pack-sub { font-size:.74rem; color:var(--muted); margin-top:2px; }
+    .pack-sub strong { color:var(--rose); font-size:.86rem; }
+    .pack-sub s { color:var(--dim); margin:0 2px; }
+    .launch-badge { display:inline-block; margin:2px 0 4px; padding:5px 12px; border-radius:999px; background:rgba(201,169,110,.14); border:1px solid rgba(201,169,110,.35); color:#8A6D3B; font-size:.72rem; letter-spacing:.04em; }
     .hidden { display:none !important; }
     @media(max-width:720px){ .grid,.result-grid{grid-template-columns:1fr;} .page{padding-left:16px;padding-right:16px;} .pill-grid,.area-grid,.type-toggle{grid-template-columns:1fr;} .nav-link{display:none;} }
+
+    /* ── Mobile slider bar ── */
+    #mobileSliderBar {
+      display: none;
+    }
+    @media(pointer: coarse){
+      /* Extra bottom padding so the sticky bar never covers output content */
+      body.slider-bar-active .page { padding-bottom: 116px; }
+      #mobileSliderBar {
+        display: flex;
+        position: fixed;
+        bottom: 0; left: 0; right: 0;
+        z-index: 90;
+        flex-direction: column;
+        gap: 6px;
+        padding: 10px 18px 14px;
+        background: rgba(28,23,20,.97);
+        border-top: 1px solid rgba(201,169,110,.2);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+      }
+      #mobileSliderBar.bar-hidden { display: none !important; }
+      .msb-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      .msb-label {
+        font-size: .68rem;
+        letter-spacing: .12em;
+        text-transform: uppercase;
+        color: var(--dim);
+        flex-shrink: 0;
+      }
+      #msbValue {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 1.15rem;
+        color: var(--cream);
+      }
+      .msb-ends {
+        display: flex;
+        justify-content: space-between;
+        font-size: .62rem;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+        color: rgba(181,168,159,.6);
+        margin-top: 2px;
+      }
+      #mobileSlider {
+        width: 100%;
+        accent-color: var(--rose);
+        height: 4px;
+        cursor: pointer;
+      }
+      #msbActionBtn {
+        display: block;
+        width: 100%;
+        padding: 11px;
+        background: var(--rose);
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        font-family: 'DM Sans', sans-serif;
+        font-size: .86rem;
+        font-weight: 500;
+        cursor: pointer;
+        text-align: center;
+        margin-top: 2px;
+      }
+      #msbActionBtn:disabled { background: var(--dim); opacity: .65; cursor: not-allowed; }
+      #msbActionBtn.btn-regen { background: var(--deep); color: var(--cream); }
+      /* Download button: primary CTA in post-output phase */
+      #msbDownloadBtn {
+        display: none;
+        width: 100%;
+        padding: 11px;
+        background: var(--rose);
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        font-family: 'DM Sans', sans-serif;
+        font-size: .86rem;
+        font-weight: 500;
+        cursor: pointer;
+        text-align: center;
+        margin-top: 2px;
+      }
+      #msbRegenLink {
+        display: none;
+        text-align: center;
+        font-size: .78rem;
+        color: var(--dim);
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 4px 0 0;
+        font-family: 'DM Sans', sans-serif;
+        text-decoration: underline;
+      }
+    }
+    /* Landscape phone: compact nav + single-row bar */
+    @media(pointer: coarse) and (orientation: landscape){
+      body.slider-bar-active .page { padding-bottom: 72px; }
+      /* Nav collapses to 44px */
+      nav { height: 44px; }
+      /* Bar goes single row: label + slider + download inline */
+      #mobileSliderBar {
+        flex-direction: row;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 16px;
+        flex-wrap: nowrap;
+      }
+      .msb-row { flex: 1; min-width: 0; gap: 6px; }
+      .msb-ends { display: none; }
+      #mobileSlider { margin-top: 0; }
+      #msbActionBtn, #msbDownloadBtn { width: auto; flex-shrink: 0; padding: 8px 14px; margin-top: 0; font-size: .8rem; }
+      #msbRegenLink { padding: 0; flex-shrink: 0; font-size: .75rem; }
+    }
+
+    /* ── Larger touch target for all range thumbs on touch screens ── */
+    @media(pointer: coarse){
+      input[type=range] { height: 28px; }
+      input[type=range]::-webkit-slider-thumb {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: var(--rose);
+        border: 2px solid #fff;
+        box-shadow: 0 1px 4px rgba(0,0,0,.3);
+        -webkit-appearance: none;
+        appearance: none;
+        cursor: pointer;
+      }
+      input[type=range]::-moz-range-thumb {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: var(--rose);
+        border: 2px solid #fff;
+        box-shadow: 0 1px 4px rgba(0,0,0,.3);
+        cursor: pointer;
+      }
+    }
   </style>
 </head>
 <body>
@@ -185,13 +363,25 @@
   <div class="lock-card">
     <div class="lock-eyebrow">SkinDay</div>
     <h1>Visualize <span>·</span> Coming&nbsp;Soon</h1>
-    <p class="lock-soon">A private beta for trusted SkinDay clinics. Access by invitation.</p>
-    <div class="lock-form">
+    <p class="lock-soon" id="lockTagline">AI-powered treatment previews. Sign in with your SkinDay account, or create one free.</p>
+    <div class="lock-tabs" id="lockTabs" style="display:none;">
+      <button type="button" data-mode="signin" class="active">Sign in</button>
+      <button type="button" data-mode="signup">Create account</button>
+      <button type="button" data-mode="beta">Beta key</button>
+    </div>
+    <div class="lock-form auth-form" id="authForm" style="display:none;">
+      <input type="email" id="authEmail" placeholder="Email" autocomplete="email" />
+      <input type="password" id="authPassword" placeholder="Password" autocomplete="current-password" />
+      <button id="authBtn" type="button">Sign in</button>
+      <div class="lock-err" id="authErr"></div>
+      <div class="auth-hint" id="authHint"></div>
+    </div>
+    <div class="lock-form" id="betaForm">
       <input type="password" id="betaKey" placeholder="Beta access password" autocomplete="off" />
       <button id="unlockBtn" type="button">Enter beta</button>
       <div class="lock-err" id="lockErr"></div>
     </div>
-    <div class="lock-foot">Want beta access for your clinic? Email <a href="mailto:hello@skinday.ca">hello@skinday.ca</a>.</div>
+    <div class="lock-foot">Same account as skinday.ca. Questions? Email <a href="mailto:hello@skinday.ca">hello@skinday.ca</a>.</div>
   </div>
 </div>
 
@@ -200,10 +390,17 @@
 <nav>
   <a href="/" class="nav-logo">Skin<span>Day</span></a>
   <div class="nav-ctas">
-    <a href="/studio.html" class="nav-link">Before &amp; After</a>
-    <a href="/editor.html" class="nav-cta">Clinic Portal</a>
+    <button class="nav-credits" id="navCredits" type="button" title="Credit balance"></button>
+    <button class="nav-link" id="navAccountBtn" type="button" style="display:none;">Account</button>
   </div>
 </nav>
+<div class="acct-bar" id="acctBar">
+  <span id="acctIdent"></span>
+  <span class="credits" id="creditChip"></span>
+  <button class="linklike" id="creditsInfoBtn" type="button" style="display:none;">How credits work</button>
+  <button class="linklike" id="buyBtn" type="button" style="display:none;">Add credits</button>
+  <button class="linklike" id="signOutBtn" type="button" style="display:none;">Sign out</button>
+</div>
 
 <div class="page">
   <section class="hero">
@@ -213,18 +410,15 @@
     <p class="hero-disclaimer">Consultation tool only. Not a prediction of actual results.</p>
   </section>
 
-  <div class="tabs" aria-label="SkinDay tools">
-    <a class="tab" href="/studio.html" style="text-decoration:none;">Before &amp; After Builder</a>
-    <button class="tab active" type="button">Visualize</button>
-  </div>
+  <!-- tab bar removed M11.1: single-tool page, no nav needed -->
 
   <section class="flow">
     <!-- Step 1: choose treatment type -->
     <div class="card">
       <div class="step-num">Step 1 · What do you want to visualize?</div>
       <div class="type-toggle quad" id="typeToggle">
-        <button class="type-btn active" data-type="filler" type="button"><strong>HA Fillers</strong></button>
-        <button class="type-btn" data-type="biostim" type="button"><strong>Biostimulation</strong></button>
+        <button class="type-btn soon" data-type="filler" type="button" disabled><strong>HA Fillers</strong><em class="soon-tag">Coming soon</em></button>
+        <button class="type-btn active" data-type="biostim" type="button"><strong>Biostimulation</strong></button>
         <button class="type-btn soon" data-type="neurotoxin" type="button" disabled><strong>Neurotoxin</strong><em class="soon-tag">Coming soon</em></button>
         <button class="type-btn soon" data-type="laser" type="button" disabled><strong>Skin &amp; Laser</strong><em class="soon-tag">Coming soon</em></button>
       </div>
@@ -235,7 +429,7 @@
       <div class="step-num">Step 2 · Treatment details</div>
 
       <!-- FILLER controls -->
-      <div id="fillerControls">
+      <div id="fillerControls" class="hidden">
         <div class="field">
           <label>Areas (select one or more)</label>
           <div class="area-grid" id="areaGrid">
@@ -255,18 +449,19 @@
           </div>
         </div>
         <div class="field">
-          <label>Response</label>
-          <div class="privacy-note"><span>ℹ️</span><span>One preview is generated at a strong, realistic anchor, then you dial the displayed response up or down with a slider on the result. No need to regenerate or compare separate versions.</span></div>
+          <label>Degree of correction</label>
+          <div class="privacy-note"><span>ℹ️</span><span>One preview is generated at a strong anchor, then you dial the displayed degree of correction with a slider on the result, from subtle to balanced. No need to regenerate or compare separate versions.</span></div>
         </div>
       </div>
 
       <!-- BIOSTIM controls -->
-      <div id="biostimControls" class="hidden">
+      <div id="biostimControls">
         <div class="field">
           <label>Product</label>
           <div class="pill-grid" id="biostimProduct">
-            <button class="pill active" data-product="sculptra" type="button"><strong>Sculptra</strong></button>
+            <button class="pill active" data-product="sculptra" type="button"><strong>Biostimulator</strong></button>
           </div>
+          <div class="small" style="margin-top:6px;color:var(--muted);font-style:italic;">e.g. Sculptra, Hyperdilute Radiesse, Lanluma, Ellansé</div>
         </div>
         <div class="field">
           <label>Response</label>
@@ -286,15 +481,15 @@
           <div class="area-chip" data-angle="l45"><span class="tick">✓</span>Left 45°</div>
         </div>
       </div>
-      <div class="photo-guide" id="photoGuide"><strong>Best photos:</strong> Even, diffuse light, neutral expression, hair off the face, face filling most of the frame.</div>
-      <button class="guide-link" id="guideBtn" type="button">Photo guide: how to shoot each angle (each photo is checked automatically)</button>
+      <div class="photo-guide" id="photoGuide"><strong>Photo quality is the single biggest factor in result quality.</strong> Poor lighting, busy backgrounds, or tight crops will cause artifacts and weak results regardless of the AI. <strong>Read the photo guide before uploading.</strong></div>
+      <button class="guide-link" id="guideBtn" type="button">📷 Photo guide &amp; quality checklist (important -- read before uploading)</button>
       <div class="slot-grid" id="uploadSlots"></div>
       <label class="bg-toggle"><input type="checkbox" id="blackBgChk" checked /><span>Replace background with black on the generated image.</span></label>
       <div class="privacy-note"><span>🔒</span><span>The photo stays in this browser until you press Generate. Generating sends the photo to the AI image provider (OpenAI) for that single request only. It is not used to train the model. You must have the patient's consent before uploading.</span></div>
 
       <div class="field" style="margin-top:14px;">
-        <label>Clinic name (optional, appears on export)</label>
-        <input id="clinicName" placeholder="Your clinic name" maxlength="60" />
+        <label>Your name or clinic (optional, appears on export)</label>
+        <input id="clinicName" placeholder="e.g. Dr. Smith · ABC Cosmetic Clinic" maxlength="60" />
       </div>
 
       <label class="consent" id="consentBox">
@@ -303,10 +498,12 @@
       </label>
 
       <div class="disclaimer"><span>⚠️</span><span>Every export is labelled and carries a permanent consultation-only disclaimer. Outputs are simulations for communication, never a guaranteed result or medical prediction.</span></div>
+      <p style="font-size:.72rem;color:var(--muted);margin:8px 0 0;line-height:1.5;">Early access · We're continuously improving results. Quality varies by photo — see the photo guide for best outcomes.</p>
 
       <div class="status"><div class="dot" id="dot"></div><span id="statusText">Choose a treatment, then add the patient photos</span></div>
 
       <div class="btn-row"><button class="btn btn-primary" id="generateBtn" disabled>Generate simulated preview</button></div>
+      <div class="cost-note" id="costNote"></div>
     </div>
   </section>
 
@@ -326,14 +523,15 @@
     </div>
     <div id="intensityWrap" style="display:none;margin-top:14px;">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-        <label for="intensitySlider" style="font-size:13px;letter-spacing:.04em;text-transform:uppercase;opacity:.75;">Treatment response</label>
+        <label for="intensitySlider" id="intensityLabel" style="font-size:13px;letter-spacing:.04em;text-transform:uppercase;opacity:.75;">Treatment response</label>
         <span id="intensityValue" style="font-family:'Cormorant Garamond',serif;font-size:22px;">Expected</span>
       </div>
       <input type="range" id="intensitySlider" min="0" max="100" step="1" value="70" style="width:100%;margin-top:8px;accent-color:#C8725A;" />
       <div style="display:flex;justify-content:space-between;font-size:.68rem;letter-spacing:.04em;text-transform:uppercase;opacity:.6;margin-top:4px;">
-        <span>Conservative</span><span>Strong</span>
+        <span id="intensityMin">Conservative</span><span id="intensityMax">Strong</span>
       </div>
-      <div class="small" style="margin-top:6px;">Slide to preview a more conservative or stronger response. The simulation updates instantly.</div>
+      <div class="small" id="intensityHelp" style="margin-top:6px;">Slide to preview a more conservative or stronger response. The simulation updates instantly.</div>
+      <div class="small" id="overfillNote" style="display:none;margin-top:4px;color:#A33524;font-weight:600;">Shown for education: deliberately overfilled, not a treatment goal.</div>
     </div>
     <div class="compare-wrap" id="compareWrap" style="display:none;">
       <div class="compare-card" id="compareCard">
@@ -353,6 +551,7 @@
       <button class="btn btn-dark" id="downloadBtn">Download side-by-side</button>
       <button class="btn btn-dark" id="sheetBtn" style="display:none;">Download all angles</button>
       <button class="btn btn-light" id="plainBtn">Download plain photos</button>
+      <button class="btn btn-light" id="discardAngleBtn" style="display:none;" title="Remove this angle from the case">Discard this angle</button>
       <button class="btn btn-light" id="newBtn">New case</button>
     </div>
   </section>
@@ -362,48 +561,151 @@
   <div class="brand">Skin<span>Day</span></div>
   <div>Visualize AI Beta · Consultation previews only · AI-generated, not a prediction of results</div>
 </footer>
+<!-- ───────── HOW CREDITS WORK ───────── -->
+<div class="guide-modal hidden" id="creditsInfoModal">
+  <div class="guide-card">
+    <h2>How credits work</h2>
+    <p>Credits are spent only when a simulation is generated. Each angle of a case is one generation: <strong>HA filler costs <span id="ciFiller">1</span> credit(s) per angle</strong> and <strong>biostimulator costs <span id="ciBiostim">2</span> credit(s) per angle</strong>, so a full 3-angle HA case is <span id="ciCaseF">3</span> credits and a 3-angle biostimulator case is <span id="ciCaseB">6</span>.</p>
+    <p>Everything after generation is free: adjusting the response slider, comparing angles, exporting and downloading, and re-generating within 60 seconds of a result. If a generation fails or is blocked by the AI provider's safety system, its credits are refunded to your balance automatically.</p>
+    <p>Purchased credits do not expire. New accounts start with a small free balance so you can try the tool on a real consultation first.</p>
+    <p><strong>Independence note:</strong> Visualize credits are a clinic tool purchase only. Buying credits never affects a clinic's ranking, search placement, reviews, or visibility anywhere on SkinDay.</p>
+    <div class="btn-row guide-close"><button class="btn btn-light" id="creditsInfoCloseBtn" type="button">Close</button></div>
+  </div>
+</div>
+
+<!-- ───────── BUY CREDITS ───────── -->
+<div class="guide-modal hidden" id="buyModal">
+  <div class="guide-card">
+    <h2>Add credits</h2>
+    <span class="launch-badge">Launch pricing for founding clinics · regular pricing applies after beta</span>
+    <p id="buyIntro">Credits are used only when a new preview is generated. Slider adjustments, exports, and re-generates within the free window cost nothing, and a failed or blocked generation is refunded automatically.</p>
+    <div id="packList"></div>
+    <p class="auth-hint" style="margin-top:12px;color:var(--muted);">Payments are processed by Stripe in CAD. Credits land on your account the moment payment completes.</p>
+    <div class="btn-row guide-close"><button class="btn btn-light" id="buyCloseBtn" type="button">Close</button></div>
+  </div>
+</div>
+
 <!-- ───────── CAPTURE GUIDE ───────── -->
 <div class="guide-modal hidden" id="guideModal">
   <div class="guide-card">
-    <h2>Consultation photo guide</h2>
-    <p>Good input photos are the single biggest factor in simulation quality. Each photo is checked automatically when you add it.</p>
-    <h3>Lighting</h3>
-    <ul>
-      <li>Even, diffuse light from the front. Avoid strong side light, windows behind the patient, and overhead-only light.</li>
-      <li>No flash if possible; flash flattens the facial shading the simulation builds on.</li>
+    <h2>Photo quality is everything</h2>
+    <p style="font-size:1rem;font-weight:600;color:var(--rose);margin-bottom:4px;">The simulation is only as good as the photo. A poor photo will produce a poor result, regardless of how advanced the AI is.</p>
+    <p>Follow these guidelines and the system will consistently produce consultation-ready simulations. Skip them and artifacts, inconsistencies, or flat results are likely.</p>
+
+    <!-- LIGHTING -->
+    <h3>1 · Lighting</h3>
+    <div class="guide-row">
+      <div class="guide-col">
+        <svg viewBox="0 0 120 100" xmlns="http://www.w3.org/2000/svg" class="guide-icon-svg">
+          <rect width="120" height="100" rx="8" fill="#F0EDE8"/>
+          <!-- Face -->
+          <ellipse cx="60" cy="52" rx="22" ry="28" fill="#E8C9A0" stroke="#C8725A" stroke-width="1.5"/>
+          <!-- Two front lights (good) -->
+          <circle cx="18" cy="35" r="7" fill="#C9A96E" opacity="0.9"/>
+          <line x1="24" y1="38" x2="38" y2="46" stroke="#C9A96E" stroke-width="2" stroke-dasharray="3 2"/>
+          <circle cx="102" cy="35" r="7" fill="#C9A96E" opacity="0.9"/>
+          <line x1="96" y1="38" x2="82" y2="46" stroke="#C9A96E" stroke-width="2" stroke-dasharray="3 2"/>
+          <text x="60" y="92" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="#5A4A42">✓ Even, diffuse, front-lit</text>
+        </svg>
+        <p class="guide-caption"><strong>Good:</strong> Soft, even light from the front or both sides. Ring light, window light facing the patient, or a bright overcast day.</p>
+      </div>
+      <div class="guide-col">
+        <svg viewBox="0 0 120 100" xmlns="http://www.w3.org/2000/svg" class="guide-icon-svg">
+          <rect width="120" height="100" rx="8" fill="#F0EDE8"/>
+          <ellipse cx="60" cy="52" rx="22" ry="28" fill="#E8C9A0" stroke="#A33524" stroke-width="1.5"/>
+          <!-- Single harsh side light (bad) -->
+          <circle cx="10" cy="30" r="7" fill="#A33524" opacity="0.8"/>
+          <line x1="16" y1="33" x2="38" y2="46" stroke="#A33524" stroke-width="2" stroke-dasharray="3 2"/>
+          <!-- Shadow half face -->
+          <path d="M60,24 Q82,28 82,52 Q82,76 60,80 Q60,52 60,24Z" fill="#7A5A40" opacity="0.35"/>
+          <text x="60" y="92" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="#A33524">✗ Harsh side light / shadows</text>
+        </svg>
+        <p class="guide-caption"><strong>Avoid:</strong> Single side light, overhead-only ceiling light, flash, backlit windows, or deep shadows on any part of the face.</p>
+      </div>
+    </div>
+
+    <!-- BACKGROUND -->
+    <h3>2 · Background</h3>
+    <div class="guide-row">
+      <div class="guide-col">
+        <svg viewBox="0 0 120 100" xmlns="http://www.w3.org/2000/svg" class="guide-icon-svg">
+          <rect width="120" height="100" rx="8" fill="#1C1714"/>
+          <ellipse cx="60" cy="52" rx="22" ry="28" fill="#E8C9A0" stroke="#C8725A" stroke-width="1.5"/>
+          <text x="60" y="92" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="#C9A96E">✓ Plain dark background</text>
+        </svg>
+        <p class="guide-caption"><strong>Good:</strong> Plain black, white, or neutral grey wall. The system replaces the background automatically but a clean background improves edge detection.</p>
+      </div>
+      <div class="guide-col">
+        <svg viewBox="0 0 120 100" xmlns="http://www.w3.org/2000/svg" class="guide-icon-svg">
+          <rect width="120" height="100" rx="8" fill="#7B9EA6"/>
+          <!-- Busy background elements -->
+          <rect x="8" y="8" width="30" height="20" rx="3" fill="#C8725A" opacity="0.6"/>
+          <rect x="82" y="15" width="25" height="35" rx="3" fill="#C9A96E" opacity="0.5"/>
+          <circle cx="20" cy="65" r="12" fill="#5A7A4A" opacity="0.5"/>
+          <ellipse cx="60" cy="52" rx="22" ry="28" fill="#E8C9A0" stroke="#A33524" stroke-width="1.5"/>
+          <text x="60" y="92" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="#A33524">✗ Busy / cluttered background</text>
+        </svg>
+        <p class="guide-caption"><strong>Avoid:</strong> Clinic equipment, posters, other people, patterned walls, or anything distracting behind the patient.</p>
+      </div>
+    </div>
+
+    <!-- FRAMING -->
+    <h3>3 · Framing and distance</h3>
+    <div class="guide-row">
+      <div class="guide-col">
+        <svg viewBox="0 0 120 100" xmlns="http://www.w3.org/2000/svg" class="guide-icon-svg">
+          <rect width="120" height="100" rx="8" fill="#F0EDE8"/>
+          <!-- Frame border hint -->
+          <rect x="28" y="4" width="64" height="90" rx="4" fill="none" stroke="#C9A96E" stroke-width="1.2" stroke-dasharray="4 3"/>
+          <ellipse cx="60" cy="46" rx="22" ry="28" fill="#E8C9A0" stroke="#C8725A" stroke-width="1.5"/>
+          <!-- Neck suggestion -->
+          <path d="M48,74 Q50,86 52,88 M72,74 Q70,86 68,88" stroke="#E8C9A0" stroke-width="6" fill="none"/>
+          <text x="60" y="97" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="#5A4A42">✓ Head + neck, 2/3 of frame</text>
+        </svg>
+        <p class="guide-caption"><strong>Good:</strong> Face fills about two-thirds of the frame. Full head visible, top of neck showing. Camera at eye level. Step back from the patient -- do not crop the top of the head or the chin.</p>
+      </div>
+      <div class="guide-col">
+        <svg viewBox="0 0 120 100" xmlns="http://www.w3.org/2000/svg" class="guide-icon-svg">
+          <rect width="120" height="100" rx="8" fill="#F0EDE8"/>
+          <!-- Oversized face filling frame (bad) -->
+          <ellipse cx="60" cy="42" rx="58" ry="52" fill="#E8C9A0" stroke="#A33524" stroke-width="1.5"/>
+          <!-- Clipped by frame -->
+          <rect x="0" y="0" width="120" height="100" fill="none" stroke="#A33524" stroke-width="3"/>
+          <text x="60" y="97" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="#A33524">✗ Too close / tight crop</text>
+        </svg>
+        <p class="guide-caption"><strong>Avoid:</strong> Selfie distance, tight crops that cut the chin or forehead, or photos taken from above or below eye level.</p>
+      </div>
+    </div>
+
+    <!-- PATIENT PREP -->
+    <h3>4 · Patient preparation</h3>
+    <ul class="guide-checklist">
+      <li><span class="check">✓</span> Hair fully off the face -- headband, clip, or tied back. The temples and hairline must be visible.</li>
+      <li><span class="check">✓</span> Glasses off.</li>
+      <li><span class="check">✓</span> Neutral expression, mouth closed, relaxed jaw.</li>
+      <li><span class="check">✓</span> No heavy make-up that changes the face shape (foundation is fine).</li>
+      <li><span class="check">✓</span> Same angles, distance, and lighting at every visit for before/after comparisons.</li>
     </ul>
-    <h3>Framing</h3>
-    <ul>
-      <li>Face fills roughly two-thirds of the frame, whole head and top of the neck visible.</li>
-      <li>Hair fully off the face (headband or clip), glasses off, neutral expression, mouth closed.</li>
-      <li>Camera at eye level, phone steady.</li>
-    </ul>
-    <h3>The three angles</h3>
-    <ul>
-      <li><strong>Frontal:</strong> nose pointing straight at the camera, both ears equally visible.</li>
-      <li><strong>Right 45°:</strong> patient turns so their right cheek faces the camera, about halfway to profile.</li>
-      <li><strong>Left 45°:</strong> the same turn to the other side, left cheek toward the camera.</li>
-    </ul>
-    <svg class="guide-svg" viewBox="0 0 330 130" xmlns="http://www.w3.org/2000/svg" aria-label="The three photo angles with the 45 degree nose-tip alignment line">
+
+    <!-- THREE ANGLES -->
+    <h3>5 · The three angles</h3>
+    <svg class="guide-svg" viewBox="0 0 330 130" xmlns="http://www.w3.org/2000/svg" aria-label="The three photo angles">
       <g fill="none" stroke="#1C1714" stroke-width="1.6" stroke-linecap="round">
-        <!-- Left 45: head turned so the patient's left cheek faces the camera -->
         <g transform="translate(10,6)">
           <ellipse cx="52" cy="44" rx="24" ry="31"/>
-          <path d="M 28.5,48 q -3.6,4.5 -0.4,9"/>            <!-- nose bump past the cheek line -->
-          <path d="M 75,38 q 5,4 1,12"/>                      <!-- visible ear -->
-          <path d="M 36,38 q 3,-2 6,0 M 56,38 q 4,-2 8,0"/>   <!-- eyes -->
-          <path d="M 36,62 q 5,3 10,1"/>                      <!-- mouth -->
+          <path d="M 28.5,48 q -3.6,4.5 -0.4,9"/>
+          <path d="M 75,38 q 5,4 1,12"/>
+          <path d="M 36,38 q 3,-2 6,0 M 56,38 q 4,-2 8,0"/>
+          <path d="M 36,62 q 5,3 10,1"/>
           <line x1="26.6" y1="6" x2="26.6" y2="92" stroke="#C8725A" stroke-width="1.3" stroke-dasharray="3 3"/>
         </g>
-        <!-- Frontal -->
         <g transform="translate(120,6)">
           <ellipse cx="45" cy="44" rx="25" ry="31"/>
-          <path d="M 19,40 q -5,5 0,11 M 71,40 q 5,5 0,11"/>  <!-- both ears -->
+          <path d="M 19,40 q -5,5 0,11 M 71,40 q 5,5 0,11"/>
           <path d="M 32,38 q 3,-2 7,0 M 51,38 q 4,-2 7,0"/>
           <path d="M 45,44 l 0,9"/>
           <path d="M 38,62 q 7,4 14,0"/>
         </g>
-        <!-- Right 45 (mirror of Left 45) -->
         <g transform="translate(320,6) scale(-1,1)">
           <ellipse cx="52" cy="44" rx="24" ry="31"/>
           <path d="M 28.5,48 q -3.6,4.5 -0.4,9"/>
@@ -419,11 +721,25 @@
         <text x="268" y="116">Right 45°</text>
       </g>
     </svg>
-    <p class="guide-rule">The 45° check: the dotted line through the nose tip should just touch the line of the far cheek. Nose well inside the cheek line means the turn is too shallow; nose clearly past it means too far toward profile.</p>
-    <h3>Consistency</h3>
-    <p>Use the same angles, distance, and lighting at every visit so before and after photos stay comparable over time.</p>
+    <p class="guide-rule">The 45° check: the dotted line through the nose tip should just touch the far cheek. Nose well inside the cheek line = turn too shallow. Nose past it = too far toward profile.</p>
+    <p class="guide-rule" style="color:var(--rose);font-weight:600;">The frontal gives the clearest result. The obliques add lower-face context. If in doubt, use frontal only -- one great photo beats three mediocre ones.</p>
+
     <div class="btn-row guide-close"><button class="btn btn-primary" id="guideCloseBtn" type="button">Got it</button></div>
   </div>
+</div>
+<!-- ───────── Mobile sticky slider bar ───────── -->
+<div id="mobileSliderBar" class="bar-hidden" aria-hidden="true">
+  <div class="msb-row">
+    <span class="msb-label" id="msbLabel">Treatment response</span>
+    <span id="msbValue">Expected</span>
+  </div>
+  <input type="range" id="mobileSlider" min="0" max="100" step="1" value="70" aria-hidden="true" tabindex="-1" />
+  <div class="msb-ends">
+    <span id="msbMin">Conservative</span><span id="msbMax">Strong</span>
+  </div>
+  <button id="msbActionBtn" type="button" class="bar-hidden" disabled>Generate simulated preview</button>
+  <button id="msbDownloadBtn" type="button">Download</button>
+  <button id="msbRegenLink" type="button">Re-generate</button>
 </div>
 </div><!-- /#app -->
 
@@ -433,10 +749,10 @@ const FREE_REGEN_MS = 60000;
 
 // Bump this whenever sculptra-mask.js changes, so the browser fetches the new
 // module instead of a stale disk-cached copy. Both imports below use it, so they
-// stay the same module instance (shared face-detection cache). v29 = M7.7
-// capsule warp kernels (crisp moved edge), subject-aware outline gate, bolder
-// oblique chin/jaw magnitudes (v28 = M7.6 geometry; v27-v22 = earlier).
-const MASK_MODULE_VERSION = '29';
+// stay the same module instance (shared face-detection cache). v35 = M9.0
+// jowl blending (alpha lobes over marionette/jowl shadows + prejowl notch-fill
+// warp kernels) (v34 = M8.2 shade reconciliation; v33 = M8.1 convex chin).
+const MASK_MODULE_VERSION = '69';
 
 /* M7: a case is one or more ANGLES, each with its own photo, QC result, job,
    and compositor. Treatment settings are shared across the case; the response
@@ -454,16 +770,19 @@ const ANGLE_ORDER = ['frontal','r45','l45'];
 // Upload QC thresholds. Pose and face size are hard gates (a wrong pose or a
 // tiny face wastes a generation); exposure and sharpness are warnings only,
 // since those heuristics can false-positive on legitimate clinic photos.
-const QC = { MIN_FACE_FRAC:0.05, LUMA_LO:55, LUMA_HI:205, SHARP_MIN:16 };
+// M11.1: MAX_FACE_FRAC added -- tight crops (face > 75% of frame) clip the
+// warp window and reduce oblique accuracy; flagged as a warning.
+const QC = { MIN_FACE_FRAC:0.05, MAX_FACE_FRAC:0.75, LUMA_LO:55, LUMA_HI:205, SHARP_MIN:16 };
 
 function makeSlot(){
   return { file:null, originalDataUrl:null, beforeDataUrl:null, blackBgCache:null,
            resultDataUrl:null, apply:null, jobId:null, error:null,
-           status:'empty', qcMsg:'' };
+           status:'empty', qcMsg:'',
+           faceBbox:null, cropCache:null }; // M11.1: bbox for head crop display
 }
 
 const state = {
-  type:'filler', areas:['chin_jawline'], intensity:'enhanced', sex:'female',
+  type:'biostim', areas:['chin_jawline'], intensity:'enhanced', sex:'female',
   product:'sculptra', projection:'optimistic', timeline:'6',
   blackBg:true, lastGenAt:0, intensityPct:70,
   selectedAngles:['frontal'], activeAngle:'frontal',
@@ -487,11 +806,105 @@ async function verifyKey(key){
   return res.ok;
 }
 
-function unlock(){
-  lockScreen.classList.add('hidden');
-  app.classList.remove('hidden');
+/* ───────── M8: access (clinic accounts + beta bypass) ─────────
+   Two modes. 'account' = Supabase auth, metered with credits; 'beta' = the
+   existing password, unmetered. visualize-config supplies the Supabase keys
+   and the credit packs from env; when it reports authDisabled (env not set,
+   e.g. a fresh staging deploy), the UI falls back to beta-only, the exact
+   pre-M8 behavior. */
+let SD_CFG = { authDisabled:true };
+
+function creditCostFor(type){
+  const c = (SD_CFG && SD_CFG.costs) || {};
+  return (type === 'biostim') ? (c.biostim || 2) : (c.filler || 1);
 }
 
+function fillCreditCopy(){
+  const f = creditCostFor('filler'), b = creditCostFor('biostim');
+  const set = (id, v) => { const el = document.getElementById(id); if(el) el.textContent = v; };
+  set('ciFiller', f); set('ciBiostim', b); set('ciCaseF', 3 * f); set('ciCaseB', 3 * b);
+}
+let sb = null;                  // supabase client (account mode)
+let accessMode = null;          // 'beta' | 'account'
+let creditBalance = null;
+
+function unlock(mode){
+  accessMode = mode;
+  lockScreen.classList.add('hidden');
+  app.classList.remove('hidden');
+  renderAcctBar();
+  syncGenerateBtn();
+}
+
+// Headers for every generation/poll call: the beta key, or the (auto-refreshed)
+// Supabase access token.
+async function authHeaders(){
+  if(accessMode === 'beta'){
+    return { 'x-beta-key': sessionStorage.getItem(KEY_STORE) || '' };
+  }
+  if(sb){
+    const { data } = await sb.auth.getSession();
+    if(data && data.session) return { 'Authorization': 'Bearer ' + data.session.access_token };
+  }
+  return {};
+}
+
+// A 401 mid-flight: beta key revoked, or the account session is truly gone.
+async function handleAuthFailure(){
+  if(accessMode === 'beta'){ sessionStorage.removeItem(KEY_STORE); }
+  else if(sb){ try { await sb.auth.signOut(); } catch(e){} }
+  location.reload();
+}
+
+function renderAcctBar(){
+  const bar = document.getElementById('acctBar');
+  const ident = document.getElementById('acctIdent');
+  const chip = document.getElementById('creditChip');
+  const buy = document.getElementById('buyBtn');
+  const out = document.getElementById('signOutBtn');
+  const navPill = document.getElementById('navCredits');
+  const navAcct = document.getElementById('navAccountBtn');
+  const info = document.getElementById('creditsInfoBtn');
+  if(accessMode === 'beta'){
+    bar.style.display = 'flex';
+    ident.textContent = 'Beta access';
+    chip.textContent = 'Unmetered';
+    buy.style.display = 'none'; out.style.display = 'none'; info.style.display = 'none';
+    navPill.style.display = 'none';
+    if(navAcct) navAcct.style.display = 'none';
+  } else if(accessMode === 'account'){
+    bar.style.display = 'flex';
+    ident.textContent = (sb && sb.__email) || '';
+    chip.textContent = creditBalance == null ? 'Credits: …' : ('Credits: ' + creditBalance);
+    buy.style.display = ''; out.style.display = ''; info.style.display = '';
+    navPill.style.display = 'inline-flex';
+    navPill.innerHTML = 'Credits: <strong>' + (creditBalance == null ? '…' : creditBalance) + '</strong>';
+    if(navAcct) navAcct.style.display = '';
+  } else {
+    bar.style.display = 'none';
+    navPill.style.display = 'none';
+    if(navAcct) navAcct.style.display = 'none';
+  }
+}
+
+async function refreshCredits(retries){
+  if(accessMode !== 'account') return;
+  for(let i = 0; i <= (retries || 0); i++){
+    try {
+      const res = await fetch('/.netlify/functions/get-credits', { headers: await authHeaders() });
+      if(res.ok){
+        const d = await res.json();
+        creditBalance = d.balance;
+        renderAcctBar(); syncGenerateBtn();
+        return d.balance;
+      }
+    } catch(e){ /* retry */ }
+    if(i < (retries || 0)) await new Promise(r => setTimeout(r, 1500));
+  }
+  return null;
+}
+
+/* Beta path (unchanged mechanics) */
 async function attemptUnlock(){
   const key = betaKey.value.trim();
   if(!key){ lockErr.textContent = 'Enter the beta password.'; return; }
@@ -500,7 +913,7 @@ async function attemptUnlock(){
     if(await verifyKey(key)){
       sessionStorage.setItem(KEY_STORE, key);
       lockErr.textContent = '';
-      unlock();
+      unlock('beta');
     } else {
       lockErr.textContent = 'That password is not recognised.';
     }
@@ -513,9 +926,160 @@ async function attemptUnlock(){
 unlockBtn.addEventListener('click', attemptUnlock);
 betaKey.addEventListener('keydown', e => { if(e.key === 'Enter') attemptUnlock(); });
 
-(async function initLock(){
+/* Account path */
+let authMode = 'signin';
+function setLockMode(mode){
+  authMode = (mode === 'signup') ? 'signup' : (mode === 'beta' ? 'beta' : 'signin');
+  document.querySelectorAll('#lockTabs button').forEach(btn =>
+    btn.classList.toggle('active', btn.dataset.mode === authMode));
+  document.getElementById('authForm').style.display = (authMode === 'beta') ? 'none' : 'flex';
+  document.getElementById('betaForm').style.display = (authMode === 'beta') ? '' : 'none';
+  document.getElementById('authBtn').textContent = (authMode === 'signup') ? 'Create account' : 'Sign in';
+  document.getElementById('authHint').textContent = (authMode === 'signup' && SD_CFG.signupGrant > 0)
+    ? ('New accounts start with ' + SD_CFG.signupGrant + ' free credits.')
+    : '';
+  document.getElementById('authErr').textContent = '';
+}
+
+async function onSignedIn(session){
+  if(!session || !session.user) return;
+  sb.__email = session.user.email || '';
+  unlock('account');
+  refreshCredits(0);
+}
+
+async function submitAuth(){
+  const email = document.getElementById('authEmail').value.trim();
+  const password = document.getElementById('authPassword').value;
+  const err = document.getElementById('authErr');
+  const btn = document.getElementById('authBtn');
+  if(!email || !password){ err.textContent = 'Enter your email and password.'; return; }
+  btn.disabled = true; err.textContent = 'One moment…';
+  try {
+    if(authMode === 'signup'){
+      const { data, error } = await sb.auth.signUp({ email, password });
+      if(error){ err.textContent = error.message; return; }
+      if(data && data.session){ err.textContent = ''; onSignedIn(data.session); }
+      else { err.textContent = 'Check your email to confirm the account, then sign in here.'; }
+    } else {
+      const { data, error } = await sb.auth.signInWithPassword({ email, password });
+      if(error){ err.textContent = error.message; return; }
+      err.textContent = '';
+      onSignedIn(data.session);
+    }
+  } catch(e){
+    err.textContent = 'Could not reach the sign-in service. Try again.';
+  } finally {
+    btn.disabled = false;
+  }
+}
+document.getElementById('authBtn').addEventListener('click', submitAuth);
+document.getElementById('authPassword').addEventListener('keydown', e => { if(e.key === 'Enter') submitAuth(); });
+document.querySelectorAll('#lockTabs button').forEach(btn =>
+  btn.addEventListener('click', () => setLockMode(btn.dataset.mode)));
+document.getElementById('signOutBtn').addEventListener('click', async () => {
+  if(sb){ try { await sb.auth.signOut(); } catch(e){} }
+  location.reload();
+});
+
+/* Buy credits */
+function openBuyModal(){
+  const list = document.getElementById('packList');
+  list.innerHTML = '';
+  (SD_CFG.packs || []).forEach(pk => {
+    const row = document.createElement('div'); row.className = 'pack-row';
+    const left = document.createElement('div');
+    const reg = (pk.regularCad && pk.regularCad > pk.cad) ? pk.regularCad : null;
+    const price = reg
+      ? '<strong>CA$' + (pk.cad/100).toFixed(2) + '</strong> <s>CA$' + (reg/100).toFixed(2) + '</s> <span>regular after beta</span>'
+      : 'CA$' + (pk.cad/100).toFixed(2);
+    left.innerHTML = '<div class="pack-name">' + pk.label + ' · ' + pk.credits + ' credits</div>'
+      + '<div class="pack-sub">' + price + ' · about $' + (pk.cad/100/pk.credits).toFixed(2) + ' per credit</div>';
+    const btn = document.createElement('button'); btn.className = 'btn btn-primary'; btn.type = 'button';
+    btn.textContent = 'Buy';
+    btn.addEventListener('click', async () => {
+      btn.disabled = true; btn.textContent = 'Opening…';
+      try {
+        const res = await fetch('/.netlify/functions/create-checkout-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
+          body: JSON.stringify({ packId: pk.id })
+        });
+        const d = await res.json().catch(() => ({}));
+        if(res.ok && d.url){ window.location.href = d.url; return; }
+        btn.textContent = 'Buy';
+        btn.disabled = false;
+        setStatus(d.error || 'Could not start the checkout. Please try again.', 'warn');
+        closeBuyModal();
+      } catch(e){
+        btn.textContent = 'Buy'; btn.disabled = false;
+        setStatus('Could not start the checkout. Please try again.', 'warn');
+        closeBuyModal();
+      }
+    });
+    row.appendChild(left); row.appendChild(btn);
+    list.appendChild(row);
+  });
+  document.getElementById('buyModal').classList.remove('hidden');
+}
+function closeBuyModal(){ document.getElementById('buyModal').classList.add('hidden'); }
+document.getElementById('buyBtn').addEventListener('click', openBuyModal);
+document.getElementById('navCredits').addEventListener('click', openBuyModal);
+const navAccountBtn = document.getElementById('navAccountBtn');
+if(navAccountBtn) navAccountBtn.addEventListener('click', openBuyModal);
+document.getElementById('buyCloseBtn').addEventListener('click', closeBuyModal);
+document.getElementById('creditsInfoBtn').addEventListener('click', () => document.getElementById('creditsInfoModal').classList.remove('hidden'));
+document.getElementById('creditsInfoCloseBtn').addEventListener('click', () => document.getElementById('creditsInfoModal').classList.add('hidden'));
+document.getElementById('creditsInfoModal').addEventListener('click', e => { if(e.target === document.getElementById('creditsInfoModal')) document.getElementById('creditsInfoModal').classList.add('hidden'); });
+document.getElementById('buyModal').addEventListener('click', e => { if(e.target === document.getElementById('buyModal')) closeBuyModal(); });
+
+/* Boot: config, then saved beta key, then account session, then the lock UI. */
+(async function initAccess(){
+  try {
+    SD_CFG = await (await fetch('/.netlify/functions/visualize-config')).json();
+  } catch(e){ SD_CFG = { authDisabled:true }; }
+  if(!SD_CFG || !SD_CFG.supabaseUrl || !SD_CFG.supabaseAnonKey) SD_CFG = { ...(SD_CFG||{}), authDisabled:true };
+  fillCreditCopy();
+
+  // Returning from Stripe?
+  const qp = new URLSearchParams(location.search);
+  const purchase = qp.get('purchase');
+  if(purchase){ history.replaceState({}, '', location.pathname); }
+
+  // Saved beta key wins (internal use).
   const saved = sessionStorage.getItem(KEY_STORE);
-  if(saved && await verifyKey(saved).catch(()=>false)){ unlock(); }
+  if(saved && await verifyKey(saved).catch(() => false)){ unlock('beta'); return; }
+
+  if(SD_CFG.authDisabled){
+    // Pre-M8 behavior: beta password only.
+    document.getElementById('lockTagline').textContent = 'Early access. Enter your beta password to try SkinDay Visualize.';
+    document.getElementById('betaForm').style.display = '';
+    return;
+  }
+
+  document.getElementById('lockTabs').style.display = 'flex';
+  setLockMode('signin');
+  try {
+    const mod = await import('https://esm.sh/@supabase/supabase-js@2');
+    sb = mod.createClient(SD_CFG.supabaseUrl, SD_CFG.supabaseAnonKey);
+    const { data } = await sb.auth.getSession();
+    if(data && data.session){
+      await onSignedIn(data.session);
+      if(purchase === 'success'){
+        setStatus('Payment received. Updating your credit balance…', 'spin');
+        const bal = await refreshCredits(4);
+        setStatus(bal != null ? ('Payment received. Credit balance: ' + bal + '.') : 'Payment received. Your balance will update shortly.', 'ok');
+      } else if(purchase === 'cancelled'){
+        setStatus('Checkout cancelled. No charge was made.', 'idle');
+      }
+    }
+    sb.auth.onAuthStateChange((_evt, session) => {
+      if(session && !accessMode) onSignedIn(session);
+    });
+  } catch(e){
+    console.error('[Visualize] account auth unavailable; beta key still works.', e);
+    setLockMode('beta');
+  }
 })();
 
 /* ───────── Helpers ───────── */
@@ -541,6 +1105,26 @@ function syncGenerateBtn(){
   generateBtn.textContent = ids.length > 1
     ? ('Generate ' + ids.length + ' simulated previews')
     : 'Generate simulated preview';
+
+  // M8: cost preview for metered accounts. Costs come from server config
+  // (env-tunable); the fallback matches the server's defaults.
+  const note = document.getElementById('costNote');
+  if(note){
+    if(accessMode === 'account' && ids.length){
+      const per = creditCostFor(state.type);
+      const total = per * ids.length;
+      const short = (creditBalance != null && creditBalance < total);
+      note.innerHTML = '<span class="cost-pill' + (short ? ' warn' : '') + '">'
+        + 'This case: <strong>' + total + ' credit' + (total > 1 ? 's' : '') + '</strong>'
+        + '<span>(' + ids.length + ' angle' + (ids.length > 1 ? 's' : '') + ' × ' + per + ')</span>'
+        + (creditBalance != null
+            ? '<span>·</span>Balance: <strong>' + creditBalance + '</strong>' + (short ? '<span>· top up needed</span>' : '')
+            : '')
+        + '</span>';
+    } else {
+      note.textContent = '';
+    }
+  }
 }
 
 function fileToDataUrl(file){
@@ -667,7 +1251,7 @@ async function onSlotFile(angleId, file){
   if(!file.type.startsWith('image/')){ setStatus('Please upload an image file.', 'warn'); return; }
   sl.file = file;
   sl.originalDataUrl = await fileToDataUrl(file);
-  sl.blackBgCache = null; sl.beforeDataUrl = null; sl.resultDataUrl = null; sl.apply = null; sl.error = null;
+  sl.blackBgCache = null; sl.beforeDataUrl = null; sl.resultDataUrl = null; sl.apply = null; sl.error = null; sl.hiRes = null; sl.rawAiDataUrl = null; sl.cropCache = null;
   sl.status = 'checking'; sl.qcMsg = 'Checking pose and photo quality…';
   renderSlots(); syncGenerateBtn();
   try {
@@ -676,6 +1260,7 @@ async function onSlotFile(angleId, file){
     const a = await mod.analyzePhoto(img);
     console.log('%c[Visualize] QC ' + angleId + ': view=' + (a && a.view) + ' yaw≈' + (a && a.yawDeg != null ? Math.round(a.yawDeg) : '?') + '° nearSide=' + (a && a.nearSide) + ' faceFrac=' + (a && a.faceFrac != null ? a.faceFrac.toFixed(3) : '?') + ' luma=' + (a && a.meanLuma != null ? Math.round(a.meanLuma) : '?') + ' sharp=' + (a && a.sharpness != null ? Math.round(a.sharpness) : '?'), 'color:#C8725A');
     const gate = poseMatches(angleId, a);
+    if(a && a.faceBbox) sl.faceBbox = a.faceBbox; // M11.1: store for display crop
     if(!gate.ok){
       sl.status = 'bad'; sl.qcMsg = '✗ ' + gate.msg;
     } else if(a.faceFrac != null && a.faceFrac < QC.MIN_FACE_FRAC){
@@ -685,6 +1270,7 @@ async function onSlotFile(angleId, file){
       if(a.meanLuma != null && a.meanLuma < QC.LUMA_LO) warns.push('photo is quite dark');
       if(a.meanLuma != null && a.meanLuma > QC.LUMA_HI) warns.push('photo is very bright');
       if(a.sharpness != null && a.sharpness < QC.SHARP_MIN) warns.push('may be slightly blurry');
+      if(a.faceFrac != null && a.faceFrac > QC.MAX_FACE_FRAC) warns.push('face fills too much of the frame -- step back slightly for best oblique accuracy');
       sl.status = 'ready';
       sl.qcMsg = '✓ ' + gate.msg + (warns.length ? ' Note: ' + warns.join('; ') + '. Even light and a steady shot give the best result.' : '');
     }
@@ -744,7 +1330,7 @@ function updatePhotoGuide(){
   const base = 'Even, diffuse light, neutral expression, hair off the face, face filling most of the frame.';
   let tip;
   if(state.type === 'biostim'){
-    tip = 'Frontal plus both 45° angles shows the full Sculptra effect (temple and cheek read best on the obliques). Same angles every visit.';
+    tip = 'Frontal plus both 45° angles shows the full biostimulator effect (temple and cheek read best on the obliques). Same angles every visit.';
   } else {
     const a = state.areas || [];
     if(a.includes('nose') || a.includes('chin_jawline') || a.includes('jawline') || a.includes('chin')){
@@ -789,9 +1375,72 @@ updatePhotoGuide();
 // vial count; dose is discussed verbally by the clinician).
 function strengthLabel(pct){
   const n = (typeof pct === 'number') ? pct : (parseInt(pct, 10) || 0);
-  if(n < 45) return 'Conservative';
-  if(n < 80) return 'Expected';
-  return 'Strong';
+  // M11.1: timeline vocabulary -- Early / 3 months / 6 months.
+  // 6 months is the clinical peak for Sculptra (best collagen response).
+  if(n < 45) return 'Early';
+  if(n < 80) return '3 months';
+  return '6 months';
+}
+
+// M9.2: HA filler speaks a different slider vocabulary than Sculptra. Biostim
+// keeps RESPONSE (biological response to stimulation genuinely varies between
+// patients, so the range frames how strongly this patient may respond). HA is
+// dose-dependent and immediate: what is injected is what is seen, so response
+// language is wrong there. But the slider must never speak in syringes either:
+// a vial count is a treatment recommendation, the clinician's call, made
+// verbally. DEGREE OF CORRECTION names the visual ENDPOINT and leaves dose to
+// the clinic. The top band is kept and labeled OVERFILLED on purpose: a
+// consult education zone showing why more is not better. The UI tints to the
+// warning color there and the export kicker is stamped as educational, so an
+// overfilled frame can never read as the recommended plan. Thresholds are
+// levers: Enhanced correction sits over the calibrated default (70), named
+// Enhanced rather than Full because full reads as a completed treatment; at or
+// past FILLER_LEVELS.full the view is overfilled.
+const FILLER_LEVELS = { subtle:35, balanced:70, full:80 };
+// M10.3 (v55): Enhanced correction re-enabled. FILLER_BETA_MAX raised from
+// 69 to 79 -- opens the 70-79 band (Enhanced correction). Gated on M10.2
+// delivering spline-quality mandibular border (v54). Clinical acceptance
+// criterion: chin tip passes 300%+ zoom at both 45s. One-constant reversal
+// if it fails: set FILLER_BETA_MAX back to 69.
+const FILLER_BETA_MAX = 79;
+const OVERFILL_COLOR = '#A33524';
+function levelInfo(pct){
+  const n = (typeof pct === 'number') ? pct : (parseInt(pct, 10) || 0);
+  if(state.type === 'filler'){
+    if(n < FILLER_LEVELS.subtle)   return { name:'Subtle correction',   over:false };
+    if(n < FILLER_LEVELS.balanced) return { name:'Balanced correction', over:false };
+    if(n < FILLER_LEVELS.full)     return { name:'Enhanced correction', over:false };
+    return { name:'Overfilled', over:true };
+  }
+  return { name: strengthLabel(n), over:false };
+}
+
+// One place that renders every intensity-related element from state, so the
+// vocabulary cannot drift between the input handler and renderActiveSlot.
+function updateIntensityUI(){
+  const isFiller = state.type === 'filler';
+  const slider = document.getElementById('intensitySlider');
+  if(isFiller){
+    slider.max = FILLER_BETA_MAX;
+    if(state.intensityPct > FILLER_BETA_MAX){
+      state.intensityPct = FILLER_BETA_MAX;
+      slider.value = FILLER_BETA_MAX;
+    }
+  } else {
+    slider.max = 100;
+  }
+  const li = levelInfo(state.intensityPct);
+  document.getElementById('intensityLabel').textContent = isFiller ? 'Degree of correction' : 'Treatment timeline';
+  document.getElementById('intensityMin').textContent = isFiller ? 'Subtle' : 'Early';
+  document.getElementById('intensityMax').textContent = isFiller ? 'Enhanced' : '6 months';
+  document.getElementById('intensityHelp').textContent = isFiller
+    ? 'Slide to preview less or more correction.'
+    : 'Slide to preview an earlier or more complete treatment response. The simulation updates instantly.';
+  const valEl = document.getElementById('intensityValue');
+  valEl.textContent = li.name;
+  valEl.style.color = li.over ? OVERFILL_COLOR : '';
+  document.getElementById('intensitySlider').style.accentColor = li.over ? OVERFILL_COLOR : '';
+  document.getElementById('overfillNote').style.display = li.over ? '' : 'none';
 }
 
 // Live response slider: re-blend the cached per-angle apply() with no
@@ -806,7 +1455,7 @@ function strengthLabel(pct){
   slider.addEventListener('input', () => {
     const pct = parseInt(slider.value, 10) || 0;
     state.intensityPct = pct;
-    document.getElementById('intensityValue').textContent = strengthLabel(pct);
+    updateIntensityUI();
     const sl = activeSlot();
     if(!sl || !sl.apply) return;
     if(raf) cancelAnimationFrame(raf);
@@ -828,6 +1477,173 @@ function strengthLabel(pct){
       }
     }
   });
+})();
+
+/* ───────── Mobile sticky slider bar ─────────
+   A fixed panel that mirrors the canonical intensitySlider on small screens.
+   The canonical slider remains the single source of truth; the mobile slider
+   and action button are lightweight projections that delegate to it. */
+(function(){
+  const MOBILE_BP = 767;
+  const bar       = document.getElementById('mobileSliderBar');
+  const mslider   = document.getElementById('mobileSlider');
+  const msbValue  = document.getElementById('msbValue');
+  const msbLabel  = document.getElementById('msbLabel');
+  const msbMin    = document.getElementById('msbMin');
+  const msbMax    = document.getElementById('msbMax');
+  const msbBtn    = document.getElementById('msbActionBtn');
+  const canonical = document.getElementById('intensitySlider');
+  if(!bar || !mslider || !canonical) return;
+
+  // ── Snap stops for Sculptra: Early=22 3months=62 6months=100 (M11.1 timeline)
+  //    and for HA filler: Subtle=17 Balanced=52 Enhanced=74 (M10.3)
+  // These are the midpoints of the named bands, matching strengthLabel() / levelInfo().
+  // Snap fires within SNAP_WINDOW percent of the stop.
+  const SNAP_WINDOW = 8;
+  function snapStops(){
+    if(state.type === 'filler'){
+      return [0, 17, 35, 52, 74]; // Subtle~17, Balanced~52, Enhanced~74
+    }
+    return [0, 22, 62, 100];      // Conservative mid=22, Expected mid=62
+  }
+  function nearestStop(val, stops){
+    let best = null, bestDist = Infinity;
+    for(const s of stops){
+      const d = Math.abs(val - s);
+      if(d < bestDist){ bestDist = d; best = s; }
+    }
+    return (bestDist <= SNAP_WINDOW) ? best : null;
+  }
+
+  // ── Sync mobile slider display from state (called from updateIntensityUI)
+  function syncMobileDisplay(){
+    mslider.min = canonical.min;
+    mslider.max = canonical.max;
+    mslider.value = state.intensityPct;
+    const li = levelInfo(state.intensityPct);
+    msbValue.textContent = li.name;
+    msbValue.style.color = li.over ? OVERFILL_COLOR : 'var(--cream)';
+    mslider.style.accentColor = li.over ? OVERFILL_COLOR : 'var(--rose)';
+    const isFiller = state.type === 'filler';
+    msbLabel.textContent = isFiller ? 'Degree of correction' : 'Treatment response';
+    msbMin.textContent   = isFiller ? 'Subtle' : 'Early';
+    msbMax.textContent   = isFiller ? 'Enhanced' : '6 months';
+  }
+  // Patch updateIntensityUI to also sync the mobile bar
+  const _origUpdateUI = updateIntensityUI;
+  updateIntensityUI = function(){
+    _origUpdateUI();
+    syncMobileDisplay();
+  };
+
+  // ── Mobile slider drives canonical slider (and all existing listeners fire)
+  mslider.addEventListener('input', () => {
+    canonical.value = mslider.value;
+    canonical.dispatchEvent(new Event('input', { bubbles:true }));
+  });
+  mslider.addEventListener('change', () => {
+    canonical.value = mslider.value;
+    canonical.dispatchEvent(new Event('change', { bubbles:true }));
+  });
+
+  // ── Snap nudge: on touchend, find the nearest named stop and jump to it
+  function applySnap(sliderEl){
+    const val = parseInt(sliderEl.value, 10) || 0;
+    const snapped = nearestStop(val, snapStops());
+    if(snapped !== null && snapped !== val){
+      sliderEl.value = snapped;
+      sliderEl.dispatchEvent(new Event('input', { bubbles:true }));
+      sliderEl.dispatchEvent(new Event('change', { bubbles:true }));
+    }
+  }
+  mslider.addEventListener('touchend', () => applySnap(mslider), { passive:true });
+  canonical.addEventListener('touchend', () => applySnap(canonical), { passive:true });
+
+  // ── Bar visibility: show on any touch device regardless of orientation
+  function isMobile(){ return window.matchMedia('(pointer: coarse)').matches; }
+
+  const msbDownloadBtn = document.getElementById('msbDownloadBtn');
+  const msbRegenLink   = document.getElementById('msbRegenLink');
+
+  // Action button: mirrors generate (pre-output) or download+regen (post-output)
+  function updateBarState(){
+    if(!isMobile()){ bar.classList.add('bar-hidden'); document.body.classList.remove('slider-bar-active'); return; }
+    const outputVisible = document.getElementById('outputSection').classList.contains('visible');
+    const sliderVisible = document.getElementById('intensityWrap').style.display !== 'none';
+
+    if(outputVisible){
+      bar.classList.remove('bar-hidden');
+      document.body.classList.add('slider-bar-active');
+      syncMobileDisplay();
+      if(sliderVisible){
+        mslider.style.display = '';
+        msbMin.parentElement.style.display = '';
+      } else {
+        mslider.style.display = 'none';
+        msbMin.parentElement.style.display = 'none';
+      }
+      // Post-output: Download is primary, Re-generate is secondary text link
+      msbBtn.classList.add('bar-hidden');
+      msbBtn.style.display = 'none';
+      // Wire download button to the existing desktop download button
+      const dlBtnEl = document.getElementById('downloadBtn') || document.querySelector('[data-action="download"]');
+      msbDownloadBtn.style.display = 'block';
+      msbDownloadBtn.onclick = () => { if(dlBtnEl) dlBtnEl.click(); else triggerDownload(); };
+      // Re-generate as secondary link
+      const regenBtnEl = document.getElementById('regenBtn');
+      if(regenBtnEl && !regenBtnEl.disabled){
+        msbRegenLink.style.display = 'block';
+        msbRegenLink.onclick = () => regenBtnEl.click();
+      } else {
+        msbRegenLink.style.display = 'none';
+      }
+    } else {
+      bar.classList.remove('bar-hidden');
+      document.body.classList.add('slider-bar-active');
+      mslider.style.display = 'none';
+      msbMin.parentElement.style.display = 'none';
+      msbLabel.style.display = 'none';
+      msbValue.style.display = 'none';
+      msbDownloadBtn.style.display = 'none';
+      msbRegenLink.style.display = 'none';
+      const genBtnEl = document.getElementById('generateBtn');
+      msbBtn.classList.remove('bar-hidden');
+      msbBtn.style.display = 'block';
+      msbBtn.disabled = genBtnEl ? genBtnEl.disabled : true;
+      msbBtn.textContent = genBtnEl ? genBtnEl.textContent : 'Generate simulated preview';
+      msbBtn.className = '';
+      msbBtn.style.background = msbBtn.disabled ? '' : 'var(--rose)';
+      msbBtn.onclick = () => { if(genBtnEl && !genBtnEl.disabled) genBtnEl.click(); };
+    }
+  }
+
+  // Restore label/value visibility when switching back to output view
+  function restoreBarLabels(){
+    msbLabel.style.display = '';
+    msbValue.style.display = '';
+  }
+
+  // Observe output section visibility changes
+  const outputSection = document.getElementById('outputSection');
+  const obsOutput = new MutationObserver(() => { restoreBarLabels(); updateBarState(); });
+  obsOutput.observe(outputSection, { attributes:true, attributeFilter:['class'] });
+
+  // Observe generateBtn disabled state (re-check bar button)
+  const genBtnEl = document.getElementById('generateBtn');
+  if(genBtnEl){
+    const obsGen = new MutationObserver(updateBarState);
+    obsGen.observe(genBtnEl, { attributes:true, attributeFilter:['disabled','textContent'] });
+  }
+
+  // Observe intensityWrap visibility
+  const intWrap = document.getElementById('intensityWrap');
+  if(intWrap){
+    const obsSlider = new MutationObserver(updateBarState);
+    obsSlider.observe(intWrap, { attributes:true, attributeFilter:['style'] });
+  }
+
+  window.addEventListener('resize', updateBarState, { passive:true });
+  updateBarState();
 })();
 
 document.getElementById('blackBgChk').addEventListener('change', e => {
@@ -858,7 +1674,7 @@ const INTENSITY_TEXT = {
   enhanced:'Make the change more pronounced but still anatomically realistic, never exaggerated.'
 };
 const PRODUCT_TEXT = {
-  sculptra:'a subtle Sculptra biostimulation effect: a slight, diffuse improvement in firmness and contour of the treated area only. Do not change skin texture detail or apparent age.',
+  sculptra:'a subtle biostimulation effect: a slight, diffuse improvement in firmness and contour of the treated area only. Do not change skin texture detail or apparent age.',
   hdr:'a subtle hyperdilute Radiesse effect: a slight firming of the treated area only. Do not change skin texture detail or apparent age.'
 };
 const PROJECTION_TEXT = {
@@ -895,7 +1711,7 @@ const PROJECTION_INSIGHT = {
 // Clinician-facing label for each wire value. The wire keeps conservative/
 // expected/optimistic because buildSculptraPrompt routes on them; the UI shows
 // Subtle/Expected/Strong.
-const STRENGTH_LABEL = { conservative:'Conservative', expected:'Expected', optimistic:'Strong' };
+const STRENGTH_LABEL = { conservative:'Early', expected:'3 months', optimistic:'6 months' };
 
 function buildInsights(){
   const out = [];
@@ -1023,7 +1839,7 @@ compareCard.addEventListener('pointercancel', () => { cmpDragging = false; });
 // Poll the background job until it finishes. The slow gpt-image-1 call now runs
 // in a Netlify background function (15-min budget), so this replaces the single
 // synchronous request that used to 504.
-async function pollForResult(jobId, key){
+async function pollForResult(jobId, auth){
   const startedAt = Date.now();
   const MAX_MS = 4 * 60 * 1000;   // hard stop after 4 minutes
   const INTERVAL_MS = 3000;
@@ -1032,9 +1848,9 @@ async function pollForResult(jobId, key){
     // status text is owned by the per-case ticker in runGeneration (M7: several
     // angles poll concurrently, so a per-poll status line would fight itself).
     let res;
-    try { res = await fetch('/.netlify/functions/get-visualization?jobId=' + encodeURIComponent(jobId), { headers:{ 'x-beta-key':key } }); }
+    try { res = await fetch('/.netlify/functions/get-visualization?jobId=' + encodeURIComponent(jobId), { headers: auth }); }
     catch { continue; }   // transient network blip; keep polling
-    if(res.status === 401){ sessionStorage.removeItem(KEY_STORE); location.reload(); throw new Error('Session expired.'); }
+    if(res.status === 401){ await handleAuthFailure(); throw new Error('Session expired.'); }
 
     let data; try { data = JSON.parse(await res.text()); } catch { data = null; }
     if(data){
@@ -1048,8 +1864,9 @@ async function pollForResult(jobId, key){
   }
 }
 
-async function prepAndStartSlot(angleId, key){
+async function prepAndStartSlot(angleId, auth, isRegen){
   const sl = state.slots[angleId];
+  const prevJobId = sl.jobId; // M8: lineage for the server-enforced free regen window
   sl.status = 'generating'; sl.error = null; sl.apply = null;
 
   // Black background per photo, applied at generation time, never on upload.
@@ -1105,21 +1922,28 @@ async function prepAndStartSlot(angleId, key){
   const jobId = (window.crypto && crypto.randomUUID && crypto.randomUUID()) ||
                 (Date.now() + '-' + Math.random().toString(36).slice(2));
   form.append('jobId', jobId);
+  if(isRegen && prevJobId) form.append('regenOf', prevJobId);
   sl.jobId = jobId;
 
   const startRes = await fetch('/.netlify/functions/start-visualization', {
-    method:'POST', headers:{ 'x-beta-key':key }, body:form
+    method:'POST', headers: auth, body:form
   });
-  if(startRes.status === 401){ sessionStorage.removeItem(KEY_STORE); location.reload(); throw new Error('Session expired.'); }
+  if(startRes.status === 401){ await handleAuthFailure(); throw new Error('Session expired.'); }
+  if(startRes.status === 402){
+    creditShortfall = true;
+    let e; try { e = JSON.parse(await startRes.text()); } catch {}
+    throw new Error((e && e.error) || 'Not enough credits for this generation.');
+  }
   if(!startRes.ok){
     let e; try { e = JSON.parse(await startRes.text()); } catch {}
     throw new Error((e && e.error) || ('Could not start generation (HTTP ' + startRes.status + ').'));
   }
 }
 
-async function finishSlot(angleId, key){
+async function finishSlot(angleId, auth){
   const sl = state.slots[angleId];
-  sl.resultDataUrl = await pollForResult(sl.jobId, key);
+  sl.resultDataUrl = await pollForResult(sl.jobId, auth);
+  sl.rawAiDataUrl = sl.resultDataUrl; // M9.7: pre-composite frame for ?debug=layers
 
   // Masked compositor per angle: AI inside the treatment mask, the original
   // photo everywhere else, exposing apply(0..1) -> jpegDataURL for the shared
@@ -1128,13 +1952,27 @@ async function finishSlot(angleId, key){
                   : (state.type === 'filler') ? 'chin_jaw'
                   : null;
   if(compScope){
+    // M9.1 diagnostic hook: ?composite=raw shows the AI's UNTOUCHED output for
+    // every angle (no mask composite, no texture restore, no warp; the slider
+    // skips these angles). One look settles whether the model is painting the
+    // requested change at all, before any composite or warp tuning.
+    if(/[?&]composite=raw\b/i.test(location.search)){
+      console.warn('%c[Visualize] ' + angleId + ': composite=raw hook active; showing the RAW AI output (no composite, no warp).', 'color:#e65100;font-weight:bold');
+      sl.status = 'done';
+      return;
+    }
     try {
       const beforeImg = await loadImage(sl.beforeDataUrl || sl.originalDataUrl);
       const aiImg = await loadImage(sl.resultDataUrl);
       const { makeSculptraCompositor } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
       // M6 A/B hook: append ?warp=off to compare against the pure M5 composite.
       const warpOn = !/[?&]warp=off\b/i.test(location.search);
-      const apply = await makeSculptraCompositor(beforeImg, aiImg, { scope:compScope, sex:state.sex, warp:warpOn });
+      // M9.1 A/B hook: append ?jowltex=off to disable the jowl-lobe texture
+      // release and compare against exact v35 composite behavior.
+      const jowlTexOn = !/[?&]jowltex=off\b/i.test(location.search);
+      // M9.7 A/B hook: ?jawdef=off disables the deterministic border light.
+      const jawDefOn = !/[?&]jawdef=off\b/i.test(location.search);
+      const apply = await makeSculptraCompositor(beforeImg, aiImg, { scope:compScope, sex:state.sex, warp:warpOn, jowlTexRelease:jowlTexOn, jawDef:jawDefOn, angleId });
       if(apply){
         sl.apply = apply;
         sl.resultDataUrl = apply(state.intensityPct / 100);
@@ -1149,10 +1987,23 @@ async function finishSlot(angleId, key){
   sl.status = 'done';
 }
 
+let creditShortfall = false; // M8: set on any 402 during a run
+
 async function runGeneration(isRegen){
-  const key = sessionStorage.getItem(KEY_STORE) || '';
-  const angles = state.selectedAngles.filter(id => state.slots[id].originalDataUrl);
+  const auth = await authHeaders();
+  creditShortfall = false;
+  let angles = state.selectedAngles.filter(id => state.slots[id].originalDataUrl);
   if(!angles.length) return;
+  // M10.5 v65: when re-generating, only retry failed/idle angles. Already-done
+  // angles keep their result and are never re-charged. Re-generate on a fully-done
+  // case (no failures) still runs all angles (the user wants a fresh result).
+  if(isRegen){
+    const failedOrIdle = angles.filter(id => {
+      const st = state.slots[id].status;
+      return st === 'error' || st === 'idle' || !st;
+    });
+    if(failedOrIdle.length) angles = failedOrIdle;
+  }
   generateBtn.disabled = true; regenBtn.disabled = true;
 
   const t0 = Date.now();
@@ -1170,7 +2021,7 @@ async function runGeneration(isRegen){
     // themselves then run in parallel server-side and are polled concurrently.
     const started = [];
     for(const id of angles){
-      try { await prepAndStartSlot(id, key); started.push(id); }
+      try { await prepAndStartSlot(id, auth, isRegen); started.push(id); }
       catch(err){
         console.error('[Visualize] ' + id + ' failed to start:', err);
         const sl = state.slots[id]; sl.status = 'error'; sl.error = (err && err.message) || 'Could not start generation.';
@@ -1178,7 +2029,7 @@ async function runGeneration(isRegen){
     }
     if(started.length){
       await Promise.allSettled(started.map(id =>
-        finishSlot(id, key).catch(err => {
+        finishSlot(id, auth).catch(err => {
           const sl = state.slots[id];
           sl.status = 'error'; sl.error = (err && err.message) || 'Generation failed.';
         })
@@ -1196,6 +2047,7 @@ async function runGeneration(isRegen){
     if(!doneIds.includes(state.activeAngle)) state.activeAngle = doneIds[0];
     renderTabs();
     renderActiveSlot();
+    if(/[?&]debug=layers\b/i.test(location.search)) buildLayerDebugSheet(state.activeAngle); // M9.7
     document.getElementById('outputSection').classList.add('visible');
     document.getElementById('outputSection').scrollIntoView({ behavior:'smooth', block:'start' });
     updateRegenNote();
@@ -1209,6 +2061,16 @@ async function runGeneration(isRegen){
     setStatus('Generation failed: ' + state.slots[failIds[0]].error, 'warn');
   }
   syncGenerateBtn(); regenBtn.disabled = false;
+
+  // M8: settle the visible balance after a metered run; failed angles are
+  // refunded server-side and show up here within a moment.
+  if(accessMode === 'account'){
+    refreshCredits(failIds.length ? 2 : 0);
+    if(creditShortfall){
+      setStatus('Not enough credits to run ' + (failIds.length > 1 ? 'these angles' : 'this generation') + '. Top up to continue.', 'warn');
+      openBuyModal();
+    }
+  }
 }
 
 /* ───────── M7: angle tabs + active-slot rendering ───────── */
@@ -1228,6 +2090,43 @@ function renderTabs(){
   }
 }
 
+/* ─────────  M11.1: Face crop for result display ──────────────────────────
+   Crops a dataUrl to a tight head+neck bounding box derived from the face
+   oval landmarks. The margin extends the box: horiz adds W*MARGIN_H on each
+   side, vert adds W*MARGIN_TOP above and W*MARGIN_BOT below (extra for neck).
+   Returns a JPEG dataUrl at the original pixel density, or the original dataUrl
+   if the bbox is unavailable or the crop fails. */
+const FACE_CROP_MARGIN_H   = 0.22;  // horizontal margin each side, fraction of face width
+const FACE_CROP_MARGIN_TOP = 0.55;  // above face top (hair/forehead room)
+const FACE_CROP_MARGIN_BOT = 0.65;  // below face bottom (neck room)
+
+async function cropToFace(dataUrl, bbox){
+  if(!bbox) return dataUrl;
+  try {
+    const img = await loadImage(dataUrl);
+    const iw = img.naturalWidth, ih = img.naturalHeight;
+    const fx0 = bbox.x0 * iw, fy0 = bbox.y0 * ih;
+    const fx1 = bbox.x1 * iw, fy1 = bbox.y1 * ih;
+    const fw = fx1 - fx0, fh = fy1 - fy0;
+    const mh  = fw * FACE_CROP_MARGIN_H;
+    const mtop = fw * FACE_CROP_MARGIN_TOP;
+    const mbot = fw * FACE_CROP_MARGIN_BOT;
+    const cx0 = Math.max(0, Math.round(fx0 - mh));
+    const cy0 = Math.max(0, Math.round(fy0 - mtop));
+    const cx1 = Math.min(iw, Math.round(fx1 + mh));
+    const cy1 = Math.min(ih, Math.round(fy1 + mbot));
+    const cw = cx1 - cx0, ch = cy1 - cy0;
+    if(cw < 32 || ch < 32) return dataUrl; // degenerate: skip
+    const c = document.createElement('canvas');
+    c.width = cw; c.height = ch;
+    c.getContext('2d').drawImage(img, cx0, cy0, cw, ch, 0, 0, cw, ch);
+    return c.toDataURL('image/jpeg', 0.93);
+  } catch(e){
+    console.warn('[Visualize] cropToFace failed; using original.', e);
+    return dataUrl;
+  }
+}
+
 function renderActiveSlot(){
   const sl = activeSlot();
   const multi = state.selectedAngles.length > 1;
@@ -1242,10 +2141,14 @@ function renderActiveSlot(){
   document.getElementById('intensityWrap').style.display = showSlider ? 'block' : 'none';
   if(showSlider){
     document.getElementById('intensitySlider').value = state.intensityPct;
-    document.getElementById('intensityValue').textContent = strengthLabel(state.intensityPct);
+    updateIntensityUI();
   }
   const doneCount = state.selectedAngles.filter(id => state.slots[id].status === 'done').length;
   document.getElementById('sheetBtn').style.display = doneCount > 1 ? '' : 'none';
+  // M11.1: show Discard button when this angle is done and there are multiple angles
+  const sl2 = activeSlot();
+  document.getElementById('discardAngleBtn').style.display =
+    (sl2 && sl2.status === 'done' && state.selectedAngles.length > 1) ? '' : 'none';
   resetZoom();
   hideAnnotations();
 }
@@ -1260,7 +2163,7 @@ function updateRegenNote(){
     note.textContent = `Free re-generate for ${left}s. Adjust the treatment and run again at no extra cost.`;
     setTimeout(updateRegenNote, 1000);
   } else {
-    note.textContent = 'Re-generate to try a different treatment, area, or response.';
+    note.textContent = 'Re-generate to try a different treatment, area, or setting.';
   }
 }
 
@@ -1278,13 +2181,19 @@ function applyZoom(){
 }
 function clampPan(){
   const card = zoomCards[0]; if(!card) return;
-  const maxX = card.clientWidth  * (zoomState.zoom - 1) / 2;
-  const maxY = card.clientHeight * (zoomState.zoom - 1) / 2;
+  // Allow negative pan only when zoomed in; when zoomed out the image is
+  // smaller than the card so clamping to 0 keeps it centered.
+  const maxX = Math.max(0, card.clientWidth  * (zoomState.zoom - 1) / 2);
+  const maxY = Math.max(0, card.clientHeight * (zoomState.zoom - 1) / 2);
   zoomState.panX = Math.max(-maxX, Math.min(maxX, zoomState.panX));
   zoomState.panY = Math.max(-maxY, Math.min(maxY, zoomState.panY));
 }
+// M11.1 crop reverted: zoom default back to 1 (100%), min back to 1.
+const ZOOM_DEFAULT = 1;
+const ZOOM_MIN = 1;
+const ZOOM_MAX = 6;
 function setZoom(z){
-  zoomState.zoom = Math.max(1, Math.min(6, Math.round(z * 100) / 100));
+  zoomState.zoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Math.round(z * 100) / 100));
   if(zoomState.zoom === 1){ zoomState.panX = 0; zoomState.panY = 0; }
   clampPan(); applyZoom();
 }
@@ -1337,12 +2246,105 @@ window.addEventListener('touchend', e => {
   if(e.touches.length === 0) endDrag();
 });
 
+/* ───────── M9.7 layer attribution sheet (?debug=layers) ───────── */
+// One generation, every layer isolated, one downloaded contact sheet. Renders
+// the active angle six ways at the CURRENT slider value: original, raw AI,
+// composite without warp, plus warp (no sharpen, no border light), plus
+// sharpen, and the full pipeline. Diagnosis by evidence instead of guesswork.
+async function buildLayerDebugSheet(angleId){
+  try {
+    const sl = state.slots[angleId];
+    const compScope = (state.type === 'biostim' && state.product === 'sculptra') ? 'full'
+                    : (state.type === 'filler') ? 'chin_jaw'
+                    : null;
+    if(!sl || !compScope || !sl.rawAiDataUrl) return;
+    const t = (state.intensityPct || 70) / 100;
+    const beforeImg = await loadImage(sl.beforeDataUrl || sl.originalDataUrl);
+    const aiImg = await loadImage(sl.rawAiDataUrl);
+    const { compositeSculptra } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
+    const base = { scope: compScope, sex: state.sex, intensity: t };
+    setStatus('Building the layer attribution sheet (4 composites)…', 'spin');
+    const v3 = await compositeSculptra(beforeImg, aiImg, { ...base, warp:false });
+    const v4 = await compositeSculptra(beforeImg, aiImg, { ...base, warpSharpen:false, jawDef:false });
+    const v5 = await compositeSculptra(beforeImg, aiImg, { ...base, jawDef:false });
+    const v6 = await compositeSculptra(beforeImg, aiImg, { ...base });
+    const cells = [
+      { src: sl.beforeDataUrl || sl.originalDataUrl, label: '1. Original' },
+      { src: sl.rawAiDataUrl,                        label: '2. Raw AI output' },
+      { src: v3,                                     label: '3. Composite, warp off' },
+      { src: v4,                                     label: '4. + warp (no sharpen, no border light)' },
+      { src: v5,                                     label: '5. + sharpen' },
+      { src: v6,                                     label: '6. Full pipeline' }
+    ];
+    const imgs = await Promise.all(cells.map(c => c.src ? loadImage(c.src) : null));
+    const pw = 512, gap = 12, labelH = 34;
+    const ph = Math.round(pw * (imgs[0].height / imgs[0].width));
+    const canvas = document.createElement('canvas');
+    canvas.width = 3 * pw + 4 * gap;
+    canvas.height = 2 * (ph + labelH) + 3 * gap;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#1C1714';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.font = '600 16px "DM Sans", sans-serif';
+    ctx.textBaseline = 'middle';
+    for(let k = 0; k < cells.length; k++){
+      const col = k % 3, row = (k / 3) | 0;
+      const x = gap + col * (pw + gap);
+      const y = gap + row * (ph + labelH + gap);
+      if(imgs[k]) ctx.drawImage(imgs[k], x, y, pw, ph);
+      ctx.fillStyle = '#FAF7F2';
+      ctx.fillText(cells[k].label + '  ·  slider ' + (state.intensityPct || 70), x + 4, y + ph + labelH / 2);
+    }
+    const a = document.createElement('a');
+    a.download = 'visualize-layer-sheet-' + angleId + '.jpg';
+    a.href = canvas.toDataURL('image/jpeg', 0.92);
+    a.click();
+    setStatus('Layer attribution sheet downloaded.', 'ok');
+  } catch(err){
+    console.error('[Visualize] layer debug sheet failed:', err);
+    setStatus('Layer sheet failed: ' + ((err && err.message) || err), 'warn');
+  }
+}
+
+/* ───────── M9.9 hi-res export render ───────── */
+// Forensics on a real export showed the simulated panel was globally softer
+// than the original panel: the compositor's 1024 grid was upscaled into the
+// export while the original panel came from a sharper source. Exports now
+// re-render each angle at a 2048 grid (the texture-restore high band comes
+// from the ORIGINAL, so output crispness scales with the grid). Cached per
+// angle and slider value; falls back to the live 1024 result on any error.
+const EXPORT_MAXDIM = 2048;
+function exportCompScope(){
+  return (state.type === 'biostim' && state.product === 'sculptra') ? 'full'
+       : (state.type === 'filler') ? 'chin_jaw'
+       : null;
+}
+async function hiResResultFor(angleId){
+  const sl = state.slots[angleId];
+  const compScope = exportCompScope();
+  if(!sl || !compScope || !sl.rawAiDataUrl || !sl.apply) return null;
+  const pct = state.intensityPct || 70;
+  if(sl.hiRes && sl.hiRes.pct === pct) return sl.hiRes.url;
+  const beforeImg = await loadImage(sl.beforeDataUrl || sl.originalDataUrl);
+  const aiImg = await loadImage(sl.rawAiDataUrl);
+  const { compositeSculptra } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
+  const warpOn = !/[?&]warp=off\b/i.test(location.search);
+  const jowlTexOn = !/[?&]jowltex=off\b/i.test(location.search);
+  const jawDefOn = !/[?&]jawdef=off\b/i.test(location.search);
+  const url = await compositeSculptra(beforeImg, aiImg, {
+    scope: compScope, sex: state.sex, warp: warpOn, jowlTexRelease: jowlTexOn,
+    jawDef: jawDefOn, intensity: pct / 100, maxDim: EXPORT_MAXDIM
+  });
+  if(url) sl.hiRes = { pct, url };
+  return url;
+}
+
 /* ───────── Export (canvas) ───────── */
 // Clinic-facing treatment name for tags and export kickers. The footer line
 // still carries the AI-generated disclosure, so the kicker can lead with the
 // treatment the patient is actually considering.
 function treatmentName(){
-  if(state.type === 'biostim') return state.product === 'hdr' ? 'Hyperdilute Radiesse' : 'Sculptra';
+  if(state.type === 'biostim') return state.product === 'hdr' ? 'Hyperdilute Radiesse' : 'Biostimulator';
   if(state.type === 'filler') return 'HA Filler';
   return 'AI Visualization';
 }
@@ -1353,7 +2355,14 @@ function simKicker(angleId){
   if(multiDone) parts.push(ANGLE_DEF[angleId].label);
   if(state.type === 'biostim') parts.push(state.timeline + ' months');
   if(state.type === 'biostim' || (state.type === 'filler' && state.slots[angleId].apply)){
-    parts.push(strengthLabel(state.intensityPct || 70) + ' response');
+    if(state.type === 'filler'){
+      // M9.2: correction vocabulary; an overfilled frame is stamped as
+      // educational so it can never read as the recommended plan.
+      const li = levelInfo(state.intensityPct || 70);
+      parts.push(li.over ? 'Overfilled · shown for education' : li.name);
+    } else {
+      parts.push(strengthLabel(state.intensityPct || 70)); // Early response / 6 months / Full response
+    }
   }
   return parts.join(' · ');
 }
@@ -1363,7 +2372,10 @@ function simKicker(angleId){
 async function drawPair(ctx, angleId, yOff, panelW, panelH, gap, includeText){
   const sl = state.slots[angleId];
   const before = await loadImage(sl.beforeDataUrl || sl.originalDataUrl);
-  const after = await loadImage(sl.resultDataUrl);
+  // M9.9: exports render at the hi-res grid; the live 1024 frame is the fallback.
+  let hiRes = null;
+  try { hiRes = await hiResResultFor(angleId); } catch(e){ console.warn('[Visualize] hi-res export render failed; using live frame.', e); }
+  const after = await loadImage(hiRes || sl.resultDataUrl);
 
   function cover(img, x, y, w, h){
     const scale = Math.max(w/img.width, h/img.height);
@@ -1401,8 +2413,10 @@ async function drawPair(ctx, angleId, yOff, panelW, panelH, gap, includeText){
   label(panelW + gap, true);
 }
 
-// angleIds: one id = the classic side-by-side; several = the case sheet with
-// one row per angle and a single shared footer.
+// angleIds: one id = the classic side-by-side; several = the new horizontal
+// 2-row × 3-col case sheet (top row = originals, bottom row = simulated).
+// Column order: Right 45 | Frontal | Left 45 (matching natural left-to-right
+// read of the face turning from right to left).
 async function drawExport(includeText, angleIds){
   await (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve());
   const ids = angleIds.filter(id => state.slots[id].resultDataUrl);
@@ -1410,42 +2424,109 @@ async function drawExport(includeText, angleIds){
 
   const canvas = document.getElementById('exportCanvas');
   const ctx = canvas.getContext('2d');
-  const panelW = 900, panelH = 1125, gap = 6, rowGap = 6;
   const clinic = includeText ? document.getElementById('clinicName').value.trim() : '';
   const footerH = includeText ? (clinic ? 132 : 104) : 0;
-  canvas.width = panelW * 2 + gap;
-  canvas.height = ids.length * panelH + (ids.length - 1) * rowGap + footerH;
+
+  // Single angle: classic side-by-side (unchanged)
+  if(ids.length === 1){
+    const panelW = 900, panelH = 1125, gap = 6;
+    canvas.width = panelW * 2 + gap;
+    canvas.height = panelH + footerH;
+    ctx.fillStyle = '#1C1714'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    await drawPair(ctx, ids[0], 0, panelW, panelH, gap, includeText);
+    if(includeText) drawExportFooter(ctx, canvas.width, canvas.height - footerH, footerH, clinic);
+    return canvas;
+  }
+
+  // Multi-angle: horizontal 2-row grid.
+  // Column order: r45 | frontal | l45 (right-to-left face turn = natural read).
+  const COL_ORDER = ['r45','frontal','l45'];
+  const cols = COL_ORDER.filter(id => ids.includes(id));
+  // Any ids not in COL_ORDER (edge case) appended at end
+  for(const id of ids){ if(!cols.includes(id)) cols.push(id); }
+
+  const panelW = 720, panelH = 900, gap = 5;
+  canvas.width  = cols.length * panelW + (cols.length - 1) * gap;
+  canvas.height = 2 * panelH + gap + footerH;
   ctx.fillStyle = '#1C1714'; ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  let y = 0;
-  for(const id of ids){
-    await drawPair(ctx, id, y, panelW, panelH, gap, includeText);
-    y += panelH + rowGap;
+  for(let ci = 0; ci < cols.length; ci++){
+    const id = cols[ci];
+    const sl = state.slots[id];
+    const x = ci * (panelW + gap);
+    const before = await loadImage(sl.beforeDataUrl || sl.originalDataUrl);
+    let hiRes = null;
+    try { hiRes = await hiResResultFor(id); } catch(e){}
+    const after = await loadImage(hiRes || sl.resultDataUrl);
+
+    // Cover-fit helper
+    function cover(img, dx, dy, dw, dh){
+      const scale = Math.max(dw / img.naturalWidth, dh / img.naturalHeight);
+      const sw = img.naturalWidth * scale, sh = img.naturalHeight * scale;
+      ctx.drawImage(img, dx + (dw - sw)/2, dy + (dh - sh)/2, sw, sh);
+    }
+
+    // Top row: originals
+    ctx.save(); ctx.beginPath(); ctx.rect(x, 0, panelW, panelH); ctx.clip();
+    cover(before, x, 0, panelW, panelH);
+    ctx.restore();
+
+    // Bottom row: simulated
+    const yBot = panelH + gap;
+    ctx.save(); ctx.beginPath(); ctx.rect(x, yBot, panelW, panelH); ctx.clip();
+    cover(after, x, yBot, panelW, panelH);
+    ctx.restore();
+
+    // Labels -- only on the bottom (simulated) panel to keep top row clean
+    if(includeText){
+      const kicker = simKicker(id);
+      ctx.save();
+      // Original label (top panel)
+      ctx.font = '300 15px "DM Sans", sans-serif';
+      ctx.fillStyle = 'rgba(250,247,242,.65)';
+      ctx.textAlign = 'left';
+      ctx.fillText('AS PHOTOGRAPHED', x + 22, panelH - 56);
+      ctx.font = '400 38px "Cormorant Garamond", serif';
+      ctx.fillStyle = 'rgba(250,247,242,.95)';
+      ctx.fillText('Original', x + 22, panelH - 26);
+      // Simulated label (bottom panel)
+      ctx.font = '300 13px "DM Sans", sans-serif';
+      ctx.fillStyle = '#C9A96E';
+      ctx.textAlign = 'left';
+      ctx.letterSpacing = '0.06em';
+      ctx.fillText(kicker.toUpperCase(), x + 22, yBot + panelH - 56);
+      ctx.letterSpacing = '0px';
+      ctx.font = '400 38px "Cormorant Garamond", serif';
+      ctx.fillStyle = 'rgba(250,247,242,.95)';
+      ctx.fillText('Simulated', x + 22, yBot + panelH - 26);
+      ctx.restore();
+    }
   }
 
-  if(includeText){
-    const yF = canvas.height - footerH;
-    ctx.fillStyle = '#1C1714'; ctx.fillRect(0, yF, canvas.width, footerH);
-    ctx.textAlign = 'center';
-    ctx.font = '300 22px "DM Sans", sans-serif'; ctx.fillStyle = 'rgba(250,247,242,.80)';
-    ctx.fillText('AI-generated visualization for consultation purposes only. Not a prediction of actual results.', canvas.width/2, yF + 36);
-    let brandY = yF + 74;
-    if(clinic){
-      ctx.font = '500 23px "DM Sans", sans-serif'; ctx.fillStyle = 'rgba(250,247,242,.92)';
-      ctx.fillText(clinic, canvas.width/2, yF + 72);
-      brandY = yF + 108;
-    }
-    // "Powered by SkinDay Visualize": two-tone, centered
-    const pre = 'Powered by ', brand = 'SkinDay Visualize';
-    ctx.font = '500 19px "DM Sans", sans-serif';
-    const preW = ctx.measureText(pre).width, brandW = ctx.measureText(brand).width;
-    const startX = (canvas.width - (preW + brandW)) / 2;
-    ctx.textAlign = 'left';
-    ctx.fillStyle = 'rgba(181,168,159,.85)'; ctx.fillText(pre, startX, brandY);
-    ctx.fillStyle = '#C9A96E'; ctx.fillText(brand, startX + preW, brandY);
-    ctx.textAlign = 'center';
-  }
+  if(includeText) drawExportFooter(ctx, canvas.width, canvas.height - footerH, footerH, clinic);
   return canvas;
+}
+
+// Shared footer renderer used by both single and multi-angle exports
+function drawExportFooter(ctx, totalW, yF, footerH, clinic){
+  ctx.fillStyle = '#1C1714'; ctx.fillRect(0, yF, totalW, footerH);
+  ctx.textAlign = 'center';
+  ctx.font = '300 22px "DM Sans", sans-serif'; ctx.fillStyle = 'rgba(250,247,242,.80)';
+  ctx.fillText('AI-generated visualization for consultation purposes only. Not a prediction of actual results.', totalW/2, yF + 36);
+  let brandY = yF + 74;
+  if(clinic){
+    ctx.font = '500 23px "DM Sans", sans-serif'; ctx.fillStyle = 'rgba(250,247,242,.92)';
+    ctx.fillText(clinic, totalW/2, yF + 72);
+    brandY = yF + 108;
+  }
+  const pre = 'Powered by ', brand = 'SkinDay Visualize';
+  ctx.font = '500 19px "DM Sans", sans-serif';
+  const preW = ctx.measureText(pre).width, brandW = ctx.measureText(brand).width;
+  const startX = (totalW - (preW + brandW)) / 2;
+  ctx.textAlign = 'left';
+  ctx.fillStyle = 'rgba(181,168,159,.85)'; ctx.fillText(pre, startX, brandY);
+  ctx.fillStyle = '#C9A96E'; ctx.fillText(brand, startX + preW, brandY);
+  ctx.textAlign = 'center';
 }
 
 async function downloadExport(includeText, allAngles){
@@ -1463,6 +2544,31 @@ async function downloadExport(includeText, allAngles){
 document.getElementById('downloadBtn').addEventListener('click', () => downloadExport(true, false));
 document.getElementById('sheetBtn').addEventListener('click', () => downloadExport(true, true));
 document.getElementById('plainBtn').addEventListener('click', () => downloadExport(false, false));
+
+// M11.1: Discard this angle -- resets the slot and removes it from the tab/results
+// without affecting other angles. One bad oblique never kills a good frontal.
+document.getElementById('discardAngleBtn').addEventListener('click', () => {
+  const id = state.activeAngle;
+  const sl = state.slots[id];
+  if(!sl || sl.status !== 'done') return;
+  // Reset slot fully
+  state.slots[id] = makeSlot();
+  // Switch to another done angle if available
+  const remaining = state.selectedAngles.filter(a => state.slots[a].status === 'done');
+  if(remaining.length){
+    state.activeAngle = remaining[0];
+    renderTabs();
+    renderActiveSlot();
+  } else {
+    // No done angles left -- go back to the upload/configure state
+    document.getElementById('resultSection').style.display = 'none';
+    document.getElementById('generateSection').style.display = '';
+    document.getElementById('angleTabs').style.display = 'none';
+    syncGenerateBtn();
+  }
+  const doneCount = state.selectedAngles.filter(a => state.slots[a].status === 'done').length;
+  document.getElementById('sheetBtn').style.display = doneCount > 1 ? '' : 'none';
+});
 
 /* ───────── New case (proper reset, no reload) ───────── */
 document.getElementById('newBtn').addEventListener('click', () => {
