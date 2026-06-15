@@ -480,7 +480,7 @@
 
       <div class="field" style="margin-top:14px;">
         <label>Your name or clinic (optional, appears on export)</label>
-        <input id="clinicName" placeholder="e.g. Dr. Smith · Skin Trek" maxlength="60" />
+        <input id="clinicName" placeholder="e.g. Dr. Smith · ABC Cosmetic Clinic" maxlength="60" />
       </div>
 
       <label class="consent" id="consentBox">
@@ -662,7 +662,7 @@ const FREE_REGEN_MS = 60000;
 // stay the same module instance (shared face-detection cache). v35 = M9.0
 // jowl blending (alpha lobes over marionette/jowl shadows + prejowl notch-fill
 // warp kernels) (v34 = M8.2 shade reconciliation; v33 = M8.1 convex chin).
-const MASK_MODULE_VERSION = '61';
+const MASK_MODULE_VERSION = '62';
 
 /* M7: a case is one or more ANGLES, each with its own photo, QC result, job,
    and compositor. Treatment settings are shared across the case; the response
@@ -1285,11 +1285,11 @@ updatePhotoGuide();
 // vial count; dose is discussed verbally by the clinician).
 function strengthLabel(pct){
   const n = (typeof pct === 'number') ? pct : (parseInt(pct, 10) || 0);
-  // M11.1: timeline vocabulary for biostimulator -- frames slider as treatment
-  // progression over time, not magnitude claim. Early / 6 months / Full response.
-  if(n < 45) return 'Early response';
-  if(n < 80) return '6 months';
-  return 'Full response';
+  // M11.1: timeline vocabulary -- Early / 3 months / 6 months.
+  // 6 months is the clinical peak for Sculptra (best collagen response).
+  if(n < 45) return 'Early';
+  if(n < 80) return '3 months';
+  return '6 months';
 }
 
 // M9.2: HA filler speaks a different slider vocabulary than Sculptra. Biostim
@@ -1342,7 +1342,7 @@ function updateIntensityUI(){
   const li = levelInfo(state.intensityPct);
   document.getElementById('intensityLabel').textContent = isFiller ? 'Degree of correction' : 'Treatment timeline';
   document.getElementById('intensityMin').textContent = isFiller ? 'Subtle' : 'Early';
-  document.getElementById('intensityMax').textContent = isFiller ? 'Enhanced' : 'Full response';
+  document.getElementById('intensityMax').textContent = isFiller ? 'Enhanced' : '6 months';
   document.getElementById('intensityHelp').textContent = isFiller
     ? 'Slide to preview less or more correction.'
     : 'Slide to preview an earlier or more complete treatment response. The simulation updates instantly.';
@@ -1369,10 +1369,14 @@ function updateIntensityUI(){
     const sl = activeSlot();
     if(!sl || !sl.apply) return;
     if(raf) cancelAnimationFrame(raf);
-    raf = requestAnimationFrame(() => {
+    raf = requestAnimationFrame(async () => {
       const url = sl.apply(pct / 100);
       sl.resultDataUrl = url;
-      document.getElementById('aiResult').src = url;
+      // M11.1: apply face crop to keep simulated image the same size as original
+      const displayUrl = sl.faceBbox ? await cropToFace(url, sl.faceBbox) : url;
+      // Invalidate the crop cache so the next renderActiveSlot re-crops
+      if(sl.cropCache) sl.cropCache = { ...sl.cropCache, after: displayUrl };
+      document.getElementById('aiResult').src = displayUrl;
     });
   });
   // Settle: on release, bring every other finished angle to the same response
@@ -1405,7 +1409,7 @@ function updateIntensityUI(){
   const canonical = document.getElementById('intensitySlider');
   if(!bar || !mslider || !canonical) return;
 
-  // ── Snap stops for Sculptra: Early=22 6months=62 Full=100 (M11.1 timeline)
+  // ── Snap stops for Sculptra: Early=22 3months=62 6months=100 (M11.1 timeline)
   //    and for HA filler: Subtle=17 Balanced=52 Enhanced=74 (M10.3)
   // These are the midpoints of the named bands, matching strengthLabel() / levelInfo().
   // Snap fires within SNAP_WINDOW percent of the stop.
@@ -1437,7 +1441,7 @@ function updateIntensityUI(){
     const isFiller = state.type === 'filler';
     msbLabel.textContent = isFiller ? 'Degree of correction' : 'Treatment response';
     msbMin.textContent   = isFiller ? 'Subtle' : 'Early';
-    msbMax.textContent   = isFiller ? 'Enhanced' : 'Full response';
+    msbMax.textContent   = isFiller ? 'Enhanced' : '6 months';
   }
   // Patch updateIntensityUI to also sync the mobile bar
   const _origUpdateUI = updateIntensityUI;
@@ -1621,7 +1625,7 @@ const PROJECTION_INSIGHT = {
 // Clinician-facing label for each wire value. The wire keeps conservative/
 // expected/optimistic because buildSculptraPrompt routes on them; the UI shows
 // Subtle/Expected/Strong.
-const STRENGTH_LABEL = { conservative:'Early response', expected:'6 months', optimistic:'Full response' };
+const STRENGTH_LABEL = { conservative:'Early', expected:'3 months', optimistic:'6 months' };
 
 function buildInsights(){
   const out = [];
@@ -2101,17 +2105,24 @@ function applyZoom(){
 }
 function clampPan(){
   const card = zoomCards[0]; if(!card) return;
-  const maxX = card.clientWidth  * (zoomState.zoom - 1) / 2;
-  const maxY = card.clientHeight * (zoomState.zoom - 1) / 2;
+  // Allow negative pan only when zoomed in; when zoomed out the image is
+  // smaller than the card so clamping to 0 keeps it centered.
+  const maxX = Math.max(0, card.clientWidth  * (zoomState.zoom - 1) / 2);
+  const maxY = Math.max(0, card.clientHeight * (zoomState.zoom - 1) / 2);
   zoomState.panX = Math.max(-maxX, Math.min(maxX, zoomState.panX));
   zoomState.panY = Math.max(-maxY, Math.min(maxY, zoomState.panY));
 }
+// M11.1: allow zoom out to 0.5 (cropped head is tighter than the panel at 100%).
+// Default zoom is 0.7 -- shows the head comfortably with a small margin.
+const ZOOM_DEFAULT = 0.7;
+const ZOOM_MIN = 0.5;
+const ZOOM_MAX = 6;
 function setZoom(z){
-  zoomState.zoom = Math.max(1, Math.min(6, Math.round(z * 100) / 100));
-  if(zoomState.zoom === 1){ zoomState.panX = 0; zoomState.panY = 0; }
+  zoomState.zoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Math.round(z * 100) / 100));
+  if(zoomState.zoom === ZOOM_MIN || zoomState.zoom === ZOOM_DEFAULT){ zoomState.panX = 0; zoomState.panY = 0; }
   clampPan(); applyZoom();
 }
-function resetZoom(){ setZoom(1); }
+function resetZoom(){ setZoom(ZOOM_DEFAULT); }
 
 document.getElementById('zoomIn').addEventListener('click', () => setZoom(zoomState.zoom * 1.5));
 document.getElementById('zoomOut').addEventListener('click', () => setZoom(zoomState.zoom / 1.5));
