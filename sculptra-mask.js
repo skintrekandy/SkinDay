@@ -13,12 +13,31 @@
 // appeared at early slider values, proving the mask was the source not the warp.
 // Warp field alone handles male chin projection; the mask must not open the
 // submental zone at all.
-// Male SUBMENT_FLOOR_F: 0.06 -> 0.03 in both compositor functions (belt-and-
-// suspenders defence in case any mask leakage survives to the compositor).
-// Sculptra oblique discolouration: SCULPTRA_BRIGHT_CAP_FULL 18 -> 12. Poorly-lit
-// clinic photos showed warm/tan patches in the lateral cheek zone where the AI's
-// broad brightening exceeded the local light field. Soft-knee cap at 12 limits
-// flat brightness lift without affecting structural shading on well-lit cases.
+// Male SUBMENT_FLOOR_F: 0.06 -> 0.03 in both compositor functions.
+// Sculptra oblique discolouration: SCULPTRA_BRIGHT_CAP_FULL 18 -> 12.
+//
+// M10.5 (v66): MALE CHIN TIP EXCLUDED FROM AI MASK.
+// M10.5 (v67): OUTLINE GATE HARDENING -- fixes white blob artifacts at chin on
+// oblique views for all sexes. Root cause: MediaPipe's face oval overshoots the
+// real jaw-neck boundary at oblique angles, and the luma gate passed chin-shadow
+// pixels (luma 40-80) as "plausible face." Two fixes: (1) GATE_LOWER_PULL_IN
+// raised 0.015->0.040 so the gate polygon hugs the actual jawline more tightly.
+// (2) Hard menton floor added to buildOutlineGate: any pixel below p152.y +
+// 0.04*|faceH| is zeroed regardless of luma. The warp handles everything below
+// the menton; the AI has no legitimate reason to paint there. Also: warp shade
+// reconciliation WARP_SHADE_MARGIN tightened 10->6 to close the frontal warp
+// seam visible as a bright patch at the chin body.
+// Root cause diagnosis: after v64 and v65 the chin tip still read feminine.
+// Every prompt and mask-sigma approach fights the model's visual prior because
+// gpt-image-1 has a strong aesthetic bias toward tapered lower faces (the female
+// ideal) and applies it to any chin region it can see, regardless of text
+// instruction. The only reliable architectural fix: remove the chin tip from the
+// AI's editable region entirely for male. The chin tip shape is now pure warp
+// geometry -- buildChinProjectionField displaces the patient's own pixels
+// anteriorly, so the tip carries correct male anatomy by construction (original
+// face). The AI sees only the jaw border tube and jowl lobes for shading/
+// definition; it cannot taper what it cannot see. Female path unchanged.
+// taperScale for male effectively zeroed in the pixel loop (isMale guard).
 // Re-enables applyJawDefinition shadow step at oblique only, with
 // oblique-specific constants (JAWDEF_DARK_OBLIQUE). The frontal retirement
 // (v44: drawn-stroke artifact) stands; at 45 degrees the border is viewed
@@ -1790,10 +1809,25 @@ async function buildWarpForScope(beforeImg, landmarks, w, h, scope, sex, opts){
 // hugs the real jawline. Light walls are still covered by the oval term.
 const GATE_LUMA_LO = 10;       // original luma at or below this: gate 0
 const GATE_LUMA_HI = 26;       // fully open above this
-const GATE_LOWER_PULL_IN = 0.015; // lower-face oval vertices toward centroid, fraction of W
+// M10.5 v67: GATE_LOWER_PULL_IN raised 0.015 -> 0.040. The previous value gave
+// ~6-9px inward pull at 1024px framing -- not enough when the face oval at an
+// oblique view overshoots the real jaw-neck boundary by 20-40px. The larger pull
+// keeps the gate polygon tight to the actual jawline. One-constant reversal: 0.015.
+const GATE_LOWER_PULL_IN = 0.040; // lower-face oval vertices toward centroid, fraction of W
+// M10.5 v67: hard menton floor. Any pixel more than GATE_MENTON_FLOOR_F face-
+// heights below p152 (the menton landmark) gets gate = 0 regardless of luma.
+// This is the chin projection zone where AI blobs have been appearing: the warp
+// handles everything below the menton, so the AI has no legitimate reason to
+// paint there. GATE_MENTON_FLOOR_F = 0.04 allows a small margin for the warp's
+// own displaced pixels to blend; below that is pure neck/background.
+const GATE_MENTON_FLOOR_F = 0.04; // fraction of faceH below p152: hard gate zero
 
 // M8.2 warp shading reconciliation (chin_jaw post-warp pass; see header).
-const WARP_SHADE_MARGIN = 10;  // luma overshoot allowed before correction starts
+// M10.5 v67: WARP_SHADE_MARGIN tightened 10 -> 6. The 10-level overshoot
+// allowance was producing a visible brightening step (warp seam) at the chin
+// body on frontal views with normal skin tone. 6 levels catches the overshoot
+// earlier without fighting legitimate warp-displaced skin.
+const WARP_SHADE_MARGIN = 6;   // luma overshoot allowed before correction starts
 const WARP_SHADE_PULL   = 0.55; // fraction of the excess pulled back
 const WARP_SHADE_BLUR   = 0.04; // low-frequency reference blur radius, fraction of W
 
@@ -1804,6 +1838,10 @@ function buildOutlineGate(L, w, h, b){
   const dirOut = { x:-dirUp.y, y:dirUp.x };
   const W = Math.abs(dot(sub(lm[454], lm[234]), dirOut)) || 1;
   const faceH = (dot(sub(lm[10], p152), dirUp)) || 1;
+  // M10.5 v67: hard menton floor in image-space y.
+  // faceH is negative (p10 is above p152 in image coords, lower y value).
+  // Below p152 means larger y values, so floor is p152.y + |faceH|*GATE_MENTON_FLOOR_F.
+  const mentonFloorY = p152.y + Math.abs(faceH) * GATE_MENTON_FLOOR_F;
 
   // Oval polygon with the lower-face vertices pulled slightly inward.
   const pts = [];
@@ -1834,6 +1872,11 @@ function buildOutlineGate(L, w, h, b){
   for(let i=0,p4=0;i<N;i++,p4+=4){
     const ov=oval[p4]/255;
     if(ov<=0){ g[i]=0; continue; }
+    // M10.5 v67: hard menton floor. The AI has no legitimate reason to paint
+    // below the menton; the warp handles chin projection geometrically.
+    // Pixels below mentonFloorY are zeroed regardless of luma or oval membership.
+    const py = (i/w)|0; // pixel row
+    if(py > mentonFloorY){ g[i]=0; continue; }
     const Y=0.299*b[p4]+0.587*b[p4+1]+0.114*b[p4+2];
     g[i]=ov*smoothstep(GATE_LUMA_LO, GATE_LUMA_HI, Y);
   }
@@ -2141,44 +2184,39 @@ function buildTreatAlpha(L, w, h, scope, sex){
       if(scope==="chin_jaw"){
         if(hF <= LF_TOP+0.12 && hF >= -0.16){
           const protOnly=1-(protA[i*4]/255);
-          const dc=distToSeg(x,y,chinA,chinB);
-          let lf=Math.exp(-(dc*dc)/twoSigChin);
+          // M10.5 v66: for male, exclude the chin tip from the AI's editable
+          // region entirely. The chin tip shape is now pure warp geometry --
+          // the patient's own pixels displaced anteriorly by buildChinProjectionField.
+          // Those pixels carry the correct anatomy by construction (original face).
+          // The AI's trained prior tapers any chin region it sees regardless of
+          // prompt or mask sigma; the only reliable fix is to not show it the chin
+          // tip at all. Male mask opens ONLY jaw border tube and jowl lobes.
+          // Female retains the full chin tip capsule (female taper is correct).
+          let lf = 0;
+          if(!isMale){
+            const dc=distToSeg(x,y,chinA,chinB);
+            lf=Math.exp(-(dc*dc)/twoSigChin);
+          }
           for(let k=0;k<jawSegs.length;k++){ const sg=jawSegs[k]; const dd=distToSeg(x,y,sg[0],sg[1]); const g=Math.exp(-(dd*dd)/twoSigJaw); if(g>lf) lf=g; }
           for(let k=0;k<gonialPts.length;k++){ const gp=gonialPts[k]; const dx=x-gp.x, dy=y-gp.y; const g=Math.exp(-(dx*dx+dy*dy)/twoSigGonial); if(g>lf) lf=g; }
-          // Lateral taper, CONTAINED INSIDE the silhouette. Editing the taper band
-          // over the dark background outside the jaw was what produced the muddy
-          // dark halo (a tiny inward silhouette move the texture-restore correctly
-          // refused to sharpen). Gate it by the face oval so it can only shade the
-          // lower face inward within existing skin: a soft slim, never a contour
-          // move over background. The chin/jaw/gonial terms above are NOT gated,
-          // so genuine chin projection can still extend the outline.
           const ovalInside = ovalA[i*4]/255;
-          let taperVal=0;
-          for(let k=0;k<taperSegs.length;k++){ const sg=taperSegs[k]; const dd=distToSeg(x,y,sg[0],sg[1]); const g=taperScale*Math.exp(-(dd*dd)/twoSigTaper); if(g>taperVal) taperVal=g; }
-          taperVal*=ovalInside;
-          if(taperVal>lf) lf=taperVal;
-          // M9.0 jowl-blend lobes (shading-only: oval-contained, see setup above)
+          // Lateral taper: male = 0 (AI must not touch lateral jaw contour;
+          // warp owns the border). Female = 0.85 (feminising taper is correct).
+          if(!isMale && taperScale>0){
+            let taperVal=0;
+            for(let k=0;k<taperSegs.length;k++){ const sg=taperSegs[k]; const dd=distToSeg(x,y,sg[0],sg[1]); const g=taperScale*Math.exp(-(dd*dd)/twoSigTaper); if(g>taperVal) taperVal=g; }
+            taperVal*=ovalInside;
+            if(taperVal>lf) lf=taperVal;
+          }
+          // M9.0 jowl-blend lobes (shading-only: oval-contained; both sexes)
           let jowlVal=0;
           for(let k=0;k<jowlSegs.length;k++){ const sg=jowlSegs[k]; const dd=distToSeg(x,y,sg[0],sg[1]); const g=JOWL_SCALE*Math.exp(-(dd*dd)/twoSigJowl); if(g>jowlVal) jowlVal=g; }
           jowlVal*=ovalInside;
           if(jowlVal>lf) lf=jowlVal;
           const topTaper=1-smoothstep(LF_TOP,LF_TOP+0.08,hF);
-          // Downward allowance depends on laterality: directly under the chin
-          // (central) the mask extends down so the chin can lengthen; toward the
-          // jaw and sides it stops at the jawline so the neck is never opened.
-          // M11.1: the central extension coefficient is reduced for male faces
-          // (0.12 -> 0.08) because the taller male mentum already reaches lower.
-          // M10.5 Track 1 v64: tightened to 0.04 for male.
-          // M10.5 v65: closed to 0.0 for male. Artifacts appear at early slider
-          // values, which proves the mask is the source -- the warp field alone
-          // is sufficient for male chin projection, and the submental column
-          // extension in the mask was giving the AI the exact zone it needs to
-          // paint cream/pale artifacts. At centralExt=0 the floor becomes a flat
-          // -0.02 jawline cutoff; the warp handles any legitimate vertical extension.
-          // Female retains 0.12 (tested, artifact-safe).
           const centralExt = (sex === 'male') ? 0.0 : 0.12;
-          const central=1-smoothstep(0.10,0.22,alat);     // 1 under the chin, 0 at the jaw/sides
-          const floor=-0.02 - centralExt*central;         // jaw cuts at -0.02; chin column extends downward
+          const central=1-smoothstep(0.10,0.22,alat);
+          const floor=-0.02 - centralExt*central;
           const neckTaper=smoothstep(floor, floor+0.05, hF);
           m[i]=Math.min(1, lf*topTaper*neckTaper*protOnly);
         }
