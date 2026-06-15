@@ -2106,10 +2106,14 @@ function buildTreatAlpha(L, w, h, scope, sex){
           // Downward allowance depends on laterality: directly under the chin
           // (central) the mask extends down so the chin can lengthen; toward the
           // jaw and sides it stops at the jawline so the neck is never opened.
-          // The central extension is eased (0.12 -> 0.09) so chin elongation does
-          // not push a crescent down over the submental shadow.
+          // M11.1: the central extension coefficient is reduced for male faces
+          // (0.12 -> 0.08) because the taller male mentum already reaches lower;
+          // the same absolute extension that works for female anatomy overshoots
+          // into the submental shadow on male faces, where the AI paints filler
+          // artifacts in the neck zone. Female retains 0.12 (tested, artifact-safe).
+          const centralExt = (sex === 'male') ? 0.08 : 0.12;
           const central=1-smoothstep(0.10,0.22,alat);     // 1 under the chin, 0 at the jaw/sides
-          const floor=-0.02 - 0.12*central;               // jaw cuts at -0.02; chin column extends to ~-0.14 for clear projection
+          const floor=-0.02 - centralExt*central;         // jaw cuts at -0.02; chin column extends downward
           const neckTaper=smoothstep(floor, floor+0.05, hF);
           m[i]=Math.min(1, lf*topTaper*neckTaper*protOnly);
         }
@@ -2470,12 +2474,54 @@ export async function compositeSculptra(beforeImg, aiImg, opts){
     if(!(opts && opts.jawDef === false))
       applyJawDefinition(a, w, h, landmarks, lift, warpT, Wpx, isOblique45); // M11.1: angle-aware shadow
   }
+  // M11.1 LAYER 2: Submental forced restore (ChatGPT layer-2 defence).
+  // Even after mask tightening the AI can paint cream/light artifacts below the
+  // menton. This pass restores original pixels in the submental zone AFTER all
+  // compositing and warping, guaranteeing the neck/submental core is never
+  // modified regardless of what the mask or AI produced.
+  // Only active for chin_jaw scope (submental leakage is only a chin/jaw issue).
+  // The protected zone: a soft band below p152 (menton), derived from anatomy,
+  // not a hard horizontal line. The central column (under the chin tip) starts
+  // at SUBMENT_FLOOR_F below p152 and feathers upward over SUBMENT_BLEND_F.
+  // Lateral regions are fully restored at the jawline (hF = -0.02).
+  if(scope === 'chin_jaw' && !isOverfill){
+    const p152 = landmarks[152];
+    const faceH = (landmarks[10].y - landmarks[152].y) * h; // negative: 10 is top, 152 is bottom
+    const absH = Math.abs(faceH) || (h * 0.35);
+    const cx0 = landmarks[234].x * w; // left cheek landmark
+    const cx1 = landmarks[454].x * w; // right cheek landmark
+    const faceW = Math.abs(cx1 - cx0) || (w * 0.4);
+    const mentonY = p152.y * h;
+    const mentonX = p152.x * w;
+    const SUBMENT_FLOOR_F = (sex === 'male') ? 0.06 : 0.09; // tighter for male
+    const SUBMENT_BLEND_F = 0.07;
+    for(let y=0; y<h; y++){
+      if(y < mentonY) continue; // above menton: never restore
+      const dy = y - mentonY;
+      const dyF = dy / absH;
+      for(let x=0; x<w; x++){
+        const dx = Math.abs(x - mentonX) / faceW;
+        // Central column (under chin tip): restore below SUBMENT_FLOOR_F
+        // Lateral (toward jaw): restore below 0.02 (at the jawline)
+        const lateralFactor = smoothstep(0.10, 0.30, dx);
+        const floorF = SUBMENT_FLOOR_F * (1 - lateralFactor) + 0.02 * lateralFactor;
+        const blendF = SUBMENT_BLEND_F * (1 - lateralFactor) + 0.02 * lateralFactor;
+        if(dyF >= floorF){
+          // Fully restore original pixels in protected submental zone
+          const restoreAlpha = smoothstep(floorF - blendF, floorF, dyF);
+          const idx = (y * w + x) * 4;
+          a[idx]   = Math.round(b[idx]   * restoreAlpha + a[idx]   * (1 - restoreAlpha));
+          a[idx+1] = Math.round(b[idx+1] * restoreAlpha + a[idx+1] * (1 - restoreAlpha));
+          a[idx+2] = Math.round(b[idx+2] * restoreAlpha + a[idx+2] * (1 - restoreAlpha));
+        }
+      }
+    }
+  }
   cx.putImageData(ai, 0, 0);
   return c.toDataURL("image/jpeg", 0.92);
 }
 
 /**
- * Build a reusable Sculptra compositor. Runs the expensive face detection,
  * mask build, and pixel reads ONCE, then returns an apply(intensity) function
  * that only re-blends, so an intensity slider can update the image live with no
  * regeneration and no MediaPipe re-run. intensity scales the in-mask alpha:
@@ -2548,6 +2594,16 @@ export async function makeSculptraCompositor(beforeImg, aiImg, opts){
   const lowY = (lift && postWarp) ? buildLowLuma(b, w, h, faceWidthPx(landmarks, w, h)) : null;
   const sharpW = (lift && postWarp) ? faceWidthPx(landmarks, w, h) : 0; // M9.2
 
+  // M11.1 LAYER 2: precompute submental geometry for the forced restore in apply().
+  // These are closed over by the returned apply() function.
+  const mentonY   = landmarks[152].y * h;
+  const mentonX   = landmarks[152].x * w;
+  const faceH_abs = Math.abs((landmarks[10].y - landmarks[152].y) * h) || (h * 0.35);
+  const faceW_abs = Math.abs((landmarks[454].x - landmarks[234].x) * w) || (w * 0.4);
+  // rename to avoid shadowing outer scope 'absH' / 'faceW' if they exist
+  const absH  = faceH_abs;
+  const faceW = faceW_abs;
+
   return function apply(intensity){
     const t = Math.max(0, Math.min(1, (typeof intensity === "number" ? intensity : 1)));
     if(lift && !postWarp) applyLiftWarp(wb, b, w, h, lift, Math.min(t, SCULP_LIFT_SAT));
@@ -2586,6 +2642,31 @@ export async function makeSculptraCompositor(beforeImg, aiImg, opts){
         applyWarpSharpen(o, w, h, lift, warpT, sharpW); // M9.2: restore pore-scale crispness in the moved band
       if(!(opts && opts.jawDef === false))
         applyJawDefinition(o, w, h, landmarks, lift, warpT, sharpW, isOblique45); // M11.1: angle-aware shadow
+    }
+    // M11.1 LAYER 2: Submental forced restore in the live compositor.
+    // Mirrors the same protection in compositeSculptra. Precomputed geometry
+    // values (mentonY, mentonX, absH, faceW) are closed over from setup.
+    if(scope === 'chin_jaw' && !isOverfill){
+      const SUBMENT_FLOOR_F = (sex === 'male') ? 0.06 : 0.09;
+      const SUBMENT_BLEND_F = 0.07;
+      for(let y=0; y<h; y++){
+        if(y < mentonY) continue;
+        const dy = y - mentonY;
+        const dyF = dy / absH;
+        for(let x=0; x<w; x++){
+          const dx = Math.abs(x - mentonX) / faceW;
+          const lateralFactor = smoothstep(0.10, 0.30, dx);
+          const floorF = SUBMENT_FLOOR_F * (1 - lateralFactor) + 0.02 * lateralFactor;
+          const blendF = SUBMENT_BLEND_F * (1 - lateralFactor) + 0.02 * lateralFactor;
+          if(dyF >= floorF){
+            const restoreAlpha = smoothstep(floorF - blendF, floorF, dyF);
+            const idx = (y * w + x) * 4;
+            o[idx]   = Math.round(b[idx]   * restoreAlpha + o[idx]   * (1 - restoreAlpha));
+            o[idx+1] = Math.round(b[idx+1] * restoreAlpha + o[idx+1] * (1 - restoreAlpha));
+            o[idx+2] = Math.round(b[idx+2] * restoreAlpha + o[idx+2] * (1 - restoreAlpha));
+          }
+        }
+      }
     }
     cx.putImageData(out, 0, 0);
     return c.toDataURL("image/jpeg", 0.92);

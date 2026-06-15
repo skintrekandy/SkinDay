@@ -51,6 +51,15 @@
     .zone-tag { position:absolute; bottom:0; left:0; right:0; padding:9px 12px; background:linear-gradient(transparent,rgba(28,23,20,.72)); font-size:.7rem; letter-spacing:.12em; text-transform:uppercase; color:rgba(250,247,242,.86); pointer-events:none; }
     .photo-guide { font-size:.72rem; color:var(--muted); line-height:1.5; margin-top:10px; padding:9px 12px; background:var(--warm); border-radius:6px; }
     .photo-guide strong { color:var(--deep); font-weight:600; }
+    /* M11.1: guide modal layout helpers */
+    .guide-row { display:flex; gap:16px; margin:10px 0 16px; }
+    .guide-col { flex:1; display:flex; flex-direction:column; gap:6px; }
+    .guide-icon-svg { width:100%; border-radius:6px; }
+    .guide-caption { font-size:.74rem; color:var(--muted); line-height:1.45; margin:0; }
+    .guide-checklist { list-style:none; padding:0; margin:8px 0 14px; display:flex; flex-direction:column; gap:6px; }
+    .guide-checklist li { display:flex; gap:8px; font-size:.82rem; color:var(--deep); line-height:1.4; }
+    .guide-checklist .check { color:var(--rose); font-weight:700; flex-shrink:0; }
+    @media(max-width:540px){ .guide-row { flex-direction:column; } }
     .field { display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
     .field label { font-size:.68rem; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--dim); }
     .field input, .field select, .field textarea { background:#fff; border:1px solid var(--border); color:var(--deep); padding:10px 12px; font-size:.88rem; font-family:'DM Sans',sans-serif; border-radius:6px; outline:none; width:100%; }
@@ -472,8 +481,8 @@
           <div class="area-chip" data-angle="l45"><span class="tick">✓</span>Left 45°</div>
         </div>
       </div>
-      <div class="photo-guide" id="photoGuide"><strong>Best photos:</strong> Even, diffuse light, neutral expression, hair off the face, face filling most of the frame. <strong>Photo quality directly affects result quality</strong> -- clinic-standard photos (consistent lighting, neutral background, consultation distance) produce the best simulations. Tight crops, harsh shadows, or low resolution will limit accuracy.</div>
-      <button class="guide-link" id="guideBtn" type="button">Photo guide: how to shoot each angle (each photo is checked automatically)</button>
+      <div class="photo-guide" id="photoGuide"><strong>Photo quality is the single biggest factor in result quality.</strong> Poor lighting, busy backgrounds, or tight crops will cause artifacts and weak results regardless of the AI. <strong>Read the photo guide before uploading.</strong></div>
+      <button class="guide-link" id="guideBtn" type="button">📷 Photo guide &amp; quality checklist (important -- read before uploading)</button>
       <div class="slot-grid" id="uploadSlots"></div>
       <label class="bg-toggle"><input type="checkbox" id="blackBgChk" checked /><span>Replace background with black on the generated image.</span></label>
       <div class="privacy-note"><span>🔒</span><span>The photo stays in this browser until you press Generate. Generating sends the photo to the AI image provider (OpenAI) for that single request only. It is not used to train the model. You must have the patient's consent before uploading.</span></div>
@@ -577,45 +586,124 @@
 <!-- ───────── CAPTURE GUIDE ───────── -->
 <div class="guide-modal hidden" id="guideModal">
   <div class="guide-card">
-    <h2>Consultation photo guide</h2>
-    <p>Good input photos are the single biggest factor in simulation quality. Each photo is checked automatically when you add it.</p>
-    <h3>Lighting</h3>
-    <ul>
-      <li>Even, diffuse light from the front. Avoid strong side light, windows behind the patient, and overhead-only light.</li>
-      <li>No flash if possible; flash flattens the facial shading the simulation builds on.</li>
+    <h2>Photo quality is everything</h2>
+    <p style="font-size:1rem;font-weight:600;color:var(--rose);margin-bottom:4px;">The simulation is only as good as the photo. A poor photo will produce a poor result, regardless of how advanced the AI is.</p>
+    <p>Follow these guidelines and the system will consistently produce consultation-ready simulations. Skip them and artifacts, inconsistencies, or flat results are likely.</p>
+
+    <!-- LIGHTING -->
+    <h3>1 · Lighting</h3>
+    <div class="guide-row">
+      <div class="guide-col">
+        <svg viewBox="0 0 120 100" xmlns="http://www.w3.org/2000/svg" class="guide-icon-svg">
+          <rect width="120" height="100" rx="8" fill="#F0EDE8"/>
+          <!-- Face -->
+          <ellipse cx="60" cy="52" rx="22" ry="28" fill="#E8C9A0" stroke="#C8725A" stroke-width="1.5"/>
+          <!-- Two front lights (good) -->
+          <circle cx="18" cy="35" r="7" fill="#C9A96E" opacity="0.9"/>
+          <line x1="24" y1="38" x2="38" y2="46" stroke="#C9A96E" stroke-width="2" stroke-dasharray="3 2"/>
+          <circle cx="102" cy="35" r="7" fill="#C9A96E" opacity="0.9"/>
+          <line x1="96" y1="38" x2="82" y2="46" stroke="#C9A96E" stroke-width="2" stroke-dasharray="3 2"/>
+          <text x="60" y="92" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="#5A4A42">✓ Even, diffuse, front-lit</text>
+        </svg>
+        <p class="guide-caption"><strong>Good:</strong> Soft, even light from the front or both sides. Ring light, window light facing the patient, or a bright overcast day.</p>
+      </div>
+      <div class="guide-col">
+        <svg viewBox="0 0 120 100" xmlns="http://www.w3.org/2000/svg" class="guide-icon-svg">
+          <rect width="120" height="100" rx="8" fill="#F0EDE8"/>
+          <ellipse cx="60" cy="52" rx="22" ry="28" fill="#E8C9A0" stroke="#A33524" stroke-width="1.5"/>
+          <!-- Single harsh side light (bad) -->
+          <circle cx="10" cy="30" r="7" fill="#A33524" opacity="0.8"/>
+          <line x1="16" y1="33" x2="38" y2="46" stroke="#A33524" stroke-width="2" stroke-dasharray="3 2"/>
+          <!-- Shadow half face -->
+          <path d="M60,24 Q82,28 82,52 Q82,76 60,80 Q60,52 60,24Z" fill="#7A5A40" opacity="0.35"/>
+          <text x="60" y="92" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="#A33524">✗ Harsh side light / shadows</text>
+        </svg>
+        <p class="guide-caption"><strong>Avoid:</strong> Single side light, overhead-only ceiling light, flash, backlit windows, or deep shadows on any part of the face.</p>
+      </div>
+    </div>
+
+    <!-- BACKGROUND -->
+    <h3>2 · Background</h3>
+    <div class="guide-row">
+      <div class="guide-col">
+        <svg viewBox="0 0 120 100" xmlns="http://www.w3.org/2000/svg" class="guide-icon-svg">
+          <rect width="120" height="100" rx="8" fill="#1C1714"/>
+          <ellipse cx="60" cy="52" rx="22" ry="28" fill="#E8C9A0" stroke="#C8725A" stroke-width="1.5"/>
+          <text x="60" y="92" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="#C9A96E">✓ Plain dark background</text>
+        </svg>
+        <p class="guide-caption"><strong>Good:</strong> Plain black, white, or neutral grey wall. The system replaces the background automatically but a clean background improves edge detection.</p>
+      </div>
+      <div class="guide-col">
+        <svg viewBox="0 0 120 100" xmlns="http://www.w3.org/2000/svg" class="guide-icon-svg">
+          <rect width="120" height="100" rx="8" fill="#7B9EA6"/>
+          <!-- Busy background elements -->
+          <rect x="8" y="8" width="30" height="20" rx="3" fill="#C8725A" opacity="0.6"/>
+          <rect x="82" y="15" width="25" height="35" rx="3" fill="#C9A96E" opacity="0.5"/>
+          <circle cx="20" cy="65" r="12" fill="#5A7A4A" opacity="0.5"/>
+          <ellipse cx="60" cy="52" rx="22" ry="28" fill="#E8C9A0" stroke="#A33524" stroke-width="1.5"/>
+          <text x="60" y="92" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="#A33524">✗ Busy / cluttered background</text>
+        </svg>
+        <p class="guide-caption"><strong>Avoid:</strong> Clinic equipment, posters, other people, patterned walls, or anything distracting behind the patient.</p>
+      </div>
+    </div>
+
+    <!-- FRAMING -->
+    <h3>3 · Framing and distance</h3>
+    <div class="guide-row">
+      <div class="guide-col">
+        <svg viewBox="0 0 120 100" xmlns="http://www.w3.org/2000/svg" class="guide-icon-svg">
+          <rect width="120" height="100" rx="8" fill="#F0EDE8"/>
+          <!-- Frame border hint -->
+          <rect x="28" y="4" width="64" height="90" rx="4" fill="none" stroke="#C9A96E" stroke-width="1.2" stroke-dasharray="4 3"/>
+          <ellipse cx="60" cy="46" rx="22" ry="28" fill="#E8C9A0" stroke="#C8725A" stroke-width="1.5"/>
+          <!-- Neck suggestion -->
+          <path d="M48,74 Q50,86 52,88 M72,74 Q70,86 68,88" stroke="#E8C9A0" stroke-width="6" fill="none"/>
+          <text x="60" y="97" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="#5A4A42">✓ Head + neck, 2/3 of frame</text>
+        </svg>
+        <p class="guide-caption"><strong>Good:</strong> Face fills about two-thirds of the frame. Full head visible, top of neck showing. Camera at eye level. Step back from the patient -- do not crop the top of the head or the chin.</p>
+      </div>
+      <div class="guide-col">
+        <svg viewBox="0 0 120 100" xmlns="http://www.w3.org/2000/svg" class="guide-icon-svg">
+          <rect width="120" height="100" rx="8" fill="#F0EDE8"/>
+          <!-- Oversized face filling frame (bad) -->
+          <ellipse cx="60" cy="42" rx="58" ry="52" fill="#E8C9A0" stroke="#A33524" stroke-width="1.5"/>
+          <!-- Clipped by frame -->
+          <rect x="0" y="0" width="120" height="100" fill="none" stroke="#A33524" stroke-width="3"/>
+          <text x="60" y="97" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="#A33524">✗ Too close / tight crop</text>
+        </svg>
+        <p class="guide-caption"><strong>Avoid:</strong> Selfie distance, tight crops that cut the chin or forehead, or photos taken from above or below eye level.</p>
+      </div>
+    </div>
+
+    <!-- PATIENT PREP -->
+    <h3>4 · Patient preparation</h3>
+    <ul class="guide-checklist">
+      <li><span class="check">✓</span> Hair fully off the face -- headband, clip, or tied back. The temples and hairline must be visible.</li>
+      <li><span class="check">✓</span> Glasses off.</li>
+      <li><span class="check">✓</span> Neutral expression, mouth closed, relaxed jaw.</li>
+      <li><span class="check">✓</span> No heavy make-up that changes the face shape (foundation is fine).</li>
+      <li><span class="check">✓</span> Same angles, distance, and lighting at every visit for before/after comparisons.</li>
     </ul>
-    <h3>Framing</h3>
-    <ul>
-      <li>Face fills roughly two-thirds of the frame, whole head and top of the neck visible.</li>
-      <li>Hair fully off the face (headband or clip), glasses off, neutral expression, mouth closed.</li>
-      <li>Camera at eye level, phone steady.</li>
-    </ul>
-    <h3>The three angles</h3>
-    <ul>
-      <li><strong>Frontal:</strong> nose pointing straight at the camera, both ears equally visible.</li>
-      <li><strong>Right 45°:</strong> patient turns so their right cheek faces the camera, about halfway to profile.</li>
-      <li><strong>Left 45°:</strong> the same turn to the other side, left cheek toward the camera.</li>
-    </ul>
-    <svg class="guide-svg" viewBox="0 0 330 130" xmlns="http://www.w3.org/2000/svg" aria-label="The three photo angles with the 45 degree nose-tip alignment line">
+
+    <!-- THREE ANGLES -->
+    <h3>5 · The three angles</h3>
+    <svg class="guide-svg" viewBox="0 0 330 130" xmlns="http://www.w3.org/2000/svg" aria-label="The three photo angles">
       <g fill="none" stroke="#1C1714" stroke-width="1.6" stroke-linecap="round">
-        <!-- Left 45: head turned so the patient's left cheek faces the camera -->
         <g transform="translate(10,6)">
           <ellipse cx="52" cy="44" rx="24" ry="31"/>
-          <path d="M 28.5,48 q -3.6,4.5 -0.4,9"/>            <!-- nose bump past the cheek line -->
-          <path d="M 75,38 q 5,4 1,12"/>                      <!-- visible ear -->
-          <path d="M 36,38 q 3,-2 6,0 M 56,38 q 4,-2 8,0"/>   <!-- eyes -->
-          <path d="M 36,62 q 5,3 10,1"/>                      <!-- mouth -->
+          <path d="M 28.5,48 q -3.6,4.5 -0.4,9"/>
+          <path d="M 75,38 q 5,4 1,12"/>
+          <path d="M 36,38 q 3,-2 6,0 M 56,38 q 4,-2 8,0"/>
+          <path d="M 36,62 q 5,3 10,1"/>
           <line x1="26.6" y1="6" x2="26.6" y2="92" stroke="#C8725A" stroke-width="1.3" stroke-dasharray="3 3"/>
         </g>
-        <!-- Frontal -->
         <g transform="translate(120,6)">
           <ellipse cx="45" cy="44" rx="25" ry="31"/>
-          <path d="M 19,40 q -5,5 0,11 M 71,40 q 5,5 0,11"/>  <!-- both ears -->
+          <path d="M 19,40 q -5,5 0,11 M 71,40 q 5,5 0,11"/>
           <path d="M 32,38 q 3,-2 7,0 M 51,38 q 4,-2 7,0"/>
           <path d="M 45,44 l 0,9"/>
           <path d="M 38,62 q 7,4 14,0"/>
         </g>
-        <!-- Right 45 (mirror of Left 45) -->
         <g transform="translate(320,6) scale(-1,1)">
           <ellipse cx="52" cy="44" rx="24" ry="31"/>
           <path d="M 28.5,48 q -3.6,4.5 -0.4,9"/>
@@ -631,9 +719,9 @@
         <text x="268" y="116">Right 45°</text>
       </g>
     </svg>
-    <p class="guide-rule">The 45° check: the dotted line through the nose tip should just touch the line of the far cheek. Nose well inside the cheek line means the turn is too shallow; nose clearly past it means too far toward profile.</p>
-    <h3>Consistency</h3>
-    <p>Use the same angles, distance, and lighting at every visit so before and after photos stay comparable over time.</p>
+    <p class="guide-rule">The 45° check: the dotted line through the nose tip should just touch the far cheek. Nose well inside the cheek line = turn too shallow. Nose past it = too far toward profile.</p>
+    <p class="guide-rule" style="color:var(--rose);font-weight:600;">The frontal gives the clearest result. The obliques add lower-face context. If in doubt, use frontal only -- one great photo beats three mediocre ones.</p>
+
     <div class="btn-row guide-close"><button class="btn btn-primary" id="guideCloseBtn" type="button">Got it</button></div>
   </div>
 </div>
@@ -662,7 +750,7 @@ const FREE_REGEN_MS = 60000;
 // stay the same module instance (shared face-detection cache). v35 = M9.0
 // jowl blending (alpha lobes over marionette/jowl shadows + prejowl notch-fill
 // warp kernels) (v34 = M8.2 shade reconciliation; v33 = M8.1 convex chin).
-const MASK_MODULE_VERSION = '62';
+const MASK_MODULE_VERSION = '63';
 
 /* M7: a case is one or more ANGLES, each with its own photo, QC result, job,
    and compositor. Treatment settings are shared across the case; the response
@@ -1369,14 +1457,10 @@ function updateIntensityUI(){
     const sl = activeSlot();
     if(!sl || !sl.apply) return;
     if(raf) cancelAnimationFrame(raf);
-    raf = requestAnimationFrame(async () => {
+    raf = requestAnimationFrame(() => {
       const url = sl.apply(pct / 100);
       sl.resultDataUrl = url;
-      // M11.1: apply face crop to keep simulated image the same size as original
-      const displayUrl = sl.faceBbox ? await cropToFace(url, sl.faceBbox) : url;
-      // Invalidate the crop cache so the next renderActiveSlot re-crops
-      if(sl.cropCache) sl.cropCache = { ...sl.cropCache, after: displayUrl };
-      document.getElementById('aiResult').src = displayUrl;
+      document.getElementById('aiResult').src = url;
     });
   });
   // Settle: on release, bring every other finished angle to the same response
@@ -2034,32 +2118,8 @@ async function cropToFace(dataUrl, bbox){
 function renderActiveSlot(){
   const sl = activeSlot();
   const multi = state.selectedAngles.length > 1;
-  // M11.1: apply face crop to display images (result display only; original
-  // full-res goes to the server and export). Async: set original immediately
-  // then swap in cropped version once ready.
-  const beforeSrc = sl.beforeDataUrl || sl.originalDataUrl || '';
-  const afterSrc  = sl.resultDataUrl || beforeSrc;
-  document.getElementById('originalResult').src = beforeSrc;
-  document.getElementById('aiResult').src = afterSrc;
-  if(sl.faceBbox && beforeSrc){
-    (async () => {
-      try {
-        // Cache the crop per slot so tab switches are instant
-        if(!sl.cropCache || sl.cropCache.src !== beforeSrc){
-          const croppedBefore = await cropToFace(beforeSrc, sl.faceBbox);
-          const croppedAfter  = afterSrc && afterSrc !== beforeSrc
-            ? await cropToFace(afterSrc, sl.faceBbox)
-            : croppedBefore;
-          sl.cropCache = { src: beforeSrc, before: croppedBefore, after: croppedAfter };
-        }
-        // Only apply if this slot is still the active one
-        if(state.activeAngle === Object.keys(state.slots).find(k => state.slots[k] === sl)){
-          document.getElementById('originalResult').src = sl.cropCache.before;
-          document.getElementById('aiResult').src = sl.cropCache.after || sl.cropCache.before;
-        }
-      } catch(e){ /* fail silently; full-frame display is already shown */ }
-    })();
-  }
+  document.getElementById('originalResult').src = sl.beforeDataUrl || sl.originalDataUrl || '';
+  document.getElementById('aiResult').src = sl.resultDataUrl || sl.beforeDataUrl || sl.originalDataUrl || '';
   let tag = 'Simulated · ' + treatmentName();
   if(multi) tag += ' · ' + ANGLE_DEF[state.activeAngle].short;
   if(state.type === 'biostim') tag += ' · ' + (state.timeline === '12' ? '12 months' : state.timeline + ' months');
@@ -2112,17 +2172,16 @@ function clampPan(){
   zoomState.panX = Math.max(-maxX, Math.min(maxX, zoomState.panX));
   zoomState.panY = Math.max(-maxY, Math.min(maxY, zoomState.panY));
 }
-// M11.1: allow zoom out to 0.5 (cropped head is tighter than the panel at 100%).
-// Default zoom is 0.7 -- shows the head comfortably with a small margin.
-const ZOOM_DEFAULT = 0.7;
-const ZOOM_MIN = 0.5;
+// M11.1 crop reverted: zoom default back to 1 (100%), min back to 1.
+const ZOOM_DEFAULT = 1;
+const ZOOM_MIN = 1;
 const ZOOM_MAX = 6;
 function setZoom(z){
   zoomState.zoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Math.round(z * 100) / 100));
-  if(zoomState.zoom === ZOOM_MIN || zoomState.zoom === ZOOM_DEFAULT){ zoomState.panX = 0; zoomState.panY = 0; }
+  if(zoomState.zoom === 1){ zoomState.panX = 0; zoomState.panY = 0; }
   clampPan(); applyZoom();
 }
-function resetZoom(){ setZoom(ZOOM_DEFAULT); }
+function resetZoom(){ setZoom(1); }
 
 document.getElementById('zoomIn').addEventListener('click', () => setZoom(zoomState.zoom * 1.5));
 document.getElementById('zoomOut').addEventListener('click', () => setZoom(zoomState.zoom / 1.5));
@@ -2296,17 +2355,11 @@ function simKicker(angleId){
 // single-angle export and the multi-angle case sheet (one row per angle).
 async function drawPair(ctx, angleId, yOff, panelW, panelH, gap, includeText){
   const sl = state.slots[angleId];
-  // M11.1: apply face crop to export images using stored faceBbox
-  const beforeSrc = sl.beforeDataUrl || sl.originalDataUrl;
+  const before = await loadImage(sl.beforeDataUrl || sl.originalDataUrl);
+  // M9.9: exports render at the hi-res grid; the live 1024 frame is the fallback.
   let hiRes = null;
   try { hiRes = await hiResResultFor(angleId); } catch(e){ console.warn('[Visualize] hi-res export render failed; using live frame.', e); }
-  const afterSrc = hiRes || sl.resultDataUrl;
-
-  const croppedBeforeSrc = sl.faceBbox ? await cropToFace(beforeSrc, sl.faceBbox) : beforeSrc;
-  const croppedAfterSrc  = sl.faceBbox && afterSrc ? await cropToFace(afterSrc, sl.faceBbox) : afterSrc;
-
-  const before = await loadImage(croppedBeforeSrc || beforeSrc);
-  const after  = await loadImage(croppedAfterSrc  || afterSrc);
+  const after = await loadImage(hiRes || sl.resultDataUrl);
 
   function cover(img, x, y, w, h){
     const scale = Math.max(w/img.width, h/img.height);
