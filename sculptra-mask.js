@@ -7,25 +7,18 @@
 // background). gpt-image-1's edit endpoint edits only the transparent region, so
 // this physically prevents the global beautification leak.
 //
-// M10.5 (v64): MALE CHIN/JAWLINE ARCHITECTURAL FIX -- TRACKS 1 & 2.
-// Track 1 (mask geometry): sex parameter is now active in buildChinProjectionField.
-// Oblique male: sigC widened (0.085W -> 0.115W) so the editable region is
-// physically broader at the mentum, biasing the AI toward a wide flat geometry.
-// Oblique male: inferior component of chinV zeroed (chinDown = 0 for male vs
-// CHINW_DOWN = 0.012 for female): the downward pull was the primary driver of
-// the tapered-tip shape by biasing the warp field inferiorly; removing it forces
-// purely anterior projection and keeps the warp footprint flat and wide.
-// Frontal male: added lateral chin kernels at commissure-width points, pushing
-// the warp footprint outward so the AI cannot narrow the lower third into a
-// V-line while filling the moved region.
-// centralExt tightened for male: 0.08 -> 0.04. The submental column extension
-// was still opening enough room for AI artifact painting; closing it further
-// blocks the region at the mask level before the AI sees it.
-// Track 2 (prompts.js): hard negative gate front-loaded as the absolute first
-// sentence of FILLER_CHIN_JAWLINE_MALE.expected, before any positive description.
-// Mirrors the SCULPTRA_NLF_CONSTRAINT strategy. Also added a pixel-geometry
-// reference anchor: chin width in the output must not be less than chin width
-// in the original photograph.
+// M10.5 (v65): CALIBRATION PASS after v64 results review.
+// Male chin: mSigC raised 0.115W -> 0.130W (tip still read slightly tapered).
+// Male submental mask: centralExt closed fully to 0.0 (from 0.04). Artifacts
+// appeared at early slider values, proving the mask was the source not the warp.
+// Warp field alone handles male chin projection; the mask must not open the
+// submental zone at all.
+// Male SUBMENT_FLOOR_F: 0.06 -> 0.03 in both compositor functions (belt-and-
+// suspenders defence in case any mask leakage survives to the compositor).
+// Sculptra oblique discolouration: SCULPTRA_BRIGHT_CAP_FULL 18 -> 12. Poorly-lit
+// clinic photos showed warm/tan patches in the lateral cheek zone where the AI's
+// broad brightening exceeded the local light field. Soft-knee cap at 12 limits
+// flat brightness lift without affecting structural shading on well-lit cases.
 // Re-enables applyJawDefinition shadow step at oblique only, with
 // oblique-specific constants (JAWDEF_DARK_OBLIQUE). The frontal retirement
 // (v44: drawn-stroke artifact) stands; at 45 degrees the border is viewed
@@ -1579,9 +1572,11 @@ function buildChinProjectionField(L, w, h, pose, sex){
     // M10.5 Track 1: for male, widen sigC (lateral sigma of the chin kernels).
     // A wider sigma increases the editable region's lateral extent, which forces
     // the AI to fill a geometry that is already wide and flat at the mentum.
-    // Female retains the standard CHINW_SIG_CHIN. Lever: 0.085 -> 0.115 for male.
+    // Female retains the standard CHINW_SIG_CHIN. Lever: 0.085 -> 0.130 for male.
+    // v64 used 0.115; raised to 0.130 (v65) after first calibration showed chin
+    // tip still reading slightly tapered -- more lateral sigma needed.
     // One-constant reversal if it over-widens: set mSigC back to CHINW_SIG_CHIN.
-    const mSigC = isMaleWarp ? 0.115*W : CHINW_SIG_CHIN*W;
+    const mSigC = isMaleWarp ? 0.130*W : CHINW_SIG_CHIN*W;
     const sigC=mSigC, sigJ=CHINW_SIG_JAW*W;
     // Pogonion leads the projection: anchored just above the menton on the
     // anterior chin contour. The menton follows at reduced weight (continuous
@@ -2172,19 +2167,16 @@ function buildTreatAlpha(L, w, h, scope, sex){
           // (central) the mask extends down so the chin can lengthen; toward the
           // jaw and sides it stops at the jawline so the neck is never opened.
           // M11.1: the central extension coefficient is reduced for male faces
-          // (0.12 -> 0.08) because the taller male mentum already reaches lower;
-          // the same absolute extension that works for female anatomy overshoots
-          // into the submental shadow on male faces, where the AI paints filler
-          // artifacts in the neck zone. Female retains 0.12 (tested, artifact-safe).
-          // M10.5 Track 1: tightened further for male (0.08 -> 0.04). Even at
-          // 0.08 the mask was opening enough submental column for the AI to paint
-          // cream/pale artifacts below the chin on male anatomy. The compositor-
-          // level SUBMENT_FLOOR_F defence helps but the root cause is the mask
-          // giving the AI that zone at all. At 0.04 the column extends just enough
-          // for a small chin projection without opening the submental shadow region.
-          // Lever: raise back toward 0.08 only if male chin vertical extension
-          // reads visibly stunted after Track 1 calibration.
-          const centralExt = (sex === 'male') ? 0.04 : 0.12;
+          // (0.12 -> 0.08) because the taller male mentum already reaches lower.
+          // M10.5 Track 1 v64: tightened to 0.04 for male.
+          // M10.5 v65: closed to 0.0 for male. Artifacts appear at early slider
+          // values, which proves the mask is the source -- the warp field alone
+          // is sufficient for male chin projection, and the submental column
+          // extension in the mask was giving the AI the exact zone it needs to
+          // paint cream/pale artifacts. At centralExt=0 the floor becomes a flat
+          // -0.02 jawline cutoff; the warp handles any legitimate vertical extension.
+          // Female retains 0.12 (tested, artifact-safe).
+          const centralExt = (sex === 'male') ? 0.0 : 0.12;
           const central=1-smoothstep(0.10,0.22,alat);     // 1 under the chin, 0 at the jaw/sides
           const floor=-0.02 - centralExt*central;         // jaw cuts at -0.02; chin column extends downward
           const neckTaper=smoothstep(floor, floor+0.05, hF);
@@ -2282,10 +2274,16 @@ const SCULPTRA_DARK_FLOOR = 20;
 // brightening component levels off. Defined as the maximum broad brightening in
 // luma levels reachable at the TOP of the slider; the pre-gain cap is derived
 // from it so retuning the gain does not silently change the ceiling.
-const SCULPTRA_BRIGHT_CAP_FULL = 18;
-// 26 -> 18 (M6.4): with the gain back at 1.0 this IS the full-slider ceiling.
-// 18 sits just above the broad brightening of the renders Andy judged decent
-// (about 13 levels effective) and well below the waxy zone (26+).
+const SCULPTRA_BRIGHT_CAP_FULL = 12;
+// 18 -> 12 (M10.5 v65): Sculptra oblique discolouration on poorly-lit clinic photos.
+// The AI's broad brightening was exceeding the local light field of the original face,
+// creating a warm/tan patch in the lateral cheek zone that reads as colour shift
+// even though chroma is locked. The soft-knee (tanh) cap at 12 limits flat brightness
+// lift earlier. Well-lit cases are unaffected: at typical bright deltas of 8-12 levels
+// the 12 and 18 caps produce nearly identical output. The 12 cap only bites when the
+// AI overbrightens on a poorly-lit region, which is the exact failure mode seen in
+// clinic snapshots with uneven lighting. Reversal: restore to 18 if volume reads
+// flat or insufficiently bright on a well-lit case.
 //
 // M6.4: EXTRAPOLATION RETIRED. The M6.2/M6.3 response gain (1.45, then 1.45
 // with form shaping) was tested against real before/after pairs across three
@@ -2566,7 +2564,7 @@ export async function compositeSculptra(beforeImg, aiImg, opts){
     const faceW = Math.abs(cx1 - cx0) || (w * 0.4);
     const mentonY = p152.y * h;
     const mentonX = p152.x * w;
-    const SUBMENT_FLOOR_F = (sex === 'male') ? 0.06 : 0.09; // tighter for male
+    const SUBMENT_FLOOR_F = (sex === 'male') ? 0.03 : 0.09; // M10.5 v65: 0.06 -> 0.03 for male (artifacts at early slider) // tighter for male
     const SUBMENT_BLEND_F = 0.07;
     for(let y=0; y<h; y++){
       if(y < mentonY) continue; // above menton: never restore
@@ -2720,7 +2718,7 @@ export async function makeSculptraCompositor(beforeImg, aiImg, opts){
     // Mirrors the same protection in compositeSculptra. Precomputed geometry
     // values (mentonY, mentonX, absH, faceW) are closed over from setup.
     if(scope === 'chin_jaw' && !isOverfill){
-      const SUBMENT_FLOOR_F = (sex === 'male') ? 0.06 : 0.09;
+      const SUBMENT_FLOOR_F = (sex === 'male') ? 0.03 : 0.09; // M10.5 v65: 0.06 -> 0.03 for male (artifacts at early slider)
       const SUBMENT_BLEND_F = 0.07;
       for(let y=0; y<h; y++){
         if(y < mentonY) continue;

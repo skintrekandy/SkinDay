@@ -751,7 +751,7 @@ const FREE_REGEN_MS = 60000;
 // stay the same module instance (shared face-detection cache). v35 = M9.0
 // jowl blending (alpha lobes over marionette/jowl shadows + prejowl notch-fill
 // warp kernels) (v34 = M8.2 shade reconciliation; v33 = M8.1 convex chin).
-const MASK_MODULE_VERSION = '64';
+const MASK_MODULE_VERSION = '65';
 
 /* M7: a case is one or more ANGLES, each with its own photo, QC result, job,
    and compositor. Treatment settings are shared across the case; the response
@@ -1991,8 +1991,18 @@ let creditShortfall = false; // M8: set on any 402 during a run
 async function runGeneration(isRegen){
   const auth = await authHeaders();
   creditShortfall = false;
-  const angles = state.selectedAngles.filter(id => state.slots[id].originalDataUrl);
+  let angles = state.selectedAngles.filter(id => state.slots[id].originalDataUrl);
   if(!angles.length) return;
+  // M10.5 v65: when re-generating, only retry failed/idle angles. Already-done
+  // angles keep their result and are never re-charged. Re-generate on a fully-done
+  // case (no failures) still runs all angles (the user wants a fresh result).
+  if(isRegen){
+    const failedOrIdle = angles.filter(id => {
+      const st = state.slots[id].status;
+      return st === 'error' || st === 'idle' || !st;
+    });
+    if(failedOrIdle.length) angles = failedOrIdle;
+  }
   generateBtn.disabled = true; regenBtn.disabled = true;
 
   const t0 = Date.now();
