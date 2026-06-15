@@ -2360,9 +2360,8 @@ function simKicker(angleId){
       // educational so it can never read as the recommended plan.
       const li = levelInfo(state.intensityPct || 70);
       parts.push(li.over ? 'Overfilled · shown for education' : li.name);
-    } else {
-      parts.push(strengthLabel(state.intensityPct || 70)); // Early response / 6 months / Full response
     }
+    // Biostim: timeline already pushed above; strengthLabel would duplicate it.
   }
   return parts.join(' · ');
 }
