@@ -76,6 +76,9 @@
     .area-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
     .area-chip { border:1.5px solid var(--border); background:#fff; border-radius:8px; padding:10px 12px; cursor:pointer; font-size:.82rem; user-select:none; transition:.2s; display:flex; align-items:center; gap:8px; }
     .area-chip:hover { border-color:var(--gold); }
+    .area-chip.soon { opacity:.45; cursor:not-allowed; }
+    .area-chip.soon:hover { border-color:var(--border); }
+    .area-chip.soon .soon-tag { font-size:.55rem; margin-left:auto; letter-spacing:.1em; text-transform:uppercase; color:var(--gold); font-style:normal; font-weight:600; }
     .area-chip.active { border-color:var(--rose); background:#fdf1ee; }
     .area-chip .tick { width:15px; height:15px; border:1.5px solid var(--border); border-radius:4px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:10px; color:#fff; }
     .area-chip.active .tick { background:var(--rose); border-color:var(--rose); }
@@ -191,6 +194,11 @@
     .auth-form input { padding:12px 14px; border-radius:8px; border:1px solid rgba(255,255,255,.25); background:rgba(255,255,255,.06); color:#FAF7F2; font-size:.9rem; font-family:'DM Sans',sans-serif; }
     .auth-form input::placeholder { color:rgba(250,247,242,.45); }
     .auth-hint { font-size:.72rem; color:rgba(250,247,242,.55); line-height:1.5; }
+    .auth-google-btn { display:flex; align-items:center; justify-content:center; gap:10px; width:100%; padding:12px 14px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.22); border-radius:8px; color:#FAF7F2; font-family:'DM Sans',sans-serif; font-size:.88rem; font-weight:500; cursor:pointer; transition:.2s; }
+    .auth-google-btn:hover { background:rgba(255,255,255,.14); border-color:rgba(201,169,110,.5); }
+    .auth-google-btn svg { width:18px; height:18px; flex-shrink:0; }
+    .auth-divider { display:flex; align-items:center; gap:10px; color:rgba(250,247,242,.3); font-size:.72rem; margin:2px 0; }
+    .auth-divider::before, .auth-divider::after { content:''; flex:1; height:1px; background:rgba(255,255,255,.12); }
     .acct-bar { display:none; justify-content:flex-end; align-items:center; gap:14px; padding:8px 28px; background:rgba(28,23,20,.04); border-bottom:1px solid rgba(28,23,20,.07); font-size:.76rem; color:var(--muted); }
     .acct-bar .credits { color:var(--deep); font-weight:500; }
     .linklike { border:none; background:transparent; color:var(--rose); cursor:pointer; font-size:.76rem; text-decoration:underline; padding:0; font-family:'DM Sans',sans-serif; }
@@ -370,6 +378,16 @@
       <button type="button" data-mode="beta">Beta key</button>
     </div>
     <div class="lock-form auth-form" id="authForm" style="display:none;">
+      <button class="auth-google-btn" id="googleAuthBtn" type="button" onclick="handleGoogleAuthVisualize()">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+          <path d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.83z" fill="#FBBC05"/>
+          <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.83c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+        </svg>
+        Continue with Google
+      </button>
+      <div class="auth-divider">or</div>
       <input type="email" id="authEmail" placeholder="Email" autocomplete="email" />
       <input type="password" id="authPassword" placeholder="Password" autocomplete="current-password" />
       <button id="authBtn" type="button">Sign in</button>
@@ -417,7 +435,7 @@
     <div class="card">
       <div class="step-num">Step 1 · What do you want to visualize?</div>
       <div class="type-toggle quad" id="typeToggle">
-        <button class="type-btn soon" data-type="filler" type="button" disabled><strong>HA Fillers</strong><em class="soon-tag">Coming soon</em></button>
+        <button class="type-btn" data-type="filler" type="button"><strong>HA Fillers</strong></button>
         <button class="type-btn active" data-type="biostim" type="button"><strong>Biostimulation</strong></button>
         <button class="type-btn soon" data-type="neurotoxin" type="button" disabled><strong>Neurotoxin</strong><em class="soon-tag">Coming soon</em></button>
         <button class="type-btn soon" data-type="laser" type="button" disabled><strong>Skin &amp; Laser</strong><em class="soon-tag">Coming soon</em></button>
@@ -434,11 +452,11 @@
           <label>Areas (select one or more)</label>
           <div class="area-grid" id="areaGrid">
             <div class="area-chip active" data-area="chin_jawline"><span class="tick">✓</span>Chin + Jawline</div>
-            <div class="area-chip" data-area="nose"><span class="tick">✓</span>Nose</div>
-            <div class="area-chip" data-area="lips"><span class="tick">✓</span>Lips</div>
-            <div class="area-chip" data-area="cheeks"><span class="tick">✓</span>Cheeks</div>
-            <div class="area-chip" data-area="tear_trough"><span class="tick">✓</span>Tear trough</div>
-            <div class="area-chip" data-area="nasolabial_folds"><span class="tick">✓</span>Nasolabial folds</div>
+            <div class="area-chip soon" data-area="nose"><span class="tick">✓</span>Nose<em class="soon-tag">Soon</em></div>
+            <div class="area-chip soon" data-area="lips"><span class="tick">✓</span>Lips<em class="soon-tag">Soon</em></div>
+            <div class="area-chip soon" data-area="cheeks"><span class="tick">✓</span>Cheeks<em class="soon-tag">Soon</em></div>
+            <div class="area-chip soon" data-area="tear_trough"><span class="tick">✓</span>Tear trough<em class="soon-tag">Soon</em></div>
+            <div class="area-chip soon" data-area="nasolabial_folds"><span class="tick">✓</span>Nasolabial folds<em class="soon-tag">Soon</em></div>
           </div>
         </div>
         <div class="field">
@@ -973,6 +991,22 @@ async function submitAuth(){
     btn.disabled = false;
   }
 }
+async function handleGoogleAuthVisualize(){
+  if(!sb){ document.getElementById('authErr').textContent = 'Auth not available.'; return; }
+  const btn = document.getElementById('googleAuthBtn');
+  if(btn){ btn.disabled = true; btn.textContent = 'Redirecting…'; }
+  const { error } = await sb.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: window.location.origin + window.location.pathname,
+      queryParams: { prompt: 'select_account' }
+    }
+  });
+  if(error){
+    document.getElementById('authErr').textContent = error.message;
+    if(btn){ btn.disabled = false; btn.innerHTML = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="width:18px;height:18px;flex-shrink:0"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.83z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.83c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/></svg>Continue with Google'; }
+  }
+}
 document.getElementById('authBtn').addEventListener('click', submitAuth);
 document.getElementById('authPassword').addEventListener('keydown', e => { if(e.key === 'Enter') submitAuth(); });
 document.querySelectorAll('#lockTabs button').forEach(btn =>
@@ -1345,6 +1379,7 @@ function updatePhotoGuide(){
 /* ───────── Filler: areas (multi) ───────── */
 document.querySelectorAll('#areaGrid .area-chip').forEach(chip => {
   chip.addEventListener('click', () => {
+    if(chip.classList.contains('soon')) return; // coming soon area: not selectable
     chip.classList.toggle('active');
     state.areas = [...document.querySelectorAll('#areaGrid .area-chip.active')].map(c => c.dataset.area);
     updatePhotoGuide();
