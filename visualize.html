@@ -550,6 +550,7 @@
       <button class="btn btn-dark" id="downloadBtn">Download side-by-side</button>
       <button class="btn btn-dark" id="sheetBtn" style="display:none;">Download all angles</button>
       <button class="btn btn-light" id="plainBtn">Download plain photos</button>
+      <button class="btn btn-light" id="discardAngleBtn" style="display:none;" title="Remove this angle from the case">Discard this angle</button>
       <button class="btn btn-light" id="newBtn">New case</button>
     </div>
   </section>
@@ -2133,6 +2134,10 @@ function renderActiveSlot(){
   }
   const doneCount = state.selectedAngles.filter(id => state.slots[id].status === 'done').length;
   document.getElementById('sheetBtn').style.display = doneCount > 1 ? '' : 'none';
+  // M11.1: show Discard button when this angle is done and there are multiple angles
+  const sl2 = activeSlot();
+  document.getElementById('discardAngleBtn').style.display =
+    (sl2 && sl2.status === 'done' && state.selectedAngles.length > 1) ? '' : 'none';
   resetZoom();
   hideAnnotations();
 }
@@ -2397,8 +2402,10 @@ async function drawPair(ctx, angleId, yOff, panelW, panelH, gap, includeText){
   label(panelW + gap, true);
 }
 
-// angleIds: one id = the classic side-by-side; several = the case sheet with
-// one row per angle and a single shared footer.
+// angleIds: one id = the classic side-by-side; several = the new horizontal
+// 2-row × 3-col case sheet (top row = originals, bottom row = simulated).
+// Column order: Right 45 | Frontal | Left 45 (matching natural left-to-right
+// read of the face turning from right to left).
 async function drawExport(includeText, angleIds){
   await (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve());
   const ids = angleIds.filter(id => state.slots[id].resultDataUrl);
@@ -2406,42 +2413,109 @@ async function drawExport(includeText, angleIds){
 
   const canvas = document.getElementById('exportCanvas');
   const ctx = canvas.getContext('2d');
-  const panelW = 900, panelH = 1125, gap = 6, rowGap = 6;
   const clinic = includeText ? document.getElementById('clinicName').value.trim() : '';
   const footerH = includeText ? (clinic ? 132 : 104) : 0;
-  canvas.width = panelW * 2 + gap;
-  canvas.height = ids.length * panelH + (ids.length - 1) * rowGap + footerH;
+
+  // Single angle: classic side-by-side (unchanged)
+  if(ids.length === 1){
+    const panelW = 900, panelH = 1125, gap = 6;
+    canvas.width = panelW * 2 + gap;
+    canvas.height = panelH + footerH;
+    ctx.fillStyle = '#1C1714'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    await drawPair(ctx, ids[0], 0, panelW, panelH, gap, includeText);
+    if(includeText) drawExportFooter(ctx, canvas.width, canvas.height - footerH, footerH, clinic);
+    return canvas;
+  }
+
+  // Multi-angle: horizontal 2-row grid.
+  // Column order: r45 | frontal | l45 (right-to-left face turn = natural read).
+  const COL_ORDER = ['r45','frontal','l45'];
+  const cols = COL_ORDER.filter(id => ids.includes(id));
+  // Any ids not in COL_ORDER (edge case) appended at end
+  for(const id of ids){ if(!cols.includes(id)) cols.push(id); }
+
+  const panelW = 720, panelH = 900, gap = 5;
+  canvas.width  = cols.length * panelW + (cols.length - 1) * gap;
+  canvas.height = 2 * panelH + gap + footerH;
   ctx.fillStyle = '#1C1714'; ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  let y = 0;
-  for(const id of ids){
-    await drawPair(ctx, id, y, panelW, panelH, gap, includeText);
-    y += panelH + rowGap;
+  for(let ci = 0; ci < cols.length; ci++){
+    const id = cols[ci];
+    const sl = state.slots[id];
+    const x = ci * (panelW + gap);
+    const before = await loadImage(sl.beforeDataUrl || sl.originalDataUrl);
+    let hiRes = null;
+    try { hiRes = await hiResResultFor(id); } catch(e){}
+    const after = await loadImage(hiRes || sl.resultDataUrl);
+
+    // Cover-fit helper
+    function cover(img, dx, dy, dw, dh){
+      const scale = Math.max(dw / img.naturalWidth, dh / img.naturalHeight);
+      const sw = img.naturalWidth * scale, sh = img.naturalHeight * scale;
+      ctx.drawImage(img, dx + (dw - sw)/2, dy + (dh - sh)/2, sw, sh);
+    }
+
+    // Top row: originals
+    ctx.save(); ctx.beginPath(); ctx.rect(x, 0, panelW, panelH); ctx.clip();
+    cover(before, x, 0, panelW, panelH);
+    ctx.restore();
+
+    // Bottom row: simulated
+    const yBot = panelH + gap;
+    ctx.save(); ctx.beginPath(); ctx.rect(x, yBot, panelW, panelH); ctx.clip();
+    cover(after, x, yBot, panelW, panelH);
+    ctx.restore();
+
+    // Labels -- only on the bottom (simulated) panel to keep top row clean
+    if(includeText){
+      const kicker = simKicker(id);
+      ctx.save();
+      // Original label (top panel)
+      ctx.font = '300 15px "DM Sans", sans-serif';
+      ctx.fillStyle = 'rgba(250,247,242,.65)';
+      ctx.textAlign = 'left';
+      ctx.fillText('AS PHOTOGRAPHED', x + 22, panelH - 56);
+      ctx.font = '400 38px "Cormorant Garamond", serif';
+      ctx.fillStyle = 'rgba(250,247,242,.95)';
+      ctx.fillText('Original', x + 22, panelH - 26);
+      // Simulated label (bottom panel)
+      ctx.font = '300 13px "DM Sans", sans-serif';
+      ctx.fillStyle = '#C9A96E';
+      ctx.textAlign = 'left';
+      ctx.letterSpacing = '0.06em';
+      ctx.fillText(kicker.toUpperCase(), x + 22, yBot + panelH - 56);
+      ctx.letterSpacing = '0px';
+      ctx.font = '400 38px "Cormorant Garamond", serif';
+      ctx.fillStyle = 'rgba(250,247,242,.95)';
+      ctx.fillText('Simulated', x + 22, yBot + panelH - 26);
+      ctx.restore();
+    }
   }
 
-  if(includeText){
-    const yF = canvas.height - footerH;
-    ctx.fillStyle = '#1C1714'; ctx.fillRect(0, yF, canvas.width, footerH);
-    ctx.textAlign = 'center';
-    ctx.font = '300 22px "DM Sans", sans-serif'; ctx.fillStyle = 'rgba(250,247,242,.80)';
-    ctx.fillText('AI-generated visualization for consultation purposes only. Not a prediction of actual results.', canvas.width/2, yF + 36);
-    let brandY = yF + 74;
-    if(clinic){
-      ctx.font = '500 23px "DM Sans", sans-serif'; ctx.fillStyle = 'rgba(250,247,242,.92)';
-      ctx.fillText(clinic, canvas.width/2, yF + 72);
-      brandY = yF + 108;
-    }
-    // "Powered by SkinDay Visualize": two-tone, centered
-    const pre = 'Powered by ', brand = 'SkinDay Visualize';
-    ctx.font = '500 19px "DM Sans", sans-serif';
-    const preW = ctx.measureText(pre).width, brandW = ctx.measureText(brand).width;
-    const startX = (canvas.width - (preW + brandW)) / 2;
-    ctx.textAlign = 'left';
-    ctx.fillStyle = 'rgba(181,168,159,.85)'; ctx.fillText(pre, startX, brandY);
-    ctx.fillStyle = '#C9A96E'; ctx.fillText(brand, startX + preW, brandY);
-    ctx.textAlign = 'center';
-  }
+  if(includeText) drawExportFooter(ctx, canvas.width, canvas.height - footerH, footerH, clinic);
   return canvas;
+}
+
+// Shared footer renderer used by both single and multi-angle exports
+function drawExportFooter(ctx, totalW, yF, footerH, clinic){
+  ctx.fillStyle = '#1C1714'; ctx.fillRect(0, yF, totalW, footerH);
+  ctx.textAlign = 'center';
+  ctx.font = '300 22px "DM Sans", sans-serif'; ctx.fillStyle = 'rgba(250,247,242,.80)';
+  ctx.fillText('AI-generated visualization for consultation purposes only. Not a prediction of actual results.', totalW/2, yF + 36);
+  let brandY = yF + 74;
+  if(clinic){
+    ctx.font = '500 23px "DM Sans", sans-serif'; ctx.fillStyle = 'rgba(250,247,242,.92)';
+    ctx.fillText(clinic, totalW/2, yF + 72);
+    brandY = yF + 108;
+  }
+  const pre = 'Powered by ', brand = 'SkinDay Visualize';
+  ctx.font = '500 19px "DM Sans", sans-serif';
+  const preW = ctx.measureText(pre).width, brandW = ctx.measureText(brand).width;
+  const startX = (totalW - (preW + brandW)) / 2;
+  ctx.textAlign = 'left';
+  ctx.fillStyle = 'rgba(181,168,159,.85)'; ctx.fillText(pre, startX, brandY);
+  ctx.fillStyle = '#C9A96E'; ctx.fillText(brand, startX + preW, brandY);
+  ctx.textAlign = 'center';
 }
 
 async function downloadExport(includeText, allAngles){
@@ -2459,6 +2533,31 @@ async function downloadExport(includeText, allAngles){
 document.getElementById('downloadBtn').addEventListener('click', () => downloadExport(true, false));
 document.getElementById('sheetBtn').addEventListener('click', () => downloadExport(true, true));
 document.getElementById('plainBtn').addEventListener('click', () => downloadExport(false, false));
+
+// M11.1: Discard this angle -- resets the slot and removes it from the tab/results
+// without affecting other angles. One bad oblique never kills a good frontal.
+document.getElementById('discardAngleBtn').addEventListener('click', () => {
+  const id = state.activeAngle;
+  const sl = state.slots[id];
+  if(!sl || sl.status !== 'done') return;
+  // Reset slot fully
+  state.slots[id] = makeSlot();
+  // Switch to another done angle if available
+  const remaining = state.selectedAngles.filter(a => state.slots[a].status === 'done');
+  if(remaining.length){
+    state.activeAngle = remaining[0];
+    renderTabs();
+    renderActiveSlot();
+  } else {
+    // No done angles left -- go back to the upload/configure state
+    document.getElementById('resultSection').style.display = 'none';
+    document.getElementById('generateSection').style.display = '';
+    document.getElementById('angleTabs').style.display = 'none';
+    syncGenerateBtn();
+  }
+  const doneCount = state.selectedAngles.filter(a => state.slots[a].status === 'done').length;
+  document.getElementById('sheetBtn').style.display = doneCount > 1 ? '' : 'none';
+});
 
 /* ───────── New case (proper reset, no reload) ───────── */
 document.getElementById('newBtn').addEventListener('click', () => {
