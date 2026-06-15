@@ -2479,7 +2479,7 @@
   <ul class="nav-links"></ul>
   <div class="nav-ctas">
     <!-- Auth state: shown when logged out -->
-    <button class="nav-signin-btn" id="navSignInBtn" onclick="openAuthModal()">Sign In</button>
+    <button class="nav-signin-btn" id="navSignInBtn" onclick="openAuthModal()">Client Sign In</button>
     <!-- Auth state: shown when logged in -->
     <div style="position:relative;display:none;" id="navUserMenu">
       <button class="nav-user-btn" id="navUserBtn" onclick="toggleUserDropdown()">
@@ -2489,7 +2489,6 @@
       </button>
       <div class="nav-user-dropdown" id="navUserDropdown">
         <a href="/account.html">My Account</a>
-        <a href="/visualize.html">Visualize</a>
         <button class="signout" onclick="handleSignOut()">Sign Out</button>
       </div>
     </div>
@@ -2506,7 +2505,7 @@
   <div class="nav-overlay-links">
     <a href="/">Browse Clinics</a>
     <a href="/about.html">About</a>
-    <a href="/account.html" class="cta-link" id="mobileAuthLink">Sign In</a>
+    <a href="/account.html" class="cta-link" id="mobileAuthLink">Client Sign In</a>
     <a href="/claim.html" class="cta-link">Claim Your Clinic</a>
     <a href="/editor.html" class="cta-link">Clinic Portal</a>
   </div>
@@ -3259,7 +3258,7 @@
       <ul>
         <li><a href="/claim.html">Claim Your Listing</a></li>
         <li><a href="/studio.html" style="color:var(--gold);">Studio — Free Photo Tool</a></li>
-        <li><a href="/visualize.html" style="color:var(--gold);">Visualize — Coming Soon</a></li>
+        <li><a href="/visualize.html" style="color:var(--gold);">Visualize — Now in Beta</a></li>
       </ul>
     </div>
     <div class="footer-links">
@@ -4351,7 +4350,7 @@ function setLoggedOut() {
   // Reset mobile overlay link
   const mobileLink = document.getElementById('mobileAuthLink');
   if (mobileLink) {
-    mobileLink.textContent = 'Sign In';
+    mobileLink.textContent = 'Client Sign In';
     mobileLink.href = '/account.html';
   }
 
@@ -6546,7 +6545,7 @@ function openMapClinicModal(id) { openMapModal(String(id)); }
   <div class="auth-modal">
     <button class="auth-modal-close" onclick="closeAuthModal()">✕</button>
     <div class="auth-modal-logo">Skin<span>Day</span></div>
-    <div class="auth-modal-tagline">Save clinics, track your shortlist, and access SkinDay Visualize.</div>
+    <div class="auth-modal-tagline">Save clinics, track your shortlist, and more.</div>
     <div class="auth-modal-hint" id="authModalHint" style="display:none;"></div>
 
     <button class="auth-google-btn" onclick="handleGoogleSignIn()">
