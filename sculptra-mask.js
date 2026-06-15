@@ -17,6 +17,23 @@
 // Sculptra oblique discolouration: SCULPTRA_BRIGHT_CAP_FULL 18 -> 12.
 //
 // M10.5 (v66): MALE CHIN TIP EXCLUDED FROM AI MASK.
+// M10.5 (v68): FOUR TARGETED FIXES based on batch review.
+// (1) Outline gate menton floor corrected: v67 used p152.y + |faceH|*factor but
+//     faceH is a dot-product projection underestimating actual pixel height at
+//     oblique. v68 uses the actual lowest image-y coordinate among all face oval
+//     landmarks + 1.5%W margin. Pose-invariant; fixes persistent blob on tilted
+//     head oblique cases.
+// (2) applyWarpShadeFix now two-sided: added dark-undershoot correction for chin
+//     shadow pixels arriving too dark on the neck zone (the dark patch artifact).
+//     Gated on moderate displacement (mag<=8) and destination being lighter than
+//     source; WARP_SHADE_DARK_PULL=0.40 is conservative.
+// (3) SCULPTRA_DARK_FLOOR 20->12: reduces dark discolouration patches in the
+//     lateral lower-cheek zone on lighter-skinned patients at oblique view.
+// (4) NLF anterior push kernel added to oblique Sculptra buildLiftField: pushes
+//     near-side ala-to-commissure zone anteriorly to shallow the NLF shadow.
+//     SCULP_NLF_ANT=0.016W. Reinforces the prompt-level NLF constraint with
+//     deterministic geometry.
+//
 // M10.5 (v67): OUTLINE GATE HARDENING -- fixes white blob artifacts at chin on
 // oblique views for all sexes. Root cause: MediaPipe's face oval overshoots the
 // real jaw-neck boundary at oblique angles, and the luma gate passed chin-shadow
@@ -1075,6 +1092,32 @@ function buildLiftField(L, w, h, pose){
       }
     }
 
+    // (4) M10.5 v68: NLF anterior push kernel.
+    // The nasolabial fold at oblique view is a shadow crease running from the
+    // near-side ala down toward the commissure. Pushing the midpoint of this
+    // zone anteriorly (toward the camera) shallows the crease shadow by bringing
+    // the fold wall forward -- the same mechanism as real Sculptra lateral support
+    // softening the fold secondarily. The kernel anchors at the midpoint between
+    // the near-side ala and near-side commissure. Vector is anterior only (no
+    // superior component -- the fold softens by advancing, not by lifting).
+    // SCULP_NLF_ANT: conservative magnitude. The NLF constraint in the prompt
+    // prohibits deepening; this kernel ensures the warp reinforces that by
+    // physically moving the fold zone forward.
+    // One-constant reversal: set SCULP_NLF_ANT to 0.
+    const SCULP_NLF_ANT = 0.016; // fraction of W, anterior push at the NLF midpoint
+    const SCULP_NLF_SIG = 0.12;  // kernel breadth, fraction of W
+    const nearCom = (nearSide === 'right') ? lm[COMMISSURE.r] : lm[COMMISSURE.l];
+    if(nearAla && nearCom){
+      const nlfC = lerp(nearAla, nearCom, 0.45); // slightly above midpoint, where shadow is deepest
+      const nlfV = mul(antDir, SCULP_NLF_ANT*W);
+      const sigNLF = SCULP_NLF_SIG*W;
+      kernels.push({
+        ax: nlfC.x, ay: nlfC.y, bx: nlfC.x, by: nlfC.y,
+        twoSig: 2*sigNLF*sigNLF, vx: nlfV.x, vy: nlfV.y,
+        capsule: false
+      });
+    }
+
   } else {
     // Frontal branch: midface re-drape and temple convexity kernels.
     // v52: jowl re-drape kernel REMOVED from frontal. The kernel was creating
@@ -1259,9 +1302,21 @@ function buildLowLuma(b, w, h, W){
   return blurAlpha(m, w, h, Math.max(2, Math.round(WARP_SHADE_BLUR*W)));
 }
 
-// M8.2: one-sided shading reconciliation inside the warped band (see header).
+// M8.2: two-sided shading reconciliation inside the warped band.
 // o = composited+warped pixels (mutated), lowY = buildLowLuma of the original,
 // f = the warp field (its sx/sy mark moved destinations, its bbox bounds the pass).
+// M10.5 v68: added symmetric dark-undershoot correction. The original pass only
+// corrected pixels that arrived too bright (chin skin displacing over a darker
+// zone). The oblique chin artifact (dark patch below chin tip) is the inverse:
+// chin shadow pixels displacing over a lighter neck zone and arriving too dark.
+// The undershoot correction brightens these back toward the destination light
+// field, gated on the destination being lighter than the arriving pixel by more
+// than WARP_SHADE_MARGIN. Both directions are one-sided and pull-rate controlled.
+// WARP_SHADE_DARK_PULL: how aggressively to brighten undershooting pixels.
+// Lower than WARP_SHADE_PULL (bright) because the chin shadow arriving on the
+// neck should be partially allowed (it is real anatomy); only extreme undershoots
+// need correction.
+const WARP_SHADE_DARK_PULL = 0.40;
 function applyWarpShadeFix(o, lowY, f, w){
   for(let y=f.y0; y<=f.y1; y++){
     const row=y*w;
@@ -1271,15 +1326,27 @@ function applyWarpShadeFix(o, lowY, f, w){
       if(mag<0.5) continue;                       // outside the moved band
       const Yo=lowY[i];
       const subj=smoothstep(GATE_LUMA_LO, GATE_LUMA_HI, Yo);
-      if(subj<=0) continue;                       // backdrop/hair: never darken
+      if(subj<=0) continue;                       // backdrop/hair: skip
       const p4=i*4;
       const Yr=0.299*o[p4]+0.587*o[p4+1]+0.114*o[p4+2];
-      const excess=Yr-(Yo+WARP_SHADE_MARGIN);
-      if(excess<=0) continue;                     // one-sided: shadows untouched
       const band=Math.min(1, mag/2);              // feather at the band edge
-      const target=Yr - WARP_SHADE_PULL*excess*subj*band;
-      const fct=target/Math.max(1, Yr);
-      o[p4]*=fct; o[p4+1]*=fct; o[p4+2]*=fct;
+      const excess=Yr-(Yo+WARP_SHADE_MARGIN);
+      if(excess>0){
+        // Bright correction: displaced pixels too bright for destination
+        const target=Yr - WARP_SHADE_PULL*excess*subj*band;
+        const fct=target/Math.max(1, Yr);
+        o[p4]*=fct; o[p4+1]*=fct; o[p4+2]*=fct;
+      } else {
+        // Dark correction: displaced pixels too dark for destination (chin shadow on neck)
+        // Only fire where destination is appreciably brighter than arriving pixel
+        const undershoot=Yo - WARP_SHADE_MARGIN - Yr;
+        if(undershoot <= 0) continue;
+        // Gate further: only in the decay zone of the warp field (moderate mag),
+        // not at the peak displacement (where the chin is actually projecting there).
+        if(mag > 8) continue; // skip high-displacement pixels -- those are chin projecting legitimately
+        const addv = WARP_SHADE_DARK_PULL * undershoot * subj * band;
+        o[p4]+=addv; o[p4+1]+=addv; o[p4+2]+=addv;  // clamped by typed array
+      }
     }
   }
 }
@@ -1838,10 +1905,20 @@ function buildOutlineGate(L, w, h, b){
   const dirOut = { x:-dirUp.y, y:dirUp.x };
   const W = Math.abs(dot(sub(lm[454], lm[234]), dirOut)) || 1;
   const faceH = (dot(sub(lm[10], p152), dirUp)) || 1;
-  // M10.5 v67: hard menton floor in image-space y.
-  // faceH is negative (p10 is above p152 in image coords, lower y value).
-  // Below p152 means larger y values, so floor is p152.y + |faceH|*GATE_MENTON_FLOOR_F.
-  const mentonFloorY = p152.y + Math.abs(faceH) * GATE_MENTON_FLOOR_F;
+  // M10.5 v68: hard menton floor, corrected computation.
+  // v67 used p152.y + |faceH|*factor, but faceH is a projected dot-product
+  // (not raw pixel height) and at oblique angles it significantly underestimates
+  // the actual pixel distance, making the floor too conservative.
+  // Fix: find the actual lowest image-y coordinate among all face oval landmarks
+  // (largest y value = lowest pixel on screen), then add a fixed pixel margin
+  // scaled from W. This is pose-invariant and works correctly at any head tilt.
+  // The AI has no legitimate reason to paint below the oval's lowest vertex;
+  // the warp handles chin projection deterministically in that zone.
+  let ovalLowestY = p152.y;
+  for(const idx of FACE_OVAL){ const p=lm[idx]; if(p && p.y > ovalLowestY) ovalLowestY = p.y; }
+  // Add a small margin (1.5% of W) below the lowest oval point as a soft buffer
+  // for the warp's displaced pixels; anything below that is neck/background.
+  const mentonFloorY = ovalLowestY + 0.015 * W;
 
   // Oval polygon with the lower-face vertices pulled slightly inward.
   const pts = [];
@@ -2298,10 +2375,16 @@ function buildTreatAlpha(L, w, h, scope, sex){
 // lock handles it independently. SCULPTRA_DARK_FLOOR is the single lever for how
 // much 3D form the volume is allowed: raise for bolder projection, lower toward 0
 // if a case ever reads hollow instead of full.
-const SCULPTRA_DARK_FLOOR = 20;
-// DARK_FLOOR 14 -> 20 (M6.3): more underside shadow allowance is what makes the
-// amplified volume read as 3D form instead of flat brightness. Chroma stays
-// locked, so this cannot reintroduce the brown mud.
+// M10.5 v68: SCULPTRA_DARK_FLOOR reduced 20 -> 12. The 20-level allowance was
+// producing visible dark discolouration patches in the lateral lower-cheek zone
+// on lighter-skinned patients at oblique view (image 10 red rectangle). The AI's
+// broad darkening in the lower_cheek zone with normal skin tone reads as a muddy
+// shadow patch rather than volume. At 12 levels the 3D form shading is still
+// present and clinically readable but the worst-case darkening on light skin is
+// halved. Chroma stays locked so no brown/colour shift is possible; this governs
+// only the luminance floor. Reversal: restore to 20 if volume reads flat on a
+// well-lit darker-skin case.
+const SCULPTRA_DARK_FLOOR = 12;
 //
 // M6.3 BRIGHT CAP. Broad brightening SATURATES perceptually: past a ceiling it
 // stops reading as restored volume and starts erasing the natural shading
