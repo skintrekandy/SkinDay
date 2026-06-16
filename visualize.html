@@ -541,7 +541,7 @@
 
       <div class="status"><div class="dot" id="dot"></div><span id="statusText">Choose a treatment, then add the patient photos</span></div>
 
-      <div class="btn-row" style="text-align:center;"><button class="btn btn-primary" id="generateBtn" disabled>Generate simulated preview</button></div>
+      <div class="btn-row" style="text-align:center;margin-top:18px;"><button class="btn btn-primary" id="generateBtn" disabled>Generate simulated preview</button></div>
       <div class="cost-note" id="costNote"></div>
     </div>
   </section>
@@ -627,7 +627,7 @@
 <div class="guide-modal hidden" id="creditsInfoModal">
   <div class="guide-card">
     <h2>How credits work</h2>
-    <p>Credits are spent only when a simulation is generated. Each angle of a case is one generation: <strong>HA filler costs <span id="ciFiller">1</span> credit(s) per angle</strong> and <strong>biostimulator costs <span id="ciBiostim">2</span> credit(s) per angle</strong>, so a full 3-angle HA case is <span id="ciCaseF">3</span> credits and a 3-angle biostimulator case is <span id="ciCaseB">6</span>.</p>
+    <p>Credits are spent only when a simulation is generated. Each angle of a case is one generation: <strong>HA filler costs <span id="ciFiller">1</span> credit(s) per angle</strong> and <strong>biostimulator costs <span id="ciBiostim">2</span> credit(s) per angle</strong>, so a full 3-angle HA case is <span id="ciCaseF">3</span> credits and a 3-angle biostimulator case is <span id="ciCaseB">6</span>. The Enhanced course preview costs 1 additional credit per angle.</p>
     <p>Everything after generation is free: adjusting the response slider, comparing angles, exporting and downloading, and re-generating within 60 seconds of a result. If a generation fails or is blocked by the AI provider's safety system, its credits are refunded to your balance automatically.</p>
     <p>Purchased credits do not expire. New accounts start with a small free balance so you can try the tool on a real consultation first.</p>
     <p><strong>Independence note:</strong> Visualize credits are a clinic tool purchase only. Buying credits never affects a clinic's ranking, search placement, reviews, or visibility anywhere on SkinDay.</p>
@@ -2271,13 +2271,72 @@ regenBtn.addEventListener('click', () => runGeneration(true));
    belongs to the same user and completed successfully).
    The button toggles between "Generate Strong Response" and "View Standard /
    View Strong" after the strong result is ready. */
-const STRONG_PROMPT_SUFFIX = ' NOTICEABLE BIOSTIMULATOR RESPONSE: Generate a realistic, identity-preserving visualization of a strong but believable biostimulator response at approximately 6-9 months. Preserve exactly: the same person and identity, same age category, same expression, same eyes and eyelid shape and brow position, same nose and lips and mouth shape, same hair and hairline and ears and clothing and background and camera angle, original skin texture and pores and pigmentation and natural asymmetry, original ethnic features and facial character. Clinical effects to simulate: improved temple and lateral cheek support, fuller but natural midface scaffolding, softer lid-cheek transition from below without changing the eyes, reduced lower-cheek hollowing, softened nasolabial and marionette shadows, subtle prejowl support, slightly more supported facial contour. For male patients: maintain masculine facial structure, preserve original jaw and chin phenotype, do not feminize the lower face, do not narrow the lower third, do not create a pointed chin, support the midface and lower face while keeping a natural masculine contour. Hard limits: do not make this look like HA filler. Do not create obvious chin projection. Do not slim the face or create a V-line. Do not change jaw width, eye size or shape, lip size or shape, or the nose. Do not over-smooth skin. Do not remove wrinkles, pores, pigmentation, or texture. Do not make the patient look like a different person. Do not beautify generically. Do not make the result look like a filter or retouching app. This is improved support, not beautification. For frontal-view images: face outline, jaw width, and overall face shape must be identical to the original. Changes are internal scaffold only, never silhouette.';
+const STRONG_PROMPT_SUFFIX = ' UPPER-RANGE BIOSTIMULATOR PREVIEW: This should look like the exact same clinical photograph taken 6 months later after a strong but realistic Sculptra/biostimulator response. Not a transformation. Not a retouched portrait. The same person, same age, same camera, same lighting, same expression, same everything — except the face has more collagen-supported structure in specific zones. Allowed changes only: mild-to-moderate restoration of temple and lateral cheek hollowing; improved cheek and submalar support; nasolabial and marionette shadow softened by approximately 20%, not erased; slightly improved prejowl transition and lower-face support; healthier volume distribution that is broad, soft, and gradual. Do not change: eyes, eyelids, brows, gaze, nose, lips, teeth, ears, hair, hairline, headband, clothing, background, crop, or neck anatomy. Do not slim the face. Do not sharpen the jawline. Do not erase forehead lines, under-eye texture, pores, pigmentation, beard shadow, asymmetry, or normal skin shine. Do not make the skin smoother, brighter, or more even. Do not make the patient look younger. Do not create a facelift, filler, or de-aging effect. Do not beautify. The result should be noticeable only when compared side-by-side, but believable enough that a clinician would not feel embarrassed showing it in consultation. Strong means more complete collagen support, not more transformation.';
 
+// Start an enhanced-course generation for a single angle slot.
+async function startEnhancedSlot(angleId, auth){
+  const sl = state.slots[angleId];
+  if(!sl || sl.status !== 'done' || !sl.jobId) return;
+  if(sl.strongStatus === 'generating') return;
+
+  sl.strongStatus = 'generating';
+  sl.viewMode = 'standard';
+
+  const formData = new FormData();
+  const resp = await fetch(sl.beforeDataUrl || sl.originalDataUrl);
+  const blob = await resp.blob();
+  formData.append('image', blob, 'photo.jpg');
+  formData.append('type', state.type);
+  formData.append('product', state.product || 'sculptra');
+  formData.append('timeline', state.timeline || '6');
+  formData.append('projection', 'optimistic');
+  formData.append('intensity', 'enhanced');
+  if(state.sex) formData.append('sex', state.sex);
+  formData.append('angle', angleId);
+  formData.append('note', STRONG_PROMPT_SUFFIX);
+  formData.append('isStrongPass', 'true');
+  formData.append('sourceJobId', sl.jobId);
+
+  const startRes = await fetch('/.netlify/functions/start-visualization', {
+    method: 'POST', headers: auth, body: formData
+  });
+  if(!startRes.ok){
+    const err = await startRes.json().catch(() => ({}));
+    throw new Error(err.error || 'Enhanced pass failed to start');
+  }
+  const { jobId } = await startRes.json();
+  sl.strongJobId = jobId;
+
+  // Poll this angle
+  const pollStrong = async () => {
+    if(sl.strongStatus !== 'generating') return;
+    try {
+      const pollRes = await fetch('/.netlify/functions/get-visualization?jobId=' + encodeURIComponent(jobId), { headers: auth });
+      const data = await pollRes.json();
+      if(data.state === 'done'){
+        sl.strongDataUrl = data.image;
+        sl.strongStatus = 'done';
+        // Auto-switch active angle to enhanced view when it lands
+        if(angleId === state.activeAngle) sl.viewMode = 'strong';
+        updateStrongBtn();
+        if(angleId === state.activeAngle) applyActiveView();
+      } else if(data.state === 'error'){
+        sl.strongStatus = 'error';
+        updateStrongBtn();
+      } else {
+        setTimeout(pollStrong, 3000);
+      }
+    } catch(e){ setTimeout(pollStrong, 5000); }
+  };
+  setTimeout(pollStrong, 4000);
+}
+
+// Run enhanced course for ALL done angles at once (single click).
 async function runStrongPass(){
   const sl = activeSlot();
-  if(!sl || sl.status !== 'done' || !sl.jobId) return;
+  if(!sl) return;
 
-  // If strong result already exists, toggle view instead of regenerating
+  // If active angle already has a strong result done, just toggle view
   if(sl.strongStatus === 'done' && sl.strongDataUrl){
     sl.viewMode = (sl.viewMode === 'strong') ? 'standard' : 'strong';
     updateStrongBtn();
@@ -2285,79 +2344,23 @@ async function runStrongPass(){
     return;
   }
 
-  // Already generating
-  if(sl.strongStatus === 'generating') return;
+  // Collect all done angles that don't yet have a strong result
+  const toRun = state.selectedAngles.filter(id => {
+    const s = state.slots[id];
+    return s && s.status === 'done' && s.jobId && s.strongStatus !== 'done' && s.strongStatus !== 'generating';
+  });
+  if(!toRun.length) return;
 
-  sl.strongStatus = 'generating';
-  sl.viewMode = 'standard';
-  updateStrongBtn();
-
-  try {
-    const auth = await authHeaders();
-    const formData = new FormData();
-
-    // Use the original (pre-composite) photo -- same as the standard generation
-    const resp = await fetch(sl.beforeDataUrl || sl.originalDataUrl);
-    const blob = await resp.blob();
-    formData.append('image', blob, 'photo.jpg');
-
-    // Copy all treatment params from state
-    formData.append('type', state.type);
-    formData.append('product', state.product || 'sculptra');
-    formData.append('timeline', state.timeline || '6');
-    formData.append('projection', 'optimistic');
-    formData.append('intensity', 'enhanced');
-    if(state.sex) formData.append('sex', state.sex);
-    if(ANGLE_DEF[state.activeAngle]) formData.append('angle', state.activeAngle);
-    formData.append('note', STRONG_PROMPT_SUFFIX);
-
-    // Strong pass flags -- no mask, source job for free credit verification
-    formData.append('isStrongPass', 'true');
-    formData.append('sourceJobId', sl.jobId);
-
-    const startRes = await fetch('/.netlify/functions/start-visualization', {
-      method: 'POST',
-      headers: auth,
-      body: formData
-    });
-
-    if(!startRes.ok){
-      const err = await startRes.json().catch(() => ({}));
-      throw new Error(err.error || 'Strong pass failed to start');
+  const auth = await authHeaders();
+  // Start all angles concurrently; each polls independently
+  await Promise.allSettled(toRun.map(async id => {
+    try { await startEnhancedSlot(id, auth); }
+    catch(e){
+      console.error('Enhanced pass error for ' + id + ':', e);
+      state.slots[id].strongStatus = 'error';
     }
-
-    const { jobId } = await startRes.json();
-    sl.strongJobId = jobId;
-
-    // Poll for result
-    const pollStrong = async () => {
-      if(sl.strongStatus !== 'generating') return;
-      try {
-        const pollRes = await fetch('/.netlify/functions/get-visualization?jobId=' + encodeURIComponent(jobId), { headers: auth });
-        const data = await pollRes.json();
-        if(data.state === 'done'){
-          sl.strongDataUrl = data.image;
-          sl.strongStatus = 'done';
-          sl.viewMode = 'strong';
-          updateStrongBtn();
-          applyActiveView();
-        } else if(data.state === 'error'){
-          sl.strongStatus = 'error';
-          updateStrongBtn();
-        } else {
-          setTimeout(pollStrong, 3000);
-        }
-      } catch(e){
-        setTimeout(pollStrong, 5000);
-      }
-    };
-    setTimeout(pollStrong, 4000);
-
-  } catch(e){
-    console.error('Strong pass error:', e);
-    sl.strongStatus = 'error';
-    updateStrongBtn();
-  }
+  }));
+  updateStrongBtn();
 }
 
 function updateStrongBtn(){
