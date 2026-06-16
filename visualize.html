@@ -222,7 +222,7 @@
     #mobileSliderBar {
       display: none;
     }
-    @media(pointer: coarse){
+    @media(pointer: coarse) and (max-width: 768px){
       /* Extra bottom padding so the sticky bar never covers output content */
       body.slider-bar-active .page { padding-bottom: 116px; }
       #mobileSliderBar {
@@ -1597,7 +1597,7 @@ function updateIntensityUI(){
   canonical.addEventListener('touchend', () => applySnap(canonical), { passive:true });
 
   // ── Bar visibility: show on any touch device regardless of orientation
-  function isMobile(){ return window.matchMedia('(pointer: coarse)').matches; }
+  function isMobile(){ return window.matchMedia('(pointer: coarse) and (max-width: 768px)').matches; }
 
   const msbDownloadBtn = document.getElementById('msbDownloadBtn');
   const msbRegenLink   = document.getElementById('msbRegenLink');
