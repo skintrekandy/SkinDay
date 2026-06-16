@@ -101,7 +101,17 @@
     .dot.ok { background:#3D7A55; }
     .dot.warn { background:var(--rose); }
     @keyframes blink { 0%,100%{opacity:1}50%{opacity:.3} }
-    .btn-row { display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin-top:18px; }
+    .btn-gold { background:var(--gold); color:#fff; border-color:var(--gold); font-weight:600; }
+    .btn-gold:hover { background:#b8954f; border-color:#b8954f; }
+    .btn-gold:disabled { opacity:.45; cursor:not-allowed; }
+    .btn-gold.viewing { background:transparent; color:var(--gold); border-color:var(--gold); }
+    .strong-badge { display:inline-block; padding:2px 7px; border-radius:4px; background:rgba(201,169,110,.18); border:1px solid rgba(201,169,110,.4); color:var(--gold); font-size:.65rem; letter-spacing:.08em; text-transform:uppercase; font-weight:600; vertical-align:middle; margin-left:6px; }
+    /* Strong Response view toggle */
+    .view-toggle { display:flex; gap:0; border:1px solid var(--border); border-radius:6px; overflow:hidden; margin:8px 0 4px; }
+    .view-toggle button { flex:1; padding:6px 14px; background:#fff; border:none; font-size:.78rem; color:var(--muted); cursor:pointer; transition:.15s; }
+    .view-toggle button.active { background:var(--deep); color:var(--cream); font-weight:600; }
+    .view-toggle button.strong-tab { color:var(--gold); }
+    .view-toggle button.strong-tab.active { background:var(--gold); color:#fff; }
     .btn { border:none; padding:13px 28px; font-family:'DM Sans',sans-serif; font-size:.86rem; font-weight:500; border-radius:6px; cursor:pointer; transition:.2s; }
     .btn-primary { background:var(--rose); color:#fff; }
     .btn-primary:hover:not(:disabled) { background:var(--rose-m); }
@@ -537,7 +547,7 @@
     </div>
     <div class="result-grid">
       <div class="result-card"><img id="originalResult" alt="Original photo" /><div class="result-tag">Original</div></div>
-      <div class="result-card"><img id="aiResult" alt="AI simulated treatment preview" /><svg class="anno-svg" id="annoSvg" viewBox="0 0 100 125" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg><div class="result-tag sim" id="simTag">Simulated · AI Visualization</div></div>
+      <div class="result-card"><img id="aiResult" alt="AI simulated treatment preview" /><svg class="anno-svg" id="annoSvg" viewBox="0 0 100 125" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg><div class="result-tag sim" id="simTag">Simulated · AI Visualization<span class="strong-badge" id="simTagStrong" style="display:none;">Strong Response</span></div></div>
     </div>
     <div id="intensityWrap" style="display:none;margin-top:14px;">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
@@ -565,6 +575,7 @@
     <div class="regen-note" id="regenNote"></div>
     <div class="btn-row">
       <button class="btn btn-primary" id="regenBtn">Re-generate</button>
+      <button class="btn btn-gold" id="strongBtn" style="display:none;" title="Generate a strong responder version at no extra credit cost">✦ Strong Response <span style="font-size:.65rem;opacity:.7;font-weight:400;">free</span></button>
       <button class="btn btn-light" id="insightsBtn">Compare</button>
       <button class="btn btn-dark" id="downloadBtn">Download side-by-side</button>
       <button class="btn btn-dark" id="sheetBtn" style="display:none;">Download all angles</button>
@@ -796,7 +807,10 @@ function makeSlot(){
   return { file:null, originalDataUrl:null, beforeDataUrl:null, blackBgCache:null,
            resultDataUrl:null, apply:null, jobId:null, error:null,
            status:'empty', qcMsg:'',
-           faceBbox:null, cropCache:null }; // M11.1: bbox for head crop display
+           faceBbox:null, cropCache:null,
+           // Strong Response second pass (biostim only)
+           strongDataUrl:null, strongJobId:null, strongStatus:'idle',
+           viewMode:'standard' }; // 'standard' | 'strong'
 }
 
 const state = {
@@ -2174,6 +2188,9 @@ function renderActiveSlot(){
   if(state.type === 'biostim') tag += ' · ' + (state.timeline === '12' ? '12 months' : state.timeline + ' months');
   if(sl.status === 'error') tag = 'Generation failed for this angle · Re-generate to retry';
   document.getElementById('simTag').textContent = tag;
+  // Update strong badge visibility
+  const strongBadge = document.getElementById('simTagStrong');
+  if(strongBadge) strongBadge.style.display = (sl.viewMode === 'strong' && sl.strongStatus === 'done') ? 'inline' : 'none';
   const showSlider = !!sl.apply;
   document.getElementById('intensityWrap').style.display = showSlider ? 'block' : 'none';
   if(showSlider){
@@ -2188,9 +2205,153 @@ function renderActiveSlot(){
     (sl2 && sl2.status === 'done' && state.selectedAngles.length > 1) ? '' : 'none';
   resetZoom();
   hideAnnotations();
+  updateStrongBtn();
+  applyActiveView();
 }
 generateBtn.addEventListener('click', () => runGeneration(false));
 regenBtn.addEventListener('click', () => runGeneration(true));
+
+/* ───────── Strong Response second pass ─────────
+   Fires a second generation for the active angle after the standard result
+   is done. No mask is sent -- the AI interprets the full face freely, which
+   produces the more dramatic skin quality and volume result that a strong
+   responder would show at 6-12 months. Cost is 0 (server verifies source job
+   belongs to the same user and completed successfully).
+   The button toggles between "Generate Strong Response" and "View Standard /
+   View Strong" after the strong result is ready. */
+const STRONG_PROMPT_SUFFIX = ' STRONG RESPONDER INTERPRETATION: This is a visualisation of an exceptional response to biostimulator treatment over 12-18 months of collagen remodelling. Show the full potential of what a strong responder could achieve: significantly restored midface volume and projection, dramatically softened nasolabial folds and marionette lines, lifted and tightened jowls, and notably improved skin quality including improved tone evenness, luminosity, and surface texture from collagen induction. The skin should look healthier and more youthful in quality, not just in structure. Preserve the patient\'s identity, ethnicity, bone structure, hair, and expression exactly. This is explicitly labelled as an optimistic strong-response projection, not a guaranteed result.';
+
+async function runStrongPass(){
+  const sl = activeSlot();
+  if(!sl || sl.status !== 'done' || !sl.jobId) return;
+
+  // If strong result already exists, toggle view instead of regenerating
+  if(sl.strongStatus === 'done' && sl.strongDataUrl){
+    sl.viewMode = (sl.viewMode === 'strong') ? 'standard' : 'strong';
+    updateStrongBtn();
+    applyActiveView();
+    return;
+  }
+
+  // Already generating
+  if(sl.strongStatus === 'generating') return;
+
+  sl.strongStatus = 'generating';
+  sl.viewMode = 'standard';
+  updateStrongBtn();
+
+  try {
+    const auth = await authHeaders();
+    const formData = new FormData();
+
+    // Use the original (pre-composite) photo -- same as the standard generation
+    const resp = await fetch(sl.beforeDataUrl || sl.originalDataUrl);
+    const blob = await resp.blob();
+    formData.append('image', blob, 'photo.jpg');
+
+    // Copy all treatment params from state
+    formData.append('type', state.type);
+    formData.append('product', state.product || 'sculptra');
+    formData.append('timeline', state.timeline || '6');
+    formData.append('projection', 'optimistic');
+    formData.append('intensity', 'enhanced');
+    if(state.sex) formData.append('sex', state.sex);
+    if(ANGLE_DEF[state.activeAngle]) formData.append('angle', state.activeAngle);
+    formData.append('note', STRONG_PROMPT_SUFFIX);
+
+    // Strong pass flags -- no mask, source job for free credit verification
+    formData.append('isStrongPass', 'true');
+    formData.append('sourceJobId', sl.jobId);
+
+    const startRes = await fetch('/.netlify/functions/start-visualization', {
+      method: 'POST',
+      headers: auth,
+      body: formData
+    });
+
+    if(!startRes.ok){
+      const err = await startRes.json().catch(() => ({}));
+      throw new Error(err.error || 'Strong pass failed to start');
+    }
+
+    const { jobId } = await startRes.json();
+    sl.strongJobId = jobId;
+
+    // Poll for result
+    const pollStrong = async () => {
+      if(sl.strongStatus !== 'generating') return;
+      try {
+        const pollRes = await fetch('/.netlify/functions/get-visualization?jobId=' + encodeURIComponent(jobId), { headers: auth });
+        const data = await pollRes.json();
+        if(data.state === 'done'){
+          sl.strongDataUrl = data.image;
+          sl.strongStatus = 'done';
+          sl.viewMode = 'strong';
+          updateStrongBtn();
+          applyActiveView();
+        } else if(data.state === 'error'){
+          sl.strongStatus = 'error';
+          updateStrongBtn();
+        } else {
+          setTimeout(pollStrong, 3000);
+        }
+      } catch(e){
+        setTimeout(pollStrong, 5000);
+      }
+    };
+    setTimeout(pollStrong, 4000);
+
+  } catch(e){
+    console.error('Strong pass error:', e);
+    sl.strongStatus = 'error';
+    updateStrongBtn();
+  }
+}
+
+function updateStrongBtn(){
+  const sl = activeSlot();
+  const btn = document.getElementById('strongBtn');
+  if(!btn) return;
+  const isBiostim = state.type === 'biostim';
+  const isDone = sl && sl.status === 'done';
+  btn.style.display = (isBiostim && isDone) ? '' : 'none';
+  if(!sl) return;
+  if(sl.strongStatus === 'generating'){
+    btn.textContent = '✦ Generating…';
+    btn.disabled = true;
+    btn.classList.remove('viewing');
+  } else if(sl.strongStatus === 'done'){
+    btn.disabled = false;
+    if(sl.viewMode === 'strong'){
+      btn.textContent = '← View Standard';
+      btn.classList.add('viewing');
+    } else {
+      btn.textContent = '✦ View Strong Response';
+      btn.classList.remove('viewing');
+    }
+  } else if(sl.strongStatus === 'error'){
+    btn.textContent = '✦ Strong Response (retry)';
+    btn.disabled = false;
+    btn.classList.remove('viewing');
+  } else {
+    btn.innerHTML = '✦ Strong Response <span style="font-size:.65rem;opacity:.7;font-weight:400;">free</span>';
+    btn.disabled = false;
+    btn.classList.remove('viewing');
+  }
+}
+
+function applyActiveView(){
+  const sl = activeSlot();
+  if(!sl) return;
+  const showStrong = sl.viewMode === 'strong' && sl.strongStatus === 'done' && sl.strongDataUrl;
+  const displayUrl = showStrong ? sl.strongDataUrl : (sl.resultDataUrl || sl.beforeDataUrl || sl.originalDataUrl || '');
+  document.getElementById('aiResult').src = displayUrl;
+  // Update sim tag badge
+  const badge = document.getElementById('simTagStrong');
+  if(badge) badge.style.display = showStrong ? 'inline' : 'none';
+}
+
+document.getElementById('strongBtn').addEventListener('click', runStrongPass);
 
 function updateRegenNote(){
   const note = document.getElementById('regenNote');
@@ -2388,18 +2549,18 @@ function treatmentName(){
 
 function simKicker(angleId){
   const multiDone = state.selectedAngles.filter(id => state.slots[id].status === 'done').length > 1;
+  const sl = state.slots[angleId];
   const parts = [treatmentName()];
   if(multiDone) parts.push(ANGLE_DEF[angleId].label);
   if(state.type === 'biostim') parts.push(state.timeline + ' months');
-  if(state.type === 'biostim' || (state.type === 'filler' && state.slots[angleId].apply)){
+  if(state.type === 'biostim' || (state.type === 'filler' && sl.apply)){
     if(state.type === 'filler'){
-      // M9.2: correction vocabulary; an overfilled frame is stamped as
-      // educational so it can never read as the recommended plan.
       const li = levelInfo(state.intensityPct || 70);
       parts.push(li.over ? 'Overfilled · shown for education' : li.name);
     }
-    // Biostim: timeline already pushed above; strengthLabel would duplicate it.
   }
+  // Strong Response: append label when exporting the strong view
+  if(sl && sl.viewMode === 'strong' && sl.strongStatus === 'done') parts.push('Strong Response');
   return parts.join(' · ');
 }
 
@@ -2409,9 +2570,12 @@ async function drawPair(ctx, angleId, yOff, panelW, panelH, gap, includeText){
   const sl = state.slots[angleId];
   const before = await loadImage(sl.beforeDataUrl || sl.originalDataUrl);
   // M9.9: exports render at the hi-res grid; the live 1024 frame is the fallback.
+  // Strong response: if the user is viewing the strong result, export that version.
+  const activeResultUrl = (sl.viewMode === 'strong' && sl.strongStatus === 'done' && sl.strongDataUrl)
+    ? sl.strongDataUrl : sl.resultDataUrl;
   let hiRes = null;
   try { hiRes = await hiResResultFor(angleId); } catch(e){ console.warn('[Visualize] hi-res export render failed; using live frame.', e); }
-  const after = await loadImage(hiRes || sl.resultDataUrl);
+  const after = await loadImage(hiRes || activeResultUrl);
 
   function cover(img, x, y, w, h){
     const scale = Math.max(w/img.width, h/img.height);
@@ -2491,9 +2655,11 @@ async function drawExport(includeText, angleIds){
     const sl = state.slots[id];
     const x = ci * (panelW + gap);
     const before = await loadImage(sl.beforeDataUrl || sl.originalDataUrl);
+    const sheetResultUrl = (sl.viewMode === 'strong' && sl.strongStatus === 'done' && sl.strongDataUrl)
+      ? sl.strongDataUrl : sl.resultDataUrl;
     let hiRes = null;
     try { hiRes = await hiResResultFor(id); } catch(e){}
-    const after = await loadImage(hiRes || sl.resultDataUrl);
+    const after = await loadImage(hiRes || sheetResultUrl);
 
     // Cover-fit helper
     function cover(img, dx, dy, dw, dh){
