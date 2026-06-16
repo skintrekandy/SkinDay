@@ -17,6 +17,23 @@
 // Sculptra oblique discolouration: SCULPTRA_BRIGHT_CAP_FULL 18 -> 12.
 //
 // M10.5 (v66): MALE CHIN TIP EXCLUDED FROM AI MASK.
+// v70 (Jun 15 2026): REAL-WORLD RECALIBRATION.
+// Target: documented clinical Sculptra outcomes used as benchmark.
+// Seven coordinated changes, all reversible with one constant each:
+// CHROMA_LOCK 1.0->0.82: partial release to allow Sculptra collagen glow.
+//   The skin quality improvement (tone evenness, brightness) is a documented
+//   clinical effect. Full lock was preventing it entirely.
+// SCULP_LIFT_SAT 0.60->0.75: warp saturation ceiling raised. Real-world
+//   jowl correction requires more border suspension than 0.60 allowed.
+// SCULP_ZYGOMA_OUT 0.018->0.026: more lateral zygomatic projection.
+// SCULP_MIDFACE_ANT 0.034->0.044: more anterior ogee push, softens NLF.
+// SCULPTRA_BRIGHT_CAP_FULL 12->16: recovers skin brightness from v65 cut.
+// SCULPTRA_DARK_FLOOR 12->16: more shadow depth for 3D jowl correction.
+// SCULPTRA_GLOW_APPLY 6->9: more collagen glow in treated zone.
+// SCULPTRA_DELTA_GAIN stays at 1.0 -- prior calibration confirmed raising
+//   it above 1.0 produces waxiness, not more form. Magnitude comes from
+//   geometry and chroma, not post-hoc gain.
+//
 // M10.5 (v69): DARK BLOB FIX -- removed wrong mag>8 gate on undershoot correction.
 // The gate was blocking the dark-undershoot reconciliation in the transition band
 // where chin shadow pixels land on the neck zone -- exactly the pixels producing
@@ -639,7 +656,16 @@ const TEX_STRENGTH     = 1.0;
 const GUARD_RADIUS_FRAC= 0.016;
 const GUARD_EDGE_LO    = 12;
 const GUARD_EDGE_HI    = 40;
-const CHROMA_LOCK      = 1.0;
+// v70 RECALIBRATION: partial chroma lock release.
+// Real-world Sculptra outcomes show significant skin quality improvement --
+// the 'Sculptra glow' from collagen induction is a documented clinical effect
+// (skin tone evenness, brightness, texture improvement). CHROMA_LOCK=1.0 was
+// preventing this entirely. At 0.82, 18% of the AI's chroma delta in the
+// treated zone comes through. The mask protects eyes/nose/lips so this only
+// affects lateral cheek, midface, and temple -- exactly where the glow manifests
+// clinically. Reversal: restore to 1.0 if colour shift reads unnatural on
+// darker skin tones.
+const CHROMA_LOCK      = 0.82;
 const LUMA_DARK_FLOOR  = 0;     // treated skin never darker than original (broad tone)
 const GLOW_LUMA        = 6;     // gentle lighten (glow), luma levels at full. M6.3:
                                 // back to 6, and for Sculptra the glow now lives
@@ -908,7 +934,11 @@ const WARP_EDGE_FADE     = 0.06;
 // artifacts (zygoma disc, gonial shadow) never reach the exported image.
 // Expected band tops at ~0.62; cap at 0.60 keeps the full Expected range.
 // One-constant reversal to restore Strong: set to 1.0.
-const SCULP_LIFT_SAT = 0.60;
+// v70: raised 0.60 -> 0.75. Real-world results show significantly more jowl
+// correction and border suspension than current warp produces. 0.60 was
+// saturating the lift field too early, capping the Strong-response warp
+// before it reached the clinical result level.
+const SCULP_LIFT_SAT = 0.75;
 
 // M10.2: mandibular border suspension kernels (oblique only).
 // Three point kernels along the near-side prejowl-to-gonion polyline, each
@@ -948,10 +978,10 @@ const SCULP_BORDER_SIG = 0.055; // kernel breadth, fraction of W (tight to borde
 //   Also: frontal temple kernel added to buildLiftField frontal branch (M10
 //   scope, assessed as one-round addition). VIEW_TQ_MAX_DEG raised 50->60 so
 //   photos at ~51 degrees are accepted (one-degree rejection was too tight).
-const SCULP_ZYGOMA_OUT  = 0.018; // held from v49 (lateral restrained)
+const SCULP_ZYGOMA_OUT  = 0.026; // v70: 0.018->0.026 (real-world lateral projection recalibration)
 const SCULP_ZYGOMA_UP   = 0.018; // v50: 0.014 -> 0.018 (more superior lift)
 const SCULP_ZYGOMA_SIG  = 0.10;  // kernel breadth, fraction of W
-const SCULP_MIDFACE_ANT = 0.034; // v50: 0.026 -> 0.034 (anterior projection bolder)
+const SCULP_MIDFACE_ANT = 0.044; // v70: 0.034->0.044 (real-world anterior midface recalibration)
 const SCULP_MIDFACE_SIG = 0.20;  // midface kernel breadth, fraction of W
 const SCULP_CAPSULE     = 0.80;  // capsule run factor for zygoma kernel
 
@@ -2391,7 +2421,10 @@ function buildTreatAlpha(L, w, h, scope, sex){
 // halved. Chroma stays locked so no brown/colour shift is possible; this governs
 // only the luminance floor. Reversal: restore to 20 if volume reads flat on a
 // well-lit darker-skin case.
-const SCULPTRA_DARK_FLOOR = 12;
+// v70: 12 -> 16. Real-world jowl correction shows significant shadow
+// depth change as the prejowl hollow fills. More dark floor allowance
+// lets the volume shading read as structural correction, not flat lift.
+const SCULPTRA_DARK_FLOOR = 16;
 //
 // M6.3 BRIGHT CAP. Broad brightening SATURATES perceptually: past a ceiling it
 // stops reading as restored volume and starts erasing the natural shading
@@ -2402,7 +2435,11 @@ const SCULPTRA_DARK_FLOOR = 12;
 // brightening component levels off. Defined as the maximum broad brightening in
 // luma levels reachable at the TOP of the slider; the pre-gain cap is derived
 // from it so retuning the gain does not silently change the ceiling.
-const SCULPTRA_BRIGHT_CAP_FULL = 12;
+// v70: 12 -> 16. v65 cut from 18->12 to fix discolouration on poorly-lit
+// photos. Real-world results show the skin brightness lift is a legitimate
+// clinical outcome (collagen glow). 16 recovers most of it while staying
+// below the 18 that caused patchy artefacts on clinic snapshots.
+const SCULPTRA_BRIGHT_CAP_FULL = 16;
 // 18 -> 12 (M10.5 v65): Sculptra oblique discolouration on poorly-lit clinic photos.
 // The AI's broad brightening was exceeding the local light field of the original face,
 // creating a warm/tan patch in the lateral cheek zone that reads as colour shift
@@ -2448,7 +2485,10 @@ const CHIN_JAW_MID_RADIUS = 0.022;
 const CHIN_JAW_MID_KEEP   = 0.6;
 // Sculptra glow applied at composite time, scaled by mask and slider but NOT by
 // the gain (see GLOW_LUMA note). Equal add to R,G,B, so chroma-exact.
-const SCULPTRA_GLOW_APPLY = 6;
+// v70: 6 -> 9. Combined with CHROMA_LOCK=0.82, raises the collagen glow
+// effect toward what real-world results show. The glow is never gained
+// (see compositor), so this is a ceiling raise not an amplification.
+const SCULPTRA_GLOW_APPLY = 9;
 // HA chin/jaw: a defined jawline is created by the clean shadow line along the
 // mandibular border, so the path needs SOME darkening to read as definition
 // rather than flat. Colour is locked, so this clean luminance shadow cannot turn
