@@ -799,6 +799,7 @@
   <div class="msb-ends">
     <span id="msbMin">Early</span><span id="msbMax">6 months</span>
   </div>
+  <div id="msbCostNote" style="display:none;font-size:.75rem;text-align:center;color:rgba(250,247,242,.6);margin-bottom:2px;"></div>
   <button id="msbActionBtn" type="button" class="bar-hidden" disabled>Generate simulated preview</button>
   <button id="msbDownloadBtn" type="button">Download</button>
   <button id="msbRegenLink" type="button">Re-generate</button>
@@ -1701,6 +1702,14 @@ function updateIntensityUI(){
       msbBtn.className = '';
       msbBtn.style.background = msbBtn.disabled ? '' : 'var(--rose)';
       msbBtn.onclick = () => { if(genBtnEl && !genBtnEl.disabled) genBtnEl.click(); };
+      // Mirror cost note into the mobile bar
+      const msbCostNote = document.getElementById('msbCostNote');
+      const desktopNote = document.getElementById('costNote');
+      if(msbCostNote && desktopNote){
+        const txt = desktopNote.textContent.trim();
+        if(txt){ msbCostNote.textContent = txt; msbCostNote.style.display = 'block'; }
+        else { msbCostNote.style.display = 'none'; }
+      }
     }
   }
 
@@ -1727,6 +1736,13 @@ function updateIntensityUI(){
   if(intWrap){
     const obsSlider = new MutationObserver(updateBarState);
     obsSlider.observe(intWrap, { attributes:true, attributeFilter:['style'] });
+  }
+
+  // Observe costNote changes so mobile bar mirrors it immediately
+  const costNoteEl = document.getElementById('costNote');
+  if(costNoteEl){
+    const obsCost = new MutationObserver(updateBarState);
+    obsCost.observe(costNoteEl, { childList:true, subtree:true, characterData:true });
   }
 
   window.addEventListener('resize', updateBarState, { passive:true });
