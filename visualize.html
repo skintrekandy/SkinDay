@@ -946,7 +946,13 @@ function renderAcctBar(){
     buy.style.display = ''; out.style.display = ''; info.style.display = '';
     navPill.style.display = 'inline-flex';
     navPill.innerHTML = 'Credits: <strong>' + (creditBalance == null ? '…' : creditBalance) + '</strong>';
-    if(navAcct) navAcct.style.display = '';
+    if(navAcct){
+      navAcct.style.display = '';
+      // Show first name or email prefix to match main site nav style
+      const email = (sb && sb.__email) || '';
+      const displayName = email ? email.split('@')[0] : 'Account';
+      navAcct.textContent = displayName.charAt(0).toUpperCase() + displayName.slice(1);
+    }
   } else {
     bar.style.display = 'none';
     navPill.style.display = 'none';
@@ -2362,24 +2368,45 @@ async function startEnhancedSlot(angleId, auth){
     }
   }
 
-  const startRes = await fetch('/.netlify/functions/start-visualization', {
-    method: 'POST', headers: auth, body: formData
-  });
+  console.log('[Visualize Enhanced] ' + angleId + ': sending to start-visualization…');
+  let startRes;
+  try {
+    startRes = await fetch('/.netlify/functions/start-visualization', {
+      method: 'POST', headers: auth, body: formData
+    });
+  } catch(fetchErr) {
+    throw new Error('Enhanced network error: ' + (fetchErr && fetchErr.message));
+  }
+  console.log('[Visualize Enhanced] ' + angleId + ': start-visualization HTTP ' + startRes.status);
   if(startRes.status === 401){ await handleAuthFailure(); throw new Error('Session expired — please sign in again.'); }
   if(startRes.status === 402){
     const err = await startRes.json().catch(() => ({}));
     throw new Error('Not enough credits for Enhanced course. ' + (err.error || ''));
   }
   if(!startRes.ok){
-    const err = await startRes.json().catch(() => ({}));
-    throw new Error('Enhanced pass failed (HTTP ' + startRes.status + '): ' + (err.error || 'unknown error'));
+    const errText = await startRes.text().catch(() => '');
+    throw new Error('Enhanced pass failed (HTTP ' + startRes.status + '): ' + errText.slice(0, 200));
   }
-  const { jobId } = await startRes.json();
+  const resText = await startRes.text();
+  console.log('[Visualize Enhanced] ' + angleId + ': response body: ' + resText.slice(0, 100));
+  let resJson; try { resJson = JSON.parse(resText); } catch(e) { throw new Error('Enhanced: bad JSON response: ' + resText.slice(0, 100)); }
+  const { jobId } = resJson;
+  if(!jobId) throw new Error('Enhanced: no jobId in response: ' + resText.slice(0, 100));
+  console.log('[Visualize Enhanced] ' + angleId + ': jobId = ' + jobId);
   sl.strongJobId = jobId;
 
   // Poll, then compositor -- mirrors finishSlot exactly.
+  const pollStrongStart = Date.now();
+  const POLL_MAX_MS = 5 * 60 * 1000; // 5-minute hard stop
   const pollStrong = async () => {
     if(sl.strongStatus !== 'generating') return;
+    if(Date.now() - pollStrongStart > POLL_MAX_MS){
+      console.error('[Visualize Enhanced] ' + angleId + ': timed out after 5 minutes.');
+      sl.strongStatus = 'error';
+      sl.error = 'Enhanced generation timed out. Please retry.';
+      updateStrongBtn();
+      return;
+    }
     try {
       const pollRes = await fetch('/.netlify/functions/get-visualization?jobId=' + encodeURIComponent(jobId), { headers: auth });
       const data = await pollRes.json();
@@ -2397,46 +2424,9 @@ async function startEnhancedSlot(angleId, auth){
             const warpOn = !/[?&]warp=off\b/i.test(location.search);
             const jowlTexOn = !/[?&]jowltex=off\b/i.test(location.search);
             const jawDefOn = !/[?&]jawdef=off\b/i.test(location.search);
-            // Enhanced-specific compositor opts.
-            // The Sculptra scaffold signal spans the full lateral cheek/temple
-            // zone -- roughly 15-20% of face width. The standard texRadiusFrac
-            // of 0.016 captures only ~6px at a 400px face, which is fine-texture
-            // scale, not scaffold scale. The broad low-frequency volume delta gets
-            // classified as "high frequency" at that radius and stripped out by
-            // the texture restore layer, leaving the result timid.
-            // For Enhanced: widen texRadiusFrac to 0.08 (a ~32px radius at 400px
-            // face) so the scaffold-scale volume signal survives into the delta.
-            // deltaGain amplifies the surviving delta inside the mask.
-            // brightCap raised so the tanh soft-knee allows the full volume
-            // highlight to read without hard compression.
-            // glowApply raised for collagen density read.
-            // CHROMA_LOCK, DARK_FLOOR, texture restore, and outline gate are
-            // all unchanged -- identity and skin character are still protected.
-            // Enhanced compositor opts -- calibrated from debug sheet analysis.
-            // Panel 3 (raw AI) shows the correct structural delta is being generated:
-            // lateral cheek fullness, submalar support, NLF softening.
-            // Panel 4 (composited) suppresses it because deltaGain*lowShift is too
-            // small in absolute luma levels to read as perceptible volume.
-            // Fix: raise deltaGain to 2.5 so the compositor amplifies the structural
-            // delta enough to read as volume. brightCap uncapped (0) so the tanh
-            // compression doesn't attenuate the amplified signal back down.
-            // texRadiusFrac 0.08 keeps the scaffold-scale frequency split.
-            // CHROMA_LOCK=0.82 and forceOriginalTexture=true remain -- identity safe.
-            // Enhanced compositor calibration.
-            // Architecture: warp geometry (patient's own pixels displaced) carries
-            // the structural volume support. AI delta carries shadow redistribution
-            // only. This separates structure from lighting.
-            //
-            // liftSat 1.0: warp runs at full slider intensity (standard cap is 0.75).
-            //   The extra warp displacement gives visible lateral cheek/jowl lift
-            //   using the patient's own skin -- no luminance artifacts possible.
-            // deltaGain 1.4: modest AI delta amplification. Warp now handles most
-            //   of the structural work so AI delta only needs to soften shadows.
-            // brightCap 22: moderate cap on luminance lift -- prevents blob artifacts.
-            // darkFloor 16: standard shadow floor.
-            // texRadiusFrac 0.08: scaffold-scale frequency cutoff.
-            // texStrength 0.92: slightly softer mask-edge texture to suppress blobs.
-            // chromaLock 0.90: tighter chroma lock to block AI lighting colour shift.
+            // Enhanced compositor: warp geometry at full intensity (liftSat 1.0)
+            // carries structural support; AI delta (deltaGain 1.4) handles shadow
+            // redistribution only. texRadiusFrac 0.08 captures scaffold-scale signal.
             const enhancedOpts = {
               scope: maskScope, sex: state.sex,
               warp: warpOn, jowlTexRelease: jowlTexOn, jawDef: jawDefOn, angleId,
@@ -2556,17 +2546,11 @@ function updateStrongBtn(){
   enhBtn.disabled = anyGenerating;
 
   if(anyGenerating){
-    // Per-angle dots: ✓ done, · waiting, spinner for generating
-    const ANGLE_SHORT = { frontal:'F', r45:'R', l45:'L' };
-    const dots = state.selectedAngles.filter(id => state.slots[id].status === 'done').map(id => {
-      const st = state.slots[id].strongStatus;
-      if(st === 'done') return '✓' + ANGLE_SHORT[id];
-      if(st === 'generating') return '⟳' + ANGLE_SHORT[id];
-      return '·' + ANGLE_SHORT[id];
-    }).join('  ');
     const secs = state.enhancedStartedAt ? Math.round((Date.now() - state.enhancedStartedAt) / 1000) : 0;
+    const doneCount = state.selectedAngles.filter(id => state.slots[id].strongStatus === 'done').length;
+    const total = state.selectedAngles.filter(id => state.slots[id].status === 'done').length;
     enhBtn.textContent = 'Generating… ' + secs + 's';
-    if(courseHelp) courseHelp.textContent = dots + ' · Runs in background, keep this tab open.';
+    if(courseHelp) courseHelp.textContent = doneCount + ' of ' + total + ' previews ready · Runs in background, keep this tab open.';
   } else {
     const anyError = state.selectedAngles.some(id => state.slots[id].strongStatus === 'error');
     enhBtn.textContent = anyError ? 'Enhanced course (retry)' : 'Enhanced course';
