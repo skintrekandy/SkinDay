@@ -2416,14 +2416,20 @@ async function startEnhancedSlot(angleId, auth){
             // compression doesn't attenuate the amplified signal back down.
             // texRadiusFrac 0.08 keeps the scaffold-scale frequency split.
             // CHROMA_LOCK=0.82 and forceOriginalTexture=true remain -- identity safe.
+            // Enhanced compositor calibration.
+            // deltaGain 2.0: strong enough to show structural volume, not so high
+            // it overexposes the lateral cheek. brightCap 28 prevents the bright
+            // side from blowing out while darkFloor 20 gives matching shadow depth
+            // on the underside of the restored volume -- both sides balanced so
+            // the result reads as 3D scaffold rather than a brightness patch.
             const enhancedOpts = {
               scope: maskScope, sex: state.sex,
               warp: warpOn, jowlTexRelease: jowlTexOn, jawDef: jawDefOn, angleId,
-              deltaGain:    2.5,  // amplify structural delta; standard is 1.0
-              glowApply:    14,   // collagen glow; standard is 9
-              brightCap:    0,    // uncapped -- let the amplified volume read fully
-              darkFloor:    20,   // allow shadow depth for 3D volume read
-              texRadiusFrac: 0.08 // scaffold-scale cutoff; standard is 0.016
+              deltaGain:    2.0,  // structural delta amplification
+              glowApply:    11,   // collagen glow
+              brightCap:    28,   // bright-side cap; prevents cheek overexposure
+              darkFloor:    20,   // shadow depth to match; makes volume read as 3D
+              texRadiusFrac: 0.08 // scaffold-scale frequency cutoff
             };
             const apply = await makeSculptraCompositor(beforeImg, aiImg, enhancedOpts);
             if(apply){
@@ -2481,6 +2487,10 @@ async function runStrongPass(){
     return s && s.status === 'done' && s.jobId && s.strongStatus !== 'done' && s.strongStatus !== 'generating';
   });
   if(!toRun.length) return;
+
+  // Mark all angles as generating immediately so UI updates without lag
+  toRun.forEach(id => { state.slots[id].strongStatus = 'generating'; });
+  updateStrongBtn();
 
   const auth = await authHeaders();
   // Start all angles concurrently; each polls independently
@@ -2767,9 +2777,9 @@ async function buildEnhancedDebugSheet(angleId){
       scope: compScope, sex: state.sex,
       warp: true, jowlTexRelease: true, jawDef: true,
       intensity: 1.0,
-      deltaGain:    2.5,
-      glowApply:    14,
-      brightCap:    0,
+      deltaGain:    2.0,
+      glowApply:    11,
+      brightCap:    28,
       darkFloor:    20,
       texRadiusFrac: 0.08
     };
