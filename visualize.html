@@ -538,7 +538,7 @@
       </label>
 
       <div class="disclaimer"><span>⚠️</span><span>Every export is labelled and carries a permanent consultation-only disclaimer. Outputs are simulations for communication, never a guaranteed result or medical prediction.</span></div>
-      <p style="font-size:.72rem;color:var(--muted);margin:8px 0 0;line-height:1.5;">Early access · We're continuously improving results. Quality varies by photo — see the photo guide for best outcomes.</p>
+      <p style="font-size:.72rem;color:var(--muted);margin:8px 0 0;line-height:1.5;">Early access · We're continuously improving results. Quality varies by photo  -  see the photo guide for best outcomes.</p>
 
       <div class="status"><div class="dot" id="dot"></div><span id="statusText">Choose a treatment, then add the patient photos</span></div>
 
@@ -2059,6 +2059,16 @@ async function prepAndStartSlot(angleId, auth, isRegen){
                 (Date.now() + '-' + Math.random().toString(36).slice(2));
   form.append('jobId', jobId);
   if(isRegen && prevJobId) form.append('regenOf', prevJobId);
+  // M11.1: angle and sex are required for normalizeView() and phenotype routing
+  // in prompts.js. Previously missing from standard pass -- caused normalizeView()
+  // to default to 'frontal' for all oblique angles.
+  // M11.1: also append explicit 'view' in prompt-view token format as cheap insurance,
+  // since normalizeView() checks sel.view before sel.angle.
+  const promptView = angleId === 'r45' ? 'oblique_right' : angleId === 'l45' ? 'oblique_left' : 'frontal';
+  form.append('angle', angleId);
+  form.append('view', promptView);
+  if(state.sex) form.append('sex', state.sex);
+  if(state.sculptraPhenotype) form.append('sculptraPhenotype', state.sculptraPhenotype);
   sl.jobId = jobId;
 
   const startRes = await fetch('/.netlify/functions/start-visualization', {
@@ -2323,13 +2333,32 @@ regenBtn.addEventListener('click', () => runGeneration(true));
    result is shown instead. Patient-facing output is always:
      original photo + masked local biostimulator change.
    Cost: 1 credit per angle (server-verified via isStrongPass + sourceJobId). */
-const STRONG_PROMPT_SUFFIX = ' Create a visible upper-range Sculptra/biostimulator response inside the provided treatment mask. Build broad, soft collagen-supported volume in the temples, lateral cheeks, submalar hollow, upper nasolabial transition, marionette/prejowl transition, and lower lateral cheek. The result should look like the same patient after a stronger 6-month biostimulator course: more supported, less hollow, less collapsed, with a smoother transition from temple to cheek to lower face. Make the change clearly visible in side-by-side comparison, especially on oblique views. Prioritize anatomical shape and shadow redistribution over skin quality — the desired change is broad volume support creating new shadows and highlights under restored collagen scaffold, not smoother or brighter skin. Add low-frequency structural support only: the treated zones should look fuller and less deflated, not cleaner or younger. Keep the patient the same age. Preserve the original skin texture, pores, pigmentation, forehead lines, under-eye texture, beard shadow, asymmetry, and natural skin shine exactly. Do not create a filler jawline, facelift pull, slimmer face, global skin smoothing, makeup effect, or brightened skin. Do not alter eyes, brows, nose, lips, ears, hair, headband, neck, clothing, background, or camera angle.';
+// M11.1: STRONG_PROMPT_SUFFIX is now a minimal signal only.
+// The actual Enhanced magnitude instruction is ENHANCED_MAGNITUDE in prompts.js,
+// injected directly into the prompt body when isStrongPass === 'true' is detected
+// in buildSculptraPrompt. That bypasses sanitizeNote's 300-char truncation and
+// the "Clinician note (honor only if consistent with the above)" wrapper which
+// allows the model to deprioritize it.
+//
+// This suffix reaches the server as the `note` field but for Enhanced it is
+// ignored by buildSculptraPrompt (cleanNote = '' when isEnhanced). It is kept
+// here as a human-readable label for logging and debugging.
+const STRONG_PROMPT_SUFFIX = 'Enhanced course: upper-range biostimulator response. Show the full structural result, not a local patch.';
 
 // Start an enhanced-course generation for a single angle slot.
-// Mirrors prepAndStartSlot: builds the Sculptra mask, sends it with the form,
-// then after polling runs makeSculptraCompositor before storing the result.
-// Raw AI is stored only in sl.rawStrongAiDataUrl for debug; sl.strongDataUrl
-// is always the composited result. If compositor fails, enhanced is suppressed.
+// M11.1 architecture: Enhanced is a FULL-FRAME generation (no mask sent to
+// the API). The mask-as-primary-edit architecture caused the model to treat
+// Enhanced as a local inpaint, producing patchy cheek changes instead of a
+// holistic face-aware structural result. The three correct reference results
+// were all full-frame edits where the model solved lighting, shadow, and
+// volume globally.
+//
+// After generation, makeSculptraCompositor still runs as a SAFETY CLAMP:
+//   - Caps extreme color drift (chromaLock)
+//   - Preserves background/hair/clothing via mask exclusion
+//   - Lets the intensity slider work
+// But the compositor is NOT the source of the structural effect. The raw AI
+// output must already look correct before compositing touches it.
 async function startEnhancedSlot(angleId, auth){
   const sl = state.slots[angleId];
   if(!sl || sl.status !== 'done' || !sl.jobId) return;
@@ -2337,7 +2366,7 @@ async function startEnhancedSlot(angleId, auth){
 
   // Use the same beforeDataUrl (black bg applied) as the standard pass
   const beforeDataUrl = sl.beforeDataUrl || sl.originalDataUrl;
-  console.log('[Visualize Enhanced] ' + angleId + ': starting — beforeDataUrl length=' + (beforeDataUrl ? beforeDataUrl.length : 'null'));
+  console.log('[Visualize Enhanced] ' + angleId + ': starting  -  beforeDataUrl length=' + (beforeDataUrl ? beforeDataUrl.length : 'null'));
   // Use resizeToUpload which correctly handles data URLs cross-browser.
   // fetch(dataUrl) hangs silently on Safari/WebKit -- do not use it.
   const blob = await resizeToUpload(beforeDataUrl);
@@ -2351,38 +2380,21 @@ async function startEnhancedSlot(angleId, auth){
   formData.append('projection', 'optimistic');
   formData.append('intensity', 'enhanced');
   if(state.sex) formData.append('sex', state.sex);
+  const enhPromptView = angleId === 'r45' ? 'oblique_right' : angleId === 'l45' ? 'oblique_left' : 'frontal';
   formData.append('angle', angleId);
+  formData.append('view', enhPromptView);
   formData.append('note', STRONG_PROMPT_SUFFIX);
   formData.append('isStrongPass', 'true');
   formData.append('sourceJobId', sl.jobId);
+  // M11.1: NO mask appended for Enhanced. Full-frame edit only.
+  // The mask was confining the model to local inpainting, which produced
+  // patchy anatomically incoherent results. The compositor below handles
+  // safety clamping after a correct full-frame result is generated.
 
-  // Build and attach the same Sculptra mask as the standard pass.
-  // If mask build fails, abort -- do not fall back to unmasked full-face AI.
+  // maskScope is still needed for the post-generation compositor safety clamp.
   const maskScope = (state.type === 'biostim' && state.product === 'sculptra') ? 'full'
                   : (state.type === 'filler') ? 'chin_jaw'
                   : null;
-  if(maskScope){
-    try {
-      const beforeImg = await loadImage(beforeDataUrl);
-      const mod = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
-      const maskBlob = await mod.buildSculptraMaskBlob(beforeImg, { maxDim:1024, scope:maskScope, sex:state.sex });
-      if(maskBlob){
-        formData.append('mask', maskBlob, 'mask.png');
-        console.log('%c[Visualize Enhanced] ' + angleId + ': mask built.', 'color:#1565c0;font-weight:bold');
-      } else {
-        // No face detected -- cannot produce a safe enhanced result
-        console.warn('[Visualize Enhanced] ' + angleId + ': mask empty (no face); aborting enhanced pass.');
-        sl.strongStatus = 'error';
-        updateStrongBtn();
-        return;
-      }
-    } catch(err){
-      console.error('%c[Visualize Enhanced] ' + angleId + ': mask failed; aborting enhanced pass.', 'color:#c62828;font-weight:bold', err);
-      sl.strongStatus = 'error';
-      updateStrongBtn();
-      return;
-    }
-  }
 
   console.log('[Visualize Enhanced] ' + angleId + ': sending to start-visualization…');
   let startRes;
@@ -2394,7 +2406,7 @@ async function startEnhancedSlot(angleId, auth){
     throw new Error('Enhanced network error: ' + (fetchErr && fetchErr.message));
   }
   console.log('[Visualize Enhanced] ' + angleId + ': start-visualization HTTP ' + startRes.status);
-  if(startRes.status === 401){ await handleAuthFailure(); throw new Error('Session expired — please sign in again.'); }
+  if(startRes.status === 401){ await handleAuthFailure(); throw new Error('Session expired  -  please sign in again.'); }
   if(startRes.status === 402){
     const err = await startRes.json().catch(() => ({}));
     throw new Error('Not enough credits for Enhanced course. ' + (err.error || ''));
@@ -2440,20 +2452,27 @@ async function startEnhancedSlot(angleId, auth){
             const warpOn = !/[?&]warp=off\b/i.test(location.search);
             const jowlTexOn = !/[?&]jowltex=off\b/i.test(location.search);
             const jawDefOn = !/[?&]jawdef=off\b/i.test(location.search);
-            // Enhanced compositor: warp geometry at full intensity (liftSat 1.0)
-            // carries structural support; AI delta (deltaGain 1.4) handles shadow
-            // redistribution only. texRadiusFrac 0.08 captures scaffold-scale signal.
+            // M11.1 Enhanced compositor: SAFETY CLAMP role only.
+            // The full-frame AI output should already be structurally correct.
+            // The compositor's job here is:
+            //   1. Preserve background, hair, clothing (mask exclusion)
+            //   2. Clamp extreme color drift (chromaLock 0.96)
+            //   3. Let the intensity slider work via apply(pct)
+            // It must NOT fight the AI's correct global lighting changes.
+            // deltaGain is 1.0 (neutral pass-through, no amplification).
+            // brightCap is 30 (loose) to allow the AI's restored highlights through.
+            // liftSat 1.0 keeps warp geometry active for structural consistency.
             const enhancedOpts = {
               scope: maskScope, sex: state.sex,
               warp: warpOn, jowlTexRelease: jowlTexOn, jawDef: jawDefOn, angleId,
               liftSat:       1.0,
-              deltaGain:     1.4,
+              deltaGain:     1.0,
               glowApply:     10,
-              brightCap:     22,
+              brightCap:     30,
               darkFloor:     16,
               texRadiusFrac: 0.08,
               texStrength:   0.92,
-              chromaLock:    0.90
+              chromaLock:    0.96
             };
             const apply = await makeSculptraCompositor(beforeImg, aiImg, enhancedOpts);
             if(apply){
@@ -2536,7 +2555,7 @@ async function runStrongPass(){
     try { await startEnhancedSlot(id, auth); }
     catch(e){
       const msg = (e && e.message) || String(e);
-      console.error('%c[Visualize Enhanced] ' + id + ': FAILED — ' + msg, 'color:#c62828;font-weight:bold');
+      console.error('%c[Visualize Enhanced] ' + id + ': FAILED  -  ' + msg, 'color:#c62828;font-weight:bold');
       state.slots[id].strongStatus = 'error';
       state.slots[id].error = msg;
     }
@@ -2834,19 +2853,19 @@ async function buildEnhancedDebugSheet(angleId){
       maskUrl = mc.toDataURL('image/jpeg', 0.92);
     }
 
-    // Panel 4: composited enhanced at 100% with full enhanced opts
+    // Panel 4: composited enhanced at 100% with safety-clamp opts (M11.1)
     const enhancedOpts = {
       scope: compScope, sex: state.sex,
       warp: true, jowlTexRelease: true, jawDef: true,
       intensity: 1.0,
       liftSat:       1.0,
-      deltaGain:     1.4,
+      deltaGain:     1.0,
       glowApply:     10,
-      brightCap:     22,
+      brightCap:     30,
       darkFloor:     16,
       texRadiusFrac: 0.08,
       texStrength:   0.92,
-      chromaLock:    0.90
+      chromaLock:    0.96
     };
     const composited100 = await compositeSculptra(beforeImg, rawAiImg, enhancedOpts);
 
