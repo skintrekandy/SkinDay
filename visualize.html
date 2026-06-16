@@ -1645,6 +1645,12 @@ function updateIntensityUI(){
     msbLabel.textContent = isFiller ? 'Degree of correction' : 'Response timeline';
     msbMin.textContent   = isFiller ? 'Subtle' : 'Early';
     msbMax.textContent   = isFiller ? 'Enhanced' : '6 months';
+    // M11.1: lock mobile slider when Enhanced course is active
+    const activeSlotData = state.slots[state.activeAngle];
+    const enhancedLocked = state.courseMode === 'enhanced' && activeSlotData && activeSlotData.strongStatus === 'done';
+    mslider.disabled = enhancedLocked;
+    mslider.style.opacity = enhancedLocked ? '0.35' : '';
+    mslider.style.pointerEvents = enhancedLocked ? 'none' : '';
   }
   // Patch updateIntensityUI to also sync the mobile bar
   const _origUpdateUI = updateIntensityUI;
@@ -2303,7 +2309,25 @@ function renderActiveSlot(){
   const showSlider = !!sl.apply;
   document.getElementById('intensityWrap').style.display = showSlider ? 'block' : 'none';
   if(showSlider){
-    document.getElementById('intensitySlider').value = state.intensityPct;
+    const sliderEl = document.getElementById('intensitySlider');
+    // M11.1: Enhanced course locks the slider at maximum. The compositor
+    // intensity control is not meaningful for Enhanced -- the result is the
+    // full-frame AI output and the user cannot dial it back. Locking prevents
+    // confusion about why the slider doesn't visibly change the Enhanced result.
+    if(state.courseMode === 'enhanced' && sl.strongStatus === 'done'){
+      if(!state._savedIntensityPct) state._savedIntensityPct = state.intensityPct;
+      state.intensityPct = 100;
+      sliderEl.value = 100;
+      sliderEl.disabled = true;
+      sliderEl.style.opacity = '0.35';
+      sliderEl.style.pointerEvents = 'none';
+    } else {
+      if(state._savedIntensityPct){ state.intensityPct = state._savedIntensityPct; state._savedIntensityPct = null; }
+      sliderEl.disabled = false;
+      sliderEl.style.opacity = '';
+      sliderEl.style.pointerEvents = '';
+      sliderEl.value = state.intensityPct;
+    }
     updateIntensityUI();
   }
   const doneCount = state.selectedAngles.filter(id => state.slots[id].status === 'done').length;
