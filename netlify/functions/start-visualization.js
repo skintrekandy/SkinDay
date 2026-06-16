@@ -163,18 +163,17 @@ exports.handler = async (event) => {
         } catch (e) { /* lineage lookup is best-effort; full price applies */ }
       }
 
-      // Strong Response second pass: free if the source job belongs to the same
-      // user and completed successfully. The strong pass is an optional second
-      // generation fired from the client after the standard generation is done.
-      // It sends no mask (full-face AI interpretation) and a stronger prompt.
-      // Cost is always 0 -- it's included in the original generation cost.
+      // Enhanced course second pass: charged at 1 credit per angle (half the
+      // standard biostim cost). Verified server-side: source job must belong to
+      // the same user and have completed successfully. Full price applies if
+      // the lookup fails (best-effort; never silently free).
       const sourceJobId = fields.sourceJobId;
-      if (cost > 0 && fields.isStrongPass === 'true' && sourceJobId && /^[A-Za-z0-9._-]{8,128}$/.test(sourceJobId)) {
+      if (fields.isStrongPass === 'true' && sourceJobId && /^[A-Za-z0-9._-]{8,128}$/.test(sourceJobId)) {
         try {
           const sourceBilling = await store.get(sourceJobId + ':billing', { type: 'json' });
           const sourceStatus  = await store.get(sourceJobId + ':status',  { type: 'json' });
           if (sourceBilling && sourceBilling.userId === user.id && sourceStatus && sourceStatus.state === 'done') {
-            cost = 0;
+            cost = 1; // Enhanced pass costs 1 credit per angle regardless of treatment type
           }
         } catch (e) { /* source lookup best-effort; full price applies if lookup fails */ }
       }
