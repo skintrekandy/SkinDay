@@ -656,16 +656,17 @@ const TEX_STRENGTH     = 1.0;
 const GUARD_RADIUS_FRAC= 0.016;
 const GUARD_EDGE_LO    = 12;
 const GUARD_EDGE_HI    = 40;
-// v70 RECALIBRATION: partial chroma lock release.
-// Real-world Sculptra outcomes show significant skin quality improvement --
-// the 'Sculptra glow' from collagen induction is a documented clinical effect
-// (skin tone evenness, brightness, texture improvement). CHROMA_LOCK=1.0 was
-// preventing this entirely. At 0.82, 18% of the AI's chroma delta in the
-// treated zone comes through. The mask protects eyes/nose/lips so this only
-// affects lateral cheek, midface, and temple -- exactly where the glow manifests
-// clinically. Reversal: restore to 1.0 if colour shift reads unnatural on
-// darker skin tones.
-const CHROMA_LOCK      = 0.82;
+// v71: CHROMA_LOCK raised from 0.82 back to 0.96.
+// At 0.82 the 18% chroma release caused visible warm/brown discoloration
+// patches on lighter and more neutral skin tones (confirmed on real patient
+// oblique views -- the patch sits exactly over the treatment mask zone).
+// The Sculptra glow is a real clinical effect but it manifests as luminance
+// (skin brightening), not chroma shift. Locking chroma tightly at 0.96 means
+// the glow still shows as the GLOW_LUMA term (uniform luminance lift) while
+// the brown warmth artifact is suppressed. 0.96 allows a tiny residual chroma
+// for cases where the AI's colour delta is genuinely structural; 1.0 would
+// be fully safe but may look flat on very dark skin tones.
+const CHROMA_LOCK      = 0.96;
 const LUMA_DARK_FLOOR  = 0;     // treated skin never darker than original (broad tone)
 const GLOW_LUMA        = 6;     // gentle lighten (glow), luma levels at full. M6.3:
                                 // back to 6, and for Sculptra the glow now lives
