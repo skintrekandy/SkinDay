@@ -227,9 +227,10 @@
     .nav-credits strong { color:#FAF7F2; font-weight:600; }
     .nav-credits:hover { border-color:var(--gold); }
     .cost-note { display:flex; justify-content:center; margin-top:12px; min-height:1em; }
-    .cost-pill { display:inline-flex; align-items:center; gap:6px; padding:9px 18px; border-radius:999px; border:1px solid rgba(28,23,20,.14); background:rgba(28,23,20,.035); font-size:.86rem; color:var(--deep); }
+    .cost-pill { display:inline-flex; align-items:center; gap:6px; padding:9px 18px; border-radius:999px; border:1px solid rgba(28,23,20,.14); background:rgba(28,23,20,.035); font-size:.86rem; color:var(--deep); flex-wrap:wrap; justify-content:center; text-align:center; }
     .cost-pill strong { font-weight:600; }
     .cost-pill.warn { border-color:var(--rose); background:rgba(196,106,86,.08); color:var(--rose); }
+    @media(max-width:480px){ .cost-pill { font-size:.78rem; padding:8px 14px; gap:4px; } }
     .pack-row { display:flex; align-items:center; justify-content:space-between; gap:14px; border:1px solid rgba(28,23,20,.12); border-radius:10px; padding:14px 16px; margin-top:10px; }
     .pack-row .pack-name { font-weight:500; color:var(--deep); font-size:.92rem; }
     .pack-row .pack-sub { font-size:.74rem; color:var(--muted); margin-top:2px; }
@@ -1207,12 +1208,13 @@ function syncGenerateBtn(){
       const per = creditCostFor(state.type);
       const total = per * ids.length;
       const short = (creditBalance != null && creditBalance < total);
+      const balLine = creditBalance != null
+        ? ' · Balance: <strong>' + creditBalance + '</strong>' + (short ? ' · top up needed' : '')
+        : '';
       note.innerHTML = '<span class="cost-pill' + (short ? ' warn' : '') + '">'
-        + 'This case: <strong>' + total + ' credit' + (total > 1 ? 's' : '') + '</strong>'
-        + '<span>(' + ids.length + ' angle' + (ids.length > 1 ? 's' : '') + ' × ' + per + ')</span>'
-        + (creditBalance != null
-            ? '<span>·</span>Balance: <strong>' + creditBalance + '</strong>' + (short ? '<span>· top up needed</span>' : '')
-            : '')
+        + '<strong>' + total + ' credit' + (total > 1 ? 's' : '') + '</strong>'
+        + ' · ' + ids.length + (ids.length > 1 ? ' angles' : ' angle') + ' × ' + per
+        + balLine
         + '</span>';
     } else {
       note.textContent = '';
@@ -1666,7 +1668,11 @@ function updateIntensityUI(){
   canonical.addEventListener('touchend', () => applySnap(canonical), { passive:true });
 
   // ── Bar visibility: show on any touch device regardless of orientation
-  function isMobile(){ return window.matchMedia('(pointer: coarse) and (max-width: 768px)').matches; }
+  function isMobile(){
+    // Portrait: width <= 768px. Landscape: coarse pointer + height <= 500px (phone on its side)
+    return window.matchMedia('(pointer: coarse) and (max-width: 768px)').matches
+        || window.matchMedia('(pointer: coarse) and (orientation: landscape) and (max-height: 500px)').matches;
+  }
 
   const msbDownloadBtn = document.getElementById('msbDownloadBtn');
   const msbRegenLink   = document.getElementById('msbRegenLink');
@@ -2325,7 +2331,9 @@ async function startEnhancedSlot(angleId, auth){
 
   // Use the same beforeDataUrl (black bg applied) as the standard pass
   const beforeDataUrl = sl.beforeDataUrl || sl.originalDataUrl;
+  console.log('[Visualize Enhanced] ' + angleId + ': starting — beforeDataUrl length=' + (beforeDataUrl ? beforeDataUrl.length : 'null'));
   const blob = await resizeToUpload(beforeDataUrl);
+  console.log('[Visualize Enhanced] ' + angleId + ': resized blob size=' + (blob ? blob.size : 'null'));
 
   const formData = new FormData();
   formData.append('image', blob, 'patient-' + angleId + '.jpg');
@@ -2503,7 +2511,18 @@ async function runStrongPass(){
   state.enhancedTimerInterval = setInterval(() => updateStrongBtn(), 1000);
   updateStrongBtn();
 
-  const auth = await authHeaders();
+  console.log('[Visualize Enhanced] getting auth headers…');
+  let auth;
+  try {
+    const authTimeout = new Promise((_, rej) => setTimeout(() => rej(new Error('authHeaders timeout')), 8000));
+    auth = await Promise.race([authHeaders(), authTimeout]);
+  } catch(e) {
+    console.error('[Visualize Enhanced] auth failed:', e && e.message);
+    toRun.forEach(id => { state.slots[id].strongStatus = 'error'; state.slots[id].error = 'Auth failed: ' + (e && e.message); });
+    updateStrongBtn();
+    return;
+  }
+  console.log('[Visualize Enhanced] auth OK, starting ' + toRun.length + ' angles');
   // Start all angles concurrently; each polls independently
   await Promise.allSettled(toRun.map(async id => {
     try { await startEnhancedSlot(id, auth); }
