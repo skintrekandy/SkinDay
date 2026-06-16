@@ -815,7 +815,7 @@ const FREE_REGEN_MS = 60000;
 // stay the same module instance (shared face-detection cache). v35 = M9.0
 // jowl blending (alpha lobes over marionette/jowl shadows + prejowl notch-fill
 // warp kernels) (v34 = M8.2 shade reconciliation; v33 = M8.1 convex chin).
-const MASK_MODULE_VERSION = '70';
+const MASK_MODULE_VERSION = '71';
 
 /* M7: a case is one or more ANGLES, each with its own photo, QC result, job,
    and compositor. Treatment settings are shared across the case; the response
@@ -2416,22 +2416,29 @@ async function startEnhancedSlot(angleId, auth){
             // compression doesn't attenuate the amplified signal back down.
             // texRadiusFrac 0.08 keeps the scaffold-scale frequency split.
             // CHROMA_LOCK=0.82 and forceOriginalTexture=true remain -- identity safe.
-            // Enhanced compositor calibration -- guardrails restored.
-            // deltaGain 1.8: moderate amplification of structural delta only.
-            // brightCap 26: prevents cheek overexposure / luminance blobs.
-            // darkFloor 16: standard shadow floor -- AI-invented shadows blocked.
-            // texRadiusFrac 0.08: scaffold-scale frequency cutoff preserved.
-            // texStrength 0.92: slightly softer texture restore at mask edges
-            //   to suppress mask-shaped blob artifacts without losing core texture.
-            // chromaLock 0.90: tighter than standard (0.82) to block colour shift
-            //   from AI lighting changes leaking through as cheek warmth.
+            // Enhanced compositor calibration.
+            // Architecture: warp geometry (patient's own pixels displaced) carries
+            // the structural volume support. AI delta carries shadow redistribution
+            // only. This separates structure from lighting.
+            //
+            // liftSat 1.0: warp runs at full slider intensity (standard cap is 0.75).
+            //   The extra warp displacement gives visible lateral cheek/jowl lift
+            //   using the patient's own skin -- no luminance artifacts possible.
+            // deltaGain 1.4: modest AI delta amplification. Warp now handles most
+            //   of the structural work so AI delta only needs to soften shadows.
+            // brightCap 22: moderate cap on luminance lift -- prevents blob artifacts.
+            // darkFloor 16: standard shadow floor.
+            // texRadiusFrac 0.08: scaffold-scale frequency cutoff.
+            // texStrength 0.92: slightly softer mask-edge texture to suppress blobs.
+            // chromaLock 0.90: tighter chroma lock to block AI lighting colour shift.
             const enhancedOpts = {
               scope: maskScope, sex: state.sex,
               warp: warpOn, jowlTexRelease: jowlTexOn, jawDef: jawDefOn, angleId,
-              deltaGain:    1.8,
-              glowApply:    10,
-              brightCap:    26,
-              darkFloor:    16,
+              liftSat:       1.0,
+              deltaGain:     1.4,
+              glowApply:     10,
+              brightCap:     22,
+              darkFloor:     16,
               texRadiusFrac: 0.08,
               texStrength:   0.92,
               chromaLock:    0.90
@@ -2782,10 +2789,11 @@ async function buildEnhancedDebugSheet(angleId){
       scope: compScope, sex: state.sex,
       warp: true, jowlTexRelease: true, jawDef: true,
       intensity: 1.0,
-      deltaGain:    1.8,
-      glowApply:    10,
-      brightCap:    26,
-      darkFloor:    16,
+      liftSat:       1.0,
+      deltaGain:     1.4,
+      glowApply:     10,
+      brightCap:     22,
+      darkFloor:     16,
       texRadiusFrac: 0.08,
       texStrength:   0.92,
       chromaLock:    0.90
