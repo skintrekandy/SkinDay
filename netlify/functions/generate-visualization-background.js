@@ -119,7 +119,18 @@ exports.handler = async (event) => {
     if (f.type) {
       core = buildCorePrompt({
         type: f.type, areas: f.areas, goal: f.goal, intensity: f.intensity,
-        product: f.product, projection: f.projection, timeline: f.timeline, note: cleanNote
+        product: f.product, projection: f.projection, timeline: f.timeline, note: cleanNote,
+        // M11.1: these fields were added to FIELD_KEYS in start-visualization.js
+        // but were not forwarded here -- causing normalizeView() to always return
+        // 'frontal' and isStrongPass detection to never fire in buildSculptraPrompt.
+        // All Enhanced prompt work (ENHANCED_MAGNITUDE, SCULPTRA_ENHANCED_*) was
+        // being bypassed silently. Fixed here.
+        isStrongPass:     f.isStrongPass,
+        angle:            f.angle,
+        sex:              f.sex,
+        view:             f.view,
+        phenotype:        f.phenotype,
+        sculptraPhenotype: f.sculptraPhenotype,
       });
     } else {
       core = f.prompt || 'Create a subtle, realistic aesthetic treatment visualization.';
@@ -143,8 +154,15 @@ exports.handler = async (event) => {
     // (Sculptra today). gpt-image-1 edits the TRANSPARENT areas of this PNG and
     // preserves the rest. Must match the input image dimensions, which the
     // client guarantees by rendering the mask at the same resized size.
+    // M11.1: Enhanced pass uses gpt-image-1.5 -- better prompt adherence means
+    // the no-darkening, no-contrast-increase, and soft-volume rules are actually
+    // followed. Standard pass stays on gpt-image-1 to keep per-credit costs down.
+    // gpt-image-1 is deprecated Oct 23 2026; plan to move standard to 1.5 then.
+    const isEnhancedJob = f.isStrongPass === 'true' || f.isStrongPass === true;
+    const modelName = isEnhancedJob ? 'gpt-image-1.5' : 'gpt-image-1';
+
     const editParams = {
-      model: 'gpt-image-1',
+      model: modelName,
       image: file,
       prompt,
       size: 'auto',
@@ -176,7 +194,7 @@ exports.handler = async (event) => {
         treatmentType:  f.type || null,
         angle:          f.angle || null,
         isRegen:        billing ? (billing.cost === 0) : false,
-        model:          'gpt-image-1',
+        model:          modelName,
         imageSize:      editParams.size || 'auto',
         imageQuality:   editParams.input_fidelity || 'high',
         openAIUsage:    result.usage || null,
@@ -197,11 +215,11 @@ exports.handler = async (event) => {
     if (blocked) {
       await fail('The AI provider blocked this specific edit under its safety system (the image-edit endpoint is strict and this cannot be turned down). Lip edits are a frequent trigger. Try a different area, or adjust the wording of the custom note.', 'moderation_blocked');
       await refundIfBilled(store, jobId, 'moderation blocked');
-      await logGeneration({ jobId, status: 'blocked', failureReason: 'moderation_blocked', model: 'gpt-image-1' }).catch(() => {});
+      await logGeneration({ jobId, status: 'blocked', failureReason: 'moderation_blocked', model: modelName }).catch(() => {});
     } else {
       await fail(msg || 'Image generation failed', code || 'error');
       await refundIfBilled(store, jobId, (code ? String(code) : 'generation failed'));
-      await logGeneration({ jobId, status: 'failed', failureReason: code || msg || 'unknown', model: 'gpt-image-1' }).catch(() => {});
+      await logGeneration({ jobId, status: 'failed', failureReason: code || msg || 'unknown', model: modelName }).catch(() => {});
     }
     return { statusCode: 200 };
   }
