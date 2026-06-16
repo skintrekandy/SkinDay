@@ -2410,6 +2410,7 @@ async function startEnhancedSlot(angleId, auth){
   formData.append('note', STRONG_PROMPT_SUFFIX);
   formData.append('isStrongPass', 'true');
   formData.append('sourceJobId', sl.jobId);
+  if(state.sculptraPhenotype) formData.append('sculptraPhenotype', state.sculptraPhenotype);
   // M11.1: NO mask appended for Enhanced. Full-frame edit only.
   // The mask was confining the model to local inpainting, which produced
   // patchy anatomically incoherent results. The compositor below handles
