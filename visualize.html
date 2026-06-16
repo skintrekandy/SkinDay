@@ -558,18 +558,28 @@
     </div>
     <div class="result-grid">
       <div class="result-card"><img id="originalResult" alt="Original photo" /><div class="result-tag">Original</div></div>
-      <div class="result-card"><img id="aiResult" alt="AI simulated treatment preview" /><svg class="anno-svg" id="annoSvg" viewBox="0 0 100 125" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg><div class="result-tag sim" id="simTag">Simulated · AI Visualization<span class="strong-badge" id="simTagStrong" style="display:none;">Strong Response</span></div></div>
+      <div class="result-card"><img id="aiResult" alt="AI simulated treatment preview" /><svg class="anno-svg" id="annoSvg" viewBox="0 0 100 125" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg><div class="result-tag sim" id="simTag">Simulated · AI Visualization<span class="strong-badge" id="simTagStrong" style="display:none;">Enhanced course</span></div></div>
     </div>
     <div id="intensityWrap" style="display:none;margin-top:14px;">
+      <!-- Course segmented control (biostim only) -->
+      <div id="courseControl" style="display:none;margin-bottom:14px;">
+        <div style="font-size:13px;letter-spacing:.04em;text-transform:uppercase;opacity:.75;margin-bottom:8px;">Response Preview</div>
+        <div class="view-toggle" id="courseToggle">
+          <button type="button" id="courseExpected" class="active">Expected course</button>
+          <button type="button" id="courseEnhanced" class="strong-tab">Enhanced course</button>
+        </div>
+        <div class="small" id="courseHelp" style="margin-top:6px;color:var(--muted);">Enhanced course shows an upper-range simulation. May reflect more sessions or stronger individual response. Actual results vary.</div>
+      </div>
+      <!-- Timeline slider -->
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-        <label for="intensitySlider" id="intensityLabel" style="font-size:13px;letter-spacing:.04em;text-transform:uppercase;opacity:.75;">Treatment response</label>
+        <label for="intensitySlider" id="intensityLabel" style="font-size:13px;letter-spacing:.04em;text-transform:uppercase;opacity:.75;">Response timeline</label>
         <span id="intensityValue" style="font-family:'Cormorant Garamond',serif;font-size:22px;">Expected</span>
       </div>
       <input type="range" id="intensitySlider" min="0" max="100" step="1" value="70" style="width:100%;margin-top:8px;accent-color:#C8725A;" />
       <div style="display:flex;justify-content:space-between;font-size:.68rem;letter-spacing:.04em;text-transform:uppercase;opacity:.6;margin-top:4px;">
-        <span id="intensityMin">Conservative</span><span id="intensityMax">Strong</span>
+        <span id="intensityMin">Early</span><span id="intensityMax">6 months</span>
       </div>
-      <div class="small" id="intensityHelp" style="margin-top:6px;">Slide to preview a more conservative or stronger response. The simulation updates instantly.</div>
+      <div class="small" id="intensityHelp" style="margin-top:6px;">Slide to preview an earlier or more complete treatment response. The simulation updates instantly.</div>
       <div class="small" id="overfillNote" style="display:none;margin-top:4px;color:#A33524;font-weight:600;">Shown for education: deliberately overfilled, not a treatment goal.</div>
     </div>
     <div class="compare-wrap" id="compareWrap" style="display:none;">
@@ -588,7 +598,7 @@
       <!-- Primary: always visible -->
       <div class="action-bar-primary">
         <button class="btn btn-primary" id="regenBtn">Re-generate</button>
-        <button class="btn btn-gold" id="strongBtn" style="display:none;" title="Generate a strong responder version at no extra credit cost">✦ Strong Response <span style="font-size:.65rem;opacity:.7;font-weight:400;">free</span></button>
+        <button class="btn btn-gold" id="strongBtn" style="display:none;" aria-hidden="true"></button>
       </div>
       <!-- Downloads: the main clinic deliverable -->
       <div class="action-bar-downloads">
@@ -782,12 +792,12 @@
 <!-- ───────── Mobile sticky slider bar ───────── -->
 <div id="mobileSliderBar" class="bar-hidden" aria-hidden="true">
   <div class="msb-row">
-    <span class="msb-label" id="msbLabel">Treatment response</span>
+    <span class="msb-label" id="msbLabel">Response timeline</span>
     <span id="msbValue">Expected</span>
   </div>
   <input type="range" id="mobileSlider" min="0" max="100" step="1" value="70" aria-hidden="true" tabindex="-1" />
   <div class="msb-ends">
-    <span id="msbMin">Conservative</span><span id="msbMax">Strong</span>
+    <span id="msbMin">Early</span><span id="msbMax">6 months</span>
   </div>
   <button id="msbActionBtn" type="button" class="bar-hidden" disabled>Generate simulated preview</button>
   <button id="msbDownloadBtn" type="button">Download</button>
@@ -1504,12 +1514,15 @@ function updateIntensityUI(){
     slider.max = 100;
   }
   const li = levelInfo(state.intensityPct);
-  document.getElementById('intensityLabel').textContent = isFiller ? 'Degree of correction' : 'Treatment timeline';
+  document.getElementById('intensityLabel').textContent = isFiller ? 'Degree of correction' : 'Response timeline';
   document.getElementById('intensityMin').textContent = isFiller ? 'Subtle' : 'Early';
   document.getElementById('intensityMax').textContent = isFiller ? 'Enhanced' : '6 months';
   document.getElementById('intensityHelp').textContent = isFiller
     ? 'Slide to preview less or more correction.'
     : 'Slide to preview an earlier or more complete treatment response. The simulation updates instantly.';
+  // Show course segmented control for biostim only
+  const courseCtrl = document.getElementById('courseControl');
+  if(courseCtrl) courseCtrl.style.display = isFiller ? 'none' : '';
   const valEl = document.getElementById('intensityValue');
   valEl.textContent = li.name;
   valEl.style.color = li.over ? OVERFILL_COLOR : '';
@@ -1599,7 +1612,7 @@ function updateIntensityUI(){
     msbValue.style.color = li.over ? OVERFILL_COLOR : 'var(--cream)';
     mslider.style.accentColor = li.over ? OVERFILL_COLOR : 'var(--rose)';
     const isFiller = state.type === 'filler';
-    msbLabel.textContent = isFiller ? 'Degree of correction' : 'Treatment response';
+    msbLabel.textContent = isFiller ? 'Degree of correction' : 'Response timeline';
     msbMin.textContent   = isFiller ? 'Subtle' : 'Early';
     msbMax.textContent   = isFiller ? 'Enhanced' : '6 months';
   }
@@ -2258,7 +2271,7 @@ regenBtn.addEventListener('click', () => runGeneration(true));
    belongs to the same user and completed successfully).
    The button toggles between "Generate Strong Response" and "View Standard /
    View Strong" after the strong result is ready. */
-const STRONG_PROMPT_SUFFIX = ' NOTICEABLE BIOSTIMULATOR RESPONSE: Generate a realistic, identity-preserving visualization of a strong but believable biostimulator response at approximately 6-9 months. Preserve exactly: the same person and identity, same age category, same expression, same eyes and eyelid shape and brow position, same nose and lips and mouth shape, same hair and hairline and ears and clothing and background and camera angle, original skin texture and pores and pigmentation and natural asymmetry, original ethnic features and facial character. Clinical effects to simulate: improved temple and lateral cheek support, fuller but natural midface scaffolding, softer lid-cheek transition from below without changing the eyes, reduced lower-cheek hollowing, softened nasolabial and marionette shadows, subtle prejowl support, slightly more supported facial contour. For male patients: maintain masculine facial structure, preserve original jaw and chin phenotype, do not feminize the lower face, do not narrow the lower third, do not create a pointed chin, support the midface and lower face while keeping a natural masculine contour. Hard limits: do not make this look like HA filler. Do not create obvious chin projection. Do not slim the face or create a V-line. Do not change jaw width, eye size or shape, lip size or shape, or the nose. Do not over-smooth skin. Do not remove wrinkles, pores, pigmentation, or texture. Do not make the patient look like a different person. Do not beautify generically. Do not make the result look like a filter or retouching app. This is improved support, not beautification.';
+const STRONG_PROMPT_SUFFIX = ' NOTICEABLE BIOSTIMULATOR RESPONSE: Generate a realistic, identity-preserving visualization of a strong but believable biostimulator response at approximately 6-9 months. Preserve exactly: the same person and identity, same age category, same expression, same eyes and eyelid shape and brow position, same nose and lips and mouth shape, same hair and hairline and ears and clothing and background and camera angle, original skin texture and pores and pigmentation and natural asymmetry, original ethnic features and facial character. Clinical effects to simulate: improved temple and lateral cheek support, fuller but natural midface scaffolding, softer lid-cheek transition from below without changing the eyes, reduced lower-cheek hollowing, softened nasolabial and marionette shadows, subtle prejowl support, slightly more supported facial contour. For male patients: maintain masculine facial structure, preserve original jaw and chin phenotype, do not feminize the lower face, do not narrow the lower third, do not create a pointed chin, support the midface and lower face while keeping a natural masculine contour. Hard limits: do not make this look like HA filler. Do not create obvious chin projection. Do not slim the face or create a V-line. Do not change jaw width, eye size or shape, lip size or shape, or the nose. Do not over-smooth skin. Do not remove wrinkles, pores, pigmentation, or texture. Do not make the patient look like a different person. Do not beautify generically. Do not make the result look like a filter or retouching app. This is improved support, not beautification. For frontal-view images: face outline, jaw width, and overall face shape must be identical to the original. Changes are internal scaffold only, never silhouette.';
 
 async function runStrongPass(){
   const sl = activeSlot();
@@ -2349,34 +2362,21 @@ async function runStrongPass(){
 
 function updateStrongBtn(){
   const sl = activeSlot();
-  const btn = document.getElementById('strongBtn');
-  if(!btn) return;
   const isBiostim = state.type === 'biostim';
   const isDone = sl && sl.status === 'done';
-  btn.style.display = (isBiostim && isDone) ? '' : 'none';
-  if(!sl) return;
-  if(sl.strongStatus === 'generating'){
-    btn.textContent = '✦ Generating…';
-    btn.disabled = true;
-    btn.classList.remove('viewing');
-  } else if(sl.strongStatus === 'done'){
-    btn.disabled = false;
-    if(sl.viewMode === 'strong'){
-      btn.textContent = '← View Standard';
-      btn.classList.add('viewing');
-    } else {
-      btn.textContent = '✦ View Strong Response';
-      btn.classList.remove('viewing');
-    }
-  } else if(sl.strongStatus === 'error'){
-    btn.textContent = '✦ Strong Response (retry)';
-    btn.disabled = false;
-    btn.classList.remove('viewing');
-  } else {
-    btn.innerHTML = '✦ Strong Response <span style="font-size:.65rem;opacity:.7;font-weight:400;">free</span>';
-    btn.disabled = false;
-    btn.classList.remove('viewing');
-  }
+  // Drive the segmented course control
+  const expBtn = document.getElementById('courseExpected');
+  const enhBtn = document.getElementById('courseEnhanced');
+  const courseCtrl = document.getElementById('courseControl');
+  if(courseCtrl) courseCtrl.style.display = (isBiostim && isDone) ? '' : 'none';
+  if(!expBtn || !enhBtn || !sl) return;
+  const isEnhanced = sl.viewMode === 'strong';
+  const isGenerating = sl.strongStatus === 'generating';
+  expBtn.classList.toggle('active', !isEnhanced);
+  enhBtn.classList.toggle('active', isEnhanced);
+  expBtn.disabled = isGenerating;
+  enhBtn.disabled = isGenerating;
+  enhBtn.textContent = isGenerating ? 'Generating…' : (sl.strongStatus === 'error' ? 'Enhanced course (retry)' : 'Enhanced course');
 }
 
 function applyActiveView(){
@@ -2390,7 +2390,21 @@ function applyActiveView(){
   if(badge) badge.style.display = showStrong ? 'inline' : 'none';
 }
 
-document.getElementById('strongBtn').addEventListener('click', runStrongPass);
+// Course segmented control: Expected / Enhanced
+(function(){
+  const expBtn = document.getElementById('courseExpected');
+  const enhBtn = document.getElementById('courseEnhanced');
+  if(expBtn) expBtn.addEventListener('click', () => {
+    const sl = activeSlot();
+    if(!sl || sl.strongStatus === 'generating') return;
+    if(sl.viewMode === 'strong'){ sl.viewMode = 'standard'; applyActiveView(); updateStrongBtn(); }
+  });
+  if(enhBtn) enhBtn.addEventListener('click', () => {
+    const sl = activeSlot();
+    if(!sl || sl.strongStatus === 'generating') return;
+    runStrongPass();
+  });
+})();
 
 /* ── Overflow menu ── */
 const moreBtn = document.getElementById('moreBtn');
