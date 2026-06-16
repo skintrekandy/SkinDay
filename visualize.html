@@ -851,6 +851,7 @@ const state = {
   type:'biostim', areas:['chin_jawline'], intensity:'enhanced', sex:'female',
   product:'sculptra', projection:'optimistic', timeline:'6',
   blackBg:true, lastGenAt:0, intensityPct:70, courseMode:'standard', // 'standard' | 'enhanced' -- global across all angles
+  enhancedStartedAt: 0, enhancedTimerInterval: null,
   selectedAngles:['frontal'], activeAngle:'frontal',
   slots:{ frontal:makeSlot(), r45:makeSlot(), l45:makeSlot() }
 };
@@ -2364,9 +2365,14 @@ async function startEnhancedSlot(angleId, auth){
   const startRes = await fetch('/.netlify/functions/start-visualization', {
     method: 'POST', headers: auth, body: formData
   });
+  if(startRes.status === 401){ await handleAuthFailure(); throw new Error('Session expired — please sign in again.'); }
+  if(startRes.status === 402){
+    const err = await startRes.json().catch(() => ({}));
+    throw new Error('Not enough credits for Enhanced course. ' + (err.error || ''));
+  }
   if(!startRes.ok){
     const err = await startRes.json().catch(() => ({}));
-    throw new Error(err.error || 'Enhanced pass failed to start');
+    throw new Error('Enhanced pass failed (HTTP ' + startRes.status + '): ' + (err.error || 'unknown error'));
   }
   const { jobId } = await startRes.json();
   sl.strongJobId = jobId;
@@ -2502,6 +2508,9 @@ async function runStrongPass(){
 
   // Mark all angles as generating immediately so UI updates without lag
   toRun.forEach(id => { state.slots[id].strongStatus = 'generating'; });
+  state.enhancedStartedAt = Date.now();
+  if(state.enhancedTimerInterval) clearInterval(state.enhancedTimerInterval);
+  state.enhancedTimerInterval = setInterval(() => updateStrongBtn(), 1000);
   updateStrongBtn();
 
   const auth = await authHeaders();
@@ -2509,8 +2518,10 @@ async function runStrongPass(){
   await Promise.allSettled(toRun.map(async id => {
     try { await startEnhancedSlot(id, auth); }
     catch(e){
-      console.error('Enhanced pass error for ' + id + ':', e);
+      const msg = (e && e.message) || String(e);
+      console.error('%c[Visualize Enhanced] ' + id + ': FAILED — ' + msg, 'color:#c62828;font-weight:bold');
       state.slots[id].strongStatus = 'error';
+      state.slots[id].error = msg;
     }
   }));
   updateStrongBtn();
@@ -2520,19 +2531,47 @@ function updateStrongBtn(){
   const sl = activeSlot();
   const isBiostim = state.type === 'biostim';
   const isDone = sl && sl.status === 'done';
-  // Drive the segmented course control
   const expBtn = document.getElementById('courseExpected');
   const enhBtn = document.getElementById('courseEnhanced');
   const courseCtrl = document.getElementById('courseControl');
+  const courseHelp = document.getElementById('courseHelp');
   if(courseCtrl) courseCtrl.style.display = (isBiostim && isDone) ? '' : 'none';
   if(!expBtn || !enhBtn || !sl) return;
   const isEnhanced = state.courseMode === 'enhanced';
-  const isGenerating = sl.strongStatus === 'generating';
+
+  // Check generating across ALL selected angles (not just active slot)
+  const anyGenerating = state.selectedAngles.some(id => state.slots[id].strongStatus === 'generating');
+  const allEnhancedDone = state.selectedAngles.filter(id => state.slots[id].status === 'done')
+    .every(id => state.slots[id].strongStatus === 'done' || state.slots[id].strongStatus === 'error');
+
+  // Stop timer when all done
+  if(!anyGenerating && state.enhancedTimerInterval){
+    clearInterval(state.enhancedTimerInterval);
+    state.enhancedTimerInterval = null;
+  }
+
   expBtn.classList.toggle('active', !isEnhanced);
   enhBtn.classList.toggle('active', isEnhanced);
-  expBtn.disabled = isGenerating;
-  enhBtn.disabled = isGenerating;
-  enhBtn.textContent = isGenerating ? 'Generating…' : (sl.strongStatus === 'error' ? 'Enhanced course (retry)' : 'Enhanced course');
+  expBtn.disabled = anyGenerating;
+  enhBtn.disabled = anyGenerating;
+
+  if(anyGenerating){
+    // Per-angle dots: ✓ done, · waiting, spinner for generating
+    const ANGLE_SHORT = { frontal:'F', r45:'R', l45:'L' };
+    const dots = state.selectedAngles.filter(id => state.slots[id].status === 'done').map(id => {
+      const st = state.slots[id].strongStatus;
+      if(st === 'done') return '✓' + ANGLE_SHORT[id];
+      if(st === 'generating') return '⟳' + ANGLE_SHORT[id];
+      return '·' + ANGLE_SHORT[id];
+    }).join('  ');
+    const secs = state.enhancedStartedAt ? Math.round((Date.now() - state.enhancedStartedAt) / 1000) : 0;
+    enhBtn.textContent = 'Generating… ' + secs + 's';
+    if(courseHelp) courseHelp.textContent = dots + ' · Runs in background, keep this tab open.';
+  } else {
+    const anyError = state.selectedAngles.some(id => state.slots[id].strongStatus === 'error');
+    enhBtn.textContent = anyError ? 'Enhanced course (retry)' : 'Enhanced course';
+    if(courseHelp) courseHelp.textContent = 'Enhanced course shows an upper-range simulation. May reflect more sessions or stronger individual response. Actual results vary.';
+  }
 }
 
 function applyActiveView(){
