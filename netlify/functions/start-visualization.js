@@ -163,6 +163,22 @@ exports.handler = async (event) => {
         } catch (e) { /* lineage lookup is best-effort; full price applies */ }
       }
 
+      // Strong Response second pass: free if the source job belongs to the same
+      // user and completed successfully. The strong pass is an optional second
+      // generation fired from the client after the standard generation is done.
+      // It sends no mask (full-face AI interpretation) and a stronger prompt.
+      // Cost is always 0 -- it's included in the original generation cost.
+      const sourceJobId = fields.sourceJobId;
+      if (cost > 0 && fields.isStrongPass === 'true' && sourceJobId && /^[A-Za-z0-9._-]{8,128}$/.test(sourceJobId)) {
+        try {
+          const sourceBilling = await store.get(sourceJobId + ':billing', { type: 'json' });
+          const sourceStatus  = await store.get(sourceJobId + ':status',  { type: 'json' });
+          if (sourceBilling && sourceBilling.userId === user.id && sourceStatus && sourceStatus.state === 'done') {
+            cost = 0;
+          }
+        } catch (e) { /* source lookup best-effort; full price applies if lookup fails */ }
+      }
+
       if (cost > 0) {
         await rpc('visualize_ensure_account', { p_user: user.id, p_email: user.email || null, p_grant: SIGNUP_GRANT });
         const balance = await rpc('visualize_reserve_credits', { p_user: user.id, p_cost: cost, p_job: jobId });
