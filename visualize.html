@@ -2416,20 +2416,25 @@ async function startEnhancedSlot(angleId, auth){
             // compression doesn't attenuate the amplified signal back down.
             // texRadiusFrac 0.08 keeps the scaffold-scale frequency split.
             // CHROMA_LOCK=0.82 and forceOriginalTexture=true remain -- identity safe.
-            // Enhanced compositor calibration.
-            // deltaGain 2.0: strong enough to show structural volume, not so high
-            // it overexposes the lateral cheek. brightCap 28 prevents the bright
-            // side from blowing out while darkFloor 20 gives matching shadow depth
-            // on the underside of the restored volume -- both sides balanced so
-            // the result reads as 3D scaffold rather than a brightness patch.
+            // Enhanced compositor calibration -- guardrails restored.
+            // deltaGain 1.8: moderate amplification of structural delta only.
+            // brightCap 26: prevents cheek overexposure / luminance blobs.
+            // darkFloor 16: standard shadow floor -- AI-invented shadows blocked.
+            // texRadiusFrac 0.08: scaffold-scale frequency cutoff preserved.
+            // texStrength 0.92: slightly softer texture restore at mask edges
+            //   to suppress mask-shaped blob artifacts without losing core texture.
+            // chromaLock 0.90: tighter than standard (0.82) to block colour shift
+            //   from AI lighting changes leaking through as cheek warmth.
             const enhancedOpts = {
               scope: maskScope, sex: state.sex,
               warp: warpOn, jowlTexRelease: jowlTexOn, jawDef: jawDefOn, angleId,
-              deltaGain:    2.0,  // structural delta amplification
-              glowApply:    11,   // collagen glow
-              brightCap:    28,   // bright-side cap; prevents cheek overexposure
-              darkFloor:    20,   // shadow depth to match; makes volume read as 3D
-              texRadiusFrac: 0.08 // scaffold-scale frequency cutoff
+              deltaGain:    1.8,
+              glowApply:    10,
+              brightCap:    26,
+              darkFloor:    16,
+              texRadiusFrac: 0.08,
+              texStrength:   0.92,
+              chromaLock:    0.90
             };
             const apply = await makeSculptraCompositor(beforeImg, aiImg, enhancedOpts);
             if(apply){
@@ -2777,11 +2782,13 @@ async function buildEnhancedDebugSheet(angleId){
       scope: compScope, sex: state.sex,
       warp: true, jowlTexRelease: true, jawDef: true,
       intensity: 1.0,
-      deltaGain:    2.0,
-      glowApply:    11,
-      brightCap:    28,
-      darkFloor:    20,
-      texRadiusFrac: 0.08
+      deltaGain:    1.8,
+      glowApply:    10,
+      brightCap:    26,
+      darkFloor:    16,
+      texRadiusFrac: 0.08,
+      texStrength:   0.92,
+      chromaLock:    0.90
     };
     const composited100 = await compositeSculptra(beforeImg, rawAiImg, enhancedOpts);
 
