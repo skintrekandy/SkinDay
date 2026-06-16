@@ -2662,7 +2662,8 @@ export async function compositeSculptra(beforeImg, aiImg, opts){
   const lift = (isOverfill) ? null : await buildWarpForScope(beforeImg, landmarks, w, h, scope, sex, opts);
   const postWarp = (scope === 'chin_jaw');
   const wb = (lift && !postWarp) ? new Uint8ClampedArray(b) : b;
-  if(lift && !postWarp) applyLiftWarp(wb, b, w, h, lift, Math.min(intensity, SCULP_LIFT_SAT));
+  const liftSat = (opts && opts.liftSat != null) ? Math.max(0, Math.min(1, opts.liftSat)) : SCULP_LIFT_SAT;
+  if(lift && !postWarp) applyLiftWarp(wb, b, w, h, lift, Math.min(intensity, liftSat));
 
   if(textureRestore){
     // Keep the AI low band (volume), restore the original high band (texture);
@@ -2843,9 +2844,15 @@ export async function makeSculptraCompositor(beforeImg, aiImg, opts){
   const absH  = faceH_abs;
   const faceW = faceW_abs;
 
+  // M11 Enhanced: liftSat is opts-overridable so Enhanced course can run the
+  // geometry warp at higher intensity than the standard slider cap. The warp
+  // uses the patient's own pixels displaced -- no AI artifacts. Raising this
+  // for Enhanced gives visible structural support without luminance blobs.
+  const liftSat = (opts && opts.liftSat != null) ? Math.max(0, Math.min(1, opts.liftSat)) : SCULP_LIFT_SAT;
+
   return function apply(intensity){
     const t = Math.max(0, Math.min(1, (typeof intensity === "number" ? intensity : 1)));
-    if(lift && !postWarp) applyLiftWarp(wb, b, w, h, lift, Math.min(t, SCULP_LIFT_SAT));
+    if(lift && !postWarp) applyLiftWarp(wb, b, w, h, lift, Math.min(t, liftSat));
     if(textureRestore){
       // M6.2: al carries the response gain (delta extrapolation at the top).
       // M6.3: the glow term is scaled by mask and slider only, never by gain.
