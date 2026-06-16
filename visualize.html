@@ -2406,12 +2406,23 @@ async function startEnhancedSlot(angleId, auth){
             // glowApply raised for collagen density read.
             // CHROMA_LOCK, DARK_FLOOR, texture restore, and outline gate are
             // all unchanged -- identity and skin character are still protected.
+            // Enhanced compositor opts -- calibrated from debug sheet analysis.
+            // Panel 3 (raw AI) shows the correct structural delta is being generated:
+            // lateral cheek fullness, submalar support, NLF softening.
+            // Panel 4 (composited) suppresses it because deltaGain*lowShift is too
+            // small in absolute luma levels to read as perceptible volume.
+            // Fix: raise deltaGain to 2.5 so the compositor amplifies the structural
+            // delta enough to read as volume. brightCap uncapped (0) so the tanh
+            // compression doesn't attenuate the amplified signal back down.
+            // texRadiusFrac 0.08 keeps the scaffold-scale frequency split.
+            // CHROMA_LOCK=0.82 and forceOriginalTexture=true remain -- identity safe.
             const enhancedOpts = {
               scope: maskScope, sex: state.sex,
               warp: warpOn, jowlTexRelease: jowlTexOn, jawDef: jawDefOn, angleId,
-              deltaGain:    1.6,  // amplify in-mask delta; standard is 1.0
-              glowApply:    13,   // collagen density; standard is 9
-              brightCap:    40,   // tanh knee raised to pass volume highlight; standard is 16
+              deltaGain:    2.5,  // amplify structural delta; standard is 1.0
+              glowApply:    14,   // collagen glow; standard is 9
+              brightCap:    0,    // uncapped -- let the amplified volume read fully
+              darkFloor:    20,   // allow shadow depth for 3D volume read
               texRadiusFrac: 0.08 // scaffold-scale cutoff; standard is 0.016
             };
             const apply = await makeSculptraCompositor(beforeImg, aiImg, enhancedOpts);
@@ -2756,9 +2767,10 @@ async function buildEnhancedDebugSheet(angleId){
       scope: compScope, sex: state.sex,
       warp: true, jowlTexRelease: true, jawDef: true,
       intensity: 1.0,
-      deltaGain:    1.6,
-      glowApply:    13,
-      brightCap:    40,
+      deltaGain:    2.5,
+      glowApply:    14,
+      brightCap:    0,
+      darkFloor:    20,
       texRadiusFrac: 0.08
     };
     const composited100 = await compositeSculptra(beforeImg, rawAiImg, enhancedOpts);
