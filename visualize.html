@@ -2390,22 +2390,28 @@ async function startEnhancedSlot(angleId, auth){
             const warpOn = !/[?&]warp=off\b/i.test(location.search);
             const jowlTexOn = !/[?&]jowltex=off\b/i.test(location.search);
             const jawDefOn = !/[?&]jawdef=off\b/i.test(location.search);
-            // Enhanced-specific compositor opts: higher deltaGain amplifies the
-            // low-frequency AI volume signal inside the mask without touching the
-            // global SCULPTRA_DELTA_GAIN constant (which stays at 1.0 for standard).
-            // texRadiusFrac widened slightly so the low-frequency cutoff captures
-            // broader cheek/temple scaffold before texture restore clamps it.
-            // glowApply raised to read as collagen density, not skin smoothing.
-            // brightCap raised to allow more volume highlight in the treated zone.
-            // All other identity-protection constants (CHROMA_LOCK, DARK_FLOOR,
-            // texture restore, outline gate) remain at their standard values.
+            // Enhanced-specific compositor opts.
+            // The Sculptra scaffold signal spans the full lateral cheek/temple
+            // zone -- roughly 15-20% of face width. The standard texRadiusFrac
+            // of 0.016 captures only ~6px at a 400px face, which is fine-texture
+            // scale, not scaffold scale. The broad low-frequency volume delta gets
+            // classified as "high frequency" at that radius and stripped out by
+            // the texture restore layer, leaving the result timid.
+            // For Enhanced: widen texRadiusFrac to 0.08 (a ~32px radius at 400px
+            // face) so the scaffold-scale volume signal survives into the delta.
+            // deltaGain amplifies the surviving delta inside the mask.
+            // brightCap raised so the tanh soft-knee allows the full volume
+            // highlight to read without hard compression.
+            // glowApply raised for collagen density read.
+            // CHROMA_LOCK, DARK_FLOOR, texture restore, and outline gate are
+            // all unchanged -- identity and skin character are still protected.
             const enhancedOpts = {
               scope: maskScope, sex: state.sex,
               warp: warpOn, jowlTexRelease: jowlTexOn, jawDef: jawDefOn, angleId,
-              deltaGain:   1.4,   // amplify low-freq volume; standard is 1.0
-              glowApply:   12,    // more collagen density read; standard is 9
-              brightCap:   22,    // more volume highlight; standard is 16
-              texRadiusFrac: 0.022 // wider low-freq cutoff for broader scaffold; standard is 0.016
+              deltaGain:    1.6,  // amplify in-mask delta; standard is 1.0
+              glowApply:    13,   // collagen density; standard is 9
+              brightCap:    40,   // tanh knee raised to pass volume highlight; standard is 16
+              texRadiusFrac: 0.08 // scaffold-scale cutoff; standard is 0.016
             };
             const apply = await makeSculptraCompositor(beforeImg, aiImg, enhancedOpts);
             if(apply){
