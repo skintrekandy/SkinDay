@@ -372,7 +372,7 @@ function stripInternalSculptraTags(note) {
 //   - Positive description first, prohibitions at the end
 //   - Same register as the phenotype optimistic strings
 const ENHANCED_MAGNITUDE =
-  'Magnitude: a strong, fully realized mature soft-tissue support response at the upper end of real clinical outcomes. The face reads as structurally rebuilt: the cheek envelope is more supported and projects further laterally, the soft hollow-shadow transitions are softer and fill from lateral to medial, the cheek-to-jaw continuity is clean with the jowl clearly lighter and less pooled, the under-eye-to-cheek transition reads as supported from below, and the lower-face shadow logic reflects a face carrying its volume higher. The whole face reads as better supported and three-dimensional -- not from skin changes, but from restored structural volume creating natural highlights on fuller convexities and natural soft shadows beneath them. Preserve the same age, skin texture, pores, pigmentation, skin tone, asymmetry, and identity exactly. Do not create a beauty retouch. Do not smooth skin. Do not brighten skin tone. Do not alter eyes, lips, brows, hair, nose shape, ears, headband, neck, clothing, background, or camera angle. Do not add any text, labels, captions, logos, watermarks, or annotations of any kind.';
+  'Magnitude: an upper-range but natural soft collagen-volume response. The face should look subtly fuller and better supported in a broad, diffuse way, with softer hollow-shadow transitions and a healthier cheek envelope. The result should reduce tired hollowness and improve facial support without making the face sharper, tighter, younger, slimmer, carved, or more angular. Keep the change soft, gradual, and three-dimensional, like natural tissue support returning under the same skin. Preserve the same age, identity, expression, skin texture, pores, pigmentation, skin tone, asymmetry, eyes, lips, brows, nose, ears, hair, headband, neck, clothing, background, lighting, and camera angle. Do not add text, labels, captions, logos, watermarks, or annotations.';
 
 // M11.1: Enhanced-specific allowed zones and output rules. These replace
 // SCULPTRA_ALLOWED_ZONES and SCULPTRA_OUTPUT_RULES when isStrongPass is true.
@@ -388,10 +388,10 @@ const ENHANCED_MAGNITUDE =
 // on-image text. For Enhanced, the output rule describes what a correct clinical
 // photograph looks like, not what kind of graphic it is.
 const SCULPTRA_ENHANCED_STRUCTURAL_BOUNDS =
-  'The change must read as a global shift in how the face carries volume: more supported, less hollow-shadow, less pooled at the lower face. The face should look like the same person photographed after their soft tissue is better structurally supported -- not painted, not retouched, not filtered. Treat the face as a single three-dimensional object where volume and support changes cause shadow and highlight redistribution across the whole surface. Do not change any feature outside soft-tissue volume support. Do not touch skin surface, eyes, nose, lips, ears, hair, clothing, or background.';
+  'The change must read as soft diffuse facial support, not sculpting. Avoid hard cheekbone shadows, jaw sharpening, V-line shaping, facelift-like pulling, skin retouching, or contrast changes. The cheek and lower-face transitions should look gently more supported, with natural soft highlights and preserved real skin texture. Do not create new dark bands, carved hollows, sharper folds, or a more angular face.';
 
 const SCULPTRA_ENHANCED_OUTPUT_RULES =
-  'Output rule: the result should look like a clinical photograph of the same person after a mature soft-tissue response -- structurally different, not visually processed. The change must be clearly visible and substantial, not timid. The treated face should look better supported and three-dimensional, with natural highlights on fuller convexities and natural soft shadows beneath them. The failure modes to avoid are: beautification, skin smoothing, tone evening, de-aging, pillow-cheek fill, identity drift, and on-image text or labels. The image must remain unmistakably the same person at the same age. The only permitted change is soft-tissue structural support and the shadow/highlight redistribution it causes.';
+  'Output rule: the result should look like a natural photograph of the same person with broader, softer facial volume -- gently fuller, less hollow, and more supported, without any sculpting, lifting, or sharpening. The change should be perceptible but not dramatic: the kind of difference a patient notices rather than an obvious transformation. The failure modes to avoid are: carving, sharpening, jaw definition, V-line, facelift effect, skin smoothing, tone brightening, de-aging, identity drift, and on-image text or labels. The image must remain unmistakably the same person at the same age with the same skin character.';
 
 
 // model reads it first, before any framing or magnitude instruction.
@@ -413,13 +413,21 @@ function buildSculptraPrompt(sel, m, timelineText) {
   const view = normalizeView(sel);
   const phenotype = SCULPTRA_PHENOTYPES[normalizeSculptraPhenotype(sel)] || SCULPTRA_PHENOTYPES.mixed;
   const isOblique = view !== 'frontal';
+
+  // M11.1: Enhanced course detection -- declared first because framing and all
+  // other per-mode constants branch on it.
+  const isEnhanced = sel.isStrongPass === 'true' || sel.isStrongPass === true;
   // M11.1: framing strings no longer contain product names (e.g. "Sculptra collagen-stimulation")
   // because the model was rendering those words literally as image labels in the output.
-  // The clinical product reference is preserved in SCULPTRA_ALLOWED_ZONES and magnitude strings
-  // where it describes anatomical intent, not a visual output descriptor.
-  const framing = isOblique
-    ? 'Produce a clinically realistic facial structure simulation from this oblique consultation photograph, showing a confident structural restoration of the facial scaffold while keeping the same person, the same pose, and the same skin.'
-    : 'Produce a clinically realistic facial structure simulation from this frontal consultation photograph, showing a confident structural restoration of the facial scaffold while keeping the same person, the same pose, and the same skin.';
+  // Enhanced uses a separate framing that avoids "structural restoration / scaffold" --
+  // those phrases anchor the model toward carving and sharpening rather than soft volume.
+  const framing = isEnhanced
+    ? (isOblique
+        ? 'Produce a clinically realistic photograph of the same person after a mature soft-tissue support response, keeping the same oblique pose, identity, age, skin, lighting, and camera setup.'
+        : 'Produce a clinically realistic photograph of the same person after a mature soft-tissue support response, keeping the same frontal pose, identity, age, skin, lighting, and camera setup.')
+    : (isOblique
+        ? 'Produce a clinically realistic facial structure simulation from this oblique consultation photograph, showing a confident structural restoration of the facial scaffold while keeping the same person, the same pose, and the same skin.'
+        : 'Produce a clinically realistic facial structure simulation from this frontal consultation photograph, showing a confident structural restoration of the facial scaffold while keeping the same person, the same pose, and the same skin.');
 
   // M11.1: Enhanced course detection. When isStrongPass is set, use ENHANCED_MAGNITUDE
   // as the primary magnitude instruction and skip sanitizeNote entirely for the note.
@@ -429,7 +437,6 @@ function buildSculptraPrompt(sel, m, timelineText) {
   // Enhanced also uses separate allowed-zones and output-rules constants that avoid
   // zone-anatomy lists and "Sculptra visualization" language -- both caused the model
   // to either locally paint zones or render brand text as on-image labels.
-  const isEnhanced = sel.isStrongPass === 'true' || sel.isStrongPass === true;
   const magnitude = isEnhanced
     ? ENHANCED_MAGNITUDE
     : (phenotype[sel.projection] || phenotype.expected);
