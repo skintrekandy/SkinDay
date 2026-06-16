@@ -105,6 +105,17 @@
     .btn-gold:hover { background:#b8954f; border-color:#b8954f; }
     .btn-gold:disabled { opacity:.45; cursor:not-allowed; }
     .btn-gold.viewing { background:transparent; color:var(--gold); border-color:var(--gold); }
+    /* ── Output action bar ── */
+    .action-bar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:4px; }
+    .action-bar-primary { display:flex; gap:8px; align-items:center; }
+    .action-bar-downloads { display:flex; gap:8px; align-items:center; }
+    .overflow-wrap { position:relative; display:inline-block; }
+    .overflow-menu { display:none; position:absolute; bottom:calc(100% + 6px); left:0; min-width:200px; background:#fff; border:1px solid rgba(28,23,20,.12); border-radius:8px; box-shadow:0 4px 20px rgba(28,23,20,.12); z-index:200; overflow:hidden; }
+    .overflow-menu.open { display:block; }
+    .overflow-menu button { display:block; width:100%; padding:10px 16px; text-align:left; background:none; border:none; border-bottom:1px solid rgba(28,23,20,.06); font-family:'DM Sans',sans-serif; font-size:.82rem; color:var(--deep); cursor:pointer; transition:.15s; }
+    .overflow-menu button:last-child { border-bottom:none; }
+    .overflow-menu button:hover { background:rgba(201,169,110,.08); }
+    .overflow-menu button:disabled { opacity:.4; cursor:not-allowed; }
     .strong-badge { display:inline-block; padding:2px 7px; border-radius:4px; background:rgba(201,169,110,.18); border:1px solid rgba(201,169,110,.4); color:var(--gold); font-size:.65rem; letter-spacing:.08em; text-transform:uppercase; font-weight:600; vertical-align:middle; margin-left:6px; }
     /* Strong Response view toggle */
     .view-toggle { display:flex; gap:0; border:1px solid var(--border); border-radius:6px; overflow:hidden; margin:8px 0 4px; }
@@ -380,7 +391,7 @@
 <div class="lock" id="lockScreen">
   <div class="lock-card">
     <div class="lock-eyebrow">SkinDay</div>
-    <h1>Visualize <span>·</span> Coming&nbsp;Soon</h1>
+    <h1>Visualize <span>·</span> AI&nbsp;Treatment&nbsp;Previews</h1>
     <p class="lock-soon" id="lockTagline">AI-powered treatment previews. Sign in with your SkinDay account, or create one free.</p>
     <div class="lock-tabs" id="lockTabs" style="display:none;">
       <button type="button" data-mode="signin" class="active">Sign in</button>
@@ -573,15 +584,27 @@
     <div class="small" style="margin-top:10px;">AI-generated visualization for consultation purposes only. Not a prediction of actual treatment results. Results vary by anatomy, product, technique, healing, and clinical judgment.</div>
     <canvas id="exportCanvas"></canvas>
     <div class="regen-note" id="regenNote"></div>
-    <div class="btn-row">
-      <button class="btn btn-primary" id="regenBtn">Re-generate</button>
-      <button class="btn btn-gold" id="strongBtn" style="display:none;" title="Generate a strong responder version at no extra credit cost">✦ Strong Response <span style="font-size:.65rem;opacity:.7;font-weight:400;">free</span></button>
-      <button class="btn btn-light" id="insightsBtn">Compare</button>
-      <button class="btn btn-dark" id="downloadBtn">Download side-by-side</button>
-      <button class="btn btn-dark" id="sheetBtn" style="display:none;">Download all angles</button>
-      <button class="btn btn-light" id="plainBtn">Download plain photos</button>
-      <button class="btn btn-light" id="discardAngleBtn" style="display:none;" title="Remove this angle from the case">Discard this angle</button>
-      <button class="btn btn-light" id="newBtn">New case</button>
+    <div class="action-bar">
+      <!-- Primary: always visible -->
+      <div class="action-bar-primary">
+        <button class="btn btn-primary" id="regenBtn">Re-generate</button>
+        <button class="btn btn-gold" id="strongBtn" style="display:none;" title="Generate a strong responder version at no extra credit cost">✦ Strong Response <span style="font-size:.65rem;opacity:.7;font-weight:400;">free</span></button>
+      </div>
+      <!-- Downloads: the main clinic deliverable -->
+      <div class="action-bar-downloads">
+        <button class="btn btn-dark" id="downloadBtn">Download</button>
+        <button class="btn btn-dark" id="sheetBtn" style="display:none;">Download all angles</button>
+      </div>
+      <!-- Overflow: contextual / secondary actions -->
+      <div class="overflow-wrap">
+        <button class="btn btn-light" id="moreBtn" style="display:none;">⋯ More</button>
+        <div class="overflow-menu" id="overflowMenu">
+          <button id="insightsBtn">Compare</button>
+          <button id="plainBtn">Download plain photos</button>
+          <button id="discardAngleBtn" style="display:none;">Discard this angle</button>
+          <button id="newBtn">New case</button>
+        </div>
+      </div>
     </div>
   </section>
 </div>
@@ -2207,6 +2230,9 @@ function renderActiveSlot(){
   hideAnnotations();
   updateStrongBtn();
   applyActiveView();
+  // Show More button when there's a result to act on
+  const moreBtnEl = document.getElementById('moreBtn');
+  if(moreBtnEl) moreBtnEl.style.display = (sl && sl.status === 'done') ? '' : 'none';
 }
 generateBtn.addEventListener('click', () => runGeneration(false));
 regenBtn.addEventListener('click', () => runGeneration(true));
@@ -2219,7 +2245,7 @@ regenBtn.addEventListener('click', () => runGeneration(true));
    belongs to the same user and completed successfully).
    The button toggles between "Generate Strong Response" and "View Standard /
    View Strong" after the strong result is ready. */
-const STRONG_PROMPT_SUFFIX = ' STRONG RESPONDER INTERPRETATION: This is a visualisation of an exceptional response to biostimulator treatment over 12-18 months of collagen remodelling. Show the full potential of what a strong responder could achieve: significantly restored midface volume and projection, dramatically softened nasolabial folds and marionette lines, lifted and tightened jowls, and notably improved skin quality including improved tone evenness, luminosity, and surface texture from collagen induction. The skin should look healthier and more youthful in quality, not just in structure. Preserve the patient\'s identity, ethnicity, bone structure, hair, and expression exactly. This is explicitly labelled as an optimistic strong-response projection, not a guaranteed result.';
+const STRONG_PROMPT_SUFFIX = ' STRONG RESPONDER INTERPRETATION: Show the upper-end structural outcome a strong biostimulator responder would achieve: meaningfully restored midface volume with lateral cheek and zygomatic projection, the pre-jowl sulcus filled and jowl border lifted and tightened, and nasolabial folds softened from above through midface support. Changes are structural and volumetric only. Do not alter skin tone, skin texture, luminosity, surface quality, forehead, neck, ears, hair, background, or any region outside the cheek, midface, jowl, and nasolabial zone. Preserve the patient\'s identity, ethnicity, bone structure, and expression exactly. This is an optimistic strong-response projection, not a guaranteed result.';
 
 async function runStrongPass(){
   const sl = activeSlot();
@@ -2352,6 +2378,18 @@ function applyActiveView(){
 }
 
 document.getElementById('strongBtn').addEventListener('click', runStrongPass);
+
+/* ── Overflow menu ── */
+const moreBtn = document.getElementById('moreBtn');
+const overflowMenu = document.getElementById('overflowMenu');
+if(moreBtn && overflowMenu){
+  moreBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    overflowMenu.classList.toggle('open');
+  });
+  document.addEventListener('click', () => overflowMenu.classList.remove('open'));
+  overflowMenu.addEventListener('click', (e) => e.stopPropagation());
+}
 
 function updateRegenNote(){
   const note = document.getElementById('regenNote');
@@ -2570,12 +2608,22 @@ async function drawPair(ctx, angleId, yOff, panelW, panelH, gap, includeText){
   const sl = state.slots[angleId];
   const before = await loadImage(sl.beforeDataUrl || sl.originalDataUrl);
   // M9.9: exports render at the hi-res grid; the live 1024 frame is the fallback.
-  // Strong response: if the user is viewing the strong result, export that version.
-  const activeResultUrl = (sl.viewMode === 'strong' && sl.strongStatus === 'done' && sl.strongDataUrl)
-    ? sl.strongDataUrl : sl.resultDataUrl;
-  let hiRes = null;
-  try { hiRes = await hiResResultFor(angleId); } catch(e){ console.warn('[Visualize] hi-res export render failed; using live frame.', e); }
-  const after = await loadImage(hiRes || activeResultUrl);
+  // Strong response: if the user is viewing the strong result, skip hi-res re-render
+  // (which would re-composite from sl.resultDataUrl = standard result) and use
+  // strongDataUrl directly. The strong result is a raw AI output, not a compositor
+  // result, so there is no hi-res version to render -- the stored dataUrl is the result.
+  const isViewingStrong = (sl.viewMode === 'strong' && sl.strongStatus === 'done' && sl.strongDataUrl)
+    // Safety net: also check if the displayed image matches the strong result
+    || (sl.strongDataUrl && document.getElementById('aiResult') && document.getElementById('aiResult').src === sl.strongDataUrl);
+  let afterUrl;
+  if(isViewingStrong){
+    afterUrl = sl.strongDataUrl;
+  } else {
+    let hiRes = null;
+    try { hiRes = await hiResResultFor(angleId); } catch(e){ console.warn('[Visualize] hi-res export render failed; using live frame.', e); }
+    afterUrl = hiRes || sl.resultDataUrl;
+  }
+  const after = await loadImage(afterUrl);
 
   function cover(img, x, y, w, h){
     const scale = Math.max(w/img.width, h/img.height);
@@ -2655,11 +2703,16 @@ async function drawExport(includeText, angleIds){
     const sl = state.slots[id];
     const x = ci * (panelW + gap);
     const before = await loadImage(sl.beforeDataUrl || sl.originalDataUrl);
-    const sheetResultUrl = (sl.viewMode === 'strong' && sl.strongStatus === 'done' && sl.strongDataUrl)
-      ? sl.strongDataUrl : sl.resultDataUrl;
-    let hiRes = null;
-    try { hiRes = await hiResResultFor(id); } catch(e){}
-    const after = await loadImage(hiRes || sheetResultUrl);
+    const isSheetStrong = (sl.viewMode === 'strong' && sl.strongStatus === 'done' && sl.strongDataUrl);
+    let sheetAfterUrl;
+    if(isSheetStrong){
+      sheetAfterUrl = sl.strongDataUrl;
+    } else {
+      let hiRes = null;
+      try { hiRes = await hiResResultFor(id); } catch(e){}
+      sheetAfterUrl = hiRes || sl.resultDataUrl;
+    }
+    const after = await loadImage(sheetAfterUrl);
 
     // Cover-fit helper
     function cover(img, dx, dy, dw, dh){
