@@ -1216,8 +1216,17 @@ function syncGenerateBtn(){
         + ' · ' + ids.length + (ids.length > 1 ? ' angles' : ' angle') + ' × ' + per
         + balLine
         + '</span>';
+      // Mirror directly to mobile bar cost note (bypass updateBarState/isMobile check)
+      const msbCN = document.getElementById('msbCostNote');
+      if(msbCN){
+        msbCN.textContent = total + ' credit' + (total > 1 ? 's' : '') + ' · ' + ids.length + (ids.length > 1 ? ' angles' : ' angle') + ' × ' + per + (creditBalance != null ? ' · Balance: ' + creditBalance + (short ? ' · top up needed' : '') : '');
+        msbCN.style.display = 'block';
+        msbCN.style.color = short ? 'rgba(200,114,90,.9)' : 'rgba(250,247,242,.6)';
+      }
     } else {
       note.textContent = '';
+      const msbCN2 = document.getElementById('msbCostNote');
+      if(msbCN2) msbCN2.style.display = 'none';
     }
   }
 }
@@ -2324,16 +2333,15 @@ const STRONG_PROMPT_SUFFIX = ' Create a visible upper-range Sculptra/biostimulat
 async function startEnhancedSlot(angleId, auth){
   const sl = state.slots[angleId];
   if(!sl || sl.status !== 'done' || !sl.jobId) return;
-  if(sl.strongStatus === 'generating') return;
-
-  sl.strongStatus = 'generating';
-  sl.viewMode = 'standard';
+  // strongStatus already 'generating' (set by runStrongPass) -- no guard needed here
 
   // Use the same beforeDataUrl (black bg applied) as the standard pass
   const beforeDataUrl = sl.beforeDataUrl || sl.originalDataUrl;
   console.log('[Visualize Enhanced] ' + angleId + ': starting — beforeDataUrl length=' + (beforeDataUrl ? beforeDataUrl.length : 'null'));
+  // Use resizeToUpload which correctly handles data URLs cross-browser.
+  // fetch(dataUrl) hangs silently on Safari/WebKit -- do not use it.
   const blob = await resizeToUpload(beforeDataUrl);
-  console.log('[Visualize Enhanced] ' + angleId + ': resized blob size=' + (blob ? blob.size : 'null'));
+  console.log('[Visualize Enhanced] ' + angleId + ': blob ready, size=' + (blob ? blob.size : 'null'));
 
   const formData = new FormData();
   formData.append('image', blob, 'patient-' + angleId + '.jpg');
@@ -2504,8 +2512,8 @@ async function runStrongPass(){
   });
   if(!toRun.length) return;
 
-  // Mark all angles as generating immediately so UI updates without lag
-  toRun.forEach(id => { state.slots[id].strongStatus = 'generating'; });
+  // Mark all angles as generating immediately for instant UI feedback
+  toRun.forEach(id => { state.slots[id].strongStatus = 'generating'; state.slots[id].viewMode = 'standard'; });
   state.enhancedStartedAt = Date.now();
   if(state.enhancedTimerInterval) clearInterval(state.enhancedTimerInterval);
   state.enhancedTimerInterval = setInterval(() => updateStrongBtn(), 1000);
@@ -2629,7 +2637,7 @@ function updateRegenNote(){
     note.textContent = `Free re-generate for ${left}s. Adjust the treatment and run again at no extra cost.`;
     setTimeout(updateRegenNote, 1000);
   } else {
-    note.textContent = 'Re-generate to try a different treatment, area, or setting.';
+    note.textContent = '';
   }
 }
 
