@@ -541,7 +541,7 @@
 
       <div class="status"><div class="dot" id="dot"></div><span id="statusText">Choose a treatment, then add the patient photos</span></div>
 
-      <div class="btn-row"><button class="btn btn-primary" id="generateBtn" disabled>Generate simulated preview</button></div>
+      <div class="btn-row" style="text-align:center;"><button class="btn btn-primary" id="generateBtn" disabled>Generate simulated preview</button></div>
       <div class="cost-note" id="costNote"></div>
     </div>
   </section>
@@ -2078,6 +2078,19 @@ async function runGeneration(isRegen){
     });
     if(failedOrIdle.length) angles = failedOrIdle;
   }
+  // Pre-flight credit check: block before any generation starts.
+  // The server enforces this too (402), but we catch it here so the user
+  // never loses credits on a run that was always going to fail.
+  if(accessMode === 'account' && !isRegen){
+    const per = creditCostFor(state.type);
+    const total = per * angles.length;
+    if(creditBalance != null && creditBalance < total){
+      setStatus('Not enough credits for this generation. Top up to continue.', 'warn');
+      openBuyModal();
+      return;
+    }
+  }
+
   generateBtn.disabled = true; regenBtn.disabled = true;
 
   const t0 = Date.now();
@@ -2245,7 +2258,7 @@ regenBtn.addEventListener('click', () => runGeneration(true));
    belongs to the same user and completed successfully).
    The button toggles between "Generate Strong Response" and "View Standard /
    View Strong" after the strong result is ready. */
-const STRONG_PROMPT_SUFFIX = ' STRONG RESPONDER INTERPRETATION: Show the upper-end structural outcome a strong biostimulator responder would achieve: meaningfully restored midface volume with lateral cheek and zygomatic projection, the pre-jowl sulcus filled and jowl border lifted and tightened, and nasolabial folds softened from above through midface support. Changes are structural and volumetric only. Do not alter skin tone, skin texture, luminosity, surface quality, forehead, neck, ears, hair, background, or any region outside the cheek, midface, jowl, and nasolabial zone. Preserve the patient\'s identity, ethnicity, bone structure, and expression exactly. This is an optimistic strong-response projection, not a guaranteed result.';
+const STRONG_PROMPT_SUFFIX = ' NOTICEABLE BIOSTIMULATOR RESPONSE: Generate a realistic, identity-preserving visualization of a strong but believable biostimulator response at approximately 6-9 months. Preserve exactly: the same person and identity, same age category, same expression, same eyes and eyelid shape and brow position, same nose and lips and mouth shape, same hair and hairline and ears and clothing and background and camera angle, original skin texture and pores and pigmentation and natural asymmetry, original ethnic features and facial character. Clinical effects to simulate: improved temple and lateral cheek support, fuller but natural midface scaffolding, softer lid-cheek transition from below without changing the eyes, reduced lower-cheek hollowing, softened nasolabial and marionette shadows, subtle prejowl support, slightly more supported facial contour. For male patients: maintain masculine facial structure, preserve original jaw and chin phenotype, do not feminize the lower face, do not narrow the lower third, do not create a pointed chin, support the midface and lower face while keeping a natural masculine contour. Hard limits: do not make this look like HA filler. Do not create obvious chin projection. Do not slim the face or create a V-line. Do not change jaw width, eye size or shape, lip size or shape, or the nose. Do not over-smooth skin. Do not remove wrinkles, pores, pigmentation, or texture. Do not make the patient look like a different person. Do not beautify generically. Do not make the result look like a filter or retouching app. This is improved support, not beautification.';
 
 async function runStrongPass(){
   const sl = activeSlot();
