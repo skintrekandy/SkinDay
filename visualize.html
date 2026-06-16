@@ -850,7 +850,7 @@ function makeSlot(){
 const state = {
   type:'biostim', areas:['chin_jawline'], intensity:'enhanced', sex:'female',
   product:'sculptra', projection:'optimistic', timeline:'6',
-  blackBg:true, lastGenAt:0, intensityPct:70,
+  blackBg:true, lastGenAt:0, intensityPct:70, courseMode:'standard', // 'standard' | 'enhanced' -- global across all angles
   selectedAngles:['frontal'], activeAngle:'frontal',
   slots:{ frontal:makeSlot(), r45:makeSlot(), l45:makeSlot() }
 };
@@ -1046,7 +1046,9 @@ async function handleGoogleAuthVisualize(){
   const { error } = await sb.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: window.location.origin + window.location.pathname,
+      redirectTo: window.location.hostname === 'skinday.ca'
+        ? 'https://skinday.ca/visualize'
+        : window.location.origin + window.location.pathname,
       queryParams: { prompt: 'select_account' }
     }
   });
@@ -1545,11 +1547,15 @@ function updateIntensityUI(){
     state.intensityPct = pct;
     updateIntensityUI();
     const sl = activeSlot();
-    if(!sl || !sl.apply) return;
+    if(!sl) return;
+    // Use strongApply when viewing enhanced course, sl.apply for standard
+    const applyFn = (state.courseMode === 'enhanced' && sl.strongApply) ? sl.strongApply : sl.apply;
+    if(!applyFn) return;
     if(raf) cancelAnimationFrame(raf);
     raf = requestAnimationFrame(() => {
-      const url = sl.apply(pct / 100);
-      sl.resultDataUrl = url;
+      const url = applyFn(pct / 100);
+      if(state.courseMode === 'enhanced' && sl.strongApply){ sl.strongDataUrl = url; }
+      else { sl.resultDataUrl = url; }
       document.getElementById('aiResult').src = url;
     });
   });
@@ -1560,8 +1566,13 @@ function updateIntensityUI(){
     for(const id of state.selectedAngles){
       if(id === state.activeAngle) continue;
       const sl = state.slots[id];
-      if(sl.apply && sl.status === 'done'){
-        setTimeout(() => { sl.resultDataUrl = sl.apply(pct / 100); }, 0);
+      if(sl.status === 'done'){
+        const applyFn2 = (state.courseMode === 'enhanced' && sl.strongApply) ? sl.strongApply : sl.apply;
+        if(applyFn2) setTimeout(() => {
+          const url = applyFn2(pct / 100);
+          if(state.courseMode === 'enhanced' && sl.strongApply){ sl.strongDataUrl = url; }
+          else { sl.resultDataUrl = url; }
+        }, 0);
       }
     }
   });
@@ -2255,7 +2266,7 @@ function renderActiveSlot(){
   document.getElementById('simTag').textContent = tag;
   // Update strong badge visibility
   const strongBadge = document.getElementById('simTagStrong');
-  if(strongBadge) strongBadge.style.display = (sl.viewMode === 'strong' && sl.strongStatus === 'done') ? 'inline' : 'none';
+  if(strongBadge) strongBadge.style.display = (state.courseMode === 'enhanced' && sl.strongStatus === 'done') ? 'inline' : 'none';
   const showSlider = !!sl.apply;
   document.getElementById('intensityWrap').style.display = showSlider ? 'block' : 'none';
   if(showSlider){
@@ -2279,17 +2290,23 @@ function renderActiveSlot(){
 generateBtn.addEventListener('click', () => runGeneration(false));
 regenBtn.addEventListener('click', () => runGeneration(true));
 
-/* ───────── Strong Response second pass ─────────
-   Fires a second generation for the active angle after the standard result
-   is done. No mask is sent -- the AI interprets the full face freely, which
-   produces the more dramatic skin quality and volume result that a strong
-   responder would show at 6-12 months. Cost is 0 (server verifies source job
-   belongs to the same user and completed successfully).
-   The button toggles between "Generate Strong Response" and "View Standard /
-   View Strong" after the strong result is ready. */
-const STRONG_PROMPT_SUFFIX = ' UPPER-RANGE BIOSTIMULATOR PREVIEW: This should look like the exact same clinical photograph taken 6 months later after a strong but realistic Sculptra/biostimulator response. Not a transformation. Not a retouched portrait. The same person, same age, same camera, same lighting, same expression, same everything — except the face has more collagen-supported structure in specific zones. Allowed changes only: mild-to-moderate restoration of temple and lateral cheek hollowing; improved cheek and submalar support; nasolabial and marionette shadow softened by approximately 20%, not erased; slightly improved prejowl transition and lower-face support; healthier volume distribution that is broad, soft, and gradual. Do not change: eyes, eyelids, brows, gaze, nose, lips, teeth, ears, hair, hairline, headband, clothing, background, crop, or neck anatomy. Do not slim the face. Do not sharpen the jawline. Do not erase forehead lines, under-eye texture, pores, pigmentation, beard shadow, asymmetry, or normal skin shine. Do not make the skin smoother, brighter, or more even. Do not make the patient look younger. Do not create a facelift, filler, or de-aging effect. Do not beautify. The result should be noticeable only when compared side-by-side, but believable enough that a clinician would not feel embarrassed showing it in consultation. Strong means more complete collagen support, not more transformation.';
+/* ───────── Enhanced course second pass ─────────
+   Fires a second masked generation for all done angles. Uses the SAME
+   Sculptra mask and compositor pipeline as the standard pass -- the only
+   difference is projection:optimistic and a stronger prompt anchor.
+   Raw AI output is NEVER shown to the user. Every enhanced result goes
+   through makeSculptraCompositor before being stored in sl.strongDataUrl.
+   If the compositor fails, the enhanced view is suppressed and the standard
+   result is shown instead. Patient-facing output is always:
+     original photo + masked local biostimulator change.
+   Cost: 1 credit per angle (server-verified via isStrongPass + sourceJobId). */
+const STRONG_PROMPT_SUFFIX = ' UPPER-RANGE BIOSTIMULATOR PREVIEW: Simulate a strong but believable Sculptra/biostimulator response at 6 months, applied locally to the treatment zone only. Improve collagen scaffold in: temples, lateral cheeks, submalar hollow, nasolabial shadow (soften ~20%, do not erase), marionette shadow (soften ~20%), and prejowl support. Keep all changes broad, soft, and gradual — biologic collagen support, not filler volume. Do not change anything outside the treatment zone. Preserve completely: eyes, eyelids, brows, gaze, nose, lips, teeth, ears, hair, hairline, headband, neck, clothing, background, camera angle, skin texture, pores, pigmentation, forehead lines, under-eye texture, asymmetry, beard shadow, and skin shine. Do not slim the face, sharpen the jawline, smooth the skin globally, brighten the skin, or make the patient look younger. This is localized structural support only.';
 
 // Start an enhanced-course generation for a single angle slot.
+// Mirrors prepAndStartSlot: builds the Sculptra mask, sends it with the form,
+// then after polling runs makeSculptraCompositor before storing the result.
+// Raw AI is stored only in sl.rawStrongAiDataUrl for debug; sl.strongDataUrl
+// is always the composited result. If compositor fails, enhanced is suppressed.
 async function startEnhancedSlot(angleId, auth){
   const sl = state.slots[angleId];
   if(!sl || sl.status !== 'done' || !sl.jobId) return;
@@ -2298,10 +2315,12 @@ async function startEnhancedSlot(angleId, auth){
   sl.strongStatus = 'generating';
   sl.viewMode = 'standard';
 
+  // Use the same beforeDataUrl (black bg applied) as the standard pass
+  const beforeDataUrl = sl.beforeDataUrl || sl.originalDataUrl;
+  const blob = await resizeToUpload(beforeDataUrl);
+
   const formData = new FormData();
-  const resp = await fetch(sl.beforeDataUrl || sl.originalDataUrl);
-  const blob = await resp.blob();
-  formData.append('image', blob, 'photo.jpg');
+  formData.append('image', blob, 'patient-' + angleId + '.jpg');
   formData.append('type', state.type);
   formData.append('product', state.product || 'sculptra');
   formData.append('timeline', state.timeline || '6');
@@ -2313,6 +2332,34 @@ async function startEnhancedSlot(angleId, auth){
   formData.append('isStrongPass', 'true');
   formData.append('sourceJobId', sl.jobId);
 
+  // Build and attach the same Sculptra mask as the standard pass.
+  // If mask build fails, abort -- do not fall back to unmasked full-face AI.
+  const maskScope = (state.type === 'biostim' && state.product === 'sculptra') ? 'full'
+                  : (state.type === 'filler') ? 'chin_jaw'
+                  : null;
+  if(maskScope){
+    try {
+      const beforeImg = await loadImage(beforeDataUrl);
+      const mod = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
+      const maskBlob = await mod.buildSculptraMaskBlob(beforeImg, { maxDim:1024, scope:maskScope, sex:state.sex });
+      if(maskBlob){
+        formData.append('mask', maskBlob, 'mask.png');
+        console.log('%c[Visualize Enhanced] ' + angleId + ': mask built.', 'color:#1565c0;font-weight:bold');
+      } else {
+        // No face detected -- cannot produce a safe enhanced result
+        console.warn('[Visualize Enhanced] ' + angleId + ': mask empty (no face); aborting enhanced pass.');
+        sl.strongStatus = 'error';
+        updateStrongBtn();
+        return;
+      }
+    } catch(err){
+      console.error('%c[Visualize Enhanced] ' + angleId + ': mask failed; aborting enhanced pass.', 'color:#c62828;font-weight:bold', err);
+      sl.strongStatus = 'error';
+      updateStrongBtn();
+      return;
+    }
+  }
+
   const startRes = await fetch('/.netlify/functions/start-visualization', {
     method: 'POST', headers: auth, body: formData
   });
@@ -2323,19 +2370,52 @@ async function startEnhancedSlot(angleId, auth){
   const { jobId } = await startRes.json();
   sl.strongJobId = jobId;
 
-  // Poll this angle
+  // Poll, then compositor -- mirrors finishSlot exactly.
   const pollStrong = async () => {
     if(sl.strongStatus !== 'generating') return;
     try {
       const pollRes = await fetch('/.netlify/functions/get-visualization?jobId=' + encodeURIComponent(jobId), { headers: auth });
       const data = await pollRes.json();
       if(data.state === 'done'){
-        sl.strongDataUrl = data.image;
-        sl.strongStatus = 'done';
-        // Auto-switch active angle to enhanced view when it lands
-        if(angleId === state.activeAngle) sl.viewMode = 'strong';
+        sl.rawStrongAiDataUrl = data.image; // debug only; never shown directly
+
+        // Run compositor -- same path as finishSlot.
+        // On any failure, suppress enhanced rather than show raw AI.
+        let composited = null;
+        if(maskScope){
+          try {
+            const beforeImg = await loadImage(beforeDataUrl);
+            const aiImg = await loadImage(data.image);
+            const { makeSculptraCompositor } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
+            const warpOn = !/[?&]warp=off\b/i.test(location.search);
+            const jowlTexOn = !/[?&]jowltex=off\b/i.test(location.search);
+            const jawDefOn = !/[?&]jawdef=off\b/i.test(location.search);
+            const apply = await makeSculptraCompositor(beforeImg, aiImg, { scope:maskScope, sex:state.sex, warp:warpOn, jowlTexRelease:jowlTexOn, jawDef:jawDefOn, angleId });
+            if(apply){
+              composited = apply(state.intensityPct / 100);
+              sl.strongApply = apply; // so the intensity slider also works on the enhanced view
+              console.log('%c[Visualize Enhanced] ' + angleId + ': compositor ready.', 'color:#1565c0;font-weight:bold');
+            } else {
+              console.warn('[Visualize Enhanced] ' + angleId + ': compositor null (no face); suppressing enhanced.');
+            }
+          } catch(err){
+            console.error('%c[Visualize Enhanced] ' + angleId + ': compositor failed; suppressing enhanced.', 'color:#c62828;font-weight:bold', err);
+          }
+        }
+
+        if(composited){
+          sl.strongDataUrl = composited;
+          sl.strongStatus = 'done';
+          // viewMode is now global (state.courseMode); auto-switch to enhanced when all done
+          const allDone = state.selectedAngles.every(id => state.slots[id].strongStatus === 'done' || state.slots[id].status !== 'done');
+          if(allDone) state.courseMode = 'enhanced';
+        } else {
+          // Compositor failed or unavailable -- do not show raw AI
+          sl.strongStatus = 'error';
+        }
         updateStrongBtn();
         if(angleId === state.activeAngle) applyActiveView();
+
       } else if(data.state === 'error'){
         sl.strongStatus = 'error';
         updateStrongBtn();
@@ -2354,7 +2434,7 @@ async function runStrongPass(){
 
   // If active angle already has a strong result done, just toggle view
   if(sl.strongStatus === 'done' && sl.strongDataUrl){
-    sl.viewMode = (sl.viewMode === 'strong') ? 'standard' : 'strong';
+    state.courseMode = (state.courseMode === 'enhanced') ? 'standard' : 'enhanced';
     updateStrongBtn();
     applyActiveView();
     return;
@@ -2389,7 +2469,7 @@ function updateStrongBtn(){
   const courseCtrl = document.getElementById('courseControl');
   if(courseCtrl) courseCtrl.style.display = (isBiostim && isDone) ? '' : 'none';
   if(!expBtn || !enhBtn || !sl) return;
-  const isEnhanced = sl.viewMode === 'strong';
+  const isEnhanced = state.courseMode === 'enhanced';
   const isGenerating = sl.strongStatus === 'generating';
   expBtn.classList.toggle('active', !isEnhanced);
   enhBtn.classList.toggle('active', isEnhanced);
@@ -2401,7 +2481,7 @@ function updateStrongBtn(){
 function applyActiveView(){
   const sl = activeSlot();
   if(!sl) return;
-  const showStrong = sl.viewMode === 'strong' && sl.strongStatus === 'done' && sl.strongDataUrl;
+  const showStrong = state.courseMode === 'enhanced' && sl.strongStatus === 'done' && sl.strongDataUrl;
   const displayUrl = showStrong ? sl.strongDataUrl : (sl.resultDataUrl || sl.beforeDataUrl || sl.originalDataUrl || '');
   document.getElementById('aiResult').src = displayUrl;
   // Update sim tag badge
@@ -2416,7 +2496,12 @@ function applyActiveView(){
   if(expBtn) expBtn.addEventListener('click', () => {
     const sl = activeSlot();
     if(!sl || sl.strongStatus === 'generating') return;
-    if(sl.viewMode === 'strong'){ sl.viewMode = 'standard'; applyActiveView(); updateStrongBtn(); }
+    if(state.courseMode === 'enhanced'){
+      state.courseMode = 'standard';
+      // Reset per-slot viewMode for consistency
+      state.selectedAngles.forEach(id => { state.slots[id].viewMode = 'standard'; });
+      applyActiveView(); updateStrongBtn();
+    }
   });
   if(enhBtn) enhBtn.addEventListener('click', () => {
     const sl = activeSlot();
@@ -2644,7 +2729,7 @@ function simKicker(angleId){
     }
   }
   // Strong Response: append label when exporting the strong view
-  if(sl && sl.viewMode === 'strong' && sl.strongStatus === 'done') parts.push('Strong Response');
+  if(state.courseMode === 'enhanced' && sl && sl.strongStatus === 'done') parts.push('Enhanced course');
   return parts.join(' · ');
 }
 
@@ -2654,13 +2739,10 @@ async function drawPair(ctx, angleId, yOff, panelW, panelH, gap, includeText){
   const sl = state.slots[angleId];
   const before = await loadImage(sl.beforeDataUrl || sl.originalDataUrl);
   // M9.9: exports render at the hi-res grid; the live 1024 frame is the fallback.
-  // Strong response: if the user is viewing the strong result, skip hi-res re-render
-  // (which would re-composite from sl.resultDataUrl = standard result) and use
-  // strongDataUrl directly. The strong result is a raw AI output, not a compositor
-  // result, so there is no hi-res version to render -- the stored dataUrl is the result.
-  const isViewingStrong = (sl.viewMode === 'strong' && sl.strongStatus === 'done' && sl.strongDataUrl)
-    // Safety net: also check if the displayed image matches the strong result
-    || (sl.strongDataUrl && document.getElementById('aiResult') && document.getElementById('aiResult').src === sl.strongDataUrl);
+  // Enhanced course: if the case is in enhanced mode and the active slot has a
+  // composited strong result, export that instead of the standard result.
+  // strongDataUrl is always a compositor output (original + masked AI), never raw AI.
+  const isViewingStrong = state.courseMode === 'enhanced' && sl.strongStatus === 'done' && sl.strongDataUrl;
   let afterUrl;
   if(isViewingStrong){
     afterUrl = sl.strongDataUrl;
@@ -2749,7 +2831,7 @@ async function drawExport(includeText, angleIds){
     const sl = state.slots[id];
     const x = ci * (panelW + gap);
     const before = await loadImage(sl.beforeDataUrl || sl.originalDataUrl);
-    const isSheetStrong = (sl.viewMode === 'strong' && sl.strongStatus === 'done' && sl.strongDataUrl);
+    const isSheetStrong = state.courseMode === 'enhanced' && sl.strongStatus === 'done' && sl.strongDataUrl;
     let sheetAfterUrl;
     if(isSheetStrong){
       sheetAfterUrl = sl.strongDataUrl;
