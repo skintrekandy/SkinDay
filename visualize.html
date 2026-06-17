@@ -540,6 +540,29 @@
           </div>
           <div class="small" style="margin-top:6px;color:var(--muted);font-style:italic;">e.g. Sculptra, Hyperdilute Radiesse, Lanluma, Ellansé</div>
         </div>
+
+        <!-- Patient intake: age, sex, primary concern -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:4px;">
+          <div class="field">
+            <label>Patient age</label>
+            <input id="patientAge" type="number" min="18" max="99" placeholder="e.g. 45" style="width:100%;" />
+          </div>
+          <div class="field">
+            <label>Sex</label>
+            <div class="pill-grid" id="patientSexToggle" style="margin-top:6px;">
+              <button class="pill" data-sex="female" type="button">Female</button>
+              <button class="pill" data-sex="male" type="button">Male</button>
+            </div>
+          </div>
+        </div>
+        <div class="field" style="margin-top:4px;">
+          <label>Primary concern</label>
+          <div class="pill-grid" id="primaryConcernToggle" style="margin-top:6px;">
+            <button class="pill" data-concern="hollow_deflated" type="button">Volume loss</button>
+            <button class="pill" data-concern="full_descended" type="button">Sagging / descent</button>
+          </div>
+        </div>
+
         <div class="field">
           <label>Response</label>
           <div class="privacy-note"><span>ℹ️</span><span>Your preview is generated at a strong, realistic anchor, then you set the displayed response with a slider on the result. No need to regenerate.</span></div>
@@ -2415,6 +2438,7 @@ async function prepAndStartSlot(angleId, auth, isRegen){
   form.append('view', promptView);
   if(state.sex) form.append('sex', state.sex);
   if(state.sculptraPhenotype) form.append('sculptraPhenotype', state.sculptraPhenotype);
+  if(state.patientAge) form.append('patientAge', String(state.patientAge));
   sl.jobId = jobId;
 
   const startRes = await fetch('/.netlify/functions/start-visualization', {
@@ -2737,6 +2761,8 @@ async function startEnhancedSlot(angleId, auth){
   formData.append('isStrongPass', 'true');
   formData.append('sourceJobId', sl.jobId);
   if(state.sculptraPhenotype) formData.append('sculptraPhenotype', state.sculptraPhenotype);
+  if(state.sex) formData.append('sex', state.sex);
+  if(state.patientAge) formData.append('patientAge', String(state.patientAge));
   // M11.1: NO mask appended for Enhanced. Full-frame edit only.
   // The mask was confining the model to local inpainting, which produced
   // patchy anatomically incoherent results. The compositor below handles
@@ -3598,6 +3624,30 @@ document.getElementById('logoRemoveBtn').addEventListener('click', () => {
   document.getElementById('logoUploadName').textContent = '';
   document.getElementById('logoRemoveBtn').style.display = 'none';
   document.getElementById('logoUploadBtn').textContent = 'Upload logo';
+});
+
+// Patient sex toggle (biostim)
+document.getElementById('patientSexToggle').addEventListener('click', e => {
+  const btn = e.target.closest('[data-sex]');
+  if (!btn) return;
+  document.getElementById('patientSexToggle').querySelectorAll('.pill').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  state.sex = btn.dataset.sex;
+});
+
+// Primary concern -> sculptraPhenotype
+document.getElementById('primaryConcernToggle').addEventListener('click', e => {
+  const btn = e.target.closest('[data-concern]');
+  if (!btn) return;
+  document.getElementById('primaryConcernToggle').querySelectorAll('.pill').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  state.sculptraPhenotype = btn.dataset.concern;
+});
+
+// Patient age
+document.getElementById('patientAge').addEventListener('input', e => {
+  const v = parseInt(e.target.value, 10);
+  state.patientAge = (!isNaN(v) && v >= 18 && v <= 99) ? v : null;
 });
 // without affecting other angles. One bad oblique never kills a good frontal.
 document.getElementById('discardAngleBtn').addEventListener('click', () => {
