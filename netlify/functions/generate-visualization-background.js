@@ -309,17 +309,13 @@ exports.handler = async (event) => {
       core = buildCorePrompt({
         type: f.type, areas: f.areas, goal: f.goal, intensity: f.intensity,
         product: f.product, projection: f.projection, timeline: f.timeline, note: cleanNote,
-        // M11.1: these fields were added to FIELD_KEYS in start-visualization.js
-        // but were not forwarded here -- causing normalizeView() to always return
-        // 'frontal' and isStrongPass detection to never fire in buildSculptraPrompt.
-        // All Enhanced prompt work (ENHANCED_MAGNITUDE, SCULPTRA_ENHANCED_*) was
-        // being bypassed silently. Fixed here.
         isStrongPass:     f.isStrongPass,
         angle:            f.angle,
         sex:              f.sex,
         view:             f.view,
         phenotype:        f.phenotype,
         sculptraPhenotype: f.sculptraPhenotype,
+        patientAge:       f.patientAge ? parseInt(f.patientAge, 10) : null,
       });
     } else {
       core = f.prompt || 'Create a subtle, realistic aesthetic treatment visualization.';
