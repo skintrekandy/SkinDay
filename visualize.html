@@ -1945,6 +1945,13 @@ function updateIntensityUI(){
       if(state.courseMode === 'enhanced' && sl.strongApply){ sl.strongDataUrl = url; }
       else { sl.resultDataUrl = url; }
       document.getElementById('aiResult').src = url;
+      // Update the on-image label to reflect current slider position
+      const simTagEl = document.getElementById('simTag');
+      if(simTagEl && state.type === 'biostim'){
+        const t = simTagEl.textContent;
+        const updated = t.replace(/· (Early|3 months|6 months)/, '· ' + strengthLabel(pct));
+        simTagEl.textContent = updated;
+      }
     });
   });
   // Settle: on release, bring every other finished angle to the same response
@@ -2665,7 +2672,7 @@ function renderActiveSlot(){
   // Do not set aiResult.src directly here; applyActiveView() at line 2285 handles it.
   let tag = 'Simulated · ' + treatmentName();
   if(multi) tag += ' · ' + ANGLE_DEF[state.activeAngle].short;
-  if(state.type === 'biostim') tag += ' · ' + (state.timeline === '12' ? '12 months' : state.timeline + ' months');
+  if(state.type === 'biostim') tag += ' · ' + strengthLabel(state.intensityPct);
   if(sl.status === 'error') tag = 'Generation failed for this angle · Re-generate to retry';
   document.getElementById('simTag').textContent = tag;
   // Update strong badge visibility
