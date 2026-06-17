@@ -2992,7 +2992,13 @@ function updateStrongBtn(){
 function applyActiveView(){
   const sl = activeSlot();
   if(!sl) return;
-  const displayUrl = sl.resultDataUrl || sl.beforeDataUrl || sl.originalDataUrl || '';
+  // Show Enhanced result when courseMode is enhanced and strongDataUrl is ready,
+  // otherwise show Standard result. This was the root cause of Enhanced appearing
+  // identical to Standard -- sl.strongDataUrl was never being displayed.
+  const isEnhancedView = state.courseMode === 'enhanced' && sl.strongStatus === 'done' && sl.strongDataUrl;
+  const displayUrl = isEnhancedView
+    ? sl.strongDataUrl
+    : (sl.resultDataUrl || sl.beforeDataUrl || sl.originalDataUrl || '');
   document.getElementById('aiResult').src = displayUrl;
 }
 
