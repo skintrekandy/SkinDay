@@ -2381,6 +2381,9 @@ async function prepAndStartSlot(angleId, auth, isRegen){
   const sl = state.slots[angleId];
   const prevJobId = sl.jobId; // M8: lineage for the server-enforced free regen window
   sl.status = 'generating'; sl.error = null; sl.apply = null;
+  // Reset courseMode to standard on any new generation so the slider doesn't
+  // pick up a strongApply from a previous Enhanced run on a different treatment.
+  state.courseMode = 'standard';
 
   // Black background per photo, applied at generation time, never on upload.
   let beforeDataUrl = sl.originalDataUrl;
@@ -2746,12 +2749,14 @@ async function startEnhancedSlot(angleId, auth){
   if(!sl || sl.status !== 'done' || !sl.jobId) return;
   // strongStatus already 'generating' (set by runStrongPass) -- no guard needed here
 
-  // Use the same beforeDataUrl (black bg applied) as the standard pass
-  const beforeDataUrl = sl.beforeDataUrl || sl.originalDataUrl;
-  console.log('[Visualize Enhanced] ' + angleId + ': starting  -  beforeDataUrl length=' + (beforeDataUrl ? beforeDataUrl.length : 'null'));
-  // Use resizeToUpload which correctly handles data URLs cross-browser.
-  // fetch(dataUrl) hangs silently on Safari/WebKit -- do not use it.
-  const blob = await resizeToUpload(beforeDataUrl);
+  // Enhanced takes the Standard result as its input image, not the original photo.
+  // This is the key architectural fix: Ceiling builds on Standard, pushing it further,
+  // rather than trying to produce a dramatic result from the original in one shot.
+  // The compositor below still uses beforeDataUrl (original) as the identity anchor.
+  const standardResultUrl = sl.resultDataUrl;
+  if(!standardResultUrl){ console.error('[Visualize Enhanced] ' + angleId + ': no Standard result to build from'); return; }
+  console.log('[Visualize Enhanced] ' + angleId + ': starting from Standard result, length=' + standardResultUrl.length);
+  const blob = await resizeToUpload(standardResultUrl);
   console.log('[Visualize Enhanced] ' + angleId + ': blob ready, size=' + (blob ? blob.size : 'null'));
 
   const formData = new FormData();
