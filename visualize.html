@@ -106,7 +106,7 @@
     .btn-gold:disabled { opacity:.45; cursor:not-allowed; }
     .btn-gold.viewing { background:transparent; color:var(--gold); border-color:var(--gold); }
     /* ── Output action bar ── */
-    .action-bar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:4px; }
+    .action-bar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:4px; justify-content:center; }
     .action-bar-primary { display:flex; gap:8px; align-items:center; }
     .action-bar-downloads { display:flex; gap:8px; align-items:center; }
     .overflow-wrap { position:relative; display:inline-block; }
@@ -567,6 +567,16 @@
         <label>Your name or clinic (optional, appears on export)</label>
         <input id="clinicName" placeholder="e.g. Dr. Smith · ABC Cosmetic Clinic" maxlength="60" />
       </div>
+      <div class="field" style="margin-top:10px;">
+        <label>Clinic logo (optional, appears on export)</label>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:4px;">
+          <button type="button" id="logoUploadBtn" class="btn btn-light" style="font-size:.78rem;padding:.35rem .8rem;">Upload logo</button>
+          <span id="logoUploadName" style="font-size:.76rem;color:var(--muted);"></span>
+          <button type="button" id="logoRemoveBtn" style="display:none;background:none;border:none;cursor:pointer;font-size:.76rem;color:var(--rose);padding:0;">Remove</button>
+        </div>
+        <input type="file" id="logoFileInput" accept="image/png,image/jpeg,image/webp,image/svg+xml" style="display:none;" />
+        <div class="field-hint" style="margin-top:4px;">PNG or JPG with transparent or dark background works best.</div>
+      </div>
 
       <!-- M12: library indicator (shown for account users who have uploaded cases) -->
       <div class="library-indicator" id="libIndicator">
@@ -605,7 +615,7 @@
     </div>
     <div id="intensityWrap" style="display:none;margin-top:14px;">
       <!-- Course segmented control (biostim only) -->
-      <div id="courseControl" style="display:none;margin-bottom:14px;">
+      <div id="courseControl" style="margin-bottom:14px;">
         <div style="font-size:13px;letter-spacing:.04em;text-transform:uppercase;opacity:.75;margin-bottom:8px;">Response Preview</div>
         <div class="view-toggle" id="courseToggle">
           <button type="button" id="courseExpected" class="active">Baseline (3-4 vials)</button>
@@ -656,7 +666,7 @@
         <button class="btn btn-light" id="moreBtn" style="display:none;">⋯ More</button>
         <div class="overflow-menu" id="overflowMenu">
           <button id="insightsBtn">Compare</button>
-          <button id="plainBtn">Download plain photos</button>
+          <button id="plainBtn">Download simulated only</button>
           <button id="discardAngleBtn" style="display:none;">Discard this angle</button>
           <button id="newBtn">New case</button>
         </div>
@@ -3507,8 +3517,26 @@ function drawExportFooter(ctx, totalW, yF, footerH, clinic){
   ctx.fillText('AI-generated visualization for consultation purposes only. Not a prediction of actual results.', totalW/2, yF + 36);
   let brandY = yF + 74;
   if(clinic){
-    ctx.font = '500 23px "DM Sans", sans-serif'; ctx.fillStyle = 'rgba(250,247,242,.92)';
-    ctx.fillText(clinic, totalW/2, yF + 72);
+    // If a logo is loaded, draw it to the left of the clinic name
+    if(clinicLogoDataUrl){
+      const logoH = 32, logoPad = 10;
+      const logoImg = new Image();
+      logoImg.src = clinicLogoDataUrl;
+      // Draw synchronously -- logo is already loaded as dataUrl
+      const logoW = logoImg.naturalWidth ? Math.round(logoImg.naturalWidth * (logoH / logoImg.naturalHeight)) : logoH;
+      ctx.font = '500 23px "DM Sans", sans-serif';
+      const nameW = ctx.measureText(clinic).width;
+      const totalRowW = logoW + logoPad + nameW;
+      const rowX = (totalW - totalRowW) / 2;
+      ctx.drawImage(logoImg, rowX, yF + 52, logoW, logoH);
+      ctx.textAlign = 'left';
+      ctx.fillStyle = 'rgba(250,247,242,.92)';
+      ctx.fillText(clinic, rowX + logoW + logoPad, yF + 72);
+      ctx.textAlign = 'center';
+    } else {
+      ctx.font = '500 23px "DM Sans", sans-serif'; ctx.fillStyle = 'rgba(250,247,242,.92)';
+      ctx.fillText(clinic, totalW/2, yF + 72);
+    }
     brandY = yF + 108;
   }
   const pre = 'Powered by ', brand = 'SkinDay Visualize';
@@ -3535,9 +3563,42 @@ async function downloadExport(includeText, allAngles){
 }
 document.getElementById('downloadBtn').addEventListener('click', () => downloadExport(true, false));
 document.getElementById('sheetBtn').addEventListener('click', () => downloadExport(true, true));
-document.getElementById('plainBtn').addEventListener('click', () => downloadExport(false, false));
+document.getElementById('plainBtn').addEventListener('click', async () => {
+  const sl = state.slots[state.activeAngle];
+  if(!sl || sl.status !== 'done') return;
+  let url = sl.resultDataUrl;
+  // Use hi-res or strong result if available
+  if(state.courseMode === 'enhanced' && sl.strongStatus === 'done' && sl.strongDataUrl) url = sl.strongDataUrl;
+  else { try { const hi = await hiResResultFor(state.activeAngle); if(hi) url = hi; } catch(e){} }
+  if(!url) return;
+  const link = document.createElement('a');
+  link.download = 'skinday-visualize-simulated-' + state.activeAngle + '.jpg';
+  link.href = url;
+  link.click();
+});
 
-// M11.1: Discard this angle -- resets the slot and removes it from the tab/results
+// Clinic logo for export
+let clinicLogoDataUrl = null;
+document.getElementById('logoUploadBtn').addEventListener('click', () => document.getElementById('logoFileInput').click());
+document.getElementById('logoFileInput').addEventListener('change', e => {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    clinicLogoDataUrl = ev.target.result;
+    document.getElementById('logoUploadName').textContent = file.name;
+    document.getElementById('logoRemoveBtn').style.display = '';
+    document.getElementById('logoUploadBtn').textContent = 'Change logo';
+  };
+  reader.readAsDataURL(file);
+});
+document.getElementById('logoRemoveBtn').addEventListener('click', () => {
+  clinicLogoDataUrl = null;
+  document.getElementById('logoFileInput').value = '';
+  document.getElementById('logoUploadName').textContent = '';
+  document.getElementById('logoRemoveBtn').style.display = 'none';
+  document.getElementById('logoUploadBtn').textContent = 'Upload logo';
+});
 // without affecting other angles. One bad oblique never kills a good frontal.
 document.getElementById('discardAngleBtn').addEventListener('click', () => {
   const id = state.activeAngle;
