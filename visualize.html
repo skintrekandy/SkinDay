@@ -559,17 +559,20 @@
     </div>
     <div class="result-grid">
       <div class="result-card"><img id="originalResult" alt="Original photo" /><div class="result-tag">Original</div></div>
-      <div class="result-card"><img id="aiResult" alt="AI simulated treatment preview" /><svg class="anno-svg" id="annoSvg" viewBox="0 0 100 125" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg><div class="result-tag sim" id="simTag">Simulated · AI Visualization<span class="strong-badge" id="simTagStrong" style="display:none;">Enhanced course</span></div></div>
+      <div class="result-card"><img id="aiResult" alt="AI simulated treatment preview" /><svg class="anno-svg" id="annoSvg" viewBox="0 0 100 125" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg><div class="result-tag sim" id="simTag">Simulated · AI Visualization<span class="strong-badge" id="simTagStrong" style="display:none;">Ceiling · 6-8+ vials</span></div></div>
     </div>
     <div id="intensityWrap" style="display:none;margin-top:14px;">
       <!-- Course segmented control (biostim only) -->
       <div id="courseControl" style="display:none;margin-bottom:14px;">
         <div style="font-size:13px;letter-spacing:.04em;text-transform:uppercase;opacity:.75;margin-bottom:8px;">Response Preview</div>
         <div class="view-toggle" id="courseToggle">
-          <button type="button" id="courseExpected" class="active">Expected course</button>
-          <button type="button" id="courseEnhanced" class="strong-tab">Enhanced course</button>
+          <button type="button" id="courseExpected" class="active">Baseline (3-4 vials)</button>
+          <button type="button" id="courseEnhanced" class="strong-tab">Ceiling (6-8+ vials)</button>
         </div>
-        <div class="small" id="courseHelp" style="margin-top:6px;color:var(--muted);">Enhanced course shows an upper-range simulation. May reflect more sessions or stronger individual response. Actual results vary.</div>
+        <div class="small" id="courseHelp" style="margin-top:6px;color:var(--muted);">
+          <span id="courseHelpExpected">Baseline: typical treatment plan. Sets realistic expectations for most patients.</span>
+          <span id="courseHelpEnhanced" style="display:none;">Ceiling: upper-range result with a stronger commitment. Shows what is possible, not guaranteed.</span>
+        </div>
       </div>
       <!-- Timeline slider -->
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
@@ -2699,8 +2702,7 @@ function updateStrongBtn(){
     if(courseHelp) courseHelp.textContent = doneCount + ' of ' + total + ' previews ready · Runs in background, keep this tab open.';
   } else {
     const anyError = state.selectedAngles.some(id => state.slots[id].strongStatus === 'error');
-    enhBtn.textContent = anyError ? 'Enhanced course (retry)' : 'Enhanced course';
-    if(courseHelp) courseHelp.textContent = 'Enhanced course shows an upper-range simulation. May reflect more sessions or stronger individual response. Actual results vary.';
+    enhBtn.textContent = anyError ? 'Ceiling (retry)' : 'Ceiling (6-8+ vials)';
   }
 }
 
@@ -2724,14 +2726,25 @@ function applyActiveView(){
     if(!sl || sl.strongStatus === 'generating') return;
     if(state.courseMode === 'enhanced'){
       state.courseMode = 'standard';
-      // Reset per-slot viewMode for consistency
       state.selectedAngles.forEach(id => { state.slots[id].viewMode = 'standard'; });
-      applyActiveView(); updateStrongBtn();
+      // Show baseline help text
+      const helpExp = document.getElementById('courseHelpExpected');
+      const helpEnh = document.getElementById('courseHelpEnhanced');
+      if(helpExp) helpExp.style.display = '';
+      if(helpEnh) helpEnh.style.display = 'none';
+      // renderActiveSlot re-enables the slider (unlock logic lives there),
+      // then calls applyActiveView internally.
+      renderActiveSlot(); updateStrongBtn();
     }
   });
   if(enhBtn) enhBtn.addEventListener('click', () => {
     const sl = activeSlot();
     if(!sl || sl.strongStatus === 'generating') return;
+    // Show ceiling help text
+    const helpExp = document.getElementById('courseHelpExpected');
+    const helpEnh = document.getElementById('courseHelpEnhanced');
+    if(helpExp) helpExp.style.display = 'none';
+    if(helpEnh) helpEnh.style.display = '';
     runStrongPass();
   });
 })();
@@ -3090,7 +3103,7 @@ function simKicker(angleId){
     }
   }
   // Strong Response: append label when exporting the strong view
-  if(state.courseMode === 'enhanced' && sl && sl.strongStatus === 'done') parts.push('Enhanced course');
+  if(state.courseMode === 'enhanced' && sl && sl.strongStatus === 'done') parts.push('Ceiling · 6-8+ vials');
   return parts.join(' · ');
 }
 
