@@ -96,6 +96,7 @@
     .consent.checked { border-color:var(--rose); background:#fdf1ee; }
     .consent input { margin-top:2px; width:16px; height:16px; flex-shrink:0; accent-color:var(--rose); cursor:pointer; }
     .status { display:flex; align-items:center; gap:10px; padding:11px 15px; background:#fff; border:1px solid var(--border); border-radius:6px; font-size:.83rem; color:var(--muted); margin-top:14px; }
+    .field-hint { font-size:.74rem; color:var(--muted); line-height:1.45; }
     .dot { width:6px; height:6px; border-radius:50%; background:var(--border); flex-shrink:0; }
     .dot.spin { background:var(--gold); animation:blink 1s infinite; }
     .dot.ok { background:#3D7A55; }
@@ -2921,9 +2922,8 @@ function updateStrongBtn(){
   const enhBtn = document.getElementById('courseEnhanced');
   const courseCtrl = document.getElementById('courseControl');
   const courseHelp = document.getElementById('courseHelp');
-  // M11 close: Enhanced course removed from UI pending M12 clinic library.
-  // courseControl stays hidden. All Enhanced code preserved for M12 restore.
-  if(courseCtrl) courseCtrl.style.display = 'none';
+  // M12: courseControl visibility is managed by syncBiostimControls (biostim=show, filler=hide).
+  // Do not force hide here -- that was the M11 close gate, now removed.
   if(!expBtn || !enhBtn || !sl) return;
   const isEnhanced = state.courseMode === 'enhanced';
 
