@@ -101,7 +101,28 @@
     .dot.ok { background:#3D7A55; }
     .dot.warn { background:var(--rose); }
     @keyframes blink { 0%,100%{opacity:1}50%{opacity:.3} }
-    .btn-row { display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin-top:18px; }
+    .btn-gold { background:var(--gold); color:#fff; border-color:var(--gold); font-weight:600; }
+    .btn-gold:hover { background:#b8954f; border-color:#b8954f; }
+    .btn-gold:disabled { opacity:.45; cursor:not-allowed; }
+    .btn-gold.viewing { background:transparent; color:var(--gold); border-color:var(--gold); }
+    /* ── Output action bar ── */
+    .action-bar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:4px; }
+    .action-bar-primary { display:flex; gap:8px; align-items:center; }
+    .action-bar-downloads { display:flex; gap:8px; align-items:center; }
+    .overflow-wrap { position:relative; display:inline-block; }
+    .overflow-menu { display:none; position:absolute; bottom:calc(100% + 6px); left:0; min-width:200px; background:#fff; border:1px solid rgba(28,23,20,.12); border-radius:8px; box-shadow:0 4px 20px rgba(28,23,20,.12); z-index:200; overflow:hidden; }
+    .overflow-menu.open { display:block; }
+    .overflow-menu button { display:block; width:100%; padding:10px 16px; text-align:left; background:none; border:none; border-bottom:1px solid rgba(28,23,20,.06); font-family:'DM Sans',sans-serif; font-size:.82rem; color:var(--deep); cursor:pointer; transition:.15s; }
+    .overflow-menu button:last-child { border-bottom:none; }
+    .overflow-menu button:hover { background:rgba(201,169,110,.08); }
+    .overflow-menu button:disabled { opacity:.4; cursor:not-allowed; }
+    .strong-badge { display:inline-block; padding:2px 7px; border-radius:4px; background:rgba(201,169,110,.18); border:1px solid rgba(201,169,110,.4); color:var(--gold); font-size:.65rem; letter-spacing:.08em; text-transform:uppercase; font-weight:600; vertical-align:middle; margin-left:6px; }
+    /* Strong Response view toggle */
+    .view-toggle { display:flex; gap:0; border:1px solid var(--border); border-radius:6px; overflow:hidden; margin:8px 0 4px; }
+    .view-toggle button { flex:1; padding:6px 14px; background:#fff; border:none; font-size:.78rem; color:var(--muted); cursor:pointer; transition:.15s; }
+    .view-toggle button.active { background:var(--deep); color:var(--cream); font-weight:600; }
+    .view-toggle button.strong-tab { color:var(--gold); }
+    .view-toggle button.strong-tab.active { background:var(--gold); color:#fff; }
     .btn { border:none; padding:13px 28px; font-family:'DM Sans',sans-serif; font-size:.86rem; font-weight:500; border-radius:6px; cursor:pointer; transition:.2s; }
     .btn-primary { background:var(--rose); color:#fff; }
     .btn-primary:hover:not(:disabled) { background:var(--rose-m); }
@@ -206,9 +227,10 @@
     .nav-credits strong { color:#FAF7F2; font-weight:600; }
     .nav-credits:hover { border-color:var(--gold); }
     .cost-note { display:flex; justify-content:center; margin-top:12px; min-height:1em; }
-    .cost-pill { display:inline-flex; align-items:center; gap:6px; padding:9px 18px; border-radius:999px; border:1px solid rgba(28,23,20,.14); background:rgba(28,23,20,.035); font-size:.86rem; color:var(--deep); }
+    .cost-pill { display:inline-flex; align-items:center; gap:6px; padding:9px 18px; border-radius:999px; border:1px solid rgba(28,23,20,.14); background:rgba(28,23,20,.035); font-size:.86rem; color:var(--deep); flex-wrap:wrap; justify-content:center; text-align:center; }
     .cost-pill strong { font-weight:600; }
     .cost-pill.warn { border-color:var(--rose); background:rgba(196,106,86,.08); color:var(--rose); }
+    @media(max-width:480px){ .cost-pill { font-size:.78rem; padding:8px 14px; gap:4px; } }
     .pack-row { display:flex; align-items:center; justify-content:space-between; gap:14px; border:1px solid rgba(28,23,20,.12); border-radius:10px; padding:14px 16px; margin-top:10px; }
     .pack-row .pack-name { font-weight:500; color:var(--deep); font-size:.92rem; }
     .pack-row .pack-sub { font-size:.74rem; color:var(--muted); margin-top:2px; }
@@ -370,7 +392,7 @@
 <div class="lock" id="lockScreen">
   <div class="lock-card">
     <div class="lock-eyebrow">SkinDay</div>
-    <h1>Visualize <span>·</span> Coming&nbsp;Soon</h1>
+    <h1>Visualize <span>·</span> AI&nbsp;Treatment&nbsp;Previews</h1>
     <p class="lock-soon" id="lockTagline">AI-powered treatment previews. Sign in with your SkinDay account, or create one free.</p>
     <div class="lock-tabs" id="lockTabs" style="display:none;">
       <button type="button" data-mode="signin" class="active">Sign in</button>
@@ -516,11 +538,11 @@
       </label>
 
       <div class="disclaimer"><span>⚠️</span><span>Every export is labelled and carries a permanent consultation-only disclaimer. Outputs are simulations for communication, never a guaranteed result or medical prediction.</span></div>
-      <p style="font-size:.72rem;color:var(--muted);margin:8px 0 0;line-height:1.5;">Early access · We're continuously improving results. Quality varies by photo — see the photo guide for best outcomes.</p>
+      <p style="font-size:.72rem;color:var(--muted);margin:8px 0 0;line-height:1.5;">Early access · We're continuously improving results. Quality varies by photo  -  see the photo guide for best outcomes.</p>
 
       <div class="status"><div class="dot" id="dot"></div><span id="statusText">Choose a treatment, then add the patient photos</span></div>
 
-      <div class="btn-row"><button class="btn btn-primary" id="generateBtn" disabled>Generate simulated preview</button></div>
+      <div class="btn-row" style="text-align:center;margin-top:18px;"><button class="btn btn-primary" id="generateBtn" disabled>Generate simulated preview</button></div>
       <div class="cost-note" id="costNote"></div>
     </div>
   </section>
@@ -540,15 +562,28 @@
       <div class="result-card"><img id="aiResult" alt="AI simulated treatment preview" /><svg class="anno-svg" id="annoSvg" viewBox="0 0 100 125" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg><div class="result-tag sim" id="simTag">Simulated · AI Visualization</div></div>
     </div>
     <div id="intensityWrap" style="display:none;margin-top:14px;">
+      <!-- Course segmented control (biostim only) -->
+      <div id="courseControl" style="display:none;margin-bottom:14px;">
+        <div style="font-size:13px;letter-spacing:.04em;text-transform:uppercase;opacity:.75;margin-bottom:8px;">Response Preview</div>
+        <div class="view-toggle" id="courseToggle">
+          <button type="button" id="courseExpected" class="active">Baseline (3-4 vials)</button>
+          <button type="button" id="courseEnhanced" class="strong-tab">Ceiling (6-8+ vials)</button>
+        </div>
+        <div class="small" id="courseHelp" style="margin-top:6px;color:var(--muted);">
+          <span id="courseHelpExpected">Baseline: typical treatment plan. Sets realistic expectations for most patients.</span>
+          <span id="courseHelpEnhanced" style="display:none;">Ceiling: upper-range result with a stronger commitment. Shows what is possible, not guaranteed.</span>
+        </div>
+      </div>
+      <!-- Timeline slider -->
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-        <label for="intensitySlider" id="intensityLabel" style="font-size:13px;letter-spacing:.04em;text-transform:uppercase;opacity:.75;">Treatment response</label>
+        <label for="intensitySlider" id="intensityLabel" style="font-size:13px;letter-spacing:.04em;text-transform:uppercase;opacity:.75;">Response timeline</label>
         <span id="intensityValue" style="font-family:'Cormorant Garamond',serif;font-size:22px;">Expected</span>
       </div>
       <input type="range" id="intensitySlider" min="0" max="100" step="1" value="70" style="width:100%;margin-top:8px;accent-color:#C8725A;" />
       <div style="display:flex;justify-content:space-between;font-size:.68rem;letter-spacing:.04em;text-transform:uppercase;opacity:.6;margin-top:4px;">
-        <span id="intensityMin">Conservative</span><span id="intensityMax">Strong</span>
+        <span id="intensityMin">Early</span><span id="intensityMax">6 months</span>
       </div>
-      <div class="small" id="intensityHelp" style="margin-top:6px;">Slide to preview a more conservative or stronger response. The simulation updates instantly.</div>
+      <div class="small" id="intensityHelp" style="margin-top:6px;">Slide to preview an earlier or more complete treatment response. The simulation updates instantly.</div>
       <div class="small" id="overfillNote" style="display:none;margin-top:4px;color:#A33524;font-weight:600;">Shown for education: deliberately overfilled, not a treatment goal.</div>
     </div>
     <div class="compare-wrap" id="compareWrap" style="display:none;">
@@ -563,14 +598,27 @@
     <div class="small" style="margin-top:10px;">AI-generated visualization for consultation purposes only. Not a prediction of actual treatment results. Results vary by anatomy, product, technique, healing, and clinical judgment.</div>
     <canvas id="exportCanvas"></canvas>
     <div class="regen-note" id="regenNote"></div>
-    <div class="btn-row">
-      <button class="btn btn-primary" id="regenBtn">Re-generate</button>
-      <button class="btn btn-light" id="insightsBtn">Compare</button>
-      <button class="btn btn-dark" id="downloadBtn">Download side-by-side</button>
-      <button class="btn btn-dark" id="sheetBtn" style="display:none;">Download all angles</button>
-      <button class="btn btn-light" id="plainBtn">Download plain photos</button>
-      <button class="btn btn-light" id="discardAngleBtn" style="display:none;" title="Remove this angle from the case">Discard this angle</button>
-      <button class="btn btn-light" id="newBtn">New case</button>
+    <div class="action-bar">
+      <!-- Primary: always visible -->
+      <div class="action-bar-primary">
+        <button class="btn btn-primary" id="regenBtn">Re-generate</button>
+        <button class="btn btn-gold" id="strongBtn" style="display:none;" aria-hidden="true"></button>
+      </div>
+      <!-- Downloads: the main clinic deliverable -->
+      <div class="action-bar-downloads">
+        <button class="btn btn-dark" id="downloadBtn">Download</button>
+        <button class="btn btn-dark" id="sheetBtn" style="display:none;">Download all angles</button>
+      </div>
+      <!-- Overflow: contextual / secondary actions -->
+      <div class="overflow-wrap">
+        <button class="btn btn-light" id="moreBtn" style="display:none;">⋯ More</button>
+        <div class="overflow-menu" id="overflowMenu">
+          <button id="insightsBtn">Compare</button>
+          <button id="plainBtn">Download plain photos</button>
+          <button id="discardAngleBtn" style="display:none;">Discard this angle</button>
+          <button id="newBtn">New case</button>
+        </div>
+      </div>
     </div>
   </section>
 </div>
@@ -748,13 +796,14 @@
 <!-- ───────── Mobile sticky slider bar ───────── -->
 <div id="mobileSliderBar" class="bar-hidden" aria-hidden="true">
   <div class="msb-row">
-    <span class="msb-label" id="msbLabel">Treatment response</span>
+    <span class="msb-label" id="msbLabel">Response timeline</span>
     <span id="msbValue">Expected</span>
   </div>
   <input type="range" id="mobileSlider" min="0" max="100" step="1" value="70" aria-hidden="true" tabindex="-1" />
   <div class="msb-ends">
-    <span id="msbMin">Conservative</span><span id="msbMax">Strong</span>
+    <span id="msbMin">Early</span><span id="msbMax">6 months</span>
   </div>
+  <div id="msbCostNote" style="display:none;font-size:.75rem;text-align:center;color:rgba(250,247,242,.6);margin-bottom:2px;"></div>
   <button id="msbActionBtn" type="button" class="bar-hidden" disabled>Generate simulated preview</button>
   <button id="msbDownloadBtn" type="button">Download</button>
   <button id="msbRegenLink" type="button">Re-generate</button>
@@ -770,7 +819,7 @@ const FREE_REGEN_MS = 60000;
 // stay the same module instance (shared face-detection cache). v35 = M9.0
 // jowl blending (alpha lobes over marionette/jowl shadows + prejowl notch-fill
 // warp kernels) (v34 = M8.2 shade reconciliation; v33 = M8.1 convex chin).
-const MASK_MODULE_VERSION = '69';
+const MASK_MODULE_VERSION = '72';
 
 /* M7: a case is one or more ANGLES, each with its own photo, QC result, job,
    and compositor. Treatment settings are shared across the case; the response
@@ -796,13 +845,17 @@ function makeSlot(){
   return { file:null, originalDataUrl:null, beforeDataUrl:null, blackBgCache:null,
            resultDataUrl:null, apply:null, jobId:null, error:null,
            status:'empty', qcMsg:'',
-           faceBbox:null, cropCache:null }; // M11.1: bbox for head crop display
+           faceBbox:null, cropCache:null,
+           // Strong Response second pass (biostim only)
+           strongDataUrl:null, strongJobId:null, strongStatus:'idle',
+           viewMode:'standard' }; // 'standard' | 'strong'
 }
 
 const state = {
   type:'biostim', areas:['chin_jawline'], intensity:'enhanced', sex:'female',
   product:'sculptra', projection:'optimistic', timeline:'6',
-  blackBg:true, lastGenAt:0, intensityPct:70,
+  blackBg:true, lastGenAt:0, intensityPct:70, courseMode:'standard', // 'standard' | 'enhanced' -- global across all angles
+  enhancedStartedAt: 0, enhancedTimerInterval: null,
   selectedAngles:['frontal'], activeAngle:'frontal',
   slots:{ frontal:makeSlot(), r45:makeSlot(), l45:makeSlot() }
 };
@@ -897,7 +950,13 @@ function renderAcctBar(){
     buy.style.display = ''; out.style.display = ''; info.style.display = '';
     navPill.style.display = 'inline-flex';
     navPill.innerHTML = 'Credits: <strong>' + (creditBalance == null ? '…' : creditBalance) + '</strong>';
-    if(navAcct) navAcct.style.display = '';
+    if(navAcct){
+      navAcct.style.display = '';
+      // Show first name or email prefix to match main site nav style
+      const email = (sb && sb.__email) || '';
+      const displayName = email ? email.split('@')[0] : 'Account';
+      navAcct.textContent = displayName.charAt(0).toUpperCase() + displayName.slice(1);
+    }
   } else {
     bar.style.display = 'none';
     navPill.style.display = 'none';
@@ -998,7 +1057,9 @@ async function handleGoogleAuthVisualize(){
   const { error } = await sb.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: window.location.origin + window.location.pathname,
+      redirectTo: window.location.hostname === 'skinday.ca'
+        ? 'https://skinday.ca/visualize'
+        : window.location.origin + window.location.pathname,
       queryParams: { prompt: 'select_account' }
     }
   });
@@ -1040,7 +1101,31 @@ function openBuyModal(){
           body: JSON.stringify({ packId: pk.id })
         });
         const d = await res.json().catch(() => ({}));
-        if(res.ok && d.url){ window.location.href = d.url; return; }
+        if(res.ok && d.url){
+          // Before navigating away, save the current generation state so we
+          // can resume automatically after the user returns from Stripe.
+          // File objects cannot be serialized, but originalDataUrl (already
+          // read into memory) can. Store per-slot data URLs + all selections.
+          try {
+            const pendingSlots = {};
+            state.selectedAngles.forEach(id => {
+              const sl = state.slots[id];
+              if(sl.originalDataUrl) pendingSlots[id] = sl.originalDataUrl;
+            });
+            if(Object.keys(pendingSlots).length > 0){
+              const pending = {
+                type: state.type, product: state.product, timeline: state.timeline,
+                projection: state.projection, sex: state.sex, blackBg: state.blackBg,
+                sculptraPhenotype: state.sculptraPhenotype || null,
+                intensityPct: state.intensityPct,
+                selectedAngles: state.selectedAngles,
+                slots: pendingSlots
+              };
+              sessionStorage.setItem('sd_pending_gen', JSON.stringify(pending));
+            }
+          } catch(saveErr){ console.warn('[Visualize] Could not save pending state:', saveErr); }
+          window.location.href = d.url; return;
+        }
         btn.textContent = 'Buy';
         btn.disabled = false;
         setStatus(d.error || 'Could not start the checkout. Please try again.', 'warn');
@@ -1105,6 +1190,57 @@ document.getElementById('buyModal').addEventListener('click', e => { if(e.target
         setStatus('Payment received. Updating your credit balance…', 'spin');
         const bal = await refreshCredits(4);
         setStatus(bal != null ? ('Payment received. Credit balance: ' + bal + '.') : 'Payment received. Your balance will update shortly.', 'ok');
+        // Restore pending generation state if the user was mid-flow when credits ran out.
+        try {
+          const raw = sessionStorage.getItem('sd_pending_gen');
+          if(raw){
+            sessionStorage.removeItem('sd_pending_gen');
+            const pending = JSON.parse(raw);
+            // Restore selections
+            if(pending.type) state.type = pending.type;
+            if(pending.product) state.product = pending.product;
+            if(pending.timeline) state.timeline = pending.timeline;
+            if(pending.projection) state.projection = pending.projection;
+            if(pending.sex) state.sex = pending.sex;
+            if(pending.blackBg != null) state.blackBg = pending.blackBg;
+            if(pending.sculptraPhenotype) state.sculptraPhenotype = pending.sculptraPhenotype;
+            if(pending.intensityPct) state.intensityPct = pending.intensityPct;
+            if(pending.selectedAngles && pending.selectedAngles.length) state.selectedAngles = pending.selectedAngles;
+            // Restore photos from data URLs and re-run QC for each slot
+            const restoreJobs = Object.entries(pending.slots || {}).map(async ([id, dataUrl]) => {
+              const sl = state.slots[id];
+              if(!sl || !dataUrl) return;
+              sl.originalDataUrl = dataUrl;
+              sl.status = 'checking'; sl.qcMsg = 'Re-checking photo…';
+              try {
+                const img = await loadImage(dataUrl);
+                const mod = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
+                const a = await mod.analyzePhoto(img);
+                const gate = poseMatches(id, a);
+                if(a && a.faceBbox) sl.faceBbox = a.faceBbox;
+                sl.status = gate.ok ? 'ready' : 'bad';
+                sl.qcMsg = gate.ok ? ('✓ ' + gate.msg) : ('✗ ' + gate.msg);
+              } catch(qcErr){
+                sl.status = 'ready'; sl.qcMsg = 'Photo restored. Ready to generate.';
+              }
+            });
+            await Promise.all(restoreJobs);
+            // Sync UI controls to restored state
+            document.querySelectorAll('#treatTypeGrid .area-chip').forEach(c => {
+              c.classList.toggle('active', c.dataset.type === state.type);
+            });
+            document.querySelectorAll('#angleGrid .area-chip').forEach(c => {
+              c.classList.toggle('active', state.selectedAngles.includes(c.dataset.angle));
+            });
+            const blackBgChk = document.getElementById('blackBgChk');
+            if(blackBgChk) blackBgChk.checked = !!state.blackBg;
+            renderSlots(); syncGenerateBtn();
+            setStatus('Photos restored. Ready to generate.', 'ok');
+            // Auto-fire generation now that credits are topped up
+            await new Promise(r => setTimeout(r, 800)); // brief pause so user sees the status
+            runGeneration(false);
+          }
+        } catch(restoreErr){ console.warn('[Visualize] Could not restore pending state:', restoreErr); }
       } else if(purchase === 'cancelled'){
         setStatus('Checkout cancelled. No charge was made.', 'idle');
       }
@@ -1150,15 +1286,25 @@ function syncGenerateBtn(){
       const per = creditCostFor(state.type);
       const total = per * ids.length;
       const short = (creditBalance != null && creditBalance < total);
+      const balLine = creditBalance != null
+        ? ' · Balance: <strong>' + creditBalance + '</strong>' + (short ? ' · top up needed' : '')
+        : '';
       note.innerHTML = '<span class="cost-pill' + (short ? ' warn' : '') + '">'
-        + 'This case: <strong>' + total + ' credit' + (total > 1 ? 's' : '') + '</strong>'
-        + '<span>(' + ids.length + ' angle' + (ids.length > 1 ? 's' : '') + ' × ' + per + ')</span>'
-        + (creditBalance != null
-            ? '<span>·</span>Balance: <strong>' + creditBalance + '</strong>' + (short ? '<span>· top up needed</span>' : '')
-            : '')
+        + '<strong>' + total + ' credit' + (total > 1 ? 's' : '') + '</strong>'
+        + ' · ' + ids.length + (ids.length > 1 ? ' angles' : ' angle') + ' × ' + per
+        + balLine
         + '</span>';
+      // Mirror directly to mobile bar cost note (bypass updateBarState/isMobile check)
+      const msbCN = document.getElementById('msbCostNote');
+      if(msbCN){
+        msbCN.textContent = total + ' credit' + (total > 1 ? 's' : '') + ' · ' + ids.length + (ids.length > 1 ? ' angles' : ' angle') + ' × ' + per + (creditBalance != null ? ' · Balance: ' + creditBalance + (short ? ' · top up needed' : '') : '');
+        msbCN.style.display = 'block';
+        msbCN.style.color = short ? 'rgba(200,114,90,.9)' : 'rgba(250,247,242,.6)';
+      }
     } else {
       note.textContent = '';
+      const msbCN2 = document.getElementById('msbCostNote');
+      if(msbCN2) msbCN2.style.display = 'none';
     }
   }
 }
@@ -1467,12 +1613,15 @@ function updateIntensityUI(){
     slider.max = 100;
   }
   const li = levelInfo(state.intensityPct);
-  document.getElementById('intensityLabel').textContent = isFiller ? 'Degree of correction' : 'Treatment timeline';
+  document.getElementById('intensityLabel').textContent = isFiller ? 'Degree of correction' : 'Response timeline';
   document.getElementById('intensityMin').textContent = isFiller ? 'Subtle' : 'Early';
   document.getElementById('intensityMax').textContent = isFiller ? 'Enhanced' : '6 months';
   document.getElementById('intensityHelp').textContent = isFiller
     ? 'Slide to preview less or more correction.'
     : 'Slide to preview an earlier or more complete treatment response. The simulation updates instantly.';
+  // Show course segmented control for biostim only
+  const courseCtrl = document.getElementById('courseControl');
+  if(courseCtrl) courseCtrl.style.display = isFiller ? 'none' : '';
   const valEl = document.getElementById('intensityValue');
   valEl.textContent = li.name;
   valEl.style.color = li.over ? OVERFILL_COLOR : '';
@@ -1494,11 +1643,15 @@ function updateIntensityUI(){
     state.intensityPct = pct;
     updateIntensityUI();
     const sl = activeSlot();
-    if(!sl || !sl.apply) return;
+    if(!sl) return;
+    // Use strongApply when viewing enhanced course, sl.apply for standard
+    const applyFn = (state.courseMode === 'enhanced' && sl.strongApply) ? sl.strongApply : sl.apply;
+    if(!applyFn) return;
     if(raf) cancelAnimationFrame(raf);
     raf = requestAnimationFrame(() => {
-      const url = sl.apply(pct / 100);
-      sl.resultDataUrl = url;
+      const url = applyFn(pct / 100);
+      if(state.courseMode === 'enhanced' && sl.strongApply){ sl.strongDataUrl = url; }
+      else { sl.resultDataUrl = url; }
       document.getElementById('aiResult').src = url;
     });
   });
@@ -1509,8 +1662,13 @@ function updateIntensityUI(){
     for(const id of state.selectedAngles){
       if(id === state.activeAngle) continue;
       const sl = state.slots[id];
-      if(sl.apply && sl.status === 'done'){
-        setTimeout(() => { sl.resultDataUrl = sl.apply(pct / 100); }, 0);
+      if(sl.status === 'done'){
+        const applyFn2 = (state.courseMode === 'enhanced' && sl.strongApply) ? sl.strongApply : sl.apply;
+        if(applyFn2) setTimeout(() => {
+          const url = applyFn2(pct / 100);
+          if(state.courseMode === 'enhanced' && sl.strongApply){ sl.strongDataUrl = url; }
+          else { sl.resultDataUrl = url; }
+        }, 0);
       }
     }
   });
@@ -1562,7 +1720,7 @@ function updateIntensityUI(){
     msbValue.style.color = li.over ? OVERFILL_COLOR : 'var(--cream)';
     mslider.style.accentColor = li.over ? OVERFILL_COLOR : 'var(--rose)';
     const isFiller = state.type === 'filler';
-    msbLabel.textContent = isFiller ? 'Degree of correction' : 'Treatment response';
+    msbLabel.textContent = isFiller ? 'Degree of correction' : 'Response timeline';
     msbMin.textContent   = isFiller ? 'Subtle' : 'Early';
     msbMax.textContent   = isFiller ? 'Enhanced' : '6 months';
   }
@@ -1597,7 +1755,11 @@ function updateIntensityUI(){
   canonical.addEventListener('touchend', () => applySnap(canonical), { passive:true });
 
   // ── Bar visibility: show on any touch device regardless of orientation
-  function isMobile(){ return window.matchMedia('(pointer: coarse) and (max-width: 768px)').matches; }
+  function isMobile(){
+    // Portrait: width <= 768px. Landscape: coarse pointer + height <= 500px (phone on its side)
+    return window.matchMedia('(pointer: coarse) and (max-width: 768px)').matches
+        || window.matchMedia('(pointer: coarse) and (orientation: landscape) and (max-height: 500px)').matches;
+  }
 
   const msbDownloadBtn = document.getElementById('msbDownloadBtn');
   const msbRegenLink   = document.getElementById('msbRegenLink');
@@ -1651,6 +1813,14 @@ function updateIntensityUI(){
       msbBtn.className = '';
       msbBtn.style.background = msbBtn.disabled ? '' : 'var(--rose)';
       msbBtn.onclick = () => { if(genBtnEl && !genBtnEl.disabled) genBtnEl.click(); };
+      // Mirror cost note into the mobile bar
+      const msbCostNote = document.getElementById('msbCostNote');
+      const desktopNote = document.getElementById('costNote');
+      if(msbCostNote && desktopNote){
+        const txt = desktopNote.textContent.trim();
+        if(txt){ msbCostNote.textContent = txt; msbCostNote.style.display = 'block'; }
+        else { msbCostNote.style.display = 'none'; }
+      }
     }
   }
 
@@ -1677,6 +1847,13 @@ function updateIntensityUI(){
   if(intWrap){
     const obsSlider = new MutationObserver(updateBarState);
     obsSlider.observe(intWrap, { attributes:true, attributeFilter:['style'] });
+  }
+
+  // Observe costNote changes so mobile bar mirrors it immediately
+  const costNoteEl = document.getElementById('costNote');
+  if(costNoteEl){
+    const obsCost = new MutationObserver(updateBarState);
+    obsCost.observe(costNoteEl, { childList:true, subtree:true, characterData:true });
   }
 
   window.addEventListener('resize', updateBarState, { passive:true });
@@ -1960,6 +2137,16 @@ async function prepAndStartSlot(angleId, auth, isRegen){
                 (Date.now() + '-' + Math.random().toString(36).slice(2));
   form.append('jobId', jobId);
   if(isRegen && prevJobId) form.append('regenOf', prevJobId);
+  // M11.1: angle and sex are required for normalizeView() and phenotype routing
+  // in prompts.js. Previously missing from standard pass -- caused normalizeView()
+  // to default to 'frontal' for all oblique angles.
+  // M11.1: also append explicit 'view' in prompt-view token format as cheap insurance,
+  // since normalizeView() checks sel.view before sel.angle.
+  const promptView = angleId === 'r45' ? 'oblique_right' : angleId === 'l45' ? 'oblique_left' : 'frontal';
+  form.append('angle', angleId);
+  form.append('view', promptView);
+  if(state.sex) form.append('sex', state.sex);
+  if(state.sculptraPhenotype) form.append('sculptraPhenotype', state.sculptraPhenotype);
   sl.jobId = jobId;
 
   const startRes = await fetch('/.netlify/functions/start-visualization', {
@@ -2041,6 +2228,19 @@ async function runGeneration(isRegen){
     });
     if(failedOrIdle.length) angles = failedOrIdle;
   }
+  // Pre-flight credit check: block before any generation starts.
+  // The server enforces this too (402), but we catch it here so the user
+  // never loses credits on a run that was always going to fail.
+  if(accessMode === 'account' && !isRegen){
+    const per = creditCostFor(state.type);
+    const total = per * angles.length;
+    if(creditBalance != null && creditBalance < total){
+      setStatus('Not enough credits for this generation. Top up to continue.', 'warn');
+      openBuyModal();
+      return;
+    }
+  }
+
   generateBtn.disabled = true; regenBtn.disabled = true;
 
   const t0 = Date.now();
@@ -2168,16 +2368,24 @@ function renderActiveSlot(){
   const sl = activeSlot();
   const multi = state.selectedAngles.length > 1;
   document.getElementById('originalResult').src = sl.beforeDataUrl || sl.originalDataUrl || '';
-  document.getElementById('aiResult').src = sl.resultDataUrl || sl.beforeDataUrl || sl.originalDataUrl || '';
+  // Route through applyActiveView so enhanced mode shows sl.strongDataUrl correctly.
+  // Do not set aiResult.src directly here; applyActiveView() at line 2285 handles it.
   let tag = 'Simulated · ' + treatmentName();
   if(multi) tag += ' · ' + ANGLE_DEF[state.activeAngle].short;
   if(state.type === 'biostim') tag += ' · ' + (state.timeline === '12' ? '12 months' : state.timeline + ' months');
   if(sl.status === 'error') tag = 'Generation failed for this angle · Re-generate to retry';
   document.getElementById('simTag').textContent = tag;
+  // Update strong badge visibility
+  const strongBadge = document.getElementById('simTagStrong');
+  if(strongBadge) strongBadge.style.display = (state.courseMode === 'enhanced' && sl.strongStatus === 'done') ? 'inline' : 'none';
   const showSlider = !!sl.apply;
   document.getElementById('intensityWrap').style.display = showSlider ? 'block' : 'none';
   if(showSlider){
-    document.getElementById('intensitySlider').value = state.intensityPct;
+    const sliderEl = document.getElementById('intensitySlider');
+    sliderEl.disabled = false;
+    sliderEl.style.opacity = '';
+    sliderEl.style.pointerEvents = '';
+    sliderEl.value = state.intensityPct;
     updateIntensityUI();
   }
   const doneCount = state.selectedAngles.filter(id => state.slots[id].status === 'done').length;
@@ -2188,9 +2396,348 @@ function renderActiveSlot(){
     (sl2 && sl2.status === 'done' && state.selectedAngles.length > 1) ? '' : 'none';
   resetZoom();
   hideAnnotations();
+  updateStrongBtn();
+  applyActiveView();
+  // Show More button when there's a result to act on
+  const moreBtnEl = document.getElementById('moreBtn');
+  if(moreBtnEl) moreBtnEl.style.display = (sl && sl.status === 'done') ? '' : 'none';
 }
 generateBtn.addEventListener('click', () => runGeneration(false));
 regenBtn.addEventListener('click', () => runGeneration(true));
+
+/* ───────── Enhanced course second pass ─────────
+   Fires a second masked generation for all done angles. Uses the SAME
+   Sculptra mask and compositor pipeline as the standard pass -- the only
+   difference is projection:optimistic and a stronger prompt anchor.
+   Raw AI output is NEVER shown to the user. Every enhanced result goes
+   through makeSculptraCompositor before being stored in sl.strongDataUrl.
+   If the compositor fails, the enhanced view is suppressed and the standard
+   result is shown instead. Patient-facing output is always:
+     original photo + masked local biostimulator change.
+   Cost: 1 credit per angle (server-verified via isStrongPass + sourceJobId). */
+// M11.1: STRONG_PROMPT_SUFFIX is now a minimal signal only.
+// The actual Enhanced magnitude instruction is ENHANCED_MAGNITUDE in prompts.js,
+// injected directly into the prompt body when isStrongPass === 'true' is detected
+// in buildSculptraPrompt. That bypasses sanitizeNote's 300-char truncation and
+// the "Clinician note (honor only if consistent with the above)" wrapper which
+// allows the model to deprioritize it.
+//
+// This suffix reaches the server as the `note` field but for Enhanced it is
+// ignored by buildSculptraPrompt (cleanNote = '' when isEnhanced). It is kept
+// here as a human-readable label for logging and debugging.
+const STRONG_PROMPT_SUFFIX = 'Enhanced course: upper-range biostimulator response. Show the full structural result, not a local patch.';
+
+// Start an enhanced-course generation for a single angle slot.
+// M11.1 architecture: Enhanced is a FULL-FRAME generation (no mask sent to
+// the API). The mask-as-primary-edit architecture caused the model to treat
+// Enhanced as a local inpaint, producing patchy cheek changes instead of a
+// holistic face-aware structural result. The three correct reference results
+// were all full-frame edits where the model solved lighting, shadow, and
+// volume globally.
+//
+// After generation, makeSculptraCompositor still runs as a SAFETY CLAMP:
+//   - Caps extreme color drift (chromaLock)
+//   - Preserves background/hair/clothing via mask exclusion
+//   - Lets the intensity slider work
+// But the compositor is NOT the source of the structural effect. The raw AI
+// output must already look correct before compositing touches it.
+async function startEnhancedSlot(angleId, auth){
+  const sl = state.slots[angleId];
+  if(!sl || sl.status !== 'done' || !sl.jobId) return;
+  // strongStatus already 'generating' (set by runStrongPass) -- no guard needed here
+
+  // Use the same beforeDataUrl (black bg applied) as the standard pass
+  const beforeDataUrl = sl.beforeDataUrl || sl.originalDataUrl;
+  console.log('[Visualize Enhanced] ' + angleId + ': starting  -  beforeDataUrl length=' + (beforeDataUrl ? beforeDataUrl.length : 'null'));
+  // Use resizeToUpload which correctly handles data URLs cross-browser.
+  // fetch(dataUrl) hangs silently on Safari/WebKit -- do not use it.
+  const blob = await resizeToUpload(beforeDataUrl);
+  console.log('[Visualize Enhanced] ' + angleId + ': blob ready, size=' + (blob ? blob.size : 'null'));
+
+  const formData = new FormData();
+  formData.append('image', blob, 'patient-' + angleId + '.jpg');
+  formData.append('type', state.type);
+  formData.append('product', state.product || 'sculptra');
+  formData.append('timeline', state.timeline || '6');
+  formData.append('projection', 'optimistic');
+  formData.append('intensity', 'enhanced');
+  if(state.sex) formData.append('sex', state.sex);
+  const enhPromptView = angleId === 'r45' ? 'oblique_right' : angleId === 'l45' ? 'oblique_left' : 'frontal';
+  formData.append('angle', angleId);
+  formData.append('view', enhPromptView);
+  formData.append('note', STRONG_PROMPT_SUFFIX);
+  formData.append('isStrongPass', 'true');
+  formData.append('sourceJobId', sl.jobId);
+  if(state.sculptraPhenotype) formData.append('sculptraPhenotype', state.sculptraPhenotype);
+  // M11.1: NO mask appended for Enhanced. Full-frame edit only.
+  // The mask was confining the model to local inpainting, which produced
+  // patchy anatomically incoherent results. The compositor below handles
+  // safety clamping after a correct full-frame result is generated.
+
+  // maskScope is still needed for the post-generation compositor safety clamp.
+  const maskScope = (state.type === 'biostim' && state.product === 'sculptra') ? 'full'
+                  : (state.type === 'filler') ? 'chin_jaw'
+                  : null;
+
+  console.log('[Visualize Enhanced] ' + angleId + ': sending to start-visualization…');
+  let startRes;
+  try {
+    startRes = await fetch('/.netlify/functions/start-visualization', {
+      method: 'POST', headers: auth, body: formData
+    });
+  } catch(fetchErr) {
+    throw new Error('Enhanced network error: ' + (fetchErr && fetchErr.message));
+  }
+  console.log('[Visualize Enhanced] ' + angleId + ': start-visualization HTTP ' + startRes.status);
+  if(startRes.status === 401){ await handleAuthFailure(); throw new Error('Session expired  -  please sign in again.'); }
+  if(startRes.status === 402){
+    const err = await startRes.json().catch(() => ({}));
+    throw new Error('Not enough credits for Enhanced course. ' + (err.error || ''));
+  }
+  if(!startRes.ok){
+    const errText = await startRes.text().catch(() => '');
+    throw new Error('Enhanced pass failed (HTTP ' + startRes.status + '): ' + errText.slice(0, 200));
+  }
+  const resText = await startRes.text();
+  console.log('[Visualize Enhanced] ' + angleId + ': response body: ' + resText.slice(0, 100));
+  let resJson; try { resJson = JSON.parse(resText); } catch(e) { throw new Error('Enhanced: bad JSON response: ' + resText.slice(0, 100)); }
+  const { jobId } = resJson;
+  if(!jobId) throw new Error('Enhanced: no jobId in response: ' + resText.slice(0, 100));
+  console.log('[Visualize Enhanced] ' + angleId + ': jobId = ' + jobId);
+  sl.strongJobId = jobId;
+
+  // Poll, then compositor -- mirrors finishSlot exactly.
+  const pollStrongStart = Date.now();
+  const POLL_MAX_MS = 5 * 60 * 1000; // 5-minute hard stop
+  const pollStrong = async () => {
+    if(sl.strongStatus !== 'generating') return;
+    if(Date.now() - pollStrongStart > POLL_MAX_MS){
+      console.error('[Visualize Enhanced] ' + angleId + ': timed out after 5 minutes.');
+      sl.strongStatus = 'error';
+      sl.error = 'Enhanced generation timed out. Please retry.';
+      updateStrongBtn();
+      return;
+    }
+    try {
+      const pollRes = await fetch('/.netlify/functions/get-visualization?jobId=' + encodeURIComponent(jobId), { headers: auth });
+      const data = await pollRes.json();
+      if(data.state === 'done'){
+        sl.rawStrongAiDataUrl = data.image; // debug only; never shown directly
+
+        // Run compositor -- same path as finishSlot.
+        // On any failure, suppress enhanced rather than show raw AI.
+        let composited = null;
+        if(maskScope){
+          try {
+            const beforeImg = await loadImage(beforeDataUrl);
+            const aiImg = await loadImage(data.image);
+            const { makeSculptraCompositor } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
+            const warpOn = !/[?&]warp=off\b/i.test(location.search);
+            const jowlTexOn = !/[?&]jowltex=off\b/i.test(location.search);
+            const jawDefOn = !/[?&]jawdef=off\b/i.test(location.search);
+            // M11.1 Enhanced compositor: SAFETY CLAMP role only.
+            // The full-frame AI output should already be structurally correct.
+            // The compositor's job here is:
+            //   1. Preserve background, hair, clothing (mask exclusion)
+            //   2. Clamp extreme color drift (chromaLock 0.96)
+            //   3. Let the intensity slider work via apply(pct)
+            // It must NOT fight the AI's correct global lighting changes.
+            // deltaGain is 1.0 (neutral pass-through, no amplification).
+            // brightCap is 30 (loose) to allow the AI's restored highlights through.
+            // liftSat 1.0 keeps warp geometry active for structural consistency.
+            const enhancedOpts = {
+              scope: maskScope, sex: state.sex,
+              warp: warpOn, jowlTexRelease: jowlTexOn, jawDef: jawDefOn, angleId,
+              liftSat:       1.0,
+              deltaGain:     1.0,
+              glowApply:     10,
+              brightCap:     30,
+              darkFloor:     16,
+              texRadiusFrac: 0.08,
+              texStrength:   0.92,
+              chromaLock:    0.96
+            };
+            const apply = await makeSculptraCompositor(beforeImg, aiImg, enhancedOpts);
+            if(apply){
+              composited = apply(state.intensityPct / 100);
+              sl.strongApply = apply; // so the intensity slider also works on the enhanced view
+              console.log('%c[Visualize Enhanced] ' + angleId + ': compositor ready.', 'color:#1565c0;font-weight:bold');
+            } else {
+              console.warn('[Visualize Enhanced] ' + angleId + ': compositor null (no face); suppressing enhanced.');
+            }
+          } catch(err){
+            console.error('%c[Visualize Enhanced] ' + angleId + ': compositor failed; suppressing enhanced.', 'color:#c62828;font-weight:bold', err);
+          }
+        }
+
+        if(composited){
+          sl.strongDataUrl = composited;
+          sl.strongStatus = 'done';
+          // viewMode is now global (state.courseMode); auto-switch to enhanced when all done
+          const allDone = state.selectedAngles.every(id => state.slots[id].strongStatus === 'done' || state.slots[id].status !== 'done');
+          if(allDone) state.courseMode = 'enhanced';
+        } else {
+          // Compositor failed or unavailable -- do not show raw AI
+          sl.strongStatus = 'error';
+        }
+        updateStrongBtn();
+        if(angleId === state.activeAngle) applyActiveView();
+
+      } else if(data.state === 'error'){
+        sl.strongStatus = 'error';
+        updateStrongBtn();
+      } else {
+        setTimeout(pollStrong, 3000);
+      }
+    } catch(e){ setTimeout(pollStrong, 5000); }
+  };
+  setTimeout(pollStrong, 4000);
+}
+
+// Run enhanced course for ALL done angles at once (single click).
+async function runStrongPass(){
+  const sl = activeSlot();
+  if(!sl) return;
+
+  // If active angle already has a strong result done, just toggle view
+  if(sl.strongStatus === 'done' && sl.strongDataUrl){
+    state.courseMode = (state.courseMode === 'enhanced') ? 'standard' : 'enhanced';
+    updateStrongBtn();
+    applyActiveView();
+    return;
+  }
+
+  // Collect all done angles that don't yet have a strong result
+  const toRun = state.selectedAngles.filter(id => {
+    const s = state.slots[id];
+    return s && s.status === 'done' && s.jobId && s.strongStatus !== 'done' && s.strongStatus !== 'generating';
+  });
+  if(!toRun.length) return;
+
+  // Mark all angles as generating immediately for instant UI feedback
+  toRun.forEach(id => { state.slots[id].strongStatus = 'generating'; state.slots[id].viewMode = 'standard'; });
+  state.enhancedStartedAt = Date.now();
+  if(state.enhancedTimerInterval) clearInterval(state.enhancedTimerInterval);
+  state.enhancedTimerInterval = setInterval(() => updateStrongBtn(), 1000);
+  updateStrongBtn();
+
+  console.log('[Visualize Enhanced] getting auth headers…');
+  let auth;
+  try {
+    const authTimeout = new Promise((_, rej) => setTimeout(() => rej(new Error('authHeaders timeout')), 8000));
+    auth = await Promise.race([authHeaders(), authTimeout]);
+  } catch(e) {
+    console.error('[Visualize Enhanced] auth failed:', e && e.message);
+    toRun.forEach(id => { state.slots[id].strongStatus = 'error'; state.slots[id].error = 'Auth failed: ' + (e && e.message); });
+    updateStrongBtn();
+    return;
+  }
+  console.log('[Visualize Enhanced] auth OK, starting ' + toRun.length + ' angles');
+  // Start all angles concurrently; each polls independently
+  await Promise.allSettled(toRun.map(async id => {
+    try { await startEnhancedSlot(id, auth); }
+    catch(e){
+      const msg = (e && e.message) || String(e);
+      console.error('%c[Visualize Enhanced] ' + id + ': FAILED  -  ' + msg, 'color:#c62828;font-weight:bold');
+      state.slots[id].strongStatus = 'error';
+      state.slots[id].error = msg;
+    }
+  }));
+  updateStrongBtn();
+}
+
+function updateStrongBtn(){
+  const sl = activeSlot();
+  const isBiostim = state.type === 'biostim';
+  const isDone = sl && sl.status === 'done';
+  const expBtn = document.getElementById('courseExpected');
+  const enhBtn = document.getElementById('courseEnhanced');
+  const courseCtrl = document.getElementById('courseControl');
+  const courseHelp = document.getElementById('courseHelp');
+  // M11 close: Enhanced course removed from UI pending M12 clinic library.
+  // courseControl stays hidden. All Enhanced code preserved for M12 restore.
+  if(courseCtrl) courseCtrl.style.display = 'none';
+  if(!expBtn || !enhBtn || !sl) return;
+  const isEnhanced = state.courseMode === 'enhanced';
+
+  // Check generating across ALL selected angles (not just active slot)
+  const anyGenerating = state.selectedAngles.some(id => state.slots[id].strongStatus === 'generating');
+  const allEnhancedDone = state.selectedAngles.filter(id => state.slots[id].status === 'done')
+    .every(id => state.slots[id].strongStatus === 'done' || state.slots[id].strongStatus === 'error');
+
+  // Stop timer when all done
+  if(!anyGenerating && state.enhancedTimerInterval){
+    clearInterval(state.enhancedTimerInterval);
+    state.enhancedTimerInterval = null;
+  }
+
+  expBtn.classList.toggle('active', !isEnhanced);
+  enhBtn.classList.toggle('active', isEnhanced);
+  expBtn.disabled = anyGenerating;
+  enhBtn.disabled = anyGenerating;
+
+  if(anyGenerating){
+    const secs = state.enhancedStartedAt ? Math.round((Date.now() - state.enhancedStartedAt) / 1000) : 0;
+    const doneCount = state.selectedAngles.filter(id => state.slots[id].strongStatus === 'done').length;
+    const total = state.selectedAngles.filter(id => state.slots[id].status === 'done').length;
+    enhBtn.textContent = 'Generating… ' + secs + 's';
+    if(courseHelp) courseHelp.textContent = doneCount + ' of ' + total + ' previews ready · Runs in background, keep this tab open.';
+  } else {
+    const anyError = state.selectedAngles.some(id => state.slots[id].strongStatus === 'error');
+    enhBtn.textContent = anyError ? 'Ceiling (retry)' : 'Ceiling (6-8+ vials)';
+  }
+}
+
+function applyActiveView(){
+  const sl = activeSlot();
+  if(!sl) return;
+  const displayUrl = sl.resultDataUrl || sl.beforeDataUrl || sl.originalDataUrl || '';
+  document.getElementById('aiResult').src = displayUrl;
+}
+
+// Course segmented control: Expected / Enhanced
+(function(){
+  const expBtn = document.getElementById('courseExpected');
+  const enhBtn = document.getElementById('courseEnhanced');
+  if(expBtn) expBtn.addEventListener('click', () => {
+    const sl = activeSlot();
+    if(!sl || sl.strongStatus === 'generating') return;
+    if(state.courseMode === 'enhanced'){
+      state.courseMode = 'standard';
+      state.selectedAngles.forEach(id => { state.slots[id].viewMode = 'standard'; });
+      // Show baseline help text
+      const helpExp = document.getElementById('courseHelpExpected');
+      const helpEnh = document.getElementById('courseHelpEnhanced');
+      if(helpExp) helpExp.style.display = '';
+      if(helpEnh) helpEnh.style.display = 'none';
+      // renderActiveSlot re-enables the slider (unlock logic lives there),
+      // then calls applyActiveView internally.
+      renderActiveSlot(); updateStrongBtn();
+    }
+  });
+  if(enhBtn) enhBtn.addEventListener('click', () => {
+    const sl = activeSlot();
+    if(!sl || sl.strongStatus === 'generating') return;
+    // Show ceiling help text
+    const helpExp = document.getElementById('courseHelpExpected');
+    const helpEnh = document.getElementById('courseHelpEnhanced');
+    if(helpExp) helpExp.style.display = 'none';
+    if(helpEnh) helpEnh.style.display = '';
+    runStrongPass();
+  });
+})();
+
+/* ── Overflow menu ── */
+const moreBtn = document.getElementById('moreBtn');
+const overflowMenu = document.getElementById('overflowMenu');
+if(moreBtn && overflowMenu){
+  moreBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    overflowMenu.classList.toggle('open');
+  });
+  document.addEventListener('click', () => overflowMenu.classList.remove('open'));
+  overflowMenu.addEventListener('click', (e) => e.stopPropagation());
+}
 
 function updateRegenNote(){
   const note = document.getElementById('regenNote');
@@ -2200,7 +2747,7 @@ function updateRegenNote(){
     note.textContent = `Free re-generate for ${left}s. Adjust the treatment and run again at no extra cost.`;
     setTimeout(updateRegenNote, 1000);
   } else {
-    note.textContent = 'Re-generate to try a different treatment, area, or setting.';
+    note.textContent = '';
   }
 }
 
@@ -2343,6 +2890,141 @@ async function buildLayerDebugSheet(angleId){
   }
 }
 
+/* ───────── Enhanced layer debug sheet ───────── */
+// Call window.debugEnhanced('frontal') (or 'r45', 'l45') from the browser
+// console after an Enhanced generation to download a 5-panel sheet:
+//   1. Original   2. Mask (white=treated, black=protected)
+//   3. Raw Enhanced AI (rawStrongAiDataUrl, never patient-facing)
+//   4. Composited Enhanced at 100%   5. Difference map (amplified 3x)
+// This isolates exactly where the effect is being suppressed:
+//   - If panel 3 has clear volume but panel 4 is flat -> compositor too strong
+//   - If panel 3 is already flat -> AI generation is underpowered
+//   - If panel 2 misses a zone -> mask needs expanding
+async function buildEnhancedDebugSheet(angleId){
+  try {
+    const sl = state.slots[angleId];
+    const compScope = (state.type === 'biostim' && state.product === 'sculptra') ? 'full'
+                    : (state.type === 'filler') ? 'chin_jaw' : null;
+    if(!sl || !compScope){
+      console.warn('[EnhancedDebug] slot not ready or wrong treatment type');
+      return;
+    }
+    if(!sl.rawStrongAiDataUrl){
+      console.warn('[EnhancedDebug] rawStrongAiDataUrl missing -- run Enhanced generation first');
+      return;
+    }
+    setStatus('Building enhanced debug sheet…', 'spin');
+    const beforeDataUrl = sl.beforeDataUrl || sl.originalDataUrl;
+    const beforeImg = await loadImage(beforeDataUrl);
+    const rawAiImg  = await loadImage(sl.rawStrongAiDataUrl);
+
+    const { buildSculptraMaskBlob, compositeSculptra } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
+
+    // Panel 2: mask visualisation (white = AI-editable, black = protected)
+    const maskBlob = await buildSculptraMaskBlob(beforeImg, { maxDim:1024, scope:compScope, sex:state.sex });
+    let maskUrl = null;
+    if(maskBlob){
+      maskUrl = await new Promise(res => {
+        const fr = new FileReader(); fr.onload = e => res(e.target.result); fr.readAsDataURL(maskBlob);
+      });
+      // Invert mask for display: buildSculptraMaskBlob uses alpha=0 for editable.
+      // Re-render as a white-on-black luminance image for human reading.
+      const mc = document.createElement('canvas');
+      const mi = await loadImage(maskUrl);
+      mc.width = mi.naturalWidth; mc.height = mi.naturalHeight;
+      const mx = mc.getContext('2d');
+      mx.drawImage(mi, 0, 0);
+      const md = mx.getImageData(0,0,mc.width,mc.height);
+      for(let i=0;i<md.data.length;i+=4){
+        // alpha channel: 0=editable(white in display), 255=protected(black)
+        const v = 255 - md.data[i+3];
+        md.data[i]=v; md.data[i+1]=v; md.data[i+2]=v; md.data[i+3]=255;
+      }
+      mx.putImageData(md,0,0);
+      maskUrl = mc.toDataURL('image/jpeg', 0.92);
+    }
+
+    // Panel 4: composited enhanced at 100% with safety-clamp opts (M11.1)
+    const enhancedOpts = {
+      scope: compScope, sex: state.sex,
+      warp: true, jowlTexRelease: true, jawDef: true,
+      intensity: 1.0,
+      liftSat:       1.0,
+      deltaGain:     1.0,
+      glowApply:     10,
+      brightCap:     30,
+      darkFloor:     16,
+      texRadiusFrac: 0.08,
+      texStrength:   0.92,
+      chromaLock:    0.96
+    };
+    const composited100 = await compositeSculptra(beforeImg, rawAiImg, enhancedOpts);
+
+    // Panel 5: difference map (composited - original, amplified 3x, centred at 128)
+    let diffUrl = null;
+    if(composited100){
+      const dc = document.createElement('canvas');
+      const oi = await loadImage(beforeDataUrl);
+      const ci = await loadImage(composited100);
+      dc.width = oi.naturalWidth; dc.height = oi.naturalHeight;
+      const dx = dc.getContext('2d');
+      dx.drawImage(oi, 0, 0, dc.width, dc.height);
+      const orig = dx.getImageData(0,0,dc.width,dc.height);
+      dx.drawImage(ci, 0, 0, dc.width, dc.height);
+      const comp = dx.getImageData(0,0,dc.width,dc.height);
+      const diff = dx.createImageData(dc.width, dc.height);
+      for(let i=0;i<diff.data.length;i+=4){
+        diff.data[i]   = Math.max(0,Math.min(255, 128 + (comp.data[i]   - orig.data[i])   * 3));
+        diff.data[i+1] = Math.max(0,Math.min(255, 128 + (comp.data[i+1] - orig.data[i+1]) * 3));
+        diff.data[i+2] = Math.max(0,Math.min(255, 128 + (comp.data[i+2] - orig.data[i+2]) * 3));
+        diff.data[i+3] = 255;
+      }
+      dx.putImageData(diff,0,0);
+      diffUrl = dc.toDataURL('image/jpeg', 0.92);
+    }
+
+    const cells = [
+      { src: beforeDataUrl,           label: '1. Original' },
+      { src: maskUrl,                 label: '2. Mask (white=treated)' },
+      { src: sl.rawStrongAiDataUrl,   label: '3. Raw Enhanced AI' },
+      { src: composited100,           label: '4. Composited Enhanced 100%' },
+      { src: diffUrl,                 label: '5. Diff x3 (grey=no change)' },
+    ];
+    const validCells = cells.filter(c => c.src);
+    const imgs = await Promise.all(validCells.map(c => loadImage(c.src)));
+    const pw = 600, gap = 14, labelH = 36;
+    const ph = Math.round(pw * (imgs[0].naturalHeight / imgs[0].naturalWidth));
+    const cols = 3, rows = Math.ceil(validCells.length / cols);
+    const canvas = document.createElement('canvas');
+    canvas.width  = cols * pw + (cols + 1) * gap;
+    canvas.height = rows * (ph + labelH) + (rows + 1) * gap;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#1C1714';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.font = '600 15px "DM Sans", sans-serif';
+    ctx.fillStyle = '#FAF7F2';
+    ctx.textBaseline = 'middle';
+    for(let k = 0; k < validCells.length; k++){
+      const col = k % cols, row = Math.floor(k / cols);
+      const x = gap + col * (pw + gap);
+      const y = gap + row * (ph + labelH + gap);
+      ctx.drawImage(imgs[k], x, y, pw, ph);
+      ctx.fillText(validCells[k].label + '  ·  ' + angleId, x + 4, y + ph + labelH / 2);
+    }
+    const a = document.createElement('a');
+    a.download = 'enhanced-debug-' + angleId + '.jpg';
+    a.href = canvas.toDataURL('image/jpeg', 0.92);
+    a.click();
+    setStatus('Enhanced debug sheet downloaded.', 'ok');
+    console.log('[EnhancedDebug] sheet downloaded for ' + angleId);
+  } catch(err){
+    console.error('[EnhancedDebug] failed:', err);
+    setStatus('Enhanced debug failed: ' + ((err && err.message) || err), 'warn');
+  }
+}
+// Expose globally so it can be called from the browser console
+window.debugEnhanced = buildEnhancedDebugSheet;
+
 /* ───────── M9.9 hi-res export render ───────── */
 // Forensics on a real export showed the simulated panel was globally softer
 // than the original panel: the compositor's 1024 grid was upscaled into the
@@ -2388,18 +3070,18 @@ function treatmentName(){
 
 function simKicker(angleId){
   const multiDone = state.selectedAngles.filter(id => state.slots[id].status === 'done').length > 1;
+  const sl = state.slots[angleId];
   const parts = [treatmentName()];
   if(multiDone) parts.push(ANGLE_DEF[angleId].label);
   if(state.type === 'biostim') parts.push(state.timeline + ' months');
-  if(state.type === 'biostim' || (state.type === 'filler' && state.slots[angleId].apply)){
+  if(state.type === 'biostim' || (state.type === 'filler' && sl.apply)){
     if(state.type === 'filler'){
-      // M9.2: correction vocabulary; an overfilled frame is stamped as
-      // educational so it can never read as the recommended plan.
       const li = levelInfo(state.intensityPct || 70);
       parts.push(li.over ? 'Overfilled · shown for education' : li.name);
     }
-    // Biostim: timeline already pushed above; strengthLabel would duplicate it.
   }
+  // Strong Response: append label when exporting the strong view
+  if(state.courseMode === 'enhanced' && sl && sl.strongStatus === 'done') parts.push('Ceiling · 6-8+ vials');
   return parts.join(' · ');
 }
 
@@ -2409,9 +3091,19 @@ async function drawPair(ctx, angleId, yOff, panelW, panelH, gap, includeText){
   const sl = state.slots[angleId];
   const before = await loadImage(sl.beforeDataUrl || sl.originalDataUrl);
   // M9.9: exports render at the hi-res grid; the live 1024 frame is the fallback.
-  let hiRes = null;
-  try { hiRes = await hiResResultFor(angleId); } catch(e){ console.warn('[Visualize] hi-res export render failed; using live frame.', e); }
-  const after = await loadImage(hiRes || sl.resultDataUrl);
+  // Enhanced course: if the case is in enhanced mode and the active slot has a
+  // composited strong result, export that instead of the standard result.
+  // strongDataUrl is always a compositor output (original + masked AI), never raw AI.
+  const isViewingStrong = state.courseMode === 'enhanced' && sl.strongStatus === 'done' && sl.strongDataUrl;
+  let afterUrl;
+  if(isViewingStrong){
+    afterUrl = sl.strongDataUrl;
+  } else {
+    let hiRes = null;
+    try { hiRes = await hiResResultFor(angleId); } catch(e){ console.warn('[Visualize] hi-res export render failed; using live frame.', e); }
+    afterUrl = hiRes || sl.resultDataUrl;
+  }
+  const after = await loadImage(afterUrl);
 
   function cover(img, x, y, w, h){
     const scale = Math.max(w/img.width, h/img.height);
@@ -2491,9 +3183,16 @@ async function drawExport(includeText, angleIds){
     const sl = state.slots[id];
     const x = ci * (panelW + gap);
     const before = await loadImage(sl.beforeDataUrl || sl.originalDataUrl);
-    let hiRes = null;
-    try { hiRes = await hiResResultFor(id); } catch(e){}
-    const after = await loadImage(hiRes || sl.resultDataUrl);
+    const isSheetStrong = state.courseMode === 'enhanced' && sl.strongStatus === 'done' && sl.strongDataUrl;
+    let sheetAfterUrl;
+    if(isSheetStrong){
+      sheetAfterUrl = sl.strongDataUrl;
+    } else {
+      let hiRes = null;
+      try { hiRes = await hiResResultFor(id); } catch(e){}
+      sheetAfterUrl = hiRes || sl.resultDataUrl;
+    }
+    const after = await loadImage(sheetAfterUrl);
 
     // Cover-fit helper
     function cover(img, dx, dy, dw, dh){
