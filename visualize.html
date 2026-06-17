@@ -1098,7 +1098,31 @@ function openBuyModal(){
           body: JSON.stringify({ packId: pk.id })
         });
         const d = await res.json().catch(() => ({}));
-        if(res.ok && d.url){ window.location.href = d.url; return; }
+        if(res.ok && d.url){
+          // Before navigating away, save the current generation state so we
+          // can resume automatically after the user returns from Stripe.
+          // File objects cannot be serialized, but originalDataUrl (already
+          // read into memory) can. Store per-slot data URLs + all selections.
+          try {
+            const pendingSlots = {};
+            state.selectedAngles.forEach(id => {
+              const sl = state.slots[id];
+              if(sl.originalDataUrl) pendingSlots[id] = sl.originalDataUrl;
+            });
+            if(Object.keys(pendingSlots).length > 0){
+              const pending = {
+                type: state.type, product: state.product, timeline: state.timeline,
+                projection: state.projection, sex: state.sex, blackBg: state.blackBg,
+                sculptraPhenotype: state.sculptraPhenotype || null,
+                intensityPct: state.intensityPct,
+                selectedAngles: state.selectedAngles,
+                slots: pendingSlots
+              };
+              sessionStorage.setItem('sd_pending_gen', JSON.stringify(pending));
+            }
+          } catch(saveErr){ console.warn('[Visualize] Could not save pending state:', saveErr); }
+          window.location.href = d.url; return;
+        }
         btn.textContent = 'Buy';
         btn.disabled = false;
         setStatus(d.error || 'Could not start the checkout. Please try again.', 'warn');
@@ -1163,6 +1187,57 @@ document.getElementById('buyModal').addEventListener('click', e => { if(e.target
         setStatus('Payment received. Updating your credit balance…', 'spin');
         const bal = await refreshCredits(4);
         setStatus(bal != null ? ('Payment received. Credit balance: ' + bal + '.') : 'Payment received. Your balance will update shortly.', 'ok');
+        // Restore pending generation state if the user was mid-flow when credits ran out.
+        try {
+          const raw = sessionStorage.getItem('sd_pending_gen');
+          if(raw){
+            sessionStorage.removeItem('sd_pending_gen');
+            const pending = JSON.parse(raw);
+            // Restore selections
+            if(pending.type) state.type = pending.type;
+            if(pending.product) state.product = pending.product;
+            if(pending.timeline) state.timeline = pending.timeline;
+            if(pending.projection) state.projection = pending.projection;
+            if(pending.sex) state.sex = pending.sex;
+            if(pending.blackBg != null) state.blackBg = pending.blackBg;
+            if(pending.sculptraPhenotype) state.sculptraPhenotype = pending.sculptraPhenotype;
+            if(pending.intensityPct) state.intensityPct = pending.intensityPct;
+            if(pending.selectedAngles && pending.selectedAngles.length) state.selectedAngles = pending.selectedAngles;
+            // Restore photos from data URLs and re-run QC for each slot
+            const restoreJobs = Object.entries(pending.slots || {}).map(async ([id, dataUrl]) => {
+              const sl = state.slots[id];
+              if(!sl || !dataUrl) return;
+              sl.originalDataUrl = dataUrl;
+              sl.status = 'checking'; sl.qcMsg = 'Re-checking photo…';
+              try {
+                const img = await loadImage(dataUrl);
+                const mod = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
+                const a = await mod.analyzePhoto(img);
+                const gate = poseMatches(id, a);
+                if(a && a.faceBbox) sl.faceBbox = a.faceBbox;
+                sl.status = gate.ok ? 'ready' : 'bad';
+                sl.qcMsg = gate.ok ? ('✓ ' + gate.msg) : ('✗ ' + gate.msg);
+              } catch(qcErr){
+                sl.status = 'ready'; sl.qcMsg = 'Photo restored. Ready to generate.';
+              }
+            });
+            await Promise.all(restoreJobs);
+            // Sync UI controls to restored state
+            document.querySelectorAll('#treatTypeGrid .area-chip').forEach(c => {
+              c.classList.toggle('active', c.dataset.type === state.type);
+            });
+            document.querySelectorAll('#angleGrid .area-chip').forEach(c => {
+              c.classList.toggle('active', state.selectedAngles.includes(c.dataset.angle));
+            });
+            const blackBgChk = document.getElementById('blackBgChk');
+            if(blackBgChk) blackBgChk.checked = !!state.blackBg;
+            renderSlots(); syncGenerateBtn();
+            setStatus('Photos restored. Ready to generate.', 'ok');
+            // Auto-fire generation now that credits are topped up
+            await new Promise(r => setTimeout(r, 800)); // brief pause so user sees the status
+            runGeneration(false);
+          }
+        } catch(restoreErr){ console.warn('[Visualize] Could not restore pending state:', restoreErr); }
       } else if(purchase === 'cancelled'){
         setStatus('Checkout cancelled. No charge was made.', 'idle');
       }
