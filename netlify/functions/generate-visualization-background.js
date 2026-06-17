@@ -351,17 +351,18 @@ exports.handler = async (event) => {
 
     const modelName = 'gpt-image-1';
 
+    // M12: input_fidelity for Enhanced is 'low' so the model has room to
+    // incorporate the reference image's volume character. Standard keeps 'high'
+    // for identity and texture preservation. This is the key tradeoff:
+    // Enhanced trades pixel-lock for meaningful volume change.
+    const inputFidelity = (refFile && referenceMode) ? 'low' : 'high';
+
     const editParams = {
       model:              modelName,
-      // M12: when a reference is available, pass [patient, reference]; otherwise
-      // single file as before. The reference is the AFTER image so the model
-      // understands the desired visual character of the treatment (volume, support,
-      // light) without needing a parallel prompt description. Identity is locked
-      // by image[0] and the REFERENCE_IDENTITY_LOCK clause in finalPrompt.
       image:              refFile ? [file, refFile] : file,
       prompt:             finalPrompt,
       size:               'auto',
-      input_fidelity:     'high',
+      input_fidelity:     inputFidelity,
       output_format:      'jpeg',
       output_compression: 85
     };
@@ -390,7 +391,7 @@ exports.handler = async (event) => {
         isRegen:        billing ? (billing.cost === 0) : false,
         model:          modelName,
         imageSize:      editParams.size || 'auto',
-        imageQuality:   editParams.input_fidelity || 'high',
+        imageQuality:   inputFidelity,
         openAIUsage:    result.usage || null,
         creditsCharged: billing ? billing.cost : null,
         referenceMode,  // M12: 'clinic_case' | 'gold_ref' | null
