@@ -287,7 +287,12 @@ exports.handler = async (event) => {
       image: imageInput,
       prompt: finalPrompt,
       size: 'auto',
-      input_fidelity: 'high',
+      // M11.1: Enhanced uses 'medium' fidelity -- 'high' pixel-locks the input
+      // so tightly the model produces near-null changes (confirmed by debug sheet
+      // panel 3 being almost identical to original). Medium loosens the constraint
+      // enough for visible volumetric change while still preserving identity.
+      // Standard keeps 'high' for maximum identity preservation.
+      input_fidelity: isEnhancedJob ? 'medium' : 'high',
       output_format: 'jpeg',
       output_compression: 85
     };
