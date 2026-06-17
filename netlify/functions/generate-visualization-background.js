@@ -157,48 +157,130 @@ exports.handler = async (event) => {
     const modelName = isEnhancedJob ? 'gpt-image-1.5' : 'gpt-image-1';
 
     // M11.1: Reference-guided generation for Enhanced course.
-    // Pass the standard-pass result as a second reference image alongside the
-    // original. The model sees the visual grammar of the correct change for this
-    // specific face -- soft lateral cheek support, shadow redistribution, three-
-    // dimensional volume -- rather than trying to infer it from text alone.
-    // The prompt then describes only the DELTA: "stronger version of image 2."
+    // Three-image strategy:
+    //   image[0] = original patient photo (identity anchor)
+    //   image[1] = standard-pass result for this patient (patient-specific delta)
+    //   image[2] = gold style reference (desired soft-volume visual grammar)
     //
-    // sourceJobId is sent by the client (startEnhancedSlot). Its composited
-    // result lives at sourceJobId + ':result' as a data URL.
+    // image[1]: sourceJobId + ':result' is the raw composited AI image stored by
+    //   the background worker -- no labels, no canvas overlay. Safe to use.
+    //   Confirms patient-specific treatment direction for this face.
     //
-    // Fallback: if the standard result cannot be fetched (expired, not found),
-    // Enhanced falls back to single-image mode with the full text prompt.
-    let referenceFile = null;
-    if (isEnhancedJob && f.sourceJobId && /^[A-Za-z0-9._-]{8,128}$/.test(f.sourceJobId)) {
-      try {
-        const refDataUrl = await store.get(f.sourceJobId + ':result', { type: 'text' });
-        if (refDataUrl && refDataUrl.startsWith('data:')) {
-          const commaIdx = refDataUrl.indexOf(',');
-          if (commaIdx !== -1) {
-            const refBuf = Buffer.from(refDataUrl.slice(commaIdx + 1), 'base64');
-            referenceFile = await OpenAI.toFile(refBuf, 'standard-result.jpg', { type: 'image/jpeg' });
-            console.log('[Enhanced] reference image loaded from ' + f.sourceJobId + ' (' + Math.round(refBuf.length / 1024) + ' kB)');
+    // image[2]: gold style reference from env var VISUALIZE_GOLD_REF_URL.
+    //   Should be a clean side-by-side or single simulated image showing the
+    //   desired soft Sculptra volume character. Set this in Netlify env vars
+    //   pointing to a static asset (e.g. /sculp-gold-ref.jpg on the same site).
+    //   Swap without code deploy by updating the env var.
+    //   The model is told: use this ONLY for visual style -- do NOT copy the
+    //   identity, face shape, or features from this image.
+    //
+    // Fallback chain: if either reference fails, degrade gracefully:
+    //   both loaded -> 3-image reference-guided (best)
+    //   standard only -> 2-image patient-specific delta
+    //   neither -> single-image full text prompt (original behavior)
+    //
+    // Debug logging: always log which path actually ran so test results are
+    // interpretable. referenceMode is logged to the generation record.
+
+    let standardResultFile = null;
+    let goldRefFile = null;
+
+    if (isEnhancedJob) {
+      // image[1]: patient standard result
+      if (f.sourceJobId && /^[A-Za-z0-9._-]{8,128}$/.test(f.sourceJobId)) {
+        try {
+          const refDataUrl = await store.get(f.sourceJobId + ':result', { type: 'text' });
+          if (refDataUrl && refDataUrl.startsWith('data:')) {
+            const commaIdx = refDataUrl.indexOf(',');
+            if (commaIdx !== -1) {
+              const refBuf = Buffer.from(refDataUrl.slice(commaIdx + 1), 'base64');
+              standardResultFile = await OpenAI.toFile(refBuf, 'standard-result.jpg', { type: 'image/jpeg' });
+              console.log('[Enhanced] image[1] standard result loaded from ' + f.sourceJobId + ' (' + Math.round(refBuf.length / 1024) + ' kB)');
+            }
+          } else {
+            console.warn('[Enhanced] image[1] sourceJobId result not found or not a data URL -- sourceJobId:', f.sourceJobId);
           }
+        } catch (refErr) {
+          console.warn('[Enhanced] image[1] load failed:', (refErr && refErr.message) || refErr);
         }
-      } catch (refErr) {
-        console.warn('[Enhanced] could not load reference; falling back to single-image mode:', (refErr && refErr.message) || refErr);
+      } else {
+        console.warn('[Enhanced] image[1] skipped: sourceJobId missing or invalid:', f.sourceJobId);
+      }
+
+      // image[2]: gold style reference -- angle-matched for best style transfer.
+      // Three env vars, one per angle. Set in Netlify env vars pointing to
+      // static assets at the repo root (same level as visualize.html):
+      //   VISUALIZE_GOLD_REF_FRONTAL -> sculp-gold-ref-frontal.jpg
+      //   VISUALIZE_GOLD_REF_R45     -> sculp-gold-ref-r45.jpg
+      //   VISUALIZE_GOLD_REF_L45     -> sculp-gold-ref-l45.jpg
+      // Falls back to generic VISUALIZE_GOLD_REF_URL if angle-specific not set.
+      // All three must be clean single-panel simulated images with no labels or text.
+      const angle = (f.angle || '').toLowerCase();
+      const goldRefUrl =
+        (angle === 'frontal' ? (process.env.VISUALIZE_GOLD_REF_FRONTAL || '') : '') ||
+        (angle === 'r45'     ? (process.env.VISUALIZE_GOLD_REF_R45     || '') : '') ||
+        (angle === 'l45'     ? (process.env.VISUALIZE_GOLD_REF_L45     || '') : '') ||
+        (process.env.VISUALIZE_GOLD_REF_URL || '');
+      if (goldRefUrl) {
+        try {
+          const goldRes = await fetch(goldRefUrl);
+          if (goldRes.ok) {
+            const goldBuf = Buffer.from(await goldRes.arrayBuffer());
+            const goldMime = goldRes.headers.get('content-type') || 'image/jpeg';
+            goldRefFile = await OpenAI.toFile(goldBuf, 'gold-style-ref.jpg', { type: goldMime });
+            console.log('[Enhanced] image[2] gold style ref loaded for angle=' + angle + ' from ' + goldRefUrl + ' (' + Math.round(goldBuf.length / 1024) + ' kB)');
+          } else {
+            console.warn('[Enhanced] image[2] gold ref fetch failed: HTTP ' + goldRes.status + ' from ' + goldRefUrl);
+          }
+        } catch (goldErr) {
+          console.warn('[Enhanced] image[2] gold ref load failed:', (goldErr && goldErr.message) || goldErr);
+        }
+      } else {
+        console.log('[Enhanced] image[2] gold ref skipped: no env var set for angle=' + angle);
       }
     }
 
-    // When a reference image is available, replace the text-heavy Enhanced prompt
-    // with a concise delta instruction. The model already sees what the correct
-    // change looks like in image 2 -- text description is now secondary.
-    const ENHANCED_REFERENCE_PROMPT =
-      'Image 1 is the original consultation photograph. Image 2 shows a moderate biostimulator response for this patient at 6 months. ' +
-      'Generate a stronger version of the same response: broader and more diffuse soft volume support across the lateral cheeks and midface, ' +
-      'with softer surface transitions and a healthier, more supported facial contour. ' +
-      'Apply the same visual character as image 2 -- natural, three-dimensional, not retouched -- but with more volume returning under the same skin. ' +
-      'Do not change identity, eyes, nose, lips, ears, hair, headband, skin tone, skin texture, clothing, background, camera angle, or expression. ' +
-      'Do not add text, labels, watermarks, or annotations. ' +
-      'Preserve the same age and all skin character exactly.';
+    // Build image array and select prompt based on what loaded
+    const hasStandard = !!standardResultFile;
+    const hasGold     = !!goldRefFile;
+    let referenceMode, finalPrompt, imageInput;
 
-    const finalPrompt = (isEnhancedJob && referenceFile) ? ENHANCED_REFERENCE_PROMPT : prompt;
-    const imageInput   = (isEnhancedJob && referenceFile) ? [file, referenceFile] : file;
+    if (isEnhancedJob && hasStandard && hasGold) {
+      referenceMode = '3-image';
+      imageInput    = [file, standardResultFile, goldRefFile];
+      finalPrompt   =
+        'Image 1 is the original consultation photograph -- this is the patient. ' +
+        'Image 2 shows a moderate biostimulator response for this specific patient at 6 months. ' +
+        'Image 3 shows an example of the desired treatment style: soft, diffuse, three-dimensional volume support -- use it ONLY to understand the visual character of a good result. ' +
+        'Do not copy any identity, face shape, skin tone, features, lighting, or background from image 3. ' +
+        'Generate a stronger version of the change shown in image 2, applied to the patient in image 1, with the soft volumetric visual character shown in image 3. ' +
+        'The result should look like the same patient with broader, more diffuse facial support: fuller cheek envelope, smoother surface transitions, less tired lower-face shadow. ' +
+        'Do not sharpen, carve, slim, tighten, or increase contrast. Do not change eyes, nose, lips, ears, hair, headband, skin texture, skin tone, clothing, background, or camera angle. ' +
+        'Preserve the same age and identity exactly. Do not add text, labels, watermarks, or annotations.';
+      console.log('[Enhanced] referenceMode: 3-image (patient original + standard result + gold style ref)');
+
+    } else if (isEnhancedJob && hasStandard) {
+      referenceMode = '2-image';
+      imageInput    = [file, standardResultFile];
+      finalPrompt   =
+        'Image 1 is the original consultation photograph. Image 2 shows a moderate biostimulator response for this patient at 6 months. ' +
+        'Generate a stronger version of the same response: broader and more diffuse soft volume support, with softer surface transitions and a healthier, more supported facial contour. ' +
+        'Apply the same visual character as image 2 -- natural, three-dimensional, not retouched -- but with more volume returning under the same skin. ' +
+        'Do not change identity, eyes, nose, lips, ears, hair, headband, skin tone, skin texture, clothing, background, camera angle, or expression. ' +
+        'Do not add text, labels, watermarks, or annotations. Preserve the same age and all skin character exactly.';
+      console.log('[Enhanced] referenceMode: 2-image (patient original + standard result only -- gold ref unavailable)');
+
+    } else if (isEnhancedJob) {
+      referenceMode = 'text-only';
+      imageInput    = file;
+      finalPrompt   = prompt;
+      console.log('[Enhanced] referenceMode: text-only fallback (no reference images loaded)');
+
+    } else {
+      referenceMode = 'standard';
+      imageInput    = file;
+      finalPrompt   = prompt;
+    }
 
     const editParams = {
       model: modelName,
@@ -238,6 +320,7 @@ exports.handler = async (event) => {
         imageQuality:   editParams.input_fidelity || 'high',
         openAIUsage:    result.usage || null,
         creditsCharged: billing ? billing.cost : null,
+        referenceMode:  referenceMode || null,
         status:         'success',
       });
     } catch (logErr) { console.error('[logGeneration] success log failed:', logErr.message); }
