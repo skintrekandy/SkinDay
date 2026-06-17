@@ -325,6 +325,11 @@ const SCULPTRA_OUTPUT_RULES =
 function normalizeView(sel) {
   const field = String(sel.view || sel.angle || '').toLowerCase().trim();
   if (field === 'oblique_left' || field === 'oblique_right' || field === 'oblique' || field === 'frontal') return field;
+  // M11.1: client sends angleId values ('r45', 'l45') which did not match the
+  // expected prompt-view tokens. Both the aliased angle field and the explicit
+  // view field (added to standard/Enhanced form.append calls) are handled here.
+  if (field === 'r45' || field === 'right45') return 'oblique_right';
+  if (field === 'l45' || field === 'left45')  return 'oblique_left';
   const note = String(sel.note || '');
   if (/\[view:\s*oblique_left\s*\]/i.test(note)) return 'oblique_left';
   if (/\[view:\s*oblique_right\s*\]/i.test(note)) return 'oblique_right';
@@ -353,23 +358,100 @@ function stripInternalSculptraTags(note) {
     .trim();
 }
 
-// M11.1: NLF hard constraint -- prepended to every Sculptra prompt so the
+// M11.1: Enhanced course magnitude -- injected directly into the prompt as the
+// magnitude instruction when isStrongPass === 'true'. This bypasses sanitizeNote
+// (which truncates to 300 chars and labels the text as a secondary clinician
+// note the model may deprioritize). Enhanced magnitude is primary, not a footnote.
+//
+// Writing rules for this string:
+//   - Clinical outcome language: describe what the FACE looks like, not which zones to edit
+//   - No anatomy zone lists (temples, lateral cheeks, submalar hollow, etc.)
+//   - No brand names ("Sculptra", "biostimulator") as display-label nouns
+//   - No beautification verbs: smoother, brighter, younger, lifted face, glow
+//   - No mask references
+//   - Positive description first, prohibitions at the end
+//   - Same register as the phenotype optimistic strings
+const ENHANCED_MAGNITUDE =
+  'Magnitude: an upper-range but natural soft collagen-volume response. The face should look subtly fuller and better supported in a broad, diffuse way, with smoother surface transitions and a healthier cheek envelope. The result should improve facial contour continuity without making the face sharper, tighter, younger, slimmer, carved, more angular, or more contrasty. Keep the change soft, gradual, and three-dimensional, like natural tissue support returning under the same skin. Do not use darker shadows anywhere on the face to show improvement -- the simulated result must not have stronger cheek shadows, deeper nasolabial folds, darker prejowl shadows, or darker jawline shadows than the original. Preserve local contrast and skin reflectance exactly: do not increase contrast anywhere on the face. Preserve the same age, identity, expression, skin texture, pores, pigmentation, skin tone, asymmetry, eyes, lips, brows, nose, ears, hair, headband, neck, clothing, background, lighting, and camera angle. Do not add text, labels, captions, logos, watermarks, or annotations.';
+
+// M11.1: Enhanced-specific allowed zones and output rules. These replace
+// SCULPTRA_ALLOWED_ZONES and SCULPTRA_OUTPUT_RULES when isStrongPass is true.
+//
+// SCULPTRA_ALLOWED_ZONES is a long zone-by-zone anatomy list (temples, lateral
+// cheek, zygomatic body, prejowl, folds, etc.) -- exactly the kind of language
+// that prompts the model to do local zone-painting rather than understand the
+// face globally. For Enhanced we describe the STRUCTURAL OUTCOME the change
+// must produce, not which anatomical zones to touch.
+//
+// SCULPTRA_OUTPUT_RULES says "clinical Sculptra visualization" -- brand name as
+// a display descriptor, which the model has been observed to render literally as
+// on-image text. For Enhanced, the output rule describes what a correct clinical
+// photograph looks like, not what kind of graphic it is.
+const SCULPTRA_ENHANCED_STRUCTURAL_BOUNDS =
+  'The change must read as soft diffuse volume returning under the skin, not as shadow sculpting or contrast editing. Facial transitions should become smoother and more continuous -- not more defined or more shadowed. Hard rule: do not deepen or darken any shadow on the face. Do not make cheek hollows darker, nasolabial folds darker, marionette shadows darker, prejowl shadows darker, jawline shadows darker, or under-eye shadows darker than the original. Do not increase local contrast anywhere. Do not create new dark bands, sharper folds, carved hollows, harder cheekbone shadows, or a more angular face. The correct visual change is softer, smoother, more cushioned transitions -- not sharper ones.';
+
+const SCULPTRA_ENHANCED_OUTPUT_RULES =
+  'Output rule: the result should look like a natural photograph of the same person with broader, softer facial volume -- gently fuller, smoother surface transitions, and more supported, without any sculpting, lifting, sharpening, or contrast increase. The change should be perceptible but not dramatic: the kind of difference a patient notices rather than an obvious transformation. The failure modes to avoid are: shadow carving, contrast increase, cheek-hollow deepening, fold darkening, jawline sharpening, V-line shaping, facelift effect, skin smoothing, tone brightening, de-aging, identity drift, and on-image text or labels. The image must remain unmistakably the same person at the same age with the same skin character and the same or lower local contrast throughout.';
+
+
 // model reads it first, before any framing or magnitude instruction.
 // Previously this was buried at the end of SCULPTRA_OUTPUT_RULES and the model
 // was consistently ignoring it. Front-loading makes it a hard gate.
 const SCULPTRA_NLF_CONSTRAINT =
   'HARD CONSTRAINT -- NASOLABIAL FOLD: As lateral cheek and midface volume increases, the nasolabial fold shadow MUST become shallower and less distinct -- it must NEVER deepen, darken, or become more pronounced. The fold softens as a secondary consequence of lateral scaffold restoration: the cheek tissue advances medially and reduces the shadow depth. Any simulated image where the nasolabial fold is darker or deeper than the original is a failure, regardless of what else changed. This constraint overrides all other instructions.';
 
+// M11.1: Prevent the model from rendering any text, labels, watermarks, or
+// annotations onto the output image. The framing strings include the word
+// "visualization" and product names that the model has been observed to
+// render literally as on-image labels (e.g. "Sculptra collagen-stimulation"
+// appeared as image text in Enhanced debug panel 3). This rule is prepended
+// before all other prompt content so it is read first.
+const NO_TEXT_RULE =
+  'ABSOLUTE RULE: Do not add any text, labels, watermarks, annotations, captions, overlays, logos, or written words anywhere on the output image. The output must be a clean photograph with no visible text of any kind.';
+
 function buildSculptraPrompt(sel, m, timelineText) {
   const view = normalizeView(sel);
   const phenotype = SCULPTRA_PHENOTYPES[normalizeSculptraPhenotype(sel)] || SCULPTRA_PHENOTYPES.mixed;
-  const magnitude = phenotype[sel.projection] || phenotype.expected;
   const isOblique = view !== 'frontal';
-  const framing = isOblique
-    ? 'Produce a clinically realistic Sculptra collagen-stimulation visualization from this oblique consultation photograph, showing a confident structural restoration of the facial scaffold while keeping the same person, the same pose, and the same skin.'
-    : 'Produce a clinically realistic Sculptra collagen-stimulation visualization from this frontal consultation photograph, showing a confident structural restoration of the facial scaffold while keeping the same person, the same pose, and the same skin.';
-  const cleanNote = sanitizeNote(stripInternalSculptraTags(sel.note));
-  return `${SCULPTRA_NLF_CONSTRAINT} ${framing} ${SCULPTRA_FEATURE_LOCK} ${SCULPTRA_VIEW_LOCKS[view] || SCULPTRA_VIEW_LOCKS.frontal} ${SCULPTRA_ALLOWED_ZONES} ${phenotype.clinicalLogic} Make ONLY this change: ${magnitude} ${SCULPTRA_OUTPUT_RULES} ${timelineText}${cleanNote}`;
+
+  // M11.1: Enhanced course detection -- declared first because framing and all
+  // other per-mode constants branch on it.
+  const isEnhanced = sel.isStrongPass === 'true' || sel.isStrongPass === true;
+  // M11.1: framing strings no longer contain product names (e.g. "Sculptra collagen-stimulation")
+  // because the model was rendering those words literally as image labels in the output.
+  // Enhanced uses a separate framing that avoids "structural restoration / scaffold" --
+  // those phrases anchor the model toward carving and sharpening rather than soft volume.
+  const framing = isEnhanced
+    ? (isOblique
+        ? 'Produce a clinically realistic photograph of the same person after a mature soft-tissue support response, keeping the same oblique pose, identity, age, skin, lighting, and camera setup.'
+        : 'Produce a clinically realistic photograph of the same person after a mature soft-tissue support response, keeping the same frontal pose, identity, age, skin, lighting, and camera setup.')
+    : (isOblique
+        ? 'Produce a clinically realistic facial structure simulation from this oblique consultation photograph, showing a confident structural restoration of the facial scaffold while keeping the same person, the same pose, and the same skin.'
+        : 'Produce a clinically realistic facial structure simulation from this frontal consultation photograph, showing a confident structural restoration of the facial scaffold while keeping the same person, the same pose, and the same skin.');
+
+  // M11.1: Enhanced course detection. When isStrongPass is set, use ENHANCED_MAGNITUDE
+  // as the primary magnitude instruction and skip sanitizeNote entirely for the note.
+  // The note field for Enhanced contains STRONG_PROMPT_SUFFIX which is now superseded
+  // by ENHANCED_MAGNITUDE injected here at full weight, not as a truncated footnote.
+  //
+  // Enhanced also uses separate allowed-zones and output-rules constants that avoid
+  // zone-anatomy lists and "Sculptra visualization" language -- both caused the model
+  // to either locally paint zones or render brand text as on-image labels.
+  const magnitude = isEnhanced
+    ? ENHANCED_MAGNITUDE
+    : (phenotype[sel.projection] || phenotype.expected);
+  const allowedZones = isEnhanced ? SCULPTRA_ENHANCED_STRUCTURAL_BOUNDS : SCULPTRA_ALLOWED_ZONES;
+  const outputRules  = isEnhanced ? SCULPTRA_ENHANCED_OUTPUT_RULES      : SCULPTRA_OUTPUT_RULES;
+  const cleanNote = isEnhanced ? '' : sanitizeNote(stripInternalSculptraTags(sel.note));
+
+  // For Enhanced: clinicalLogic is skipped. All three phenotype clinicalLogic
+  // strings contain "Sculptra visualization" or "Sculptra candidate" -- brand
+  // language that prompted the model to render labels onto the output image.
+  // SCULPTRA_ENHANCED_STRUCTURAL_BOUNDS covers the global framing role instead.
+  const clinicalLogicBlock = isEnhanced ? '' : phenotype.clinicalLogic + ' ';
+
+  // NO_TEXT_RULE is prepended first so it is the model's first instruction.
+  return `${NO_TEXT_RULE} ${SCULPTRA_NLF_CONSTRAINT} ${framing} ${SCULPTRA_FEATURE_LOCK} ${SCULPTRA_VIEW_LOCKS[view] || SCULPTRA_VIEW_LOCKS.frontal} ${allowedZones} ${clinicalLogicBlock}Make ONLY this change: ${magnitude} ${outputRules} ${timelineText}${cleanNote}`;
 }
 
 // Assemble the CORE prompt from selections. The safety base is appended elsewhere.

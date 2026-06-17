@@ -109,7 +109,16 @@ function parseMultipart(event) {
   });
 }
 
-const FIELD_KEYS = ['type', 'areas', 'goal', 'intensity', 'product', 'projection', 'timeline', 'note', 'prompt'];
+// M11.1: isStrongPass, angle, sex, view, phenotype, sculptraPhenotype added.
+// Previously only isStrongPass was added; angle/sex were missing, causing
+// normalizeView() to always default to 'frontal' for oblique generations.
+// phenotype/sculptraPhenotype added for future phenotype field routing.
+const FIELD_KEYS = [
+  'type', 'areas', 'goal', 'intensity', 'product', 'projection',
+  'timeline', 'note', 'prompt', 'isStrongPass',
+  'angle', 'sex', 'view', 'phenotype', 'sculptraPhenotype',
+  'sourceJobId' // M11.1: needed by background worker to fetch standard result as reference image
+];
 
 exports.handler = async (event) => {
   connectLambda(event); // wire Blobs context into the classic handler signature
@@ -161,6 +170,21 @@ exports.handler = async (event) => {
             await store.setJSON(regenOf + ':billing', { ...prev, regenUsed: true });
           }
         } catch (e) { /* lineage lookup is best-effort; full price applies */ }
+      }
+
+      // Enhanced course second pass: charged at 1 credit per angle (half the
+      // standard biostim cost). Verified server-side: source job must belong to
+      // the same user and have completed successfully. Full price applies if
+      // the lookup fails (best-effort; never silently free).
+      const sourceJobId = fields.sourceJobId;
+      if (fields.isStrongPass === 'true' && sourceJobId && /^[A-Za-z0-9._-]{8,128}$/.test(sourceJobId)) {
+        try {
+          const sourceBilling = await store.get(sourceJobId + ':billing', { type: 'json' });
+          const sourceStatus  = await store.get(sourceJobId + ':status',  { type: 'json' });
+          if (sourceBilling && sourceBilling.userId === user.id && sourceStatus && sourceStatus.state === 'done') {
+            cost = 1; // Enhanced pass costs 1 credit per angle regardless of treatment type
+          }
+        } catch (e) { /* source lookup best-effort; full price applies if lookup fails */ }
       }
 
       if (cost > 0) {
