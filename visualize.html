@@ -2851,13 +2851,13 @@ async function startEnhancedSlot(angleId, auth){
               scope: maskScope, sex: state.sex,
               warp: warpOn, jowlTexRelease: jowlTexOn, jawDef: jawDefOn, angleId,
               liftSat:       1.0,
-              deltaGain:     1.0,
-              glowApply:     0,    // no glow on Enhanced -- it was adding unwanted brightness
-              brightCap:     60,   // loosened from 30 to reduce lateral brightening artifacts
-              darkFloor:     6,    // loosened from 16 to reduce jawline darkening artifacts
+              deltaGain:     1.3,  // increased from 1.0 to amplify spatial displacement on Enhanced
+              glowApply:     0,
+              brightCap:     60,
+              darkFloor:     6,
               texRadiusFrac: 0.08,
               texStrength:   0.92,
-              chromaLock:    0.96
+              chromaLock:    0.94  // slightly loosened to allow skin tone improvement through
             };
             const apply = await makeSculptraCompositor(beforeImg, aiImg, enhancedOpts);
             if(apply){
@@ -3571,7 +3571,7 @@ async function drawExportFooter(ctx, totalW, yF, footerH, clinic){
     }
     if(logoImg && clinic){
       // Logo + clinic name side by side
-      const logoH = 32, logoPad = 10;
+      const logoH = 48, logoPad = 12;
       const logoW = Math.round(logoImg.naturalWidth * (logoH / logoImg.naturalHeight));
       ctx.font = '500 23px "DM Sans", sans-serif';
       const nameW = ctx.measureText(clinic).width;
@@ -3584,7 +3584,7 @@ async function drawExportFooter(ctx, totalW, yF, footerH, clinic){
       ctx.textAlign = 'center';
     } else if(logoImg){
       // Logo only, no clinic name -- center it
-      const logoH = 32;
+      const logoH = 48;
       const logoW = Math.round(logoImg.naturalWidth * (logoH / logoImg.naturalHeight));
       ctx.drawImage(logoImg, (totalW - logoW) / 2, yF + 52, logoW, logoH);
     } else if(clinic){
