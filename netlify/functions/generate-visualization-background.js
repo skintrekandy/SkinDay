@@ -150,21 +150,60 @@ exports.handler = async (event) => {
     const buffer = Buffer.from(job.imageB64, 'base64');
     const file = await OpenAI.toFile(buffer, job.filename || 'image.png', { type: job.mime || 'image/png' });
 
-    // Optional edit mask. The client sends one only for masked treatments
-    // (Sculptra today). gpt-image-1 edits the TRANSPARENT areas of this PNG and
-    // preserves the rest. Must match the input image dimensions, which the
-    // client guarantees by rendering the mask at the same resized size.
-    // M11.1: Enhanced pass uses gpt-image-1.5 -- better prompt adherence means
-    // the no-darkening, no-contrast-increase, and soft-volume rules are actually
-    // followed. Standard pass stays on gpt-image-1 to keep per-credit costs down.
+    // M11.1: Enhanced pass uses gpt-image-1.5 for better prompt adherence.
+    // Standard pass stays on gpt-image-1 to keep costs down.
     // gpt-image-1 is deprecated Oct 23 2026; plan to move standard to 1.5 then.
     const isEnhancedJob = f.isStrongPass === 'true' || f.isStrongPass === true;
     const modelName = isEnhancedJob ? 'gpt-image-1.5' : 'gpt-image-1';
 
+    // M11.1: Reference-guided generation for Enhanced course.
+    // Pass the standard-pass result as a second reference image alongside the
+    // original. The model sees the visual grammar of the correct change for this
+    // specific face -- soft lateral cheek support, shadow redistribution, three-
+    // dimensional volume -- rather than trying to infer it from text alone.
+    // The prompt then describes only the DELTA: "stronger version of image 2."
+    //
+    // sourceJobId is sent by the client (startEnhancedSlot). Its composited
+    // result lives at sourceJobId + ':result' as a data URL.
+    //
+    // Fallback: if the standard result cannot be fetched (expired, not found),
+    // Enhanced falls back to single-image mode with the full text prompt.
+    let referenceFile = null;
+    if (isEnhancedJob && f.sourceJobId && /^[A-Za-z0-9._-]{8,128}$/.test(f.sourceJobId)) {
+      try {
+        const refDataUrl = await store.get(f.sourceJobId + ':result', { type: 'text' });
+        if (refDataUrl && refDataUrl.startsWith('data:')) {
+          const commaIdx = refDataUrl.indexOf(',');
+          if (commaIdx !== -1) {
+            const refBuf = Buffer.from(refDataUrl.slice(commaIdx + 1), 'base64');
+            referenceFile = await OpenAI.toFile(refBuf, 'standard-result.jpg', { type: 'image/jpeg' });
+            console.log('[Enhanced] reference image loaded from ' + f.sourceJobId + ' (' + Math.round(refBuf.length / 1024) + ' kB)');
+          }
+        }
+      } catch (refErr) {
+        console.warn('[Enhanced] could not load reference; falling back to single-image mode:', (refErr && refErr.message) || refErr);
+      }
+    }
+
+    // When a reference image is available, replace the text-heavy Enhanced prompt
+    // with a concise delta instruction. The model already sees what the correct
+    // change looks like in image 2 -- text description is now secondary.
+    const ENHANCED_REFERENCE_PROMPT =
+      'Image 1 is the original consultation photograph. Image 2 shows a moderate biostimulator response for this patient at 6 months. ' +
+      'Generate a stronger version of the same response: broader and more diffuse soft volume support across the lateral cheeks and midface, ' +
+      'with softer surface transitions and a healthier, more supported facial contour. ' +
+      'Apply the same visual character as image 2 -- natural, three-dimensional, not retouched -- but with more volume returning under the same skin. ' +
+      'Do not change identity, eyes, nose, lips, ears, hair, headband, skin tone, skin texture, clothing, background, camera angle, or expression. ' +
+      'Do not add text, labels, watermarks, or annotations. ' +
+      'Preserve the same age and all skin character exactly.';
+
+    const finalPrompt = (isEnhancedJob && referenceFile) ? ENHANCED_REFERENCE_PROMPT : prompt;
+    const imageInput   = (isEnhancedJob && referenceFile) ? [file, referenceFile] : file;
+
     const editParams = {
       model: modelName,
-      image: file,
-      prompt,
+      image: imageInput,
+      prompt: finalPrompt,
       size: 'auto',
       input_fidelity: 'high',
       output_format: 'jpeg',

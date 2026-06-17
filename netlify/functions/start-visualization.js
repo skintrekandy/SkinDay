@@ -109,7 +109,16 @@ function parseMultipart(event) {
   });
 }
 
-const FIELD_KEYS = ['type', 'areas', 'goal', 'intensity', 'product', 'projection', 'timeline', 'note', 'prompt'];
+// M11.1: isStrongPass, angle, sex, view, phenotype, sculptraPhenotype added.
+// Previously only isStrongPass was added; angle/sex were missing, causing
+// normalizeView() to always default to 'frontal' for oblique generations.
+// phenotype/sculptraPhenotype added for future phenotype field routing.
+const FIELD_KEYS = [
+  'type', 'areas', 'goal', 'intensity', 'product', 'projection',
+  'timeline', 'note', 'prompt', 'isStrongPass',
+  'angle', 'sex', 'view', 'phenotype', 'sculptraPhenotype',
+  'sourceJobId' // M11.1: needed by background worker to fetch standard result as reference image
+];
 
 exports.handler = async (event) => {
   connectLambda(event); // wire Blobs context into the classic handler signature
