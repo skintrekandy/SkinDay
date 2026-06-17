@@ -372,9 +372,9 @@ function stripInternalSculptraTags(note) {
 //   - Positive description first, prohibitions at the end
 //   - Same register as the phenotype optimistic strings
 const ENHANCED_MAGNITUDE =
-  'Magnitude: a strong, clearly visible full Sculptra collagen response representing an exceptional responder with maximum treatment investment. ' +
-  'Structural changes: the cheeks must be broader and more projected, the midface lifted and re-inflated, the tear troughs softer from restored cheek support, the lateral face wider and more cushioned, the nasolabial folds shallower as lateral tissue advances medially. These structural changes must be immediately visible when comparing the two images side by side. ' +
-  'Skin quality changes: Sculptra stimulates significant new collagen, which genuinely improves the dermis. The skin should look more luminous, more even in tone, and healthier in quality -- as if the patient has had a full course of collagen stimulation over 6-12 months. This is not a filter or retouching effect -- it is the natural result of improved dermal matrix. Pore size may appear slightly reduced. Skin tone should be more even and radiant. Fine surface texture may be smoother. This is clinically accurate for a strong Sculptra responder. ' +
+  'The input image already shows a moderate Sculptra response. Your task is to push it further to represent an exceptional responder with maximum treatment investment. ' +
+  'Structural changes: increase the cheek volume and projection further, lift the midface higher, soften the tear troughs more, broaden the lateral face further, and make the nasolabial folds shallower. The result should be clearly more supported and fuller than the input. ' +
+  'Skin quality changes: Sculptra stimulates significant new collagen which genuinely improves the dermis. The skin should look more luminous, more even in tone, and healthier -- as if the patient has had a full course of collagen stimulation over 6-12 months. This is clinically accurate for a strong Sculptra responder. ' +
   'What must NOT change: identity, face shape, bone structure, eye shape, eyelids, brows, lip shape, nose shape, ears, jaw outline character, head angle, expression, hair, clothing, background, and lighting direction. The person must be unmistakably the same individual. Do not slim, sharpen, or sculpt the face. Do not add text, labels, captions, logos, watermarks, or annotations.';
 
 // M11.1: Enhanced-specific allowed zones and output rules. These replace

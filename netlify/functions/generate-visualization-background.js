@@ -354,13 +354,16 @@ exports.handler = async (event) => {
 
     // Enhanced uses a stronger prompt (ENHANCED_MAGNITUDE) to produce a visibly
     // bolder result. Reference image approach removed -- prompt-only is the right
-    // lever. Both Standard and Enhanced use input_fidelity: high for identity lock.
+    // lever. Both Standard and Enhanced use input_fidelity: high for identity lock,
+    // EXCEPT chin/jaw filler which needs low to allow structural lower-face change
+    // regardless of how the input face already looks.
+    const isChinJawFiller = isChinJaw && f.type === 'filler';
     const editParams = {
       model:              modelName,
       image:              file,
       prompt,
       size:               'auto',
-      input_fidelity:     'high',
+      input_fidelity:     isChinJawFiller ? 'low' : 'high',
       output_format:      'jpeg',
       output_compression: 85
     };
