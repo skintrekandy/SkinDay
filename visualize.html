@@ -2857,7 +2857,7 @@ async function startEnhancedSlot(angleId, auth){
               darkFloor:     6,
               texRadiusFrac: 0.08,
               texStrength:   0.92,
-              chromaLock:    0.94  // slightly loosened to allow skin tone improvement through
+              chromaLock:    0.96  // tightened back from 0.94 -- skin tone improvement comes from AI prompt, not chroma loosening
             };
             const apply = await makeSculptraCompositor(beforeImg, aiImg, enhancedOpts);
             if(apply){
@@ -3448,6 +3448,25 @@ async function drawPair(ctx, angleId, yOff, panelW, panelH, gap, includeText){
   }
   label(0, false);
   label(panelW + gap, true);
+
+  // Logo: centered on the seam between Original and Simulated panels
+  if(clinicLogoDataUrl && includeText){
+    const logoImg = await new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => resolve(null);
+      img.src = clinicLogoDataUrl;
+    });
+    if(logoImg){
+      const logoH = 56;
+      const logoW = Math.round(logoImg.naturalWidth * (logoH / logoImg.naturalHeight));
+      const logoX = (panelW + gap / 2) - logoW / 2; // center on seam
+      const logoY = yOff + (panelH - logoH) / 2;    // vertically centered in panel
+      ctx.globalAlpha = 0.82;
+      ctx.drawImage(logoImg, logoX, logoY, logoW, logoH);
+      ctx.globalAlpha = 1.0;
+    }
+  }
 }
 
 // angleIds: one id = the classic side-by-side; several = the new horizontal
@@ -3547,6 +3566,25 @@ async function drawExport(includeText, angleIds){
     }
   }
 
+  // Logo: centered on the full multi-angle image, vertically centered across both rows
+  if(clinicLogoDataUrl && includeText){
+    const logoImg = await new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => resolve(null);
+      img.src = clinicLogoDataUrl;
+    });
+    if(logoImg){
+      const logoH = 64;
+      const logoW = Math.round(logoImg.naturalWidth * (logoH / logoImg.naturalHeight));
+      const logoX = (canvas.width - logoW) / 2;
+      const logoY = (panelH * 2 + gap - logoH) / 2; // center vertically across both rows
+      ctx.globalAlpha = 0.82;
+      ctx.drawImage(logoImg, logoX, logoY, logoW, logoH);
+      ctx.globalAlpha = 1.0;
+    }
+  }
+
   if(includeText) await drawExportFooter(ctx, canvas.width, canvas.height - footerH, footerH, clinic);
   return canvas;
 }
@@ -3558,40 +3596,9 @@ async function drawExportFooter(ctx, totalW, yF, footerH, clinic){
   ctx.font = '300 22px "DM Sans", sans-serif'; ctx.fillStyle = 'rgba(250,247,242,.80)';
   ctx.fillText('AI-generated visualization for consultation purposes only. Not a prediction of actual results.', totalW/2, yF + 36);
   let brandY = yF + 74;
-  if(clinic || clinicLogoDataUrl){
-    // Load logo image properly (await decode even for dataUrls)
-    let logoImg = null;
-    if(clinicLogoDataUrl){
-      logoImg = await new Promise(resolve => {
-        const img = new Image();
-        img.onload = () => resolve(img);
-        img.onerror = () => resolve(null);
-        img.src = clinicLogoDataUrl;
-      });
-    }
-    if(logoImg && clinic){
-      // Logo + clinic name side by side
-      const logoH = 48, logoPad = 12;
-      const logoW = Math.round(logoImg.naturalWidth * (logoH / logoImg.naturalHeight));
-      ctx.font = '500 23px "DM Sans", sans-serif';
-      const nameW = ctx.measureText(clinic).width;
-      const totalRowW = logoW + logoPad + nameW;
-      const rowX = (totalW - totalRowW) / 2;
-      ctx.drawImage(logoImg, rowX, yF + 52, logoW, logoH);
-      ctx.textAlign = 'left';
-      ctx.fillStyle = 'rgba(250,247,242,.92)';
-      ctx.fillText(clinic, rowX + logoW + logoPad, yF + 72);
-      ctx.textAlign = 'center';
-    } else if(logoImg){
-      // Logo only, no clinic name -- center it
-      const logoH = 48;
-      const logoW = Math.round(logoImg.naturalWidth * (logoH / logoImg.naturalHeight));
-      ctx.drawImage(logoImg, (totalW - logoW) / 2, yF + 52, logoW, logoH);
-    } else if(clinic){
-      // Clinic name only, no logo
-      ctx.font = '500 23px "DM Sans", sans-serif'; ctx.fillStyle = 'rgba(250,247,242,.92)';
-      ctx.fillText(clinic, totalW/2, yF + 72);
-    }
+  if(clinic){
+    ctx.font = '500 23px "DM Sans", sans-serif'; ctx.fillStyle = 'rgba(250,247,242,.92)';
+    ctx.fillText(clinic, totalW/2, yF + 72);
     brandY = yF + 108;
   }
   const pre = 'Powered by ', brand = 'SkinDay Visualize';
