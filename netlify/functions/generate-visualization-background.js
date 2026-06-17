@@ -14,7 +14,30 @@
 // the treated region, no matter what the prompt does. No mask = today's exact
 // full-image behavior (backward compatible).
 //
+// M12 CLINIC LIBRARY: reference-guided generation.
+//   Reference image lookup fires for every biostim (Sculptra) generation.
+//   Fallback chain:
+//     1. Clinic's own approved reference case matching angle (and phenotype if
+//        tagged). Best match = same phenotype first, then match-any.
+//     2. Global gold reference (VISUALIZE_GOLD_REF_FRONTAL / _R45 / _L45 env
+//        vars), each pointing to a public URL of a clean before/after pair.
+//        When a gold ref env var is set, its after-image URL is fetched and
+//        passed as image[1] alongside the patient photo (image[0]).
+//     3. Single-image text-only (current behavior, unchanged).
+//   The reference is passed as the SECOND element of the image array. The model
+//   uses it for visual grammar (volume character, lighting, skin character) only;
+//   it does NOT copy the reference face, because image[0] is the patient photo
+//   and the prompt explicitly locks identity. This is the foundation for Enhanced.
+//   referenceMode in the generation log records which branch fired:
+//   'clinic_case', 'gold_ref', or null (single-image fallback).
+//
 // Required env: OPENAI_API_KEY, BETA_ACCESS_PASSWORD
+// Optional env for clinic library:
+//   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY  (already present for billing)
+// Optional env for global gold refs:
+//   VISUALIZE_GOLD_REF_FRONTAL  (public URL of after-image)
+//   VISUALIZE_GOLD_REF_R45      (public URL of after-image)
+//   VISUALIZE_GOLD_REF_L45      (public URL of after-image)
 // Required packages: openai, @netlify/blobs   (npm i openai @netlify/blobs)
 
 const OpenAI = require('openai');
@@ -71,6 +94,172 @@ async function refundIfBilled(store, jobId, note) {
   } catch (e) {
     console.error('refundIfBilled failed:', (e && e.message) || e);
   }
+}
+
+// M12: map the angle field (r45, l45, frontal, oblique_right, oblique_left, oblique)
+// to the canonical three-token set used by the reference lookup and gold-ref env vars.
+function canonicalAngle(raw) {
+  const a = String(raw || '').toLowerCase().trim();
+  if (a === 'r45' || a === 'right45' || a === 'oblique_right') return 'oblique_right';
+  if (a === 'l45' || a === 'left45'  || a === 'oblique_left')  return 'oblique_left';
+  return 'frontal'; // default
+}
+
+// M12: injected into the prompt whenever a reference image is passed.
+// The guardrail is essential: the reference is for treatment pattern and
+// clinical style only. The model must not copy the reference patient's
+// identity, features, age, skin, ethnicity, lighting, or expression.
+const REFERENCE_IDENTITY_LOCK =
+  ' REFERENCE IMAGE RULE: A second image is provided as a clinical reference for treatment pattern only. ' +
+  'Use it ONLY to understand the visual character of the treatment: volume distribution, soft-tissue support pattern, and the degree of change. ' +
+  'Do NOT copy, borrow, or be influenced by the reference patient\'s identity, face shape, skin tone, ethnicity, age, skin texture, pigmentation, ' +
+  'hair, expression, lighting, camera angle, or any personal feature. ' +
+  'The output must show image[0] (the actual patient) -- and only image[0] -- with the treatment applied. ' +
+  'The reference is a style guide for the treatment result, not an identity donor.';
+
+// M12: look up the best approved clinic reference case for this generation.
+// Returns { beforePath, afterPath } or null.
+// Match priority: (sex + phenotype) > (sex only) > (phenotype only) > untagged > any.
+async function fetchClinicReferenceCase(clinicId, treatmentArea, angle, phenotype, sex) {
+  const SUPABASE_URL = process.env.SUPABASE_URL || '';
+  const SERVICE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+  if (!SUPABASE_URL || !SERVICE_KEY || !clinicId) return null;
+
+  try {
+    const qs = new URLSearchParams({
+      select:         'id,before_path,after_path,phenotype,sex,sort_order',
+      clinic_id:      'eq.' + clinicId,
+      treatment_area: 'eq.' + treatmentArea,
+      angle:          'eq.' + angle,
+      approved:       'eq.true',
+      order:          'sort_order.asc,created_at.asc',
+      limit:          '10'
+    });
+    const res = await fetch(SUPABASE_URL + '/rest/v1/clinic_reference_cases?' + qs.toString(), {
+      headers: { apikey: SERVICE_KEY, Authorization: 'Bearer ' + SERVICE_KEY }
+    });
+    if (!res.ok) {
+      console.warn('[M12] clinic case lookup failed: HTTP ' + res.status);
+      return null;
+    }
+    const rows = await res.json();
+    if (!rows || !rows.length) return null;
+
+    // Match priority: sex+phenotype > sex-only > phenotype-only > untagged > any.
+    const chosen =
+      rows.find(r => r.sex === sex && r.phenotype === phenotype)   ||
+      rows.find(r => r.sex === sex && !r.phenotype)                ||
+      rows.find(r => !r.sex        && r.phenotype === phenotype)   ||
+      rows.find(r => !r.sex        && !r.phenotype)                ||
+      rows[0];
+
+    console.log('[M12] clinic reference chosen: id=' + chosen.id
+      + ' phenotype=' + (chosen.phenotype || 'any')
+      + ' sex=' + (chosen.sex || 'any'));
+    return { beforePath: chosen.before_path, afterPath: chosen.after_path };
+  } catch (e) {
+    console.warn('[M12] fetchClinicReferenceCase error:', (e && e.message) || e);
+    return null;
+  }
+}
+
+// M12: generate a signed URL for a Storage object (service role, 300-second TTL).
+// The signed URL is fetched at generation time, not stored, so the path is durable
+// and the URL is ephemeral. 300 s is more than enough for a single generation.
+async function signedStorageUrl(path) {
+  const SUPABASE_URL = process.env.SUPABASE_URL || '';
+  const SERVICE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+  if (!SUPABASE_URL || !SERVICE_KEY || !path) return null;
+  try {
+    const res = await fetch(
+      SUPABASE_URL + '/storage/v1/object/sign/reference-cases/' + encodeURIComponent(path),
+      {
+        method: 'POST',
+        headers: { apikey: SERVICE_KEY, Authorization: 'Bearer ' + SERVICE_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ expiresIn: 300 })
+      }
+    );
+    if (!res.ok) { console.warn('[M12] sign URL failed: HTTP ' + res.status); return null; }
+    const j = await res.json();
+    return (j && j.signedURL) ? (SUPABASE_URL + j.signedURL) : null;
+  } catch (e) {
+    console.warn('[M12] signedStorageUrl error:', (e && e.message) || e);
+    return null;
+  }
+}
+
+// M12: fetch an image from a URL and return an OpenAI.toFile object.
+// Used for both clinic reference cases (signed Storage URLs) and gold ref URLs.
+// Returns null on any failure so the caller can fall through to single-image mode.
+async function fetchReferenceFile(url, filename) {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) { console.warn('[M12] reference image fetch failed: HTTP ' + res.status + ' ' + url.slice(0, 80)); return null; }
+    const buf = Buffer.from(await res.arrayBuffer());
+    const ct  = res.headers.get('content-type') || 'image/jpeg';
+    return await OpenAI.toFile(buf, filename || 'reference.jpg', { type: ct });
+  } catch (e) {
+    console.warn('[M12] fetchReferenceFile error:', (e && e.message) || e);
+    return null;
+  }
+}
+
+// M12: resolve the reference image file for a generation.
+// Returns { refFile, referenceMode } or { refFile: null, referenceMode: null }.
+// referenceMode values: 'clinic_case' | 'gold_ref' | null
+//
+// CRITICAL SCOPE RULE: reference lookup fires ONLY for Enhanced (isStrongPass === 'true')
+// Sculptra generations. Standard pass is never reference-guided -- this preserves the
+// Standard pass as a known-good, reproducible baseline and ensures the reference
+// mechanism is introduced only when its output has been validated.
+// Gold refs (env var fallback) are also Enhanced-only for the same reason.
+async function resolveReference(f, billing) {
+  const isSculptra  = f.type === 'biostim' && (f.product === 'sculptra' || !f.product);
+  const isEnhanced  = f.isStrongPass === 'true' || f.isStrongPass === true;
+  if (!isSculptra || !isEnhanced) return { refFile: null, referenceMode: null };
+
+  const angle         = canonicalAngle(f.angle || f.view);
+  const phenotype     = f.phenotype || f.sculptraPhenotype || null;
+  const sex           = f.sex || null;
+  const treatmentArea = 'sculptra'; // Enhanced Sculptra is always sculptra area
+  const clinicId      = billing ? billing.userId : null;
+
+  // --- Branch 1: clinic's own library ---
+  if (clinicId) {
+    const caseRow = await fetchClinicReferenceCase(clinicId, treatmentArea, angle, phenotype, sex);
+    if (caseRow) {
+      const afterUrl = await signedStorageUrl(caseRow.afterPath);
+      if (afterUrl) {
+        const refFile = await fetchReferenceFile(afterUrl, 'clinic_ref_after.jpg');
+        if (refFile) {
+          console.log('[M12] reference mode: clinic_case (angle=' + angle + ')');
+          return { refFile, referenceMode: 'clinic_case' };
+        }
+      }
+    }
+  }
+
+  // --- Branch 2: global gold refs (Enhanced fallback only) ---
+  // Gold refs are useful for testing Enhanced before a clinic has uploaded cases.
+  // They are NOT used for Standard -- keeping Standard clean is the standing rule.
+  const GOLD_REF_URLS = {
+    frontal:       process.env.VISUALIZE_GOLD_REF_FRONTAL || '',
+    oblique_right: process.env.VISUALIZE_GOLD_REF_R45     || '',
+    oblique_left:  process.env.VISUALIZE_GOLD_REF_L45     || ''
+  };
+  const goldUrl = GOLD_REF_URLS[angle] || '';
+  if (goldUrl) {
+    const refFile = await fetchReferenceFile(goldUrl, 'gold_ref.jpg');
+    if (refFile) {
+      console.log('[M12] reference mode: gold_ref (angle=' + angle + ')');
+      return { refFile, referenceMode: 'gold_ref' };
+    }
+  }
+
+  // --- Branch 3: Enhanced without a reference --- single-image fallback.
+  // Still runs Enhanced prompt (ENHANCED_MAGNITUDE) but without a reference image.
+  console.log('[M12] reference mode: null (Enhanced single-image fallback)');
+  return { refFile: null, referenceMode: null };
 }
 
 exports.handler = async (event) => {
@@ -148,17 +337,34 @@ exports.handler = async (event) => {
 
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const buffer = Buffer.from(job.imageB64, 'base64');
-    const file = await OpenAI.toFile(buffer, job.filename || 'image.png', { type: job.mime || 'image/png' });
+    const file   = await OpenAI.toFile(buffer, job.filename || 'image.png', { type: job.mime || 'image/png' });
+
+    // M12: resolve reference image (clinic library > gold refs > null).
+    // Fires only for Enhanced Sculptra. Standard always runs single-image.
+    // Read billing now so resolveReference can use userId as clinic_id without
+    // a second blob fetch in the log block below.
+    const billing = await store.get(jobId + ':billing', { type: 'json' }).catch(() => null);
+    const { refFile, referenceMode } = await resolveReference(f, billing);
+
+    // M12: when a reference fires, append the identity-lock clause to the prompt.
+    // This is the guardrail that prevents the reference patient's identity, age,
+    // skin, and ethnicity from bleeding into the output.
+    const finalPrompt = (refFile && referenceMode) ? (prompt + REFERENCE_IDENTITY_LOCK) : prompt;
 
     const modelName = 'gpt-image-1';
 
     const editParams = {
-      model: modelName,
-      image: file,
-      prompt,
-      size: 'auto',
-      input_fidelity: 'high',
-      output_format: 'jpeg',
+      model:              modelName,
+      // M12: when a reference is available, pass [patient, reference]; otherwise
+      // single file as before. The reference is the AFTER image so the model
+      // understands the desired visual character of the treatment (volume, support,
+      // light) without needing a parallel prompt description. Identity is locked
+      // by image[0] and the REFERENCE_IDENTITY_LOCK clause in finalPrompt.
+      image:              refFile ? [file, refFile] : file,
+      prompt:             finalPrompt,
+      size:               'auto',
+      input_fidelity:     'high',
+      output_format:      'jpeg',
       output_compression: 85
     };
     if (job.maskB64) {
@@ -177,7 +383,6 @@ exports.handler = async (event) => {
 
     // Log cost for this successful generation (non-blocking).
     try {
-      const billing = await store.get(jobId + ':billing', { type: 'json' }).catch(() => null);
       await logGeneration({
         jobId,
         userId:         billing ? billing.userId : null,
@@ -190,7 +395,7 @@ exports.handler = async (event) => {
         imageQuality:   editParams.input_fidelity || 'high',
         openAIUsage:    result.usage || null,
         creditsCharged: billing ? billing.cost : null,
-        referenceMode:  null,
+        referenceMode,  // M12: 'clinic_case' | 'gold_ref' | null
         status:         'success',
       });
     } catch (logErr) { console.error('[logGeneration] success log failed:', logErr.message); }
@@ -198,7 +403,7 @@ exports.handler = async (event) => {
     return { statusCode: 200 };
   } catch (err) {
     const code = err && (err.code || (err.error && err.error.code));
-    const msg = (err && err.message) || '';
+    const msg  = (err && err.message) || '';
     console.error('background generation failed:', JSON.stringify({ code, msg }));
 
     // Same moderation classification as the original function. The image-edit
@@ -207,11 +412,11 @@ exports.handler = async (event) => {
     if (blocked) {
       await fail('The AI provider blocked this specific edit under its safety system (the image-edit endpoint is strict and this cannot be turned down). Lip edits are a frequent trigger. Try a different area, or adjust the wording of the custom note.', 'moderation_blocked');
       await refundIfBilled(store, jobId, 'moderation blocked');
-      await logGeneration({ jobId, status: 'blocked', failureReason: 'moderation_blocked', model: modelName }).catch(() => {});
+      await logGeneration({ jobId, status: 'blocked', failureReason: 'moderation_blocked', model: 'gpt-image-1' }).catch(() => {});
     } else {
       await fail(msg || 'Image generation failed', code || 'error');
       await refundIfBilled(store, jobId, (code ? String(code) : 'generation failed'));
-      await logGeneration({ jobId, status: 'failed', failureReason: code || msg || 'unknown', model: modelName }).catch(() => {});
+      await logGeneration({ jobId, status: 'failed', failureReason: code || msg || 'unknown', model: 'gpt-image-1' }).catch(() => {});
     }
     return { statusCode: 200 };
   }
