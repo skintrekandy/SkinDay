@@ -216,6 +216,7 @@ async function fetchReferenceFile(url, filename) {
 async function resolveReference(f, billing) {
   const isSculptra  = f.type === 'biostim' && (f.product === 'sculptra' || !f.product);
   const isEnhanced  = f.isStrongPass === 'true' || f.isStrongPass === true;
+  console.log('[M12] resolveReference: isSculptra=' + isSculptra + ' isEnhanced=' + isEnhanced + ' isStrongPass=' + JSON.stringify(f.isStrongPass));
   if (!isSculptra || !isEnhanced) return { refFile: null, referenceMode: null };
 
   const angle         = canonicalAngle(f.angle || f.view);
@@ -248,6 +249,7 @@ async function resolveReference(f, billing) {
     oblique_left:  process.env.VISUALIZE_GOLD_REF_L45     || ''
   };
   const goldUrl = GOLD_REF_URLS[angle] || '';
+  console.log('[M12] gold ref URL for angle=' + angle + ': ' + (goldUrl ? goldUrl.slice(0, 60) + '...' : 'NOT SET'));
   if (goldUrl) {
     const refFile = await fetchReferenceFile(goldUrl, 'gold_ref.jpg');
     if (refFile) {
