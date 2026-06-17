@@ -352,18 +352,15 @@ exports.handler = async (event) => {
 
     const modelName = 'gpt-image-1';
 
-    // M12: input_fidelity for Enhanced is 'low' so the model has room to
-    // incorporate the reference image's volume character. Standard keeps 'high'
-    // for identity and texture preservation. This is the key tradeoff:
-    // Enhanced trades pixel-lock for meaningful volume change.
-    const inputFidelity = (refFile && referenceMode) ? 'low' : 'high';
-
+    // Enhanced uses a stronger prompt (ENHANCED_MAGNITUDE) to produce a visibly
+    // bolder result. Reference image approach removed -- prompt-only is the right
+    // lever. Both Standard and Enhanced use input_fidelity: high for identity lock.
     const editParams = {
       model:              modelName,
-      image:              refFile ? [file, refFile] : file,
-      prompt:             finalPrompt,
+      image:              file,
+      prompt,
       size:               'auto',
-      input_fidelity:     inputFidelity,
+      input_fidelity:     'high',
       output_format:      'jpeg',
       output_compression: 85
     };
@@ -392,7 +389,7 @@ exports.handler = async (event) => {
         isRegen:        billing ? (billing.cost === 0) : false,
         model:          modelName,
         imageSize:      editParams.size || 'auto',
-        imageQuality:   inputFidelity,
+        imageQuality:   editParams.input_fidelity || 'high',
         openAIUsage:    result.usage || null,
         creditsCharged: billing ? billing.cost : null,
         referenceMode,  // M12: 'clinic_case' | 'gold_ref' | null
