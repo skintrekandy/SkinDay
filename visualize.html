@@ -559,7 +559,7 @@
     </div>
     <div class="result-grid">
       <div class="result-card"><img id="originalResult" alt="Original photo" /><div class="result-tag">Original</div></div>
-      <div class="result-card"><img id="aiResult" alt="AI simulated treatment preview" /><svg class="anno-svg" id="annoSvg" viewBox="0 0 100 125" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg><div class="result-tag sim" id="simTag">Simulated · AI Visualization<span class="strong-badge" id="simTagStrong" style="display:none;">Ceiling · 6-8+ vials</span></div></div>
+      <div class="result-card"><img id="aiResult" alt="AI simulated treatment preview" /><svg class="anno-svg" id="annoSvg" viewBox="0 0 100 125" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg><div class="result-tag sim" id="simTag">Simulated · AI Visualization</div></div>
     </div>
     <div id="intensityWrap" style="display:none;margin-top:14px;">
       <!-- Course segmented control (biostim only) -->
@@ -631,7 +631,7 @@
 <div class="guide-modal hidden" id="creditsInfoModal">
   <div class="guide-card">
     <h2>How credits work</h2>
-    <p>Credits are spent only when a simulation is generated. Each angle of a case is one generation: <strong>HA filler costs <span id="ciFiller">1</span> credit(s) per angle</strong> and <strong>biostimulator costs <span id="ciBiostim">2</span> credit(s) per angle</strong>, so a full 3-angle HA case is <span id="ciCaseF">3</span> credits and a 3-angle biostimulator case is <span id="ciCaseB">6</span>. The Enhanced course preview costs 1 additional credit per angle.</p>
+    <p>Credits are spent only when a simulation is generated. Each angle of a case is one generation: <strong>HA filler costs <span id="ciFiller">1</span> credit(s) per angle</strong> and <strong>biostimulator costs <span id="ciBiostim">2</span> credit(s) per angle</strong>, so a full 3-angle HA case is <span id="ciCaseF">3</span> credits and a 3-angle biostimulator case is <span id="ciCaseB">6</span>.</p>
     <p>Everything after generation is free: adjusting the response slider, comparing angles, exporting and downloading, and re-generating within 60 seconds of a result. If a generation fails or is blocked by the AI provider's safety system, its credits are refunded to your balance automatically.</p>
     <p>Purchased credits do not expire. New accounts start with a small free balance so you can try the tool on a real consultation first.</p>
     <p><strong>Independence note:</strong> Visualize credits are a clinic tool purchase only. Buying credits never affects a clinic's ranking, search placement, reviews, or visibility anywhere on SkinDay.</p>
@@ -1723,12 +1723,6 @@ function updateIntensityUI(){
     msbLabel.textContent = isFiller ? 'Degree of correction' : 'Response timeline';
     msbMin.textContent   = isFiller ? 'Subtle' : 'Early';
     msbMax.textContent   = isFiller ? 'Enhanced' : '6 months';
-    // M11.1: lock mobile slider when Enhanced course is active
-    const activeSlotData = state.slots[state.activeAngle];
-    const enhancedLocked = state.courseMode === 'enhanced' && activeSlotData && activeSlotData.strongStatus === 'done';
-    mslider.disabled = enhancedLocked;
-    mslider.style.opacity = enhancedLocked ? '0.35' : '';
-    mslider.style.pointerEvents = enhancedLocked ? 'none' : '';
   }
   // Patch updateIntensityUI to also sync the mobile bar
   const _origUpdateUI = updateIntensityUI;
@@ -2388,24 +2382,10 @@ function renderActiveSlot(){
   document.getElementById('intensityWrap').style.display = showSlider ? 'block' : 'none';
   if(showSlider){
     const sliderEl = document.getElementById('intensitySlider');
-    // M11.1: Enhanced course locks the slider at maximum. The compositor
-    // intensity control is not meaningful for Enhanced -- the result is the
-    // full-frame AI output and the user cannot dial it back. Locking prevents
-    // confusion about why the slider doesn't visibly change the Enhanced result.
-    if(state.courseMode === 'enhanced' && sl.strongStatus === 'done'){
-      if(!state._savedIntensityPct) state._savedIntensityPct = state.intensityPct;
-      state.intensityPct = 100;
-      sliderEl.value = 100;
-      sliderEl.disabled = true;
-      sliderEl.style.opacity = '0.35';
-      sliderEl.style.pointerEvents = 'none';
-    } else {
-      if(state._savedIntensityPct){ state.intensityPct = state._savedIntensityPct; state._savedIntensityPct = null; }
-      sliderEl.disabled = false;
-      sliderEl.style.opacity = '';
-      sliderEl.style.pointerEvents = '';
-      sliderEl.value = state.intensityPct;
-    }
+    sliderEl.disabled = false;
+    sliderEl.style.opacity = '';
+    sliderEl.style.pointerEvents = '';
+    sliderEl.value = state.intensityPct;
     updateIntensityUI();
   }
   const doneCount = state.selectedAngles.filter(id => state.slots[id].status === 'done').length;
@@ -2674,7 +2654,9 @@ function updateStrongBtn(){
   const enhBtn = document.getElementById('courseEnhanced');
   const courseCtrl = document.getElementById('courseControl');
   const courseHelp = document.getElementById('courseHelp');
-  if(courseCtrl) courseCtrl.style.display = (isBiostim && isDone) ? '' : 'none';
+  // M11 close: Enhanced course removed from UI pending M12 clinic library.
+  // courseControl stays hidden. All Enhanced code preserved for M12 restore.
+  if(courseCtrl) courseCtrl.style.display = 'none';
   if(!expBtn || !enhBtn || !sl) return;
   const isEnhanced = state.courseMode === 'enhanced';
 
@@ -2709,12 +2691,8 @@ function updateStrongBtn(){
 function applyActiveView(){
   const sl = activeSlot();
   if(!sl) return;
-  const showStrong = state.courseMode === 'enhanced' && sl.strongStatus === 'done' && sl.strongDataUrl;
-  const displayUrl = showStrong ? sl.strongDataUrl : (sl.resultDataUrl || sl.beforeDataUrl || sl.originalDataUrl || '');
+  const displayUrl = sl.resultDataUrl || sl.beforeDataUrl || sl.originalDataUrl || '';
   document.getElementById('aiResult').src = displayUrl;
-  // Update sim tag badge
-  const badge = document.getElementById('simTagStrong');
-  if(badge) badge.style.display = showStrong ? 'inline' : 'none';
 }
 
 // Course segmented control: Expected / Enhanced
