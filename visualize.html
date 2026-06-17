@@ -1619,9 +1619,9 @@ function updateIntensityUI(){
   document.getElementById('intensityHelp').textContent = isFiller
     ? 'Slide to preview less or more correction.'
     : 'Slide to preview an earlier or more complete treatment response. The simulation updates instantly.';
-  // Show course segmented control for biostim only
+  // courseControl hidden permanently -- Enhanced removed for M12
   const courseCtrl = document.getElementById('courseControl');
-  if(courseCtrl) courseCtrl.style.display = isFiller ? 'none' : '';
+  if(courseCtrl) courseCtrl.style.display = 'none';
   const valEl = document.getElementById('intensityValue');
   valEl.textContent = li.name;
   valEl.style.color = li.over ? OVERFILL_COLOR : '';
