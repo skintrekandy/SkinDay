@@ -541,14 +541,14 @@
           <div class="small" style="margin-top:6px;color:var(--muted);font-style:italic;">e.g. Sculptra, Hyperdilute Radiesse, Lanluma, Ellansé</div>
         </div>
 
-        <!-- Patient intake: age, sex, primary concern -->
+        <!-- Patient intake: age, sex, primary concern (all optional) -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:4px;">
           <div class="field">
-            <label>Patient age</label>
+            <label>Patient age <span style="font-weight:400;color:var(--muted);">(optional)</span></label>
             <input id="patientAge" type="number" min="18" max="99" placeholder="e.g. 45" style="width:100%;" />
           </div>
           <div class="field">
-            <label>Sex</label>
+            <label>Sex <span style="font-weight:400;color:var(--muted);">(optional)</span></label>
             <div class="pill-grid" id="patientSexToggle" style="margin-top:6px;">
               <button class="pill" data-sex="female" type="button">Female</button>
               <button class="pill" data-sex="male" type="button">Male</button>
@@ -556,10 +556,11 @@
           </div>
         </div>
         <div class="field" style="margin-top:4px;">
-          <label>Primary concern</label>
+          <label>Primary concern <span style="font-weight:400;color:var(--muted);">(optional)</span></label>
           <div class="pill-grid" id="primaryConcernToggle" style="margin-top:6px;">
             <button class="pill" data-concern="hollow_deflated" type="button">Volume loss</button>
-            <button class="pill" data-concern="full_descended" type="button">Sagging / descent</button>
+            <button class="pill" data-concern="full_descended" type="button">Sagging</button>
+            <button class="pill" data-concern="mixed" type="button">Mixed</button>
           </div>
         </div>
 
@@ -3626,22 +3627,24 @@ document.getElementById('logoRemoveBtn').addEventListener('click', () => {
   document.getElementById('logoUploadBtn').textContent = 'Upload logo';
 });
 
-// Patient sex toggle (biostim)
+// Patient sex toggle (biostim) -- tap active to deselect
 document.getElementById('patientSexToggle').addEventListener('click', e => {
   const btn = e.target.closest('[data-sex]');
   if (!btn) return;
+  const already = btn.classList.contains('active');
   document.getElementById('patientSexToggle').querySelectorAll('.pill').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  state.sex = btn.dataset.sex;
+  if (!already) { btn.classList.add('active'); state.sex = btn.dataset.sex; }
+  else state.sex = null;
 });
 
-// Primary concern -> sculptraPhenotype
+// Primary concern -> sculptraPhenotype -- tap active to deselect
 document.getElementById('primaryConcernToggle').addEventListener('click', e => {
   const btn = e.target.closest('[data-concern]');
   if (!btn) return;
+  const already = btn.classList.contains('active');
   document.getElementById('primaryConcernToggle').querySelectorAll('.pill').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  state.sculptraPhenotype = btn.dataset.concern;
+  if (!already) { btn.classList.add('active'); state.sculptraPhenotype = btn.dataset.concern; }
+  else state.sculptraPhenotype = null;
 });
 
 // Patient age
