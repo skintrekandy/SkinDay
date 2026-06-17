@@ -2852,9 +2852,9 @@ async function startEnhancedSlot(angleId, auth){
               warp: warpOn, jowlTexRelease: jowlTexOn, jawDef: jawDefOn, angleId,
               liftSat:       1.0,
               deltaGain:     1.0,
-              glowApply:     10,
-              brightCap:     30,
-              darkFloor:     16,
+              glowApply:     0,    // no glow on Enhanced -- it was adding unwanted brightness
+              brightCap:     60,   // loosened from 30 to reduce lateral brightening artifacts
+              darkFloor:     6,    // loosened from 16 to reduce jawline darkening artifacts
               texRadiusFrac: 0.08,
               texStrength:   0.92,
               chromaLock:    0.96
@@ -3471,7 +3471,7 @@ async function drawExport(includeText, angleIds){
     canvas.height = panelH + footerH;
     ctx.fillStyle = '#1C1714'; ctx.fillRect(0, 0, canvas.width, canvas.height);
     await drawPair(ctx, ids[0], 0, panelW, panelH, gap, includeText);
-    if(includeText) drawExportFooter(ctx, canvas.width, canvas.height - footerH, footerH, clinic);
+    if(includeText) await drawExportFooter(ctx, canvas.width, canvas.height - footerH, footerH, clinic);
     return canvas;
   }
 
@@ -3547,25 +3547,32 @@ async function drawExport(includeText, angleIds){
     }
   }
 
-  if(includeText) drawExportFooter(ctx, canvas.width, canvas.height - footerH, footerH, clinic);
+  if(includeText) await drawExportFooter(ctx, canvas.width, canvas.height - footerH, footerH, clinic);
   return canvas;
 }
 
 // Shared footer renderer used by both single and multi-angle exports
-function drawExportFooter(ctx, totalW, yF, footerH, clinic){
+async function drawExportFooter(ctx, totalW, yF, footerH, clinic){
   ctx.fillStyle = '#1C1714'; ctx.fillRect(0, yF, totalW, footerH);
   ctx.textAlign = 'center';
   ctx.font = '300 22px "DM Sans", sans-serif'; ctx.fillStyle = 'rgba(250,247,242,.80)';
   ctx.fillText('AI-generated visualization for consultation purposes only. Not a prediction of actual results.', totalW/2, yF + 36);
   let brandY = yF + 74;
-  if(clinic){
-    // If a logo is loaded, draw it to the left of the clinic name
+  if(clinic || clinicLogoDataUrl){
+    // Load logo image properly (await decode even for dataUrls)
+    let logoImg = null;
     if(clinicLogoDataUrl){
+      logoImg = await new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => resolve(null);
+        img.src = clinicLogoDataUrl;
+      });
+    }
+    if(logoImg && clinic){
+      // Logo + clinic name side by side
       const logoH = 32, logoPad = 10;
-      const logoImg = new Image();
-      logoImg.src = clinicLogoDataUrl;
-      // Draw synchronously -- logo is already loaded as dataUrl
-      const logoW = logoImg.naturalWidth ? Math.round(logoImg.naturalWidth * (logoH / logoImg.naturalHeight)) : logoH;
+      const logoW = Math.round(logoImg.naturalWidth * (logoH / logoImg.naturalHeight));
       ctx.font = '500 23px "DM Sans", sans-serif';
       const nameW = ctx.measureText(clinic).width;
       const totalRowW = logoW + logoPad + nameW;
@@ -3575,7 +3582,13 @@ function drawExportFooter(ctx, totalW, yF, footerH, clinic){
       ctx.fillStyle = 'rgba(250,247,242,.92)';
       ctx.fillText(clinic, rowX + logoW + logoPad, yF + 72);
       ctx.textAlign = 'center';
-    } else {
+    } else if(logoImg){
+      // Logo only, no clinic name -- center it
+      const logoH = 32;
+      const logoW = Math.round(logoImg.naturalWidth * (logoH / logoImg.naturalHeight));
+      ctx.drawImage(logoImg, (totalW - logoW) / 2, yF + 52, logoW, logoH);
+    } else if(clinic){
+      // Clinic name only, no logo
       ctx.font = '500 23px "DM Sans", sans-serif'; ctx.fillStyle = 'rgba(250,247,242,.92)';
       ctx.fillText(clinic, totalW/2, yF + 72);
     }
