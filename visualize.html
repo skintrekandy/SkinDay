@@ -3367,7 +3367,9 @@ function simKicker(angleId){
   const sl = state.slots[angleId];
   const parts = [treatmentName()];
   if(multiDone) parts.push(ANGLE_DEF[angleId].label);
-  if(state.type === 'biostim') parts.push(state.timeline + ' months');
+  // Use current slider position for months label, not the generation-time timeline.
+  // This keeps the watermark in sync when the slider is moved after generation.
+  if(state.type === 'biostim') parts.push(strengthLabel(state.intensityPct));
   if(state.type === 'biostim' || (state.type === 'filler' && sl.apply)){
     if(state.type === 'filler'){
       const li = levelInfo(state.intensityPct || 70);
