@@ -106,16 +106,17 @@ function canonicalAngle(raw) {
 }
 
 // M12: injected into the prompt whenever a reference image is passed.
-// The guardrail is essential: the reference is for treatment pattern and
-// clinical style only. The model must not copy the reference patient's
-// identity, features, age, skin, ethnicity, lighting, or expression.
+// CRITICAL: gpt-image-1 requires explicit indexing when multiple images are
+// provided -- it will ignore image[1] unless the prompt references it directly.
+// The identity lock is equally critical: the reference is for treatment pattern
+// only, never identity, skin, age, or ethnicity.
 const REFERENCE_IDENTITY_LOCK =
-  ' REFERENCE IMAGE RULE: A second image is provided as a clinical reference for treatment pattern only. ' +
-  'Use it ONLY to understand the visual character of the treatment: volume distribution, soft-tissue support pattern, and the degree of change. ' +
-  'Do NOT copy, borrow, or be influenced by the reference patient\'s identity, face shape, skin tone, ethnicity, age, skin texture, pigmentation, ' +
-  'hair, expression, lighting, camera angle, or any personal feature. ' +
-  'The output must show image[0] (the actual patient) -- and only image[0] -- with the treatment applied. ' +
-  'The reference is a style guide for the treatment result, not an identity donor.';
+  ' TWO IMAGES ARE PROVIDED. Image 1 is the patient to treat. Image 2 is a clinical reference showing a successful Sculptra biostimulator result.' +
+  ' Use Image 2 ONLY to understand the visual character of the treatment result: the degree of cheek volume, midface support, lateral lift, and soft-tissue re-inflation.' +
+  ' Apply that same degree and character of volume change to Image 1 (the patient).' +
+  ' Do NOT copy, borrow, or be influenced by the reference patient\'s identity, face shape, skin tone, ethnicity, age, skin texture, pigmentation, hair, expression, lighting, or any personal feature.' +
+  ' The output must show Image 1 (the actual patient) with the Sculptra treatment applied at the visual intensity shown in Image 2.' +
+  ' Image 2 is a style and volume guide only -- never an identity donor.';
 
 // M12: look up the best approved clinic reference case for this generation.
 // Returns { beforePath, afterPath } or null.
