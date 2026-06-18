@@ -639,8 +639,8 @@
       <div class="result-card"><img id="aiResult" alt="AI simulated treatment preview" /><svg class="anno-svg" id="annoSvg" viewBox="0 0 100 125" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg><div class="result-tag sim" id="simTag">Simulated · AI Visualization</div></div>
     </div>
     <div id="intensityWrap" style="display:none;margin-top:14px;">
-      <!-- Course segmented control (biostim only) -->
-      <div id="courseControl" style="margin-bottom:14px;">
+      <!-- Course segmented control (biostim only, Ceiling hidden) -->
+      <div id="courseControl" style="display:none;margin-bottom:14px;">
         <div style="font-size:13px;letter-spacing:.04em;text-transform:uppercase;opacity:.75;margin-bottom:8px;">Response Preview</div>
         <div class="view-toggle" id="courseToggle">
           <button type="button" id="courseExpected" class="active">Baseline (3-4 vials)</button>
@@ -651,17 +651,29 @@
           <span id="courseHelpEnhanced" style="display:none;">Ceiling: upper-range result with a stronger commitment. Shows what is possible, not guaranteed.</span>
         </div>
       </div>
-      <!-- Timeline slider -->
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-        <label for="intensitySlider" id="intensityLabel" style="font-size:13px;letter-spacing:.04em;text-transform:uppercase;opacity:.75;">Response timeline</label>
-        <span id="intensityValue" style="font-family:'Cormorant Garamond',serif;font-size:22px;">Expected</span>
+      <!-- Filler: three-button correction selector -->
+      <div id="fillerCorrectionWrap" style="display:none;margin-bottom:14px;">
+        <div style="font-size:13px;letter-spacing:.04em;text-transform:uppercase;opacity:.75;margin-bottom:8px;">Degree of correction</div>
+        <div class="view-toggle" id="fillerCorrectionToggle">
+          <button type="button" data-filler-level="25">Subtle</button>
+          <button type="button" data-filler-level="60" class="active">Balanced</button>
+          <button type="button" data-filler-level="95">Enhanced</button>
+        </div>
+        <div class="small" style="margin-top:6px;color:var(--muted);">Select a correction level to preview. Each shows a different degree of treatment.</div>
       </div>
-      <input type="range" id="intensitySlider" min="0" max="100" step="1" value="70" style="width:100%;margin-top:8px;accent-color:#C8725A;" />
-      <div style="display:flex;justify-content:space-between;font-size:.68rem;letter-spacing:.04em;text-transform:uppercase;opacity:.6;margin-top:4px;">
-        <span id="intensityMin">Early</span><span id="intensityMax">6 months</span>
+      <!-- Timeline slider (biostim only) -->
+      <div id="biostimSliderWrap">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+          <label for="intensitySlider" id="intensityLabel" style="font-size:13px;letter-spacing:.04em;text-transform:uppercase;opacity:.75;">Response timeline</label>
+          <span id="intensityValue" style="font-family:'Cormorant Garamond',serif;font-size:22px;">Expected</span>
+        </div>
+        <input type="range" id="intensitySlider" min="0" max="100" step="1" value="70" style="width:100%;margin-top:8px;accent-color:#C8725A;" />
+        <div style="display:flex;justify-content:space-between;font-size:.68rem;letter-spacing:.04em;text-transform:uppercase;opacity:.6;margin-top:4px;">
+          <span id="intensityMin">Early</span><span id="intensityMax">6 months</span>
+        </div>
+        <div class="small" id="intensityHelp" style="margin-top:6px;">Slide to preview an earlier or more complete treatment response. The simulation updates instantly.</div>
+        <div class="small" id="overfillNote" style="display:none;margin-top:4px;color:#A33524;font-weight:600;">Shown for education: deliberately overfilled, not a treatment goal.</div>
       </div>
-      <div class="small" id="intensityHelp" style="margin-top:6px;">Slide to preview an earlier or more complete treatment response. The simulation updates instantly.</div>
-      <div class="small" id="overfillNote" style="display:none;margin-top:4px;color:#A33524;font-weight:600;">Shown for education: deliberately overfilled, not a treatment goal.</div>
     </div>
     <div class="compare-wrap" id="compareWrap" style="display:none;">
       <div class="compare-card" id="compareCard">
@@ -1301,6 +1313,31 @@ document.getElementById('libraryCloseBtn').addEventListener('click', closeLibrar
 document.getElementById('libraryModal').addEventListener('click', e => {
   if (e.target === document.getElementById('libraryModal')) closeLibraryModal();
 });
+// Filler three-button correction selector.
+// Replaces the smooth slider for HA filler -- three fixed intensities,
+// each pre-tuned to be artifact-free. Balanced is the default (60%).
+document.getElementById('fillerCorrectionToggle').addEventListener('click', e => {
+  const btn = e.target.closest('[data-filler-level]');
+  if(!btn) return;
+  const level = parseInt(btn.dataset.fillerLevel, 10);
+  document.getElementById('fillerCorrectionToggle').querySelectorAll('[data-filler-level]').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  state.intensityPct = level;
+  const slider = document.getElementById('intensitySlider');
+  if(slider) slider.value = level;
+  // Apply the fixed intensity to all completed filler slots instantly
+  state.selectedAngles.forEach(angleId => {
+    const sl = state.slots[angleId];
+    if(!sl || sl.status !== 'done' || !sl.apply) return;
+    const url = sl.apply(level / 100);
+    sl.resultDataUrl = url;
+    if(angleId === state.activeAngle) document.getElementById('aiResult').src = url;
+  });
+  // Sync the mobile bar label
+  const msb = document.getElementById('msbActionBtn');
+  if(msb) msb.textContent = btn.textContent;
+});
+
 document.getElementById('navLibraryBtn').addEventListener('click', openLibraryModal);
 
 // Case list: angle filter tabs.
@@ -1905,15 +1942,19 @@ function updateIntensityUI(){
     slider.max = 100;
   }
   const li = levelInfo(state.intensityPct);
-  document.getElementById('intensityLabel').textContent = isFiller ? 'Degree of correction' : 'Response timeline';
-  document.getElementById('intensityMin').textContent = isFiller ? 'Subtle' : 'Early';
-  document.getElementById('intensityMax').textContent = isFiller ? 'Enhanced' : '6 months';
-  document.getElementById('intensityHelp').textContent = isFiller
-    ? 'Slide to preview less or more correction.'
-    : 'Slide to preview an earlier or more complete treatment response. The simulation updates instantly.';
-  // Show course segmented control for biostim only
+  document.getElementById('intensityLabel').textContent = 'Response timeline';
+  document.getElementById('intensityMin').textContent = 'Early';
+  document.getElementById('intensityMax').textContent = '6 months';
+  document.getElementById('intensityHelp').textContent = 'Slide to preview an earlier or more complete treatment response. The simulation updates instantly.';
+  // Filler: show three-button selector, hide slider
+  // Biostim: hide three-button selector, show slider
+  const fillerWrap  = document.getElementById('fillerCorrectionWrap');
+  const biostimWrap = document.getElementById('biostimSliderWrap');
+  if(fillerWrap)  fillerWrap.style.display  = isFiller ? '' : 'none';
+  if(biostimWrap) biostimWrap.style.display = isFiller ? 'none' : '';
+  // courseControl stays hidden (Ceiling removed)
   const courseCtrl = document.getElementById('courseControl');
-  if(courseCtrl) courseCtrl.style.display = isFiller ? 'none' : '';
+  if(courseCtrl) courseCtrl.style.display = 'none';
   const valEl = document.getElementById('intensityValue');
   valEl.textContent = li.name;
   valEl.style.color = li.over ? OVERFILL_COLOR : '';
@@ -2073,7 +2114,10 @@ function updateIntensityUI(){
       bar.classList.remove('bar-hidden');
       document.body.classList.add('slider-bar-active');
       syncMobileDisplay();
-      if(sliderVisible){
+      // For filler, slider is replaced by three buttons -- hide the mobile slider
+      const biostimWrap = document.getElementById('biostimSliderWrap');
+      const sliderActuallyVisible = sliderVisible && (!biostimWrap || biostimWrap.style.display !== 'none');
+      if(sliderActuallyVisible){
         mslider.style.display = '';
         msbMin.parentElement.style.display = '';
       } else {
