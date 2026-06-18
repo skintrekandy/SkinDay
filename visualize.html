@@ -2499,7 +2499,13 @@ async function finishSlot(angleId, auth){
       const jowlTexOn = !/[?&]jowltex=off\b/i.test(location.search);
       // M9.7 A/B hook: ?jawdef=off disables the deterministic border light.
       const jawDefOn = !/[?&]jawdef=off\b/i.test(location.search);
-      const apply = await makeSculptraCompositor(beforeImg, aiImg, { scope:compScope, sex:state.sex, warp:warpOn, jowlTexRelease:jowlTexOn, jawDef:jawDefOn, angleId });
+      const apply = await makeSculptraCompositor(beforeImg, aiImg, {
+        scope: compScope, sex: state.sex,
+        warp: warpOn, jowlTexRelease: jowlTexOn, jawDef: jawDefOn, angleId,
+        // Sharper texture restore for chin/jaw filler: higher midKeep and
+        // tighter texRadiusFrac reduce the blur at the jawline boundary.
+        ...(compScope === 'chin_jaw' ? { midKeep: 0.82, texRadiusFrac: 0.007 } : {})
+      });
       if(apply){
         sl.apply = apply;
         sl.resultDataUrl = apply(state.intensityPct / 100);
