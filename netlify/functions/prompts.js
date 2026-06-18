@@ -372,18 +372,26 @@ function stripInternalSculptraTags(note) {
 //   - Positive description first, prohibitions at the end
 //   - Same register as the phenotype optimistic strings
 const ENHANCED_MAGNITUDE =
-  'The input image already shows a moderate Sculptra response. Your task is to push it further to represent an exceptional responder with maximum treatment investment. ' +
-  'Structural changes: increase the cheek volume and projection further, lift the midface higher, soften the tear troughs more, broaden the lateral face further, and make the nasolabial folds shallower. The result should be clearly more supported and fuller than the input. ' +
-  'Skin quality changes: Sculptra stimulates significant new collagen which genuinely improves the dermis. The skin should look more luminous, more even in tone, and healthier -- as if the patient has had a full course of collagen stimulation over 6-12 months. This is clinically accurate for a strong Sculptra responder. ' +
-  'What must NOT change: identity, face shape, bone structure, eye shape, eyelids, brows, lip shape, nose shape, ears, jaw outline character, head angle, expression, hair, clothing, background, and lighting direction. The person must be unmistakably the same individual. Do not slim, sharpen, or sculpt the face. Do not add text, labels, captions, logos, watermarks, or annotations.';
+  'Magnitude: an upper-range but natural soft collagen-volume response. The face should look subtly fuller and better supported in a broad, diffuse way, with smoother surface transitions and a healthier cheek envelope. The result should improve facial contour continuity without making the face sharper, tighter, younger, slimmer, carved, more angular, or more contrasty. Keep the change soft, gradual, and three-dimensional, like natural tissue support returning under the same skin. Do not use darker shadows anywhere on the face to show improvement -- the simulated result must not have stronger cheek shadows, deeper nasolabial folds, darker prejowl shadows, or darker jawline shadows than the original. Preserve local contrast and skin reflectance exactly: do not increase contrast anywhere on the face. Preserve the same age, identity, expression, skin texture, pores, pigmentation, skin tone, asymmetry, eyes, lips, brows, nose, ears, hair, headband, neck, clothing, background, lighting, and camera angle. Do not add text, labels, captions, logos, watermarks, or annotations.';
 
 // M11.1: Enhanced-specific allowed zones and output rules. These replace
 // SCULPTRA_ALLOWED_ZONES and SCULPTRA_OUTPUT_RULES when isStrongPass is true.
+//
+// SCULPTRA_ALLOWED_ZONES is a long zone-by-zone anatomy list (temples, lateral
+// cheek, zygomatic body, prejowl, folds, etc.) -- exactly the kind of language
+// that prompts the model to do local zone-painting rather than understand the
+// face globally. For Enhanced we describe the STRUCTURAL OUTCOME the change
+// must produce, not which anatomical zones to touch.
+//
+// SCULPTRA_OUTPUT_RULES says "clinical Sculptra visualization" -- brand name as
+// a display descriptor, which the model has been observed to render literally as
+// on-image text. For Enhanced, the output rule describes what a correct clinical
+// photograph looks like, not what kind of graphic it is.
 const SCULPTRA_ENHANCED_STRUCTURAL_BOUNDS =
-  'The structural change must read as soft diffuse volume returning under the skin -- broad, three-dimensional, natural-looking re-inflation -- not as shadow sculpting, contrast editing, or face sharpening. Facial transitions should become smoother and more continuous as tissue fills in. Hard shadow rule: do not deepen or darken any shadow. Nasolabial folds, cheek hollows, marionette lines, prejowl shadows, and jawline shadows must be equal to or lighter than the original -- they soften as a consequence of restored lateral volume. Do not increase local contrast or create new dark bands. The face must not look more angular, more defined, or more contrasty. Skin quality improvement is permitted and expected as a secondary Sculptra effect -- improved luminosity, more even tone, healthier dermal quality. Hard identity rules: do not change eye shape, eyelid character, brow position, lip shape, nose shape, ear shape, jaw outline, or neck. Do not alter the lighting direction, background, head angle, expression, or clothing.';
+  'The change must read as soft diffuse volume returning under the skin, not as shadow sculpting or contrast editing. Facial transitions should become smoother and more continuous -- not more defined or more shadowed. Hard rule: do not deepen or darken any shadow on the face. Do not make cheek hollows darker, nasolabial folds darker, marionette shadows darker, prejowl shadows darker, jawline shadows darker, or under-eye shadows darker than the original. Do not increase local contrast anywhere. Do not create new dark bands, sharper folds, carved hollows, harder cheekbone shadows, or a more angular face. The correct visual change is softer, smoother, more cushioned transitions -- not sharper ones.';
 
 const SCULPTRA_ENHANCED_OUTPUT_RULES =
-  'Output rule: the result should look like a natural photograph of the same person after an exceptional full-course Sculptra response -- clearly fuller cheeks, more projected midface, softer tear troughs, broader lateral face, shallower nasolabial folds, AND visibly healthier, more luminous, more even skin quality. Both the structural volume changes and the skin quality improvement must be immediately visible when compared to the original. This is a best-case potential outcome for a high responder. The failure modes to avoid are: no visible structural change, shadow carving, face sharpening, V-line effect, facelift appearance, identity drift, de-aging beyond what Sculptra produces, and on-image text or labels. The person must be unmistakably the same individual at the same approximate age, with fuller structure and better skin quality as the only differences.';
+  'Output rule: the result should look like a natural photograph of the same person with broader, softer facial volume -- gently fuller, smoother surface transitions, and more supported, without any sculpting, lifting, sharpening, or contrast increase. The change should be perceptible but not dramatic: the kind of difference a patient notices rather than an obvious transformation. The failure modes to avoid are: shadow carving, contrast increase, cheek-hollow deepening, fold darkening, jawline sharpening, V-line shaping, facelift effect, skin smoothing, tone brightening, de-aging, identity drift, and on-image text or labels. The image must remain unmistakably the same person at the same age with the same skin character and the same or lower local contrast throughout.';
 
 
 // model reads it first, before any framing or magnitude instruction.
@@ -512,7 +520,11 @@ function buildCorePrompt(sel) {
   const goal = GOALS[sel_.goal] || GOALS.natural_refinement;
   const mag = INTENSITY[sel_.intensity] || INTENSITY.natural;
 
-  return `${BASE_FRAMING} Make ONLY this change: add hyaluronic acid filler to achieve ${expected}. ` +
+  // M12: use anti-rebuild framing at oblique angles, matching what Sculptra does.
+  const isOblique = (sel_.view === 'oblique_left' || sel_.view === 'oblique_right' || sel_.view === 'oblique');
+  const chinJawFraming = isOblique ? CHIN_JAW_OBLIQUE_FRAMING : BASE_FRAMING;
+
+  return `${chinJawFraming} Make ONLY this change: add hyaluronic acid filler to achieve ${expected}. ` +
          `Avoid: ${avoid}. ${goal} ${mag} ` +
          `Judge the result by facial contour alone: the added projection and support must be visible in the silhouette, while skin appearance stays exactly as photographed.${note}`;
 }
@@ -527,13 +539,19 @@ function buildCorePrompt(sel) {
 // oblique chin/jaw anchors came out timid. This base keeps every protection the
 // generic tail provides (skin texture, identity, framing, no beautification)
 // while making the lower-face contour change explicitly IN-SCOPE.
-// v8 (M7.6): the silhouette itself is now displaced GEOMETRICALLY client-side
-// (the chin/jaw projection warp in sculptra-mask.js); asking the model to
-// extend the outline produced boundary artifacts in every round, so the model
-// is now told the opposite: express the treatment entirely INSIDE the existing
-// outline (volume, support, light, shadow) and paint nothing over the
-// background. The composite discards out-of-silhouette AI pixels regardless,
-// so prompt and pipeline now agree instead of fighting.
+// M12: Oblique-specific framing for chin/jaw filler.
+// At oblique angles gpt-image-1 rebuilds the whole face the same way it does
+// for Sculptra. The fix is identical: lead with a preservation-first brief
+// that tells the model this is a minimal local contour edit, not a makeover.
+const CHIN_JAW_OBLIQUE_FRAMING =
+  'Produce a minimal, medically conservative chin and jawline filler visualization ' +
+  'from this three-quarter (oblique) consultation photograph, ' +
+  'staying as close to the original photograph as possible. ' +
+  'This is a local lower-face contour adjustment ONLY. ' +
+  'Do not rebuild, repaint, re-render, or relight the face. ' +
+  'The ONLY permitted change is lower-face contour: chin projection and jawline definition. ' +
+  'Everything above the lower face -- cheeks, midface, eyes, brows, skin, nose, forehead -- stays pixel-identical to the original. ' +
+  'Keep the exact three-quarter head angle, orientation, crop, and perspective unchanged.';
 const CHIN_JAW_SAFETY =
   " CRITICAL: this is a medical consultation photograph, not a beauty image. The ONLY region that changes is the chin, jawline, and lower-face contour described above; every other pixel stays faithful to the original. " +
   "Do NOT smooth or retouch skin anywhere, remove or soften wrinkles, even out skin tone, brighten the image, raise contrast, enlarge the eyes, lift the brows, or apply any beautifying, younger-looking, or filter-like effect. " +
