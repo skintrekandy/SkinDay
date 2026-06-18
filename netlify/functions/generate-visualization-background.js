@@ -352,18 +352,24 @@ exports.handler = async (event) => {
 
     const modelName = 'gpt-image-1';
 
-    // Enhanced uses a stronger prompt (ENHANCED_MAGNITUDE) to produce a visibly
-    // bolder result. Reference image approach removed -- prompt-only is the right
-    // lever. Both Standard and Enhanced use input_fidelity: high for identity lock,
-    // EXCEPT chin/jaw filler which needs low to allow structural lower-face change
-    // regardless of how the input face already looks.
+    // input_fidelity policy (M12.1):
+    //   - Chin/jaw filler at OBLIQUE angles uses 'low': the structural lower-face
+    //     contour change requires the model to diverge from the input geometry, and
+    //     the CHIN_JAW_OBLIQUE_FRAMING prompt now leads with anti-rebuild language
+    //     to compensate. Using 'high' at oblique was over-anchoring and suppressing
+    //     all lower-face change.
+    //   - Chin/jaw filler at FRONTAL uses 'high': frontal identity is well-preserved
+    //     by the prompt and compositor; 'low' was causing the model to beautify/
+    //     relight the whole face at frontal (regression introduced in M12).
+    //   - All other treatments (Sculptra, HDR, other filler) use 'high'.
     const isChinJawFiller = isChinJaw && f.type === 'filler';
+    const isOblique = canonicalAngle(f.angle || f.view) !== 'frontal';
     const editParams = {
       model:              modelName,
       image:              file,
-      prompt,
+      prompt:             finalPrompt,
       size:               'auto',
-      input_fidelity:     isChinJawFiller ? 'low' : 'high',
+      input_fidelity:     (isChinJawFiller && isOblique) ? 'low' : 'high',
       output_format:      'jpeg',
       output_compression: 85
     };
