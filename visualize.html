@@ -2753,6 +2753,7 @@ async function startEnhancedSlot(angleId, auth){
   // This is the key architectural fix: Ceiling builds on Standard, pushing it further,
   // rather than trying to produce a dramatic result from the original in one shot.
   // The compositor below still uses beforeDataUrl (original) as the identity anchor.
+  const beforeDataUrl = sl.beforeDataUrl || sl.originalDataUrl;
   const standardResultUrl = sl.resultDataUrl;
   if(!standardResultUrl){ console.error('[Visualize Enhanced] ' + angleId + ': no Standard result to build from'); return; }
   console.log('[Visualize Enhanced] ' + angleId + ': starting from Standard result, length=' + standardResultUrl.length);
