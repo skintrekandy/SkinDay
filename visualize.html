@@ -655,9 +655,9 @@
       <div id="fillerCorrectionWrap" style="display:none;margin-bottom:14px;">
         <div style="font-size:13px;letter-spacing:.04em;text-transform:uppercase;opacity:.75;margin-bottom:8px;">Degree of correction</div>
         <div class="view-toggle" id="fillerCorrectionToggle">
-          <button type="button" data-filler-level="25">Subtle</button>
-          <button type="button" data-filler-level="60" class="active">Balanced</button>
-          <button type="button" data-filler-level="95">Enhanced</button>
+          <button type="button" data-filler-level="35">Subtle</button>
+          <button type="button" data-filler-level="58" class="active">Balanced</button>
+          <button type="button" data-filler-level="75">Enhanced</button>
         </div>
         <div class="small" style="margin-top:6px;color:var(--muted);">Select a correction level to preview. Each shows a different degree of treatment.</div>
       </div>
@@ -979,7 +979,7 @@ function makeSlot(){
 const state = {
   type:'biostim', areas:['chin_jawline'], intensity:'enhanced', sex:'female',
   product:'sculptra', projection:'optimistic', timeline:'6',
-  blackBg:true, lastGenAt:0, intensityPct:70, courseMode:'standard', // 'standard' | 'enhanced' -- global across all angles
+  blackBg:true, lastGenAt:0, intensityPct:58, courseMode:'standard', // 'standard' | 'enhanced' -- global across all angles
   enhancedStartedAt: 0, enhancedTimerInterval: null,
   selectedAngles:['frontal'], activeAngle:'frontal',
   slots:{ frontal:makeSlot(), r45:makeSlot(), l45:makeSlot() }
@@ -2428,6 +2428,14 @@ async function prepAndStartSlot(angleId, auth, isRegen){
   // Reset courseMode to standard on any new generation so the slider doesn't
   // pick up a strongApply from a previous Enhanced run on a different treatment.
   state.courseMode = 'standard';
+  // Reset filler buttons to Balanced default on each new generation
+  if(state.type === 'filler'){
+    state.intensityPct = 58;
+    const tog = document.getElementById('fillerCorrectionToggle');
+    if(tog) tog.querySelectorAll('[data-filler-level]').forEach(b => {
+      b.classList.toggle('active', b.dataset.fillerLevel === '58');
+    });
+  }
 
   // Black background per photo, applied at generation time, never on upload.
   let beforeDataUrl = sl.originalDataUrl;
@@ -2535,25 +2543,62 @@ async function finishSlot(angleId, auth){
     try {
       const beforeImg = await loadImage(sl.beforeDataUrl || sl.originalDataUrl);
       const aiImg = await loadImage(sl.resultDataUrl);
-      const { makeSculptraCompositor } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
-      // M6 A/B hook: append ?warp=off to compare against the pure M5 composite.
-      const warpOn = !/[?&]warp=off\b/i.test(location.search);
-      // M9.1 A/B hook: append ?jowltex=off to disable the jowl-lobe texture
-      // release and compare against exact v35 composite behavior.
-      const jowlTexOn = !/[?&]jowltex=off\b/i.test(location.search);
-      // M9.7 A/B hook: ?jawdef=off disables the deterministic border light.
-      const jawDefOn = !/[?&]jawdef=off\b/i.test(location.search);
-      const apply = await makeSculptraCompositor(beforeImg, aiImg, {
-        scope: compScope, sex: state.sex,
-        warp: warpOn, jowlTexRelease: jowlTexOn, jawDef: jawDefOn, angleId,
-        // Sharper texture restore for chin/jaw filler: higher midKeep and
-        // tighter texRadiusFrac reduce the blur at the jawline boundary.
-        ...(compScope === 'chin_jaw' ? { midKeep: 0.82, texRadiusFrac: 0.007 } : {})
-      });
+      // M12: chin/jaw filler uses its own dedicated compositor (chin-jaw-mask.js)
+      // with parameters tuned for mandibular edge definition, not Sculptra soft volume.
+      // Sculptra still uses sculptra-mask.js untouched.
+      let apply;
+      if(compScope === 'chin_jaw'){
+        const { makeChinJawCompositor } = await import('./chin-jaw-mask.js?v=' + MASK_MODULE_VERSION);
+        apply = await makeChinJawCompositor(beforeImg, aiImg, {
+          sex: state.sex,
+          angleId,
+          _maskModuleVersion: MASK_MODULE_VERSION
+        });
+      } else {
+        const { makeSculptraCompositor } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
+        // M6 A/B hook: append ?warp=off to compare against the pure M5 composite.
+        const warpOn = !/[?&]warp=off\b/i.test(location.search);
+        // M9.1 A/B hook: append ?jowltex=off to disable the jowl-lobe texture release.
+        const jowlTexOn = !/[?&]jowltex=off\b/i.test(location.search);
+        // M9.7 A/B hook: ?jawdef=off disables the deterministic border light.
+        const jawDefOn = !/[?&]jawdef=off\b/i.test(location.search);
+        apply = await makeSculptraCompositor(beforeImg, aiImg, {
+          scope: compScope, sex: state.sex,
+          warp: warpOn, jowlTexRelease: jowlTexOn, jawDef: jawDefOn, angleId
+        });
+      }
       if(apply){
         sl.apply = apply;
         sl.resultDataUrl = apply(state.intensityPct / 100);
         console.log('%c[Visualize] ' + angleId + ': compositor ready; outside the treatment zone is the original photo.', 'color:#2e7d32;font-weight:bold');
+        // Debug: ?debug=layers shows raw AI + composited result side by side
+        if(/[?&]debug=layers\b/i.test(location.search)){
+          const panel = document.createElement('div');
+          panel.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#111;z-index:9999;padding:12px;display:flex;gap:8px;overflow-x:auto;';
+          const closeBtn = document.createElement('button');
+          closeBtn.textContent = 'Close debug';
+          closeBtn.style.cssText = 'position:absolute;top:8px;right:8px;background:#c00;color:#fff;border:none;padding:6px 12px;cursor:pointer;border-radius:4px;';
+          closeBtn.onclick = () => panel.remove();
+          panel.appendChild(closeBtn);
+          [
+            { label: 'Original (' + angleId + ')', src: sl.beforeDataUrl || sl.originalDataUrl },
+            { label: 'Raw AI (before compositor)', src: sl.rawAiDataUrl },
+            { label: 'Composited result', src: sl.resultDataUrl }
+          ].forEach(({ label, src }) => {
+            const wrap = document.createElement('div');
+            wrap.style.cssText = 'flex-shrink:0;text-align:center;';
+            const img = document.createElement('img');
+            img.src = src || '';
+            img.style.cssText = 'height:300px;display:block;border:1px solid #444;';
+            const cap = document.createElement('div');
+            cap.textContent = label;
+            cap.style.cssText = 'color:#aaa;font-size:11px;margin-top:4px;';
+            wrap.appendChild(img);
+            wrap.appendChild(cap);
+            panel.appendChild(wrap);
+          });
+          document.body.prepend(panel);
+        }
       } else {
         console.warn('[Visualize] ' + angleId + ': compositor null (no face); showing RAW AI for this angle, slider skips it.');
       }
@@ -3208,13 +3253,29 @@ async function buildLayerDebugSheet(angleId){
     const t = (state.intensityPct || 70) / 100;
     const beforeImg = await loadImage(sl.beforeDataUrl || sl.originalDataUrl);
     const aiImg = await loadImage(sl.rawAiDataUrl);
-    const { compositeSculptra } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
-    const base = { scope: compScope, sex: state.sex, intensity: t };
     setStatus('Building the layer attribution sheet (4 composites)…', 'spin');
-    const v3 = await compositeSculptra(beforeImg, aiImg, { ...base, warp:false });
-    const v4 = await compositeSculptra(beforeImg, aiImg, { ...base, warpSharpen:false, jawDef:false });
-    const v5 = await compositeSculptra(beforeImg, aiImg, { ...base, jawDef:false });
-    const v6 = await compositeSculptra(beforeImg, aiImg, { ...base });
+    let v3, v4, v5, v6;
+    if(compScope === 'chin_jaw'){
+      // Debug sheet uses chin/jaw compositor so it matches the live result exactly
+      const { makeChinJawCompositor } = await import('./chin-jaw-mask.js?v=' + MASK_MODULE_VERSION);
+      const applyFn = await makeChinJawCompositor(beforeImg, aiImg, {
+        sex: state.sex, angleId, _maskModuleVersion: MASK_MODULE_VERSION
+      });
+      // For chin/jaw debug: show raw AI, no-warp, with-warp, full pipeline
+      const { compositeSculptra } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
+      const base = { scope: 'chin_jaw', sex: state.sex, intensity: t };
+      v3 = await compositeSculptra(beforeImg, aiImg, { ...base, warp: false });
+      v4 = await compositeSculptra(beforeImg, aiImg, { ...base, warp: false, midKeep: 0.28, texRadiusFrac: 0.005 });
+      v5 = await compositeSculptra(beforeImg, aiImg, { ...base, midKeep: 0.28, texRadiusFrac: 0.005, jawDef: false });
+      v6 = applyFn ? applyFn(t) : await compositeSculptra(beforeImg, aiImg, { ...base, midKeep: 0.28, texRadiusFrac: 0.005 });
+    } else {
+      const { compositeSculptra } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
+      const base = { scope: compScope, sex: state.sex, intensity: t };
+      v3 = await compositeSculptra(beforeImg, aiImg, { ...base, warp:false });
+      v4 = await compositeSculptra(beforeImg, aiImg, { ...base, warpSharpen:false, jawDef:false });
+      v5 = await compositeSculptra(beforeImg, aiImg, { ...base, jawDef:false });
+      v6 = await compositeSculptra(beforeImg, aiImg, { ...base });
+    }
     const cells = [
       { src: sl.beforeDataUrl || sl.originalDataUrl, label: '1. Original' },
       { src: sl.rawAiDataUrl,                        label: '2. Raw AI output' },
@@ -3409,14 +3470,25 @@ async function hiResResultFor(angleId){
   if(sl.hiRes && sl.hiRes.pct === pct) return sl.hiRes.url;
   const beforeImg = await loadImage(sl.beforeDataUrl || sl.originalDataUrl);
   const aiImg = await loadImage(sl.rawAiDataUrl);
-  const { compositeSculptra } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
-  const warpOn = !/[?&]warp=off\b/i.test(location.search);
-  const jowlTexOn = !/[?&]jowltex=off\b/i.test(location.search);
-  const jawDefOn = !/[?&]jawdef=off\b/i.test(location.search);
-  const url = await compositeSculptra(beforeImg, aiImg, {
-    scope: compScope, sex: state.sex, warp: warpOn, jowlTexRelease: jowlTexOn,
-    jawDef: jawDefOn, intensity: pct / 100, maxDim: EXPORT_MAXDIM
-  });
+  let url;
+  if(compScope === 'chin_jaw'){
+    // Use dedicated chin/jaw compositor -- same path as live result
+    const { makeChinJawCompositor } = await import('./chin-jaw-mask.js?v=' + MASK_MODULE_VERSION);
+    const applyHiRes = await makeChinJawCompositor(beforeImg, aiImg, {
+      sex: state.sex, angleId, maxDim: EXPORT_MAXDIM,
+      _maskModuleVersion: MASK_MODULE_VERSION
+    });
+    url = applyHiRes ? applyHiRes(pct / 100) : null;
+  } else {
+    const { compositeSculptra } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
+    const warpOn = !/[?&]warp=off\b/i.test(location.search);
+    const jowlTexOn = !/[?&]jowltex=off\b/i.test(location.search);
+    const jawDefOn = !/[?&]jawdef=off\b/i.test(location.search);
+    url = await compositeSculptra(beforeImg, aiImg, {
+      scope: compScope, sex: state.sex, warp: warpOn, jowlTexRelease: jowlTexOn,
+      jawDef: jawDefOn, intensity: pct / 100, maxDim: EXPORT_MAXDIM
+    });
+  }
   if(url) sl.hiRes = { pct, url };
   return url;
 }
