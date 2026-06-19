@@ -48,11 +48,26 @@ export async function makeChinJawCompositor(beforeImg, aiImg, opts) {
     warp:           true,
     jowlTexRelease: true,
     jawDef:         true,
-    // Key difference from Sculptra: low mid-band restore so AI shape dominates.
-    // ChatGPT diagnosis: midKeep 0.6 restores old jaw shadow = double contour = blur.
-    midKeep:        0.28,
-    // Very tight frequency cutoff: pore texture only, not coarser shadow bands.
-    texRadiusFrac:  0.005,
+    // M12.1: midKeep raised 0.28 -> 0.65.
+    // Root cause of the blurry rectangular artifact: midKeep 0.28 means 72% of
+    // the mid-frequency band (4-14px skin variation) comes from the AI's smooth
+    // fill rather than the original. At oblique the AI paints a broad low-freq
+    // fill in the lower face, and handing it 72% of the mid band produces a
+    // waxy airbrushed patch over a rectangular zone. 0.65 keeps the majority of
+    // the patient's own organic mid-scale skin texture so the treated zone reads
+    // as real skin with a contour change, not a smooth painted region.
+    // The old jaw shadow concern (midKeep 0.6 restores old contour) is addressed
+    // by the jowlTexRelease field: the release suppresses midKeep INSIDE the jowl
+    // lobes where fold erasure matters, so raising midKeep globally does not
+    // un-erase the jowl fold. The jowl crease still reads correctly.
+    midKeep:        0.65,
+    // M12.1: texRadiusFrac raised 0.005 -> 0.009 (CHIN_JAW_TEX_RADIUS default).
+    // 0.005W restores only sub-pixel detail (~2-3px at 1024px). Combined with
+    // midKeep 0.28, almost nothing above pore-scale was coming from the original,
+    // leaving the treated zone dominated by AI smooth fill in the 3-14px band.
+    // 0.009W (the calibrated CHIN_JAW_TEX_RADIUS default) restores genuine
+    // pore-scale texture and closes the gap that was producing the blurry patch.
+    texRadiusFrac:  0.009,
     // No glow (chin/jaw is structural not volumetric)
     glowApply:      0,
     // No brightness cap (preserve the AI's border-to-neck shadow)
