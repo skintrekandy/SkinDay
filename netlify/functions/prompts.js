@@ -524,8 +524,16 @@ function buildCorePrompt(sel) {
   const isOblique = (sel_.view === 'oblique_left' || sel_.view === 'oblique_right' || sel_.view === 'oblique');
   const chinJawFraming = isOblique ? CHIN_JAW_OBLIQUE_FRAMING : BASE_FRAMING;
 
-  return `${chinJawFraming} Make ONLY this change: add hyaluronic acid filler to achieve ${expected}. ` +
-         `Avoid: ${avoid}. ${goal} ${mag} ` +
+  // M12.1: magnitude placed BEFORE the area description so it is not buried
+  // under conservation framing. The oblique anti-rebuild framing ("stay as close
+  // to the original as possible") was coming first and the model weights opening
+  // lines most heavily -- so Balanced and Enhanced were indistinguishable because
+  // the magnitude string arrived after a ceiling of conservation instructions.
+  // Moving mag to immediately follow the framing establishes the response level
+  // before the scope constraints, allowing the model to read: "minimal change,
+  // BUT at this specific magnitude." The anti-rebuild protection stays intact.
+  return `${chinJawFraming} ${mag} Make ONLY this change: add hyaluronic acid filler to achieve ${expected}. ` +
+         `Avoid: ${avoid}. ${goal} ` +
          `Judge the result by facial contour alone: the added projection and support must be visible in the silhouette, while skin appearance stays exactly as photographed.${note}`;
 }
 
@@ -557,7 +565,7 @@ const CHIN_JAW_SAFETY =
   "Do NOT smooth or retouch skin anywhere, remove or soften wrinkles, even out skin tone, brighten the image, raise contrast, enlarge the eyes, lift the brows, or apply any beautifying, younger-looking, or filter-like effect. " +
   "Keep ALL skin texture (pores, fine lines, blemishes) exactly as in the original, including on the treated lower face: the new contour carries the same real skin. " +
   "Do NOT change the eyes, brows, nose, lips, cheekbones, mid-face width, hairstyle, ears, clothing, jewellery, expression, head angle and pose, camera framing and crop, lighting, or background. " +
-  "Reshaping the lower-face contour IS the treatment, expressed entirely INSIDE the existing face: a stronger, better-projected chin and a more defined, smoothly tapered jawline shown through volume, structural support, light, and shadow within the current outline. Do NOT paint anything outside the existing silhouette: no new tissue, glow, haze, cloud, halo, blur, or smudge over the background; the boundary between the face and the background stays exactly as photographed. " +
+  "The chin projection and jawline definition must be visible as a real structural change in the lower-face contour at the specified magnitude. Show the change clearly in the silhouette and shadow architecture of the lower face. " +
   "Preserve identity, ethnicity and ethnic features, and apparent age; the result must be unmistakably the same person with only the lower-face contour treated. Do not add text, labels, or watermarks.";
 
 // True when the request is the chin+jawline lower-face unit (the client posts
