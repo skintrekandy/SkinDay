@@ -651,15 +651,13 @@
           <span id="courseHelpEnhanced" style="display:none;">Ceiling: upper-range result with a stronger commitment. Shows what is possible, not guaranteed.</span>
         </div>
       </div>
-      <!-- Filler: three-button correction selector -->
+      <!-- Filler: correction level locked to Balanced for M12.1 release.
+           Subtle and Enhanced deferred to M13 (oblique intensity differentiation
+           requires warp-first architecture). Selector hidden; Balanced is default. -->
       <div id="fillerCorrectionWrap" style="display:none;margin-bottom:14px;">
-        <div style="font-size:13px;letter-spacing:.04em;text-transform:uppercase;opacity:.75;margin-bottom:8px;">Degree of correction</div>
         <div class="view-toggle" id="fillerCorrectionToggle">
-          <button type="button" data-filler-level="35">Subtle</button>
-          <button type="button" data-filler-level="58" class="active">Balanced</button>
-          <button type="button" data-filler-level="75">Enhanced</button>
+          <button type="button" data-filler-level="58" class="active" style="display:none;">Balanced</button>
         </div>
-        <div class="small" style="margin-top:6px;color:var(--muted);">Select a correction level to preview. Each shows a different degree of treatment.</div>
       </div>
       <!-- Timeline slider (biostim only) -->
       <div id="biostimSliderWrap">
