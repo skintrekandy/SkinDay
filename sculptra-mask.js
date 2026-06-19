@@ -1351,8 +1351,17 @@ function buildLowLuma(b, w, h, W){
 // The undershoot correction brightens these back toward the destination light
 // field, gated on the destination being lighter than the arriving pixel by more
 // than WARP_SHADE_MARGIN. Both directions are one-sided and pull-rate controlled.
-// M10.5 v69: raised 0.40 -> 0.55 (matching bright correction strength) after
-// removing the wrong mag>8 gate. The undershoot condition itself is the discriminator.
+// M12.1: applyWarpShadeFix gets its own luma gate, separate from GATE_LUMA_LO/HI
+// (10/26). The outline gate correctly prevents AI painting on dark background
+// pixels. But applyWarpShadeFix was reusing it -- so when warped bright chin
+// skin landed on the dark neck zone (luma < 26), subj evaluated to ~0 and the
+// bright overshoot correction was silently skipped. That uncorrected bright patch
+// on the dark neck is the blurry rectangular artifact confirmed by Test 4.
+// Lowering the shade fix gate to 4/14 fires the correction on dark-destination
+// pixels too. Sculptra is unaffected: its lift warp never displaces chin skin
+// onto a dark background zone.
+const WARP_SHADE_GATE_LO = 4;   // dedicated shade-fix gate (was: GATE_LUMA_LO=10)
+const WARP_SHADE_GATE_HI = 14;  // dedicated shade-fix gate (was: GATE_LUMA_HI=26)
 const WARP_SHADE_DARK_PULL = 0.55;
 function applyWarpShadeFix(o, lowY, f, w){
   for(let y=f.y0; y<=f.y1; y++){
@@ -1362,8 +1371,8 @@ function applyWarpShadeFix(o, lowY, f, w){
       const mag=Math.abs(f.sx[i])+Math.abs(f.sy[i]);
       if(mag<0.5) continue;                       // outside the moved band
       const Yo=lowY[i];
-      const subj=smoothstep(GATE_LUMA_LO, GATE_LUMA_HI, Yo);
-      if(subj<=0) continue;                       // backdrop/hair: skip
+      const subj=smoothstep(WARP_SHADE_GATE_LO, WARP_SHADE_GATE_HI, Yo);
+      if(subj<=0) continue;                       // pure black backdrop: skip
       const p4=i*4;
       const Yr=0.299*o[p4]+0.587*o[p4+1]+0.114*o[p4+2];
       const band=Math.min(1, mag/2);              // feather at the band edge

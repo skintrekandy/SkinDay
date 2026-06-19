@@ -96,6 +96,7 @@
     .consent.checked { border-color:var(--rose); background:#fdf1ee; }
     .consent input { margin-top:2px; width:16px; height:16px; flex-shrink:0; accent-color:var(--rose); cursor:pointer; }
     .status { display:flex; align-items:center; gap:10px; padding:11px 15px; background:#fff; border:1px solid var(--border); border-radius:6px; font-size:.83rem; color:var(--muted); margin-top:14px; }
+    .field-hint { font-size:.74rem; color:var(--muted); line-height:1.45; }
     .dot { width:6px; height:6px; border-radius:50%; background:var(--border); flex-shrink:0; }
     .dot.spin { background:var(--gold); animation:blink 1s infinite; }
     .dot.ok { background:#3D7A55; }
@@ -106,7 +107,7 @@
     .btn-gold:disabled { opacity:.45; cursor:not-allowed; }
     .btn-gold.viewing { background:transparent; color:var(--gold); border-color:var(--gold); }
     /* ── Output action bar ── */
-    .action-bar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:4px; }
+    .action-bar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:4px; justify-content:center; }
     .action-bar-primary { display:flex; gap:8px; align-items:center; }
     .action-bar-downloads { display:flex; gap:8px; align-items:center; }
     .overflow-wrap { position:relative; display:inline-block; }
@@ -360,6 +361,41 @@
       #msbRegenLink { padding: 0; flex-shrink: 0; font-size: .75rem; }
     }
 
+    /* M12: clinic reference library */
+    .nav-library { display:none; background:transparent; border:1px solid rgba(201,169,110,.4); color:var(--dim); padding:.3rem .75rem; border-radius:4px; font-size:.78rem; cursor:pointer; font-family:'DM Sans',sans-serif; white-space:nowrap; }
+    .nav-library:hover { border-color:var(--gold); color:var(--cream); }
+    .nav-library.has-cases { border-color:rgba(201,169,110,.65); color:var(--gold); }
+    .library-indicator { display:none; gap:6px; align-items:center; padding:8px 12px; background:rgba(201,169,110,.06); border:1px solid rgba(201,169,110,.18); border-radius:6px; font-size:.78rem; color:var(--muted); margin-top:10px; }
+    .library-indicator.active { display:flex; }
+    .library-dot { width:7px; height:7px; border-radius:50%; background:var(--gold); flex-shrink:0; }
+    /* Library modal */
+    #libraryModal .guide-card { max-width:680px; max-height:86vh; overflow-y:auto; }
+    .lib-section { border-top:1px solid var(--border); padding-top:18px; margin-top:18px; }
+    .lib-section:first-child { border-top:none; padding-top:0; margin-top:0; }
+    .lib-section-title { font-size:.7rem; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:var(--dim); margin-bottom:12px; }
+    .lib-case-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:12px; margin-bottom:12px; }
+    .lib-case-card { background:var(--warm); border:1px solid var(--border); border-radius:8px; overflow:hidden; position:relative; }
+    .lib-case-pair { display:grid; grid-template-columns:1fr 1fr; }
+    .lib-case-pair img { width:100%; aspect-ratio:3/4; object-fit:cover; display:block; }
+    .lib-case-meta { padding:8px 10px; font-size:.72rem; color:var(--muted); display:flex; align-items:center; justify-content:space-between; }
+    .lib-case-tag { background:rgba(201,169,110,.12); color:var(--gold); border-radius:4px; padding:2px 6px; font-size:.65rem; letter-spacing:.06em; }
+    .lib-case-del { background:transparent; border:none; cursor:pointer; color:var(--rose); font-size:.78rem; padding:2px 6px; border-radius:4px; }
+    .lib-case-del:hover { background:#fdf1ee; }
+    .lib-empty { font-size:.82rem; color:var(--muted); padding:14px 0; font-style:italic; }
+    .lib-upload-form { background:var(--warm); border:1px solid var(--border); border-radius:8px; padding:16px; margin-top:8px; }
+    .lib-upload-form .field { margin-bottom:10px; }
+    .lib-upload-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:10px; }
+    .lib-upload-zone { border:1.5px dashed var(--border); border-radius:6px; aspect-ratio:3/4; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; position:relative; overflow:hidden; background:#fff; cursor:pointer; transition:border-color .2s; }
+    .lib-upload-zone:hover { border-color:var(--gold); }
+    .lib-upload-zone.filled { border-style:solid; border-color:var(--rose); }
+    .lib-upload-zone img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+    .lib-upload-zone input { position:absolute; inset:0; opacity:0; cursor:pointer; }
+    .lib-upload-zone-lbl { font-size:.72rem; color:var(--muted); text-align:center; pointer-events:none; }
+    .lib-status { font-size:.78rem; margin-top:8px; min-height:1.2em; }
+    .lib-status.ok { color:#2e7d32; }
+    .lib-status.err { color:var(--rose); }
+    @media(max-width:540px){ .lib-case-grid { grid-template-columns:1fr; } .lib-upload-row { grid-template-columns:1fr; } }
+
     /* ── Larger touch target for all range thumbs on touch screens ── */
     @media(pointer: coarse){
       input[type=range] { height: 28px; }
@@ -431,6 +467,7 @@
   <a href="/" class="nav-logo">Skin<span>Day</span></a>
   <div class="nav-ctas">
     <button class="nav-credits" id="navCredits" type="button" title="Credit balance"></button>
+    <button class="nav-library" id="navLibraryBtn" type="button" title="Case library">Library</button>
     <button class="nav-link" id="navAccountBtn" type="button" style="display:none;">Account</button>
   </div>
 </nav>
@@ -503,6 +540,30 @@
           </div>
           <div class="small" style="margin-top:6px;color:var(--muted);font-style:italic;">e.g. Sculptra, Hyperdilute Radiesse, Lanluma, Ellansé</div>
         </div>
+
+        <!-- Patient intake: age, sex, primary concern (all optional) -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:4px;">
+          <div class="field">
+            <label>Patient age <span style="font-weight:400;color:var(--muted);">(optional)</span></label>
+            <input id="patientAge" type="number" min="18" max="99" placeholder="e.g. 45" style="width:100%;" />
+          </div>
+          <div class="field">
+            <label>Sex <span style="font-weight:400;color:var(--muted);">(optional)</span></label>
+            <div class="pill-grid" id="patientSexToggle" style="margin-top:6px;">
+              <button class="pill" data-sex="female" type="button">Female</button>
+              <button class="pill" data-sex="male" type="button">Male</button>
+            </div>
+          </div>
+        </div>
+        <div class="field" style="margin-top:4px;">
+          <label>Primary concern <span style="font-weight:400;color:var(--muted);">(optional)</span></label>
+          <div class="pill-grid" id="primaryConcernToggle" style="margin-top:6px;">
+            <button class="pill" data-concern="hollow_deflated" type="button">Volume loss</button>
+            <button class="pill" data-concern="full_descended" type="button">Sagging</button>
+            <button class="pill" data-concern="mixed" type="button">Mixed</button>
+          </div>
+        </div>
+
         <div class="field">
           <label>Response</label>
           <div class="privacy-note"><span>ℹ️</span><span>Your preview is generated at a strong, realistic anchor, then you set the displayed response with a slider on the result. No need to regenerate.</span></div>
@@ -530,6 +591,22 @@
       <div class="field" style="margin-top:14px;">
         <label>Your name or clinic (optional, appears on export)</label>
         <input id="clinicName" placeholder="e.g. Dr. Smith · ABC Cosmetic Clinic" maxlength="60" />
+      </div>
+      <div class="field" style="margin-top:10px;">
+        <label>Clinic logo (optional, appears on export)</label>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:4px;">
+          <button type="button" id="logoUploadBtn" class="btn btn-light" style="font-size:.78rem;padding:.35rem .8rem;">Upload logo</button>
+          <span id="logoUploadName" style="font-size:.76rem;color:var(--muted);"></span>
+          <button type="button" id="logoRemoveBtn" style="display:none;background:none;border:none;cursor:pointer;font-size:.76rem;color:var(--rose);padding:0;">Remove</button>
+        </div>
+        <input type="file" id="logoFileInput" accept="image/png,image/jpeg,image/webp,image/svg+xml" style="display:none;" />
+        <div class="field-hint" style="margin-top:4px;">PNG or JPG with transparent or dark background works best.</div>
+      </div>
+
+      <!-- M12: library indicator (shown for account users who have uploaded cases) -->
+      <div class="library-indicator" id="libIndicator">
+        <span class="library-dot"></span>
+        <span id="libIndicatorText">Your case library is active. Biostimulator generations will use your reference cases.</span>
       </div>
 
       <label class="consent" id="consentBox">
@@ -562,7 +639,7 @@
       <div class="result-card"><img id="aiResult" alt="AI simulated treatment preview" /><svg class="anno-svg" id="annoSvg" viewBox="0 0 100 125" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg><div class="result-tag sim" id="simTag">Simulated · AI Visualization</div></div>
     </div>
     <div id="intensityWrap" style="display:none;margin-top:14px;">
-      <!-- Course segmented control (biostim only) -->
+      <!-- Course segmented control (biostim only, Ceiling hidden) -->
       <div id="courseControl" style="display:none;margin-bottom:14px;">
         <div style="font-size:13px;letter-spacing:.04em;text-transform:uppercase;opacity:.75;margin-bottom:8px;">Response Preview</div>
         <div class="view-toggle" id="courseToggle">
@@ -574,17 +651,27 @@
           <span id="courseHelpEnhanced" style="display:none;">Ceiling: upper-range result with a stronger commitment. Shows what is possible, not guaranteed.</span>
         </div>
       </div>
-      <!-- Timeline slider -->
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-        <label for="intensitySlider" id="intensityLabel" style="font-size:13px;letter-spacing:.04em;text-transform:uppercase;opacity:.75;">Response timeline</label>
-        <span id="intensityValue" style="font-family:'Cormorant Garamond',serif;font-size:22px;">Expected</span>
+      <!-- Filler: correction level locked to Balanced for M12.1 release.
+           Subtle and Enhanced deferred to M13 (oblique intensity differentiation
+           requires warp-first architecture). Selector hidden; Balanced is default. -->
+      <div id="fillerCorrectionWrap" style="display:none;margin-bottom:14px;">
+        <div class="view-toggle" id="fillerCorrectionToggle">
+          <button type="button" data-filler-level="58" class="active" style="display:none;">Balanced</button>
+        </div>
       </div>
-      <input type="range" id="intensitySlider" min="0" max="100" step="1" value="70" style="width:100%;margin-top:8px;accent-color:#C8725A;" />
-      <div style="display:flex;justify-content:space-between;font-size:.68rem;letter-spacing:.04em;text-transform:uppercase;opacity:.6;margin-top:4px;">
-        <span id="intensityMin">Early</span><span id="intensityMax">6 months</span>
+      <!-- Timeline slider (biostim only) -->
+      <div id="biostimSliderWrap">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+          <label for="intensitySlider" id="intensityLabel" style="font-size:13px;letter-spacing:.04em;text-transform:uppercase;opacity:.75;">Response timeline</label>
+          <span id="intensityValue" style="font-family:'Cormorant Garamond',serif;font-size:22px;">Expected</span>
+        </div>
+        <input type="range" id="intensitySlider" min="0" max="100" step="1" value="70" style="width:100%;margin-top:8px;accent-color:#C8725A;" />
+        <div style="display:flex;justify-content:space-between;font-size:.68rem;letter-spacing:.04em;text-transform:uppercase;opacity:.6;margin-top:4px;">
+          <span id="intensityMin">Early</span><span id="intensityMax">6 months</span>
+        </div>
+        <div class="small" id="intensityHelp" style="margin-top:6px;">Slide to preview an earlier or more complete treatment response. The simulation updates instantly.</div>
+        <div class="small" id="overfillNote" style="display:none;margin-top:4px;color:#A33524;font-weight:600;">Shown for education: deliberately overfilled, not a treatment goal.</div>
       </div>
-      <div class="small" id="intensityHelp" style="margin-top:6px;">Slide to preview an earlier or more complete treatment response. The simulation updates instantly.</div>
-      <div class="small" id="overfillNote" style="display:none;margin-top:4px;color:#A33524;font-weight:600;">Shown for education: deliberately overfilled, not a treatment goal.</div>
     </div>
     <div class="compare-wrap" id="compareWrap" style="display:none;">
       <div class="compare-card" id="compareCard">
@@ -614,7 +701,7 @@
         <button class="btn btn-light" id="moreBtn" style="display:none;">⋯ More</button>
         <div class="overflow-menu" id="overflowMenu">
           <button id="insightsBtn">Compare</button>
-          <button id="plainBtn">Download plain photos</button>
+          <button id="plainBtn">Download simulated only</button>
           <button id="discardAngleBtn" style="display:none;">Discard this angle</button>
           <button id="newBtn">New case</button>
         </div>
@@ -639,7 +726,43 @@
   </div>
 </div>
 
-<!-- ───────── BUY CREDITS ───────── -->
+<!-- ───────── M12: CLINIC CASE LIBRARY ───────── -->
+<div class="guide-modal hidden" id="libraryModal">
+  <div class="guide-card" id="libraryCard">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <h2 style="margin:0;">Case library</h2>
+      <button class="btn btn-light" id="libraryCloseBtn" type="button" style="padding:.3rem .75rem;font-size:.8rem;">Close</button>
+    </div>
+    <p style="font-size:.84rem;color:var(--muted);line-height:1.55;margin-bottom:4px;">Your clinic's before/after cases are used as a visual reference for Enhanced biostimulator generations, so results better match your clinical style.</p>
+    <p style="font-size:.76rem;color:var(--muted);line-height:1.5;margin-bottom:18px;"><strong>Privacy:</strong> cases are stored privately and used only for your own Enhanced generations. Standard generations are unaffected.</p>
+
+    <!-- Upload: coming soon -->
+    <div style="background:var(--warm);border:1px solid var(--border);border-radius:8px;padding:20px 18px;margin-bottom:20px;display:flex;align-items:flex-start;gap:14px;">
+      <div style="font-size:1.4rem;line-height:1;flex-shrink:0;">&#128193;</div>
+      <div>
+        <div style="font-size:.84rem;font-weight:600;color:var(--deep);margin-bottom:4px;">Case uploads coming soon</div>
+        <div style="font-size:.8rem;color:var(--muted);line-height:1.55;">Clinic case uploads require compliant private storage and a patient consent workflow. We are building this now. In the meantime, contact us to have your cases added directly.</div>
+        <a href="mailto:hello@skinday.ca?subject=Visualize case library" style="display:inline-block;margin-top:10px;font-size:.78rem;color:var(--gold);text-decoration:none;border-bottom:1px solid rgba(201,169,110,.3);">Contact us to add your cases</a>
+      </div>
+    </div>
+    <!-- Existing cases (shown below the upload form, filtered by current selection) -->
+    <div class="lib-section" style="margin-top:20px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div class="lib-section-title" style="margin-bottom:0;">Saved cases</div>
+        <span id="libCaseCountLabel" style="font-size:.74rem;color:var(--muted);"></span>
+      </div>
+      <!-- Angle filter tabs for the case list -->
+      <div class="view-toggle" id="libAngleTabs" style="margin-bottom:14px;">
+        <button type="button" class="active" data-lib-angle="frontal">Front</button>
+        <button type="button" data-lib-angle="oblique_right">R 45</button>
+        <button type="button" data-lib-angle="oblique_left">L 45</button>
+        <button type="button" data-lib-angle="all">All</button>
+      </div>
+      <div class="lib-empty" id="libEmpty" style="display:none;">No cases yet for this selection.</div>
+      <div class="lib-case-grid" id="libCaseGrid"></div>
+    </div>
+  </div>
+</div>
 <div class="guide-modal hidden" id="buyModal">
   <div class="guide-card">
     <h2>Add credits</h2>
@@ -854,7 +977,7 @@ function makeSlot(){
 const state = {
   type:'biostim', areas:['chin_jawline'], intensity:'enhanced', sex:'female',
   product:'sculptra', projection:'optimistic', timeline:'6',
-  blackBg:true, lastGenAt:0, intensityPct:70, courseMode:'standard', // 'standard' | 'enhanced' -- global across all angles
+  blackBg:true, lastGenAt:0, intensityPct:58, courseMode:'standard', // 'standard' | 'enhanced' -- global across all angles
   enhancedStartedAt: 0, enhancedTimerInterval: null,
   selectedAngles:['frontal'], activeAngle:'frontal',
   slots:{ frontal:makeSlot(), r45:makeSlot(), l45:makeSlot() }
@@ -957,6 +1080,7 @@ function renderAcctBar(){
       const displayName = email ? email.split('@')[0] : 'Account';
       navAcct.textContent = displayName.charAt(0).toUpperCase() + displayName.slice(1);
     }
+    syncLibraryBtn();
   } else {
     bar.style.display = 'none';
     navPill.style.display = 'none';
@@ -1023,6 +1147,7 @@ async function onSignedIn(session){
   sb.__email = session.user.email || '';
   unlock('account');
   refreshCredits(0);
+  loadLibraryCases(); // M12: load clinic library after sign-in
 }
 
 async function submitAuth(){
@@ -1148,6 +1273,337 @@ const navAccountBtn = document.getElementById('navAccountBtn');
 if(navAccountBtn) navAccountBtn.addEventListener('click', () => {
   window.location.href = '/account.html';
 });
+
+/* ─────── M12: Clinic case library ───────
+   Library covers all treatment areas (sculptra, ha_chin, etc.) and three angles.
+   Treatment is selected in the upload form; the case list filters by angle tab.
+   Reference lookup fires ONLY for Enhanced Sculptra -- Standard is untouched.
+   All operations go through manage-reference-cases.js (Bearer auth only).
+   Library state is loaded once on sign-in and refreshed after any mutation. */
+
+const LIB_API = '/.netlify/functions/manage-reference-cases';
+
+const libState = {
+  cases:     [],   // all cases for this clinic, fetched on sign-in
+  listAngle: 'frontal' // angle filter in the case list ("all" shows all)
+};
+
+// Human-readable labels for treatment areas.
+const LIB_AREA_LABELS = {
+  sculptra:        'Sculptra',
+  ha_chin:         'HA chin',
+  ha_chin_jawline: 'HA chin + jawline',
+  ha_jawline:      'HA jawline',
+  ha_nose:         'HA nose',
+  ha_lips:         'HA lips',
+  ha_cheeks:       'HA cheeks'
+};
+
+function openLibraryModal() {
+  document.getElementById('libraryModal').classList.remove('hidden');
+  renderLibCaseList();
+  updateLibCaseCount();
+}
+function closeLibraryModal() {
+  document.getElementById('libraryModal').classList.add('hidden');
+}
+document.getElementById('libraryCloseBtn').addEventListener('click', closeLibraryModal);
+document.getElementById('libraryModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('libraryModal')) closeLibraryModal();
+});
+// M12.1: Map the three filler correction button levels (35/58/75) to prompt
+// intensity strings. This is the mapping that makes each button send a
+// genuinely different prompt to the model.
+function fillerLevelToIntensity(level){
+  if(level <= 40) return 'natural';    // Subtle
+  if(level <= 65) return 'moderate';   // Balanced
+  return 'enhanced';                    // Enhanced
+}
+
+// Filler three-button correction selector.
+// M12.1: Each button now triggers its own generation with the matching prompt
+// intensity instead of re-compositing from a single shared anchor. Results are
+// cached per level in sl.fillerCache so switching to a previously generated
+// level is instant. First generation fires on form submit at Balanced (moderate).
+document.getElementById('fillerCorrectionToggle').addEventListener('click', async e => {
+  const btn = e.target.closest('[data-filler-level]');
+  if(!btn) return;
+  const level = parseInt(btn.dataset.fillerLevel, 10);
+  document.getElementById('fillerCorrectionToggle').querySelectorAll('[data-filler-level]').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  state.intensityPct = level;
+  const slider = document.getElementById('intensitySlider');
+  if(slider) slider.value = level;
+
+  // M12.1: check if this level is already cached across all done angles.
+  // If yes, show cached results instantly. If no, fire a new generation.
+  const fillerIntensity = fillerLevelToIntensity(level);
+  const doneAngles = state.selectedAngles.filter(id => {
+    const sl = state.slots[id];
+    return sl && sl.status === 'done' && sl.fillerCache && sl.fillerCache[fillerIntensity];
+  });
+  const allCached = doneAngles.length > 0 &&
+    state.selectedAngles.every(id => {
+      const sl = state.slots[id];
+      return !sl || !sl.originalDataUrl || (sl.fillerCache && sl.fillerCache[fillerIntensity]);
+    });
+
+  if(allCached){
+    // All angles have a cached result for this level -- show instantly.
+    state.selectedAngles.forEach(angleId => {
+      const sl = state.slots[angleId];
+      if(!sl || !sl.fillerCache || !sl.fillerCache[fillerIntensity]) return;
+      const cached = sl.fillerCache[fillerIntensity];
+      if(cached.apply) sl.apply = cached.apply;
+      if(cached.resultDataUrl){
+        sl.resultDataUrl = cached.resultDataUrl;
+        if(cached.rawAiDataUrl) sl.rawAiDataUrl = cached.rawAiDataUrl;
+        if(angleId === state.activeAngle) document.getElementById('aiResult').src = cached.resultDataUrl;
+      }
+    });
+    const msb = document.getElementById('msbActionBtn');
+    if(msb) msb.textContent = btn.textContent;
+    renderActiveSlot();
+    return;
+  }
+
+  // Not cached -- fire a new generation at this intensity level.
+  // Mark uncached angles as idle so runGeneration picks them up.
+  state.selectedAngles.forEach(angleId => {
+    const sl = state.slots[angleId];
+    if(!sl || !sl.originalDataUrl) return;
+    if(!sl.fillerCache || !sl.fillerCache[fillerIntensity]){
+      sl.status = 'idle'; sl.error = null;
+    }
+  });
+  const msb = document.getElementById('msbActionBtn');
+  if(msb) msb.textContent = btn.textContent;
+  await runFillerLevelGeneration(fillerIntensity);
+});
+
+// M12.1: Generate results for a specific filler correction level. Mirrors
+// runGeneration but only runs angles that don't already have a cached result
+// for this level, and uses the fillerIntensity-specific prompt. Credits are
+// charged normally (1 per angle per level). The button handler calls this
+// when the user switches to a level that hasn't been generated yet.
+async function runFillerLevelGeneration(fillerIntensity){
+  const auth = await authHeaders();
+  const angles = state.selectedAngles.filter(id => {
+    const sl = state.slots[id];
+    return sl && sl.originalDataUrl && !(sl.fillerCache && sl.fillerCache[fillerIntensity]);
+  });
+  if(!angles.length) return;
+
+  // Credit pre-flight for uncached angles only.
+  if(accessMode === 'account'){
+    const per = creditCostFor(state.type);
+    const total = per * angles.length;
+    if(creditBalance != null && creditBalance < total){
+      setStatus('Not enough credits to generate this correction level. Top up to continue.', 'warn');
+      openBuyModal();
+      return;
+    }
+  }
+
+  generateBtn.disabled = true; regenBtn.disabled = true;
+  const t0 = Date.now();
+  const levelName = fillerIntensity === 'natural' ? 'Subtle' : fillerIntensity === 'moderate' ? 'Balanced' : 'Enhanced';
+  setStatus('Generating ' + levelName + ' correction… this may take 1-3 minutes.', 'spin');
+  const ticker = setInterval(() => {
+    const secs = Math.round((Date.now() - t0) / 1000);
+    const done = angles.filter(id => state.slots[id].status === 'done').length;
+    setStatus('Generating ' + levelName + ' · ' + angles.length + ' angle' + (angles.length > 1 ? 's' : '') +
+      '… ' + secs + 's (' + done + '/' + angles.length + ' ready).', 'spin');
+  }, 1000);
+
+  try {
+    const started = [];
+    for(const id of angles){
+      try { await prepAndStartSlot(id, auth, false, fillerIntensity); started.push(id); }
+      catch(err){
+        console.error('[Visualize filler level] ' + id + ' failed to start:', err);
+        const sl = state.slots[id]; sl.status = 'error'; sl.error = (err && err.message) || 'Could not start generation.';
+      }
+    }
+    if(started.length){
+      await Promise.allSettled(started.map(id =>
+        finishSlot(id, auth, fillerIntensity).catch(err => {
+          const sl = state.slots[id];
+          sl.status = 'error'; sl.error = (err && err.message) || 'Generation failed.';
+        })
+      ));
+    }
+  } finally {
+    clearInterval(ticker);
+  }
+
+  const doneIds = angles.filter(id => {
+    const sl = state.slots[id];
+    return sl.fillerCache && sl.fillerCache[fillerIntensity] && sl.fillerCache[fillerIntensity].resultDataUrl;
+  });
+
+  if(doneIds.length){
+    // Show the newly generated results.
+    doneIds.forEach(angleId => {
+      const sl = state.slots[angleId];
+      const cached = sl.fillerCache[fillerIntensity];
+      if(cached.apply) sl.apply = cached.apply;
+      if(cached.resultDataUrl){
+        sl.resultDataUrl = cached.resultDataUrl;
+        if(cached.rawAiDataUrl) sl.rawAiDataUrl = cached.rawAiDataUrl;
+        if(angleId === state.activeAngle) document.getElementById('aiResult').src = cached.resultDataUrl;
+      }
+    });
+    renderTabs();
+    renderActiveSlot();
+    setStatus(levelName + ' correction generated.', 'ok');
+  } else {
+    const failIds = angles.filter(id => state.slots[id].status === 'error');
+    if(failIds.length) setStatus('Generation failed: ' + state.slots[failIds[0]].error, 'warn');
+  }
+
+  syncGenerateBtn(); regenBtn.disabled = false;
+  if(accessMode === 'account') refreshCredits(0);
+}
+
+document.getElementById('navLibraryBtn').addEventListener('click', openLibraryModal);
+
+// Case list: angle filter tabs.
+document.getElementById('libAngleTabs').addEventListener('click', e => {
+  const btn = e.target.closest('[data-lib-angle]');
+  if (!btn) return;
+  libState.listAngle = btn.dataset.libAngle;
+  document.getElementById('libAngleTabs').querySelectorAll('[data-lib-angle]').forEach(b => {
+    b.classList.toggle('active', b.dataset.libAngle === libState.listAngle);
+  });
+  renderLibCaseList();
+  updateLibCaseCount();
+});
+
+// Load all cases from the server. Called once on sign-in and after mutations.
+async function loadLibraryCases() {
+  if (accessMode !== 'account') return;
+  try {
+    const headers = await authHeaders();
+    const res = await fetch(LIB_API, { headers });
+    if (!res.ok) { console.warn('[Library] load failed: HTTP ' + res.status); return; }
+    libState.cases = await res.json();
+    updateLibIndicator();
+    updateLibCaseCount();
+  } catch (e) {
+    console.warn('[Library] load error:', e && e.message);
+  }
+}
+
+// Update the small indicator in the generation form.
+// Shows only when biostim is selected AND the clinic has Sculptra cases (Enhanced only).
+function updateLibIndicator() {
+  const indicator = document.getElementById('libIndicator');
+  const navBtn    = document.getElementById('navLibraryBtn');
+  if (!indicator || accessMode !== 'account') return;
+  const isBiostim     = state.type === 'biostim';
+  const sculptraCases = libState.cases.filter(c => c.treatment_area === 'sculptra');
+  const hasCases      = isBiostim && sculptraCases.length > 0;
+  indicator.classList.toggle('active', hasCases);
+  if (navBtn) navBtn.classList.toggle('has-cases', libState.cases.length > 0);
+
+  if (hasCases) {
+    const front = sculptraCases.filter(c => c.angle === 'frontal').length;
+    const r45   = sculptraCases.filter(c => c.angle === 'oblique_right').length;
+    const l45   = sculptraCases.filter(c => c.angle === 'oblique_left').length;
+    const parts = [];
+    if (front) parts.push(front + ' frontal');
+    if (r45)   parts.push(r45 + ' right 45');
+    if (l45)   parts.push(l45 + ' left 45');
+    const text = document.getElementById('libIndicatorText');
+    if (text) text.textContent = 'Library active: ' + parts.join(', ') + '. Enhanced biostimulator generations will use your Sculptra cases as a reference.';
+  }
+}
+
+// Update the case count label above the case list grid.
+function updateLibCaseCount() {
+  const label = document.getElementById('libCaseCountLabel');
+  if (!label) return;
+  const visible = libState.listAngle === 'all'
+    ? libState.cases.length
+    : libState.cases.filter(c => c.angle === libState.listAngle).length;
+  label.textContent = visible ? (visible + ' case' + (visible === 1 ? '' : 's')) : '';
+}
+
+// Render the case grid filtered by the current list angle tab.
+function renderLibCaseList() {
+  const grid  = document.getElementById('libCaseGrid');
+  const empty = document.getElementById('libEmpty');
+  if (!grid) return;
+  const cases = libState.listAngle === 'all'
+    ? libState.cases
+    : libState.cases.filter(c => c.angle === libState.listAngle);
+  grid.innerHTML = '';
+  if (!cases.length) { empty.style.display = ''; return; }
+  empty.style.display = 'none';
+
+  cases.forEach(c => {
+    const card = document.createElement('div');
+    card.className = 'lib-case-card';
+    const areaLabel = LIB_AREA_LABELS[c.treatment_area] || c.treatment_area;
+    const angleLabel = { frontal: 'Front', oblique_right: 'R 45', oblique_left: 'L 45' }[c.angle] || c.angle;
+    const tags = [areaLabel, angleLabel];
+    if (c.strength_label) tags.push({ subtle: 'Subtle', expected: 'Expected', strong: 'Strong' }[c.strength_label] || c.strength_label);
+    if (c.sex)            tags.push({ female: 'F', male: 'M' }[c.sex] || c.sex);
+    if (c.months_after)   tags.push(c.months_after + ' mo');
+    card.innerHTML =
+      '<div class="lib-case-pair">'
+      + '<img src="" alt="Before" data-case-path="' + escapeAttr(c.before_path) + '" />'
+      + '<img src="" alt="After"  data-case-path="' + escapeAttr(c.after_path)  + '" />'
+      + '</div>'
+      + '<div class="lib-case-meta">'
+      + '<span style="display:flex;gap:4px;flex-wrap:wrap;">'
+      + tags.map(t => '<span class="lib-case-tag">' + t + '</span>').join('')
+      + '</span>'
+      + '<button class="lib-case-del" data-case-id="' + escapeAttr(c.id) + '" type="button">Remove</button>'
+      + '</div>';
+    card.querySelectorAll('img[data-case-path]').forEach(img => loadLibThumb(img, img.dataset.casePath));
+    card.querySelector('.lib-case-del').addEventListener('click', () => deleteLibCase(c.id));
+    grid.appendChild(card);
+  });
+}
+
+function escapeAttr(s) {
+  return String(s || '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+}
+
+async function loadLibThumb(img, path) {
+  if (!sb) return;
+  try {
+    const { data } = await sb.storage.from('reference-cases').createSignedUrl(path, 120);
+    if (data && data.signedUrl) img.src = data.signedUrl;
+  } catch (e) {
+    console.warn('[Library] thumb error:', e && e.message);
+  }
+}
+
+async function deleteLibCase(id) {
+  if (!confirm('Remove this reference case? This cannot be undone.')) return;
+  try {
+    const headers = Object.assign({ 'Content-Type': 'application/json' }, await authHeaders());
+    const res = await fetch(LIB_API + '?action=delete', { method: 'POST', headers, body: JSON.stringify({ id }) });
+    if (!res.ok) { const d = await res.json().catch(() => ({})); alert('Delete failed: ' + (d.error || res.status)); return; }
+    await loadLibraryCases();
+    renderLibCaseList();
+    updateLibCaseCount();
+  } catch (e) {
+    alert('Delete error: ' + (e && e.message));
+  }
+}
+
+// Show/hide library nav button based on access mode. Called from renderAcctBar.
+function syncLibraryBtn() {
+  const btn = document.getElementById('navLibraryBtn');
+  if (!btn) return;
+  btn.style.display = (accessMode === 'account') ? '' : 'none';
+}
+
+/* ─────────────────────────────────────────────── */
 document.getElementById('buyCloseBtn').addEventListener('click', closeBuyModal);
 document.getElementById('creditsInfoBtn').addEventListener('click', () => document.getElementById('creditsInfoModal').classList.remove('hidden'));
 document.getElementById('creditsInfoCloseBtn').addEventListener('click', () => document.getElementById('creditsInfoModal').classList.add('hidden'));
@@ -1502,6 +1958,7 @@ document.querySelectorAll('#typeToggle .type-btn').forEach(btn => {
     document.getElementById('fillerControls').classList.toggle('hidden', state.type !== 'filler');
     document.getElementById('biostimControls').classList.toggle('hidden', state.type !== 'biostim');
     updatePhotoGuide();
+    updateLibIndicator(); // M12: show/hide library indicator when switching treatment type
   });
 });
 
@@ -1613,13 +2070,17 @@ function updateIntensityUI(){
     slider.max = 100;
   }
   const li = levelInfo(state.intensityPct);
-  document.getElementById('intensityLabel').textContent = isFiller ? 'Degree of correction' : 'Response timeline';
-  document.getElementById('intensityMin').textContent = isFiller ? 'Subtle' : 'Early';
-  document.getElementById('intensityMax').textContent = isFiller ? 'Enhanced' : '6 months';
-  document.getElementById('intensityHelp').textContent = isFiller
-    ? 'Slide to preview less or more correction.'
-    : 'Slide to preview an earlier or more complete treatment response. The simulation updates instantly.';
-  // courseControl hidden permanently -- Enhanced removed for M12
+  document.getElementById('intensityLabel').textContent = 'Response timeline';
+  document.getElementById('intensityMin').textContent = 'Early';
+  document.getElementById('intensityMax').textContent = '6 months';
+  document.getElementById('intensityHelp').textContent = 'Slide to preview an earlier or more complete treatment response. The simulation updates instantly.';
+  // Filler: show three-button selector, hide slider
+  // Biostim: hide three-button selector, show slider
+  const fillerWrap  = document.getElementById('fillerCorrectionWrap');
+  const biostimWrap = document.getElementById('biostimSliderWrap');
+  if(fillerWrap)  fillerWrap.style.display  = isFiller ? '' : 'none';
+  if(biostimWrap) biostimWrap.style.display = isFiller ? 'none' : '';
+  // courseControl stays hidden (Ceiling removed)
   const courseCtrl = document.getElementById('courseControl');
   if(courseCtrl) courseCtrl.style.display = 'none';
   const valEl = document.getElementById('intensityValue');
@@ -1653,6 +2114,13 @@ function updateIntensityUI(){
       if(state.courseMode === 'enhanced' && sl.strongApply){ sl.strongDataUrl = url; }
       else { sl.resultDataUrl = url; }
       document.getElementById('aiResult').src = url;
+      // Update the on-image label to reflect current slider position
+      const simTagEl = document.getElementById('simTag');
+      if(simTagEl && state.type === 'biostim'){
+        const t = simTagEl.textContent;
+        const updated = t.replace(/· (Early|3 months|6 months)/, '· ' + strengthLabel(pct));
+        simTagEl.textContent = updated;
+      }
     });
   });
   // Settle: on release, bring every other finished angle to the same response
@@ -1774,7 +2242,10 @@ function updateIntensityUI(){
       bar.classList.remove('bar-hidden');
       document.body.classList.add('slider-bar-active');
       syncMobileDisplay();
-      if(sliderVisible){
+      // For filler, slider is replaced by three buttons -- hide the mobile slider
+      const biostimWrap = document.getElementById('biostimSliderWrap');
+      const sliderActuallyVisible = sliderVisible && (!biostimWrap || biostimWrap.style.display !== 'none');
+      if(sliderActuallyVisible){
         mslider.style.display = '';
         msbMin.parentElement.style.display = '';
       } else {
@@ -2078,10 +2549,24 @@ async function pollForResult(jobId, auth){
   }
 }
 
-async function prepAndStartSlot(angleId, auth, isRegen){
+// M12.1: fillerIntensity param added. For filler, each correction level sends
+// its own prompt intensity to the model so the Raw AI output actually differs
+// between Subtle/Balanced/Enhanced. Previously all three fired with hardcoded
+// intensity:'enhanced' and only the compositor slider changed -- producing
+// identical results when the Raw AI delta was near-zero (the oblique case).
+// fillerIntensity: 'natural'|'moderate'|'enhanced'. Defaults to 'moderate'.
+async function prepAndStartSlot(angleId, auth, isRegen, fillerIntensity){
   const sl = state.slots[angleId];
-  const prevJobId = sl.jobId; // M8: lineage for the server-enforced free regen window
+  const prevJobId = sl.jobId;
   sl.status = 'generating'; sl.error = null; sl.apply = null;
+  state.courseMode = 'standard';
+  if(state.type === 'filler'){
+    state.intensityPct = 58;
+    const tog = document.getElementById('fillerCorrectionToggle');
+    if(tog) tog.querySelectorAll('[data-filler-level]').forEach(b => {
+      b.classList.toggle('active', b.dataset.fillerLevel === '58');
+    });
+  }
 
   // Black background per photo, applied at generation time, never on upload.
   let beforeDataUrl = sl.originalDataUrl;
@@ -2124,9 +2609,11 @@ async function prepAndStartSlot(angleId, auth, isRegen){
     const postAreas = (state.areas.length ? state.areas : ['chin_jawline'])
       .flatMap(a => a === 'chin_jawline' ? ['chin','jawline'] : [a]);
     form.append('areas', postAreas.join(','));
-    // One masked anchor at the upper-realistic Enhanced strength; the response
-    // slider dials the in-mask intensity down from there.
-    form.append('intensity', 'enhanced');
+    // M12.1: send the actual correction level as the prompt intensity so the
+    // Raw AI output differs between Subtle/Balanced/Enhanced generations.
+    // fillerIntensity defaults to 'moderate' (Balanced) when not specified.
+    const promptIntensity = fillerIntensity || 'moderate';
+    form.append('intensity', promptIntensity);
   } else {
     form.append('product', state.product);
     form.append('timeline', state.timeline);
@@ -2147,6 +2634,7 @@ async function prepAndStartSlot(angleId, auth, isRegen){
   form.append('view', promptView);
   if(state.sex) form.append('sex', state.sex);
   if(state.sculptraPhenotype) form.append('sculptraPhenotype', state.sculptraPhenotype);
+  if(state.patientAge) form.append('patientAge', String(state.patientAge));
   sl.jobId = jobId;
 
   const startRes = await fetch('/.netlify/functions/start-visualization', {
@@ -2164,10 +2652,20 @@ async function prepAndStartSlot(angleId, auth, isRegen){
   }
 }
 
-async function finishSlot(angleId, auth){
+// M12.1: fillerIntensity param added. When provided, the resulting apply
+// function and resultDataUrl are cached per level in sl.fillerCache so
+// switching buttons shows the cached result without a new generation.
+async function finishSlot(angleId, auth, fillerIntensity){
   const sl = state.slots[angleId];
   sl.resultDataUrl = await pollForResult(sl.jobId, auth);
-  sl.rawAiDataUrl = sl.resultDataUrl; // M9.7: pre-composite frame for ?debug=layers
+  // M9.7: pre-composite frame for ?debug=layers. For filler per-level cache,
+  // store rawAiDataUrl per level so the debug panel shows the correct Raw AI.
+  const cacheKey = (state.type === 'filler' && fillerIntensity) ? fillerIntensity : null;
+  if(cacheKey){
+    if(!sl.fillerCache) sl.fillerCache = {};
+    sl.fillerCache[cacheKey] = { rawAiDataUrl: sl.resultDataUrl };
+  }
+  sl.rawAiDataUrl = sl.resultDataUrl;
 
   // Masked compositor per angle: AI inside the treatment mask, the original
   // photo everywhere else, exposing apply(0..1) -> jpegDataURL for the shared
@@ -2188,19 +2686,68 @@ async function finishSlot(angleId, auth){
     try {
       const beforeImg = await loadImage(sl.beforeDataUrl || sl.originalDataUrl);
       const aiImg = await loadImage(sl.resultDataUrl);
-      const { makeSculptraCompositor } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
-      // M6 A/B hook: append ?warp=off to compare against the pure M5 composite.
-      const warpOn = !/[?&]warp=off\b/i.test(location.search);
-      // M9.1 A/B hook: append ?jowltex=off to disable the jowl-lobe texture
-      // release and compare against exact v35 composite behavior.
-      const jowlTexOn = !/[?&]jowltex=off\b/i.test(location.search);
-      // M9.7 A/B hook: ?jawdef=off disables the deterministic border light.
-      const jawDefOn = !/[?&]jawdef=off\b/i.test(location.search);
-      const apply = await makeSculptraCompositor(beforeImg, aiImg, { scope:compScope, sex:state.sex, warp:warpOn, jowlTexRelease:jowlTexOn, jawDef:jawDefOn, angleId });
+      // M12: chin/jaw filler uses its own dedicated compositor (chin-jaw-mask.js)
+      // with parameters tuned for mandibular edge definition, not Sculptra soft volume.
+      // Sculptra still uses sculptra-mask.js untouched.
+      let apply;
+      if(compScope === 'chin_jaw'){
+        const { makeChinJawCompositor } = await import('./chin-jaw-mask.js?v=' + MASK_MODULE_VERSION);
+        apply = await makeChinJawCompositor(beforeImg, aiImg, {
+          sex: state.sex,
+          angleId,
+          _maskModuleVersion: MASK_MODULE_VERSION
+        });
+      } else {
+        const { makeSculptraCompositor } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
+        // M6 A/B hook: append ?warp=off to compare against the pure M5 composite.
+        const warpOn = !/[?&]warp=off\b/i.test(location.search);
+        // M9.1 A/B hook: append ?jowltex=off to disable the jowl-lobe texture release.
+        const jowlTexOn = !/[?&]jowltex=off\b/i.test(location.search);
+        // M9.7 A/B hook: ?jawdef=off disables the deterministic border light.
+        const jawDefOn = !/[?&]jawdef=off\b/i.test(location.search);
+        apply = await makeSculptraCompositor(beforeImg, aiImg, {
+          scope: compScope, sex: state.sex,
+          warp: warpOn, jowlTexRelease: jowlTexOn, jawDef: jawDefOn, angleId
+        });
+      }
       if(apply){
         sl.apply = apply;
         sl.resultDataUrl = apply(state.intensityPct / 100);
+        // M12.1: cache the compositor and composited result per filler level
+        // so switching buttons instantly shows the cached result without regenerating.
+        if(cacheKey && sl.fillerCache && sl.fillerCache[cacheKey]){
+          sl.fillerCache[cacheKey].apply = apply;
+          sl.fillerCache[cacheKey].resultDataUrl = sl.resultDataUrl;
+        }
         console.log('%c[Visualize] ' + angleId + ': compositor ready; outside the treatment zone is the original photo.', 'color:#2e7d32;font-weight:bold');
+        // Debug: ?debug=layers shows raw AI + composited result side by side
+        if(/[?&]debug=layers\b/i.test(location.search)){
+          const panel = document.createElement('div');
+          panel.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#111;z-index:9999;padding:12px;display:flex;gap:8px;overflow-x:auto;';
+          const closeBtn = document.createElement('button');
+          closeBtn.textContent = 'Close debug';
+          closeBtn.style.cssText = 'position:absolute;top:8px;right:8px;background:#c00;color:#fff;border:none;padding:6px 12px;cursor:pointer;border-radius:4px;';
+          closeBtn.onclick = () => panel.remove();
+          panel.appendChild(closeBtn);
+          [
+            { label: 'Original (' + angleId + ')', src: sl.beforeDataUrl || sl.originalDataUrl },
+            { label: 'Raw AI (before compositor)', src: sl.rawAiDataUrl },
+            { label: 'Composited result', src: sl.resultDataUrl }
+          ].forEach(({ label, src }) => {
+            const wrap = document.createElement('div');
+            wrap.style.cssText = 'flex-shrink:0;text-align:center;';
+            const img = document.createElement('img');
+            img.src = src || '';
+            img.style.cssText = 'height:300px;display:block;border:1px solid #444;';
+            const cap = document.createElement('div');
+            cap.textContent = label;
+            cap.style.cssText = 'color:#aaa;font-size:11px;margin-top:4px;';
+            wrap.appendChild(img);
+            wrap.appendChild(cap);
+            panel.appendChild(wrap);
+          });
+          document.body.prepend(panel);
+        }
       } else {
         console.warn('[Visualize] ' + angleId + ': compositor null (no face); showing RAW AI for this angle, slider skips it.');
       }
@@ -2256,9 +2803,11 @@ async function runGeneration(isRegen){
     // Prep and start sequentially: background isolation and the mask each run a
     // local model, and three at once would thrash memory. The slow generations
     // themselves then run in parallel server-side and are polled concurrently.
+    // M12.1: fillerIntensity passed through so each correction level gets its own prompt.
+    const fillerIntensity = (state.type === 'filler') ? fillerLevelToIntensity(state.intensityPct) : null;
     const started = [];
     for(const id of angles){
-      try { await prepAndStartSlot(id, auth, isRegen); started.push(id); }
+      try { await prepAndStartSlot(id, auth, isRegen, fillerIntensity); started.push(id); }
       catch(err){
         console.error('[Visualize] ' + id + ' failed to start:', err);
         const sl = state.slots[id]; sl.status = 'error'; sl.error = (err && err.message) || 'Could not start generation.';
@@ -2266,7 +2815,7 @@ async function runGeneration(isRegen){
     }
     if(started.length){
       await Promise.allSettled(started.map(id =>
-        finishSlot(id, auth).catch(err => {
+        finishSlot(id, auth, fillerIntensity).catch(err => {
           const sl = state.slots[id];
           sl.status = 'error'; sl.error = (err && err.message) || 'Generation failed.';
         })
@@ -2372,7 +2921,7 @@ function renderActiveSlot(){
   // Do not set aiResult.src directly here; applyActiveView() at line 2285 handles it.
   let tag = 'Simulated · ' + treatmentName();
   if(multi) tag += ' · ' + ANGLE_DEF[state.activeAngle].short;
-  if(state.type === 'biostim') tag += ' · ' + (state.timeline === '12' ? '12 months' : state.timeline + ' months');
+  if(state.type === 'biostim') tag += ' · ' + strengthLabel(state.intensityPct);
   if(sl.status === 'error') tag = 'Generation failed for this angle · Re-generate to retry';
   document.getElementById('simTag').textContent = tag;
   // Update strong badge visibility
@@ -2446,12 +2995,15 @@ async function startEnhancedSlot(angleId, auth){
   if(!sl || sl.status !== 'done' || !sl.jobId) return;
   // strongStatus already 'generating' (set by runStrongPass) -- no guard needed here
 
-  // Use the same beforeDataUrl (black bg applied) as the standard pass
+  // Enhanced takes the Standard result as its input image, not the original photo.
+  // This is the key architectural fix: Ceiling builds on Standard, pushing it further,
+  // rather than trying to produce a dramatic result from the original in one shot.
+  // The compositor below still uses beforeDataUrl (original) as the identity anchor.
   const beforeDataUrl = sl.beforeDataUrl || sl.originalDataUrl;
-  console.log('[Visualize Enhanced] ' + angleId + ': starting  -  beforeDataUrl length=' + (beforeDataUrl ? beforeDataUrl.length : 'null'));
-  // Use resizeToUpload which correctly handles data URLs cross-browser.
-  // fetch(dataUrl) hangs silently on Safari/WebKit -- do not use it.
-  const blob = await resizeToUpload(beforeDataUrl);
+  const standardResultUrl = sl.resultDataUrl;
+  if(!standardResultUrl){ console.error('[Visualize Enhanced] ' + angleId + ': no Standard result to build from'); return; }
+  console.log('[Visualize Enhanced] ' + angleId + ': starting from Standard result, length=' + standardResultUrl.length);
+  const blob = await resizeToUpload(standardResultUrl);
   console.log('[Visualize Enhanced] ' + angleId + ': blob ready, size=' + (blob ? blob.size : 'null'));
 
   const formData = new FormData();
@@ -2469,6 +3021,8 @@ async function startEnhancedSlot(angleId, auth){
   formData.append('isStrongPass', 'true');
   formData.append('sourceJobId', sl.jobId);
   if(state.sculptraPhenotype) formData.append('sculptraPhenotype', state.sculptraPhenotype);
+  if(state.sex) formData.append('sex', state.sex);
+  if(state.patientAge) formData.append('patientAge', String(state.patientAge));
   // M11.1: NO mask appended for Enhanced. Full-frame edit only.
   // The mask was confining the model to local inpainting, which produced
   // patchy anatomically incoherent results. The compositor below handles
@@ -2549,13 +3103,13 @@ async function startEnhancedSlot(angleId, auth){
               scope: maskScope, sex: state.sex,
               warp: warpOn, jowlTexRelease: jowlTexOn, jawDef: jawDefOn, angleId,
               liftSat:       1.0,
-              deltaGain:     1.0,
-              glowApply:     10,
-              brightCap:     30,
-              darkFloor:     16,
+              deltaGain:     1.3,  // increased from 1.0 to amplify spatial displacement on Enhanced
+              glowApply:     0,
+              brightCap:     60,
+              darkFloor:     6,
               texRadiusFrac: 0.08,
               texStrength:   0.92,
-              chromaLock:    0.96
+              chromaLock:    0.96  // tightened back from 0.94 -- skin tone improvement comes from AI prompt, not chroma loosening
             };
             const apply = await makeSculptraCompositor(beforeImg, aiImg, enhancedOpts);
             if(apply){
@@ -2654,9 +3208,8 @@ function updateStrongBtn(){
   const enhBtn = document.getElementById('courseEnhanced');
   const courseCtrl = document.getElementById('courseControl');
   const courseHelp = document.getElementById('courseHelp');
-  // M11 close: Enhanced course removed from UI pending M12 clinic library.
-  // courseControl stays hidden. All Enhanced code preserved for M12 restore.
-  if(courseCtrl) courseCtrl.style.display = 'none';
+  // M12: courseControl visibility is managed by syncBiostimControls (biostim=show, filler=hide).
+  // Do not force hide here -- that was the M11 close gate, now removed.
   if(!expBtn || !enhBtn || !sl) return;
   const isEnhanced = state.courseMode === 'enhanced';
 
@@ -2691,7 +3244,13 @@ function updateStrongBtn(){
 function applyActiveView(){
   const sl = activeSlot();
   if(!sl) return;
-  const displayUrl = sl.resultDataUrl || sl.beforeDataUrl || sl.originalDataUrl || '';
+  // Show Enhanced result when courseMode is enhanced and strongDataUrl is ready,
+  // otherwise show Standard result. This was the root cause of Enhanced appearing
+  // identical to Standard -- sl.strongDataUrl was never being displayed.
+  const isEnhancedView = state.courseMode === 'enhanced' && sl.strongStatus === 'done' && sl.strongDataUrl;
+  const displayUrl = isEnhancedView
+    ? sl.strongDataUrl
+    : (sl.resultDataUrl || sl.beforeDataUrl || sl.originalDataUrl || '');
   document.getElementById('aiResult').src = displayUrl;
 }
 
@@ -2845,13 +3404,29 @@ async function buildLayerDebugSheet(angleId){
     const t = (state.intensityPct || 70) / 100;
     const beforeImg = await loadImage(sl.beforeDataUrl || sl.originalDataUrl);
     const aiImg = await loadImage(sl.rawAiDataUrl);
-    const { compositeSculptra } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
-    const base = { scope: compScope, sex: state.sex, intensity: t };
     setStatus('Building the layer attribution sheet (4 composites)…', 'spin');
-    const v3 = await compositeSculptra(beforeImg, aiImg, { ...base, warp:false });
-    const v4 = await compositeSculptra(beforeImg, aiImg, { ...base, warpSharpen:false, jawDef:false });
-    const v5 = await compositeSculptra(beforeImg, aiImg, { ...base, jawDef:false });
-    const v6 = await compositeSculptra(beforeImg, aiImg, { ...base });
+    let v3, v4, v5, v6;
+    if(compScope === 'chin_jaw'){
+      // Debug sheet uses chin/jaw compositor so it matches the live result exactly
+      const { makeChinJawCompositor } = await import('./chin-jaw-mask.js?v=' + MASK_MODULE_VERSION);
+      const applyFn = await makeChinJawCompositor(beforeImg, aiImg, {
+        sex: state.sex, angleId, _maskModuleVersion: MASK_MODULE_VERSION
+      });
+      // For chin/jaw debug: show raw AI, no-warp, with-warp, full pipeline
+      const { compositeSculptra } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
+      const base = { scope: 'chin_jaw', sex: state.sex, intensity: t };
+      v3 = await compositeSculptra(beforeImg, aiImg, { ...base, warp: false });
+      v4 = await compositeSculptra(beforeImg, aiImg, { ...base, warp: false, midKeep: 0.28, texRadiusFrac: 0.005 });
+      v5 = await compositeSculptra(beforeImg, aiImg, { ...base, midKeep: 0.28, texRadiusFrac: 0.005, jawDef: false });
+      v6 = applyFn ? applyFn(t) : await compositeSculptra(beforeImg, aiImg, { ...base, midKeep: 0.28, texRadiusFrac: 0.005 });
+    } else {
+      const { compositeSculptra } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
+      const base = { scope: compScope, sex: state.sex, intensity: t };
+      v3 = await compositeSculptra(beforeImg, aiImg, { ...base, warp:false });
+      v4 = await compositeSculptra(beforeImg, aiImg, { ...base, warpSharpen:false, jawDef:false });
+      v5 = await compositeSculptra(beforeImg, aiImg, { ...base, jawDef:false });
+      v6 = await compositeSculptra(beforeImg, aiImg, { ...base });
+    }
     const cells = [
       { src: sl.beforeDataUrl || sl.originalDataUrl, label: '1. Original' },
       { src: sl.rawAiDataUrl,                        label: '2. Raw AI output' },
@@ -3046,14 +3621,25 @@ async function hiResResultFor(angleId){
   if(sl.hiRes && sl.hiRes.pct === pct) return sl.hiRes.url;
   const beforeImg = await loadImage(sl.beforeDataUrl || sl.originalDataUrl);
   const aiImg = await loadImage(sl.rawAiDataUrl);
-  const { compositeSculptra } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
-  const warpOn = !/[?&]warp=off\b/i.test(location.search);
-  const jowlTexOn = !/[?&]jowltex=off\b/i.test(location.search);
-  const jawDefOn = !/[?&]jawdef=off\b/i.test(location.search);
-  const url = await compositeSculptra(beforeImg, aiImg, {
-    scope: compScope, sex: state.sex, warp: warpOn, jowlTexRelease: jowlTexOn,
-    jawDef: jawDefOn, intensity: pct / 100, maxDim: EXPORT_MAXDIM
-  });
+  let url;
+  if(compScope === 'chin_jaw'){
+    // Use dedicated chin/jaw compositor -- same path as live result
+    const { makeChinJawCompositor } = await import('./chin-jaw-mask.js?v=' + MASK_MODULE_VERSION);
+    const applyHiRes = await makeChinJawCompositor(beforeImg, aiImg, {
+      sex: state.sex, angleId, maxDim: EXPORT_MAXDIM,
+      _maskModuleVersion: MASK_MODULE_VERSION
+    });
+    url = applyHiRes ? applyHiRes(pct / 100) : null;
+  } else {
+    const { compositeSculptra } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
+    const warpOn = !/[?&]warp=off\b/i.test(location.search);
+    const jowlTexOn = !/[?&]jowltex=off\b/i.test(location.search);
+    const jawDefOn = !/[?&]jawdef=off\b/i.test(location.search);
+    url = await compositeSculptra(beforeImg, aiImg, {
+      scope: compScope, sex: state.sex, warp: warpOn, jowlTexRelease: jowlTexOn,
+      jawDef: jawDefOn, intensity: pct / 100, maxDim: EXPORT_MAXDIM
+    });
+  }
   if(url) sl.hiRes = { pct, url };
   return url;
 }
@@ -3073,7 +3659,9 @@ function simKicker(angleId){
   const sl = state.slots[angleId];
   const parts = [treatmentName()];
   if(multiDone) parts.push(ANGLE_DEF[angleId].label);
-  if(state.type === 'biostim') parts.push(state.timeline + ' months');
+  // Use current slider position for months label, not the generation-time timeline.
+  // This keeps the watermark in sync when the slider is moved after generation.
+  if(state.type === 'biostim') parts.push(strengthLabel(state.intensityPct));
   if(state.type === 'biostim' || (state.type === 'filler' && sl.apply)){
     if(state.type === 'filler'){
       const li = levelInfo(state.intensityPct || 70);
@@ -3139,6 +3727,25 @@ async function drawPair(ctx, angleId, yOff, panelW, panelH, gap, includeText){
   }
   label(0, false);
   label(panelW + gap, true);
+
+  // Logo: centered on the seam between Original and Simulated panels
+  if(clinicLogoDataUrl && includeText){
+    const logoImg = await new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => resolve(null);
+      img.src = clinicLogoDataUrl;
+    });
+    if(logoImg){
+      const logoH = 56;
+      const logoW = Math.round(logoImg.naturalWidth * (logoH / logoImg.naturalHeight));
+      const logoX = (panelW + gap / 2) - logoW / 2; // center on seam
+      const logoY = yOff + (panelH - logoH) / 2;    // vertically centered in panel
+      ctx.globalAlpha = 0.82;
+      ctx.drawImage(logoImg, logoX, logoY, logoW, logoH);
+      ctx.globalAlpha = 1.0;
+    }
+  }
 }
 
 // angleIds: one id = the classic side-by-side; several = the new horizontal
@@ -3162,7 +3769,7 @@ async function drawExport(includeText, angleIds){
     canvas.height = panelH + footerH;
     ctx.fillStyle = '#1C1714'; ctx.fillRect(0, 0, canvas.width, canvas.height);
     await drawPair(ctx, ids[0], 0, panelW, panelH, gap, includeText);
-    if(includeText) drawExportFooter(ctx, canvas.width, canvas.height - footerH, footerH, clinic);
+    if(includeText) await drawExportFooter(ctx, canvas.width, canvas.height - footerH, footerH, clinic);
     return canvas;
   }
 
@@ -3238,12 +3845,31 @@ async function drawExport(includeText, angleIds){
     }
   }
 
-  if(includeText) drawExportFooter(ctx, canvas.width, canvas.height - footerH, footerH, clinic);
+  // Logo: centered on the full multi-angle image, vertically centered across both rows
+  if(clinicLogoDataUrl && includeText){
+    const logoImg = await new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => resolve(null);
+      img.src = clinicLogoDataUrl;
+    });
+    if(logoImg){
+      const logoH = 64;
+      const logoW = Math.round(logoImg.naturalWidth * (logoH / logoImg.naturalHeight));
+      const logoX = (canvas.width - logoW) / 2;
+      const logoY = (panelH * 2 + gap - logoH) / 2; // center vertically across both rows
+      ctx.globalAlpha = 0.82;
+      ctx.drawImage(logoImg, logoX, logoY, logoW, logoH);
+      ctx.globalAlpha = 1.0;
+    }
+  }
+
+  if(includeText) await drawExportFooter(ctx, canvas.width, canvas.height - footerH, footerH, clinic);
   return canvas;
 }
 
 // Shared footer renderer used by both single and multi-angle exports
-function drawExportFooter(ctx, totalW, yF, footerH, clinic){
+async function drawExportFooter(ctx, totalW, yF, footerH, clinic){
   ctx.fillStyle = '#1C1714'; ctx.fillRect(0, yF, totalW, footerH);
   ctx.textAlign = 'center';
   ctx.font = '300 22px "DM Sans", sans-serif'; ctx.fillStyle = 'rgba(250,247,242,.80)';
@@ -3278,9 +3904,68 @@ async function downloadExport(includeText, allAngles){
 }
 document.getElementById('downloadBtn').addEventListener('click', () => downloadExport(true, false));
 document.getElementById('sheetBtn').addEventListener('click', () => downloadExport(true, true));
-document.getElementById('plainBtn').addEventListener('click', () => downloadExport(false, false));
+document.getElementById('plainBtn').addEventListener('click', async () => {
+  const sl = state.slots[state.activeAngle];
+  if(!sl || sl.status !== 'done') return;
+  let url = sl.resultDataUrl;
+  // Use hi-res or strong result if available
+  if(state.courseMode === 'enhanced' && sl.strongStatus === 'done' && sl.strongDataUrl) url = sl.strongDataUrl;
+  else { try { const hi = await hiResResultFor(state.activeAngle); if(hi) url = hi; } catch(e){} }
+  if(!url) return;
+  const link = document.createElement('a');
+  link.download = 'skinday-visualize-simulated-' + state.activeAngle + '.jpg';
+  link.href = url;
+  link.click();
+});
 
-// M11.1: Discard this angle -- resets the slot and removes it from the tab/results
+// Clinic logo for export
+let clinicLogoDataUrl = null;
+document.getElementById('logoUploadBtn').addEventListener('click', () => document.getElementById('logoFileInput').click());
+document.getElementById('logoFileInput').addEventListener('change', e => {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    clinicLogoDataUrl = ev.target.result;
+    document.getElementById('logoUploadName').textContent = file.name;
+    document.getElementById('logoRemoveBtn').style.display = '';
+    document.getElementById('logoUploadBtn').textContent = 'Change logo';
+  };
+  reader.readAsDataURL(file);
+});
+document.getElementById('logoRemoveBtn').addEventListener('click', () => {
+  clinicLogoDataUrl = null;
+  document.getElementById('logoFileInput').value = '';
+  document.getElementById('logoUploadName').textContent = '';
+  document.getElementById('logoRemoveBtn').style.display = 'none';
+  document.getElementById('logoUploadBtn').textContent = 'Upload logo';
+});
+
+// Patient sex toggle (biostim) -- tap active to deselect
+document.getElementById('patientSexToggle').addEventListener('click', e => {
+  const btn = e.target.closest('[data-sex]');
+  if (!btn) return;
+  const already = btn.classList.contains('active');
+  document.getElementById('patientSexToggle').querySelectorAll('.pill').forEach(b => b.classList.remove('active'));
+  if (!already) { btn.classList.add('active'); state.sex = btn.dataset.sex; }
+  else state.sex = null;
+});
+
+// Primary concern -> sculptraPhenotype -- tap active to deselect
+document.getElementById('primaryConcernToggle').addEventListener('click', e => {
+  const btn = e.target.closest('[data-concern]');
+  if (!btn) return;
+  const already = btn.classList.contains('active');
+  document.getElementById('primaryConcernToggle').querySelectorAll('.pill').forEach(b => b.classList.remove('active'));
+  if (!already) { btn.classList.add('active'); state.sculptraPhenotype = btn.dataset.concern; }
+  else state.sculptraPhenotype = null;
+});
+
+// Patient age
+document.getElementById('patientAge').addEventListener('input', e => {
+  const v = parseInt(e.target.value, 10);
+  state.patientAge = (!isNaN(v) && v >= 18 && v <= 99) ? v : null;
+});
 // without affecting other angles. One bad oblique never kills a good frontal.
 document.getElementById('discardAngleBtn').addEventListener('click', () => {
   const id = state.activeAngle;
