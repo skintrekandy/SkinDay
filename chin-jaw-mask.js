@@ -10,11 +10,12 @@
  * This module wraps makeSculptraCompositor from sculptra-mask.js with a
  * dedicated parameter set tuned for chin/jaw:
  *
- *   - midKeep 0.28:    very low original mid-band restore; AI shape dominates.
- *                      The old jawline shadow is mid-frequency; restoring it
- *                      at 0.6 (Sculptra default) creates "double contour" blur.
- *   - texRadiusFrac 0.005: finer frequency cutoff -- pore texture only, not
- *                      coarser skin/shadow bands that carry the old contour.
+ *   - midKeep 0.65:    keep majority of original mid-band texture so the treated
+ *                      zone reads as real skin, not smooth AI fill. jowlTexRelease
+ *                      suppresses midKeep inside the jowl lobes so fold erasure
+ *                      still works. (M12.1: raised from 0.28)
+ *   - texRadiusFrac 0.009: calibrated CHIN_JAW_TEX_RADIUS default -- restores
+ *                      genuine pore-scale texture. (M12.1: raised from 0.005)
  *   - glowApply 0:     no glow (chin/jaw is structural, not volumetric)
  *   - brightCap 0:     no brightness cap (chin/jaw needs the AI's border shadow)
  *   - darkFloor 26:    deep dark floor so the AI can draw the border-to-neck step

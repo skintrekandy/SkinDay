@@ -1465,7 +1465,7 @@ async function runFillerLevelGeneration(fillerIntensity){
   }
 
   syncGenerateBtn(); regenBtn.disabled = false;
-  if(accessMode === 'account') refreshCreditBalance();
+  if(accessMode === 'account') refreshCredits(0);
 }
 
 document.getElementById('navLibraryBtn').addEventListener('click', openLibraryModal);
