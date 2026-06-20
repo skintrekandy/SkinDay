@@ -309,59 +309,58 @@ You must return valid JSON and nothing else. No preamble, no explanation, no mar
 }`;
 
 const SCENARIO_PLANNER_USER = {
-  stronger_sculptra: `TWO IMAGES:
-Image 1 = the Visualize baseline (already shows a moderate Sculptra biostimulator response).
-Image 2 = the original pre-treatment photo.
+  stronger_sculptra: `TWO IMAGES PROVIDED AS CONTEXT:
+Image 1 = the Visualize baseline (shows a moderate Sculptra biostimulator response already achieved).
+Image 2 = the original pre-treatment photo (THIS is the photo the image model will edit).
 
-SCENARIO: Stronger Sculptra response.
-This means: the same lateral support shown in the baseline, but modestly more developed. One step beyond the baseline, not a transformation.
-
-Analyze:
-- What the baseline already achieved compared to Image 2 (what changed: lateral cheek, temple, jowl, folds)
-- What specific lateral support this patient still needs (hollow temples? weak lateral cheek? jowl still present?)
-- What must not move at all (eyes, lips, nose, skin, lighting, identity)
-
-Write the imagePrompt to show a modest increase in lateral collagen support only. Conservative. If unsure, do less.`,
-
-  add_chin_jaw_filler: `TWO IMAGES:
-Image 1 = the Visualize baseline (already shows a Sculptra biostimulator response).
-Image 2 = the original pre-treatment photo.
-
-SCENARIO: Add chin and jawline HA filler on top of the Sculptra baseline.
+YOUR JOB: Write an image-editing prompt for the image model that tells it to edit Image 2 (the original photo) to show the full upper-range Sculptra response directly.
 
 Analyze:
-- Patient's face shape and lower-face anatomy from Image 1: chin projection, mandibular border, prejowl, jowl
-- Sex of the patient (critical: male = wide squared chin, female = tapered defined chin)
-- What specific lower-face structural change would be clinically appropriate for this face
+- What the baseline (Image 1) already shows: lateral cheek, temple, jowl, fold improvement
+- What more this patient's face needs for an upper-range response (hollow temples? weak lateral cheek? jowl still present?)
+- What must stay completely unchanged (eyes, lips, nose, skin texture, lighting, hair, expression)
 
-Write the imagePrompt to show: chin projection, jawline definition, prejowl support -- localized to the lower third only. Everything above the lower third is completely unchanged.`,
+Write the imagePrompt to simulate the full Sculptra collagen response at the upper-range level from the original photo. Conservative -- if unsure, do less. One-pass generation from the original.`,
 
-  add_temple_support: `TWO IMAGES:
-Image 1 = the Visualize baseline (already shows a Sculptra biostimulator response).
-Image 2 = the original pre-treatment photo.
+  add_chin_jaw_filler: `TWO IMAGES PROVIDED AS CONTEXT:
+Image 1 = the Visualize baseline (shows a moderate Sculptra biostimulator response already achieved).
+Image 2 = the original pre-treatment photo (THIS is the photo the image model will edit).
 
-SCENARIO: Add focused temple volume on top of the Sculptra baseline.
+YOUR JOB: Write an image-editing prompt for the image model that tells it to edit Image 2 (the original photo) to show Sculptra baseline support PLUS chin and jawline HA filler together.
 
 Analyze:
-- Whether this patient shows temporal hollowing or flat temple contour in Image 2 vs Image 1
+- Patient's lower-face anatomy in the original: chin projection, mandibular border, prejowl hollow, jowl
+- Patient's sex (critical: male = wide squared chin, female = tapered defined oval lower third)
+- The Sculptra lateral support the baseline already shows
+
+Write the imagePrompt to simulate: the Sculptra lateral scaffold (at baseline level) PLUS chin projection and jawline definition from 2 syringes HA filler. Lower-face change must be visible in the silhouette. Everything above the lower third unchanged.`,
+
+  add_temple_support: `TWO IMAGES PROVIDED AS CONTEXT:
+Image 1 = the Visualize baseline (shows a moderate Sculptra biostimulator response already achieved).
+Image 2 = the original pre-treatment photo (THIS is the photo the image model will edit).
+
+YOUR JOB: Write an image-editing prompt for the image model that tells it to edit Image 2 (the original photo) to show Sculptra baseline support PLUS focused temple volume.
+
+Analyze:
+- Whether this patient shows temporal hollowing or flat temple contour in the original
 - How much the baseline already improved the temple-to-cheek transition
-- Whether additional temple support would be visible and appropriate for this face
+- What additional temple support would be clinically visible
 
-Write the imagePrompt to show: temporal hollow fill and improved forehead-to-cheek continuity only. No change below the zygomatic arch. No change to eyes, brows, or upper eyelid.`,
+Write the imagePrompt to simulate: the Sculptra lateral scaffold (at baseline level) PLUS temporal hollow fill so the forehead-to-cheek arc reads more continuous. No change below the zygomatic arch, no change to eyes, brows, or eyelid.`,
 
-  combination_plan: `TWO IMAGES:
-Image 1 = the Visualize baseline (already shows a Sculptra biostimulator response).
-Image 2 = the original pre-treatment photo.
+  combination_plan: `TWO IMAGES PROVIDED AS CONTEXT:
+Image 1 = the Visualize baseline (shows a moderate Sculptra biostimulator response already achieved).
+Image 2 = the original pre-treatment photo (THIS is the photo the image model will edit).
 
-SCENARIO: Full combination treatment -- Sculptra support increase + chin/jaw HA filler + temple volume.
+YOUR JOB: Write an image-editing prompt for the image model that tells it to edit Image 2 (the original photo) to show a full multi-modality combination treatment result.
 
 Analyze:
-- What the baseline already achieved (compare Image 1 vs Image 2)
-- This patient's three most prominent anatomical concerns visible in Image 2 that the baseline has not fully addressed
-- What sex-appropriate chin shape is correct for this patient
-- What areas would create the strongest clinical impression if addressed together
+- What the baseline (Image 1) already achieved vs the original
+- This patient's three most prominent anatomical concerns in the original (hollowing, descent, lower-face imbalance, temple, etc.)
+- Patient sex for correct chin geometry
+- What combination of Sculptra support + chin/jaw filler + temple volume would create the strongest clinical impression for THIS face
 
-Write the imagePrompt to show three specific, localized additions proportional to what this face actually needs. Each change must be described with anatomical precision. Together they should read as "same person, better supported" not "different person." Skin, eyes, lips, nose, hair, lighting, expression are locked.`
+Write the imagePrompt to simulate: strong lateral Sculptra scaffold + chin/jaw HA filler + temple volume -- all from the original photo in one pass. Three localized changes, anatomically precise, proportional to what this face needs. Must read as same person, comprehensively supported.`
 };
 
 async function runScenarioPlanner({ client, scenarioKey, view, sex, angle, baselineB64, baseMime, originalB64, origMime, staticFallback, provider }) {
@@ -381,11 +380,13 @@ async function runScenarioPlanner({ client, scenarioKey, view, sex, angle, basel
     { type: 'text', text: userTemplate + viewNote + sexNote }
   ];
 
+  // Attach baseline image first (Image 1 = context: what Sculptra already achieved)
   userContent.push({
     type: 'image_url',
     image_url: { url: 'data:' + (baseMime || 'image/jpeg') + ';base64,' + baselineB64, detail: 'high' }
   });
 
+  // Attach original photo second (Image 2 = the photo the image model will actually edit)
   if (originalB64) {
     userContent.push({
       type: 'image_url',
@@ -494,12 +495,12 @@ exports.handler = async (event) => {
     const f = job.params || {};
 
     // M12.2: SCENARIO MODE
-    // When f.scenarioMode === 'true', bypass the standard prompt-assembly path.
-    // The scenario prompt is built here from f.scenarioKey + f.view.
-    // Input: TWO images -- image[0] = simulated baseline, image[1] = original photo.
-    // The original photo keeps identity and skin texture anchored across the scenario.
-    // No mask is applied (full-frame scenario generation). 1 credit per scenario.
-    // Safety tail: none -- the scenario prompts carry their own complete safety base.
+    // M12.6 ARCHITECTURE CHANGE: scenarios now generate from the ORIGINAL patient
+    // photo, not the Visualize baseline. The planner receives both images as context
+    // and writes a prompt describing the full combined treatment. The image model
+    // receives only the original photo as the edit target -- one clean pass.
+    // The scenario result is composited client-side through sculptra-mask.js /
+    // chin-jaw-mask.js, giving the same pixel-level identity lock as the baseline.
     const isScenario = (f.scenarioMode === 'true' || f.scenarioMode === true);
     if (isScenario) {
       const scenarioKey = f.scenarioKey;
@@ -520,27 +521,22 @@ exports.handler = async (event) => {
 
       const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-      // image[0]: simulated baseline (primary edit target -- the treatment anchor)
-      const baselineBuffer = Buffer.from(job.imageB64, 'base64');
-      const baselineFile = await OpenAI.toFile(baselineBuffer, job.filename || 'baseline.jpg', { type: job.mime || 'image/jpeg' });
+      // M12.6: PRIMARY image = original patient photo (edit target for the image model).
+      // job.originalImageB64 is the original; job.imageB64 is the baseline.
+      // If no originalImageB64 is present, fall back to job.imageB64 (baseline).
+      const primaryB64  = job.originalImageB64 || job.imageB64;
+      const primaryMime = job.originalImageB64 ? (job.originalMime || 'image/jpeg') : (job.mime || 'image/jpeg');
+      const primaryName = 'original.jpg';
 
-      // image[1]: original patient photo (identity + skin texture reference)
-      // Stored in job.originalImageB64 by start-visualization for scenario jobs.
-      let imageArray = [baselineFile];
-      let origB64ForPlanner = null;
-      if (job.originalImageB64) {
-        try {
-          const origBuffer = Buffer.from(job.originalImageB64, 'base64');
-          const origFile = await OpenAI.toFile(origBuffer, 'original.jpg', { type: job.originalMime || 'image/jpeg' });
-          imageArray = [baselineFile, origFile];
-          origB64ForPlanner = job.originalImageB64;
-          console.log('[M12.2] scenario: two-image input (baseline + original)');
-        } catch (e) {
-          console.warn('[M12.2] scenario: original image load failed; falling back to baseline-only.', e && e.message);
-        }
-      } else {
-        console.log('[M12.2] scenario: no originalImageB64; single-image fallback');
-      }
+      const primaryBuffer = Buffer.from(primaryB64, 'base64');
+      const primaryFile   = await OpenAI.toFile(primaryBuffer, primaryName, { type: primaryMime });
+      console.log('[M12.6] scenario image target: ' + (job.originalImageB64 ? 'original photo' : 'baseline (fallback, no original stored)'));
+
+      // Planner context: both images. Baseline = what Sculptra already achieved.
+      // Original = the photo the image model will edit.
+      const baselineB64ForPlanner  = job.imageB64;           // baseline (context only)
+      const originalB64ForPlanner  = job.originalImageB64;   // original (edit target)
+      const origMimeForPlanner     = job.originalMime || 'image/jpeg';
 
       // M12.5: SCENARIO PLANNER
       // Before generating the image, run a vision-capable text model to analyze
@@ -558,7 +554,7 @@ exports.handler = async (event) => {
       let scenarioPrompt = staticPrompt;
       let plannerUsed = false;
 
-      if (plannerEnabled && PLANNER_SCENARIOS.includes(scenarioKey) && job.imageB64) {
+      if (plannerEnabled && PLANNER_SCENARIOS.includes(scenarioKey) && primaryB64) {
         try {
           scenarioPrompt = await runScenarioPlanner({
             client,
@@ -566,10 +562,10 @@ exports.handler = async (event) => {
             view: f.view || 'frontal',
             sex: f.sex || null,
             angle: f.angle || null,
-            baselineB64: job.imageB64,
+            baselineB64: baselineB64ForPlanner,   // baseline = planner context (what Sculptra achieved)
             baseMime: job.mime || 'image/jpeg',
-            originalB64: origB64ForPlanner,
-            origMime: job.originalMime || 'image/jpeg',
+            originalB64: originalB64ForPlanner,   // original = what the image model will edit
+            origMime: origMimeForPlanner,
             staticFallback: staticPrompt,
             provider: plannerProvider
           });
@@ -588,9 +584,10 @@ exports.handler = async (event) => {
         add_chin_jaw_filler: 'high',
         add_temple_support:  'high'
       };
+      // M12.6: image = original photo only. Single image, one clean pass.
       const scenarioParams = {
         model: 'gpt-image-1',
-        image: imageArray.length === 1 ? imageArray[0] : imageArray,
+        image: primaryFile,
         prompt: scenarioPrompt,
         size: 'auto',
         input_fidelity: SCENARIO_FIDELITY[scenarioKey] || 'high',
