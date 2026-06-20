@@ -4156,17 +4156,6 @@ function syncScenarioBtns(){
   });
 }
 
-// M12.6: compositor scope per scenario.
-// stronger_sculptra and combination_plan use full Sculptra mask.
-// add_chin_jaw_filler uses chin-jaw mask.
-// add_temple_support uses full mask (no dedicated temple scope yet).
-const SCENARIO_COMPOSITOR_SCOPE = {
-  stronger_sculptra:   'full',
-  combination_plan:    'full',
-  add_chin_jaw_filler: 'chin_jaw',
-  add_temple_support:  'full'
-};
-
 async function runScenario(scenarioKey){
   const sl = activeSlot();
   if(!sl || sl.status !== 'done' || !sl.resultDataUrl){
@@ -4240,43 +4229,13 @@ async function runScenario(scenarioKey){
       throw new Error((e && e.error) || ('Could not start scenario generation (HTTP ' + startRes.status + ').'));
     }
 
-    // Poll for raw AI result
+    // M12.6 / M12.7: poll for result and display directly.
+    // No compositor, no mask, no warp, no texture restore.
+    // The original photo + planner prompt + gpt-image-1 is one clean generation.
+    // Trust the model. If it drifts on a specific photo, fix the prompt -- not the compositor.
     const rawResultUrl = await pollForResult(jobId, auth);
 
-    // M12.6: run the compositor on the scenario result.
-    // Uses the same sculptra-mask.js / chin-jaw-mask.js pipeline as the baseline.
-    // The original photo is the compositor anchor (identity + skin texture lock).
-    // The raw scenario AI output provides the structural change.
-    // This prevents global portrait drift the same way the baseline compositor does.
-    let resultUrl = rawResultUrl;
-    const compScope = SCENARIO_COMPOSITOR_SCOPE[scenarioKey] || 'full';
-    try {
-      const originalImg = await loadImage(originalDataUrl);
-      const scenarioImg = await loadImage(rawResultUrl);
-      let applyFn;
-      if(compScope === 'chin_jaw'){
-        const { makeChinJawCompositor } = await import('./chin-jaw-mask.js?v=' + MASK_MODULE_VERSION);
-        applyFn = await makeChinJawCompositor(originalImg, scenarioImg, {
-          sex: state.sex, angleId, _maskModuleVersion: MASK_MODULE_VERSION
-        });
-      } else {
-        const { makeSculptraCompositor } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
-        applyFn = await makeSculptraCompositor(originalImg, scenarioImg, {
-          scope: compScope, sex: state.sex,
-          warp: true, jowlTexRelease: true, jawDef: true, angleId
-        });
-      }
-      if(applyFn){
-        resultUrl = applyFn(1.0);
-        console.log('%c[M12.6] scenario compositor OK: ' + scenarioKey + ' scope=' + compScope, 'color:#2e7d32;font-weight:bold');
-      } else {
-        console.warn('[M12.6] scenario compositor null (no face); showing raw AI for ' + scenarioKey);
-      }
-    } catch(compErr){
-      console.error('%c[M12.6] scenario compositor failed for ' + scenarioKey + '; showing raw AI.', 'color:#c62828;font-weight:bold', compErr);
-    }
-
-    bucket[scenarioKey] = { status: 'done', jobId, resultUrl, rawResultUrl, error: null };
+    bucket[scenarioKey] = { status: 'done', jobId, resultUrl: rawResultUrl, rawResultUrl, error: null };
     if(accessMode === 'account') refreshCredits(0);
 
   } catch(err){
