@@ -420,6 +420,31 @@
         cursor: pointer;
       }
     }
+    /* ── M12.2: Explore Scenarios panel ── */
+    .scenarios-panel { margin-top:28px; background:#fff; border:1px solid var(--border); border-radius:10px; padding:20px 20px 18px; }
+    .scenarios-title { font-size:.68rem; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:var(--dim); margin-bottom:6px; }
+    .scenarios-subtitle { font-size:.82rem; color:var(--muted); line-height:1.5; margin-bottom:16px; }
+    .scenarios-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .scenario-btn { border:1.5px solid var(--border); background:var(--warm); border-radius:8px; padding:12px 14px; cursor:pointer; text-align:left; transition:.2s; }
+    .scenario-btn:hover:not(:disabled) { border-color:var(--gold); background:#fdf6ec; }
+    .scenario-btn:disabled { opacity:.45; cursor:not-allowed; }
+    .scenario-btn.generating { border-color:var(--gold); background:#fdf6ec; animation:blink 1s infinite; }
+    .scenario-btn strong { display:block; font-size:.82rem; color:var(--deep); margin-bottom:3px; }
+    .scenario-btn span { display:block; font-size:.69rem; color:var(--muted); line-height:1.35; }
+    .scenario-btn .credit-tag { display:inline-block; margin-top:5px; font-size:.62rem; letter-spacing:.08em; text-transform:uppercase; color:var(--rose); font-weight:600; }
+    .scenario-results { margin-top:18px; display:flex; flex-direction:column; gap:18px; }
+    .scenario-result-card { border:1px solid var(--border); border-radius:8px; overflow:hidden; background:var(--warm); }
+    .scenario-result-header { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border-bottom:1px solid var(--border); gap:12px; }
+    .scenario-result-label { font-size:.74rem; font-weight:600; color:var(--deep); }
+    .scenario-result-disclaimer { font-size:.66rem; color:var(--rose); letter-spacing:.04em; text-transform:uppercase; font-weight:600; }
+    .scenario-img-pair { display:grid; grid-template-columns:1fr 1fr; gap:0; }
+    .scenario-img-cell { position:relative; aspect-ratio:4/5; background:var(--deep); overflow:hidden; }
+    .scenario-img-cell img { display:block; width:100%; height:100%; object-fit:cover; }
+    .scenario-cell-tag { position:absolute; bottom:0; left:0; right:0; padding:7px 10px; background:linear-gradient(transparent,rgba(28,23,20,.72)); font-size:.62rem; letter-spacing:.1em; text-transform:uppercase; color:rgba(250,247,242,.9); }
+    .scenario-cell-tag.sim { color:rgba(201,169,110,.95); }
+    .scenario-status { font-size:.76rem; color:var(--muted); padding:10px 14px; }
+    .scenario-error { font-size:.76rem; color:var(--rose); padding:10px 14px; }
+    @media(max-width:540px){ .scenarios-grid { grid-template-columns:1fr; } }
   </style>
 </head>
 <body>
@@ -707,6 +732,34 @@
         </div>
       </div>
     </div>
+  </section>
+  <!-- ── M12.2: Explore Scenarios panel (appears after baseline is generated) ── -->
+  <section class="scenarios-panel hidden" id="scenariosPanel">
+    <div class="scenarios-title">Explore scenarios</div>
+    <div class="scenarios-subtitle">Build on the baseline simulation to explore what is possible. Each scenario consumes 1 credit and generates in the background.</div>
+    <div class="scenarios-grid">
+      <button class="scenario-btn" type="button" data-scenario="stronger_sculptra" id="scenBtn_stronger_sculptra">
+        <strong>Stronger Sculptra response</strong>
+        <span>Upper-range 6-month collagen response with more lateral lift</span>
+        <em class="credit-tag">1 credit</em>
+      </button>
+      <button class="scenario-btn" type="button" data-scenario="add_chin_jaw_filler" id="scenBtn_add_chin_jaw_filler">
+        <strong>Add chin + jawline filler</strong>
+        <span>2 syringes HA filler added to the Sculptra baseline</span>
+        <em class="credit-tag">1 credit</em>
+      </button>
+      <button class="scenario-btn" type="button" data-scenario="add_temple_support" id="scenBtn_add_temple_support">
+        <strong>Add temple support</strong>
+        <span>Focused upper lateral face volume on the baseline</span>
+        <em class="credit-tag">1 credit</em>
+      </button>
+      <button class="scenario-btn" type="button" data-scenario="combination_plan" id="scenBtn_combination_plan">
+        <strong>Full combination plan</strong>
+        <span>Sculptra + chin/jaw filler + temple support combined</span>
+        <em class="credit-tag">1 credit</em>
+      </button>
+    </div>
+    <div class="scenario-results" id="scenarioResults"></div>
   </section>
 </div>
 
@@ -1959,6 +2012,7 @@ document.querySelectorAll('#typeToggle .type-btn').forEach(btn => {
     document.getElementById('biostimControls').classList.toggle('hidden', state.type !== 'biostim');
     updatePhotoGuide();
     updateLibIndicator(); // M12: show/hide library indicator when switching treatment type
+    syncScenariosVisibility(); // M12.2: hide scenarios when not Sculptra
   });
 });
 
@@ -2837,6 +2891,7 @@ async function runGeneration(isRegen){
     document.getElementById('outputSection').classList.add('visible');
     document.getElementById('outputSection').scrollIntoView({ behavior:'smooth', block:'start' });
     updateRegenNote();
+    syncScenariosVisibility(); // M12.2: show Explore Scenarios panel for Sculptra
   }
   if(!failIds.length){
     setStatus(doneIds.length > 1 ? 'All ' + doneIds.length + ' previews generated.' : 'Preview generated.', 'ok');
@@ -2950,6 +3005,7 @@ function renderActiveSlot(){
   // Show More button when there's a result to act on
   const moreBtnEl = document.getElementById('moreBtn');
   if(moreBtnEl) moreBtnEl.style.display = (sl && sl.status === 'done') ? '' : 'none';
+  syncScenariosVisibility(); // M12.2
 }
 generateBtn.addEventListener('click', () => runGeneration(false));
 regenBtn.addEventListener('click', () => runGeneration(true));
@@ -4000,11 +4056,258 @@ document.getElementById('newBtn').addEventListener('click', () => {
   resetZoom();
   document.getElementById('outputSection').classList.remove('visible');
   document.getElementById('angleTabs').style.display = 'none';
-  renderSlots();
+  hideScenariosPanel(); // M12.2: clear scenarios on new case
+  Object.keys(scenarioState).forEach(k => { delete scenarioState[k]; });
+  const scenResults = document.getElementById('scenarioResults');
+  if(scenResults) scenResults.innerHTML = '';  renderSlots();
   updatePhotoGuide();
   syncGenerateBtn();
   setStatus('Choose a treatment, then add the patient photo' + (state.selectedAngles.length > 1 ? 's' : ''), 'idle');
   window.scrollTo({ top:0, behavior:'smooth' });
+});
+
+/* ───────── M12.2: Explore Scenarios ─────────
+   After the baseline Sculptra simulation is generated, an Explore Scenarios
+   panel appears. Each of the four scenario buttons fires one generation:
+     - input image[0]: the active-angle baseline result (treatment anchor)
+     - input image[1]: the original patient photo (identity + texture reference)
+     - prompt: a controlled clinical scenario template from prompts.js
+     - 1 credit per scenario, deducted at start-visualization (debit-at-reserve)
+   Results are displayed alongside the baseline in the panel with a mandatory
+   "Scenario simulation" disclaimer label. Scenarios are biostim/Sculptra only. */
+
+const SCENARIO_CREDIT_COST = 1;
+
+// Scenario state: per-angle, per-scenarioKey.
+// scenarioState[angleId][scenarioKey] -> { status, jobId, resultUrl, error }
+// Using per-angle buckets means switching angle tabs never shows a stale
+// scenario result from a different angle.
+const scenarioState = {};
+
+function scenarioBucket() {
+  const angle = state.activeAngle;
+  if (!scenarioState[angle]) scenarioState[angle] = {};
+  return scenarioState[angle];
+}
+
+const SCENARIO_LABELS = {
+  stronger_sculptra:  'Stronger Sculptra response',
+  add_chin_jaw_filler: 'Add chin + jawline filler',
+  add_temple_support: 'Add temple support',
+  combination_plan:   'Full combination plan'
+};
+
+const SCENARIO_DESCRIPTIONS = {
+  stronger_sculptra:   'Higher-responder scenario. Upper-range result, not guaranteed.',
+  add_chin_jaw_filler: 'Combination-treatment scenario. Not a guaranteed outcome.',
+  add_temple_support:  'Add-on scenario. Upper-range outcome, not guaranteed.',
+  combination_plan:    'Full multi-modality combination scenario. Possible upper-range outcome.'
+};
+
+function showScenariosPanel(){
+  const panel = document.getElementById('scenariosPanel');
+  if(panel) panel.classList.remove('hidden');
+
+  // Clear all existing scenario cards before re-rendering the active angle's
+  // results. Without this, switching from an angle that has scenario results
+  // to one that doesn't leaves the old angle's cards visible in the DOM.
+  const results = document.getElementById('scenarioResults');
+  if(results) results.innerHTML = '';
+
+  const bucket = scenarioBucket();
+  Object.keys(SCENARIO_LABELS).forEach(key => {
+    if(bucket[key]) renderScenarioResult(key);
+  });
+  syncScenarioBtns();
+}
+
+function hideScenariosPanel(){
+  const panel = document.getElementById('scenariosPanel');
+  if(panel) panel.classList.add('hidden');
+}
+
+// Show the panel only when a Sculptra baseline is done for the active angle.
+function syncScenariosVisibility(){
+  const sl = activeSlot();
+  const isSculptra = state.type === 'biostim' && (state.product === 'sculptra' || !state.product);
+  if(isSculptra && sl && sl.status === 'done' && sl.resultDataUrl){
+    showScenariosPanel();
+  } else {
+    hideScenariosPanel();
+    // Rebuild the scenario results panel for the (now-hidden) state --
+    // results are preserved per-angle in scenarioState so switching tabs
+    // back restores them. Only the display is cleared here.
+    const results = document.getElementById('scenarioResults');
+    if(results) results.innerHTML = '';
+  }
+}
+
+function syncScenarioBtns(){
+  const bucket = scenarioBucket();
+  Object.keys(SCENARIO_LABELS).forEach(key => {
+    const btn = document.getElementById('scenBtn_' + key);
+    if(!btn) return;
+    const s = bucket[key];
+    const isGenerating = s && s.status === 'generating';
+    btn.disabled = isGenerating;
+    btn.classList.toggle('generating', !!isGenerating);
+  });
+}
+
+async function runScenario(scenarioKey){
+  const sl = activeSlot();
+  if(!sl || sl.status !== 'done' || !sl.resultDataUrl){
+    setStatus('Generate the baseline first before exploring scenarios.', 'warn');
+    return;
+  }
+
+  // Credit pre-flight
+  if(accessMode === 'account'){
+    if(creditBalance != null && creditBalance < SCENARIO_CREDIT_COST){
+      setStatus('Not enough credits for this scenario. Top up to continue.', 'warn');
+      openBuyModal();
+      return;
+    }
+  }
+
+  const angleId = state.activeAngle;
+  const bucket  = scenarioBucket();
+
+  // Mark as generating in the per-angle bucket
+  bucket[scenarioKey] = { status: 'generating', jobId: null, resultUrl: null, error: null };
+  syncScenarioBtns();
+  renderScenarioResult(scenarioKey);
+
+  try {
+    const auth = await authHeaders();
+
+    // Fix 3: always build the scenario from the full 6-month baseline (apply at 1.0),
+    // not from whatever the slider currently shows. Ensures the scenario prompt
+    // ("upper-range 6-month response") is applied on top of the full expected baseline,
+    // not a 3-month intermediate state. Falls back to resultDataUrl if no apply fn.
+    const baselineForScenario = (state.type === 'biostim' && sl.apply)
+      ? sl.apply(1.0)
+      : sl.resultDataUrl;
+
+    const baselineBlob  = await resizeToUpload(baselineForScenario);
+    const originalBlob  = await resizeToUpload(sl.beforeDataUrl || sl.originalDataUrl);
+
+    const jobId = (window.crypto && crypto.randomUUID && crypto.randomUUID()) ||
+                  (Date.now() + '-' + Math.random().toString(36).slice(2));
+
+    bucket[scenarioKey].jobId = jobId;
+
+    const form = new FormData();
+    form.append('image',         baselineBlob,  'baseline-' + angleId + '.jpg');
+    form.append('originalImage', originalBlob,  'original-' + angleId + '.jpg');
+    form.append('jobId',         jobId);
+    form.append('type',          'biostim');
+    form.append('product',       'sculptra');
+    form.append('scenarioMode',  'true');
+    form.append('scenarioKey',   scenarioKey);
+    // Fix 1: forward sourceJobId so the server can verify baseline ownership.
+    if(sl.jobId) form.append('sourceJobId', sl.jobId);
+    const promptView = angleId === 'r45' ? 'oblique_right'
+                     : angleId === 'l45' ? 'oblique_left'
+                     : 'frontal';
+    form.append('angle', angleId);
+    form.append('view',  promptView);
+    if(state.sex) form.append('sex', state.sex);
+
+    const startRes = await fetch('/.netlify/functions/start-visualization', {
+      method: 'POST', headers: auth, body: form
+    });
+
+    if(startRes.status === 401){ await handleAuthFailure(); throw new Error('Session expired.'); }
+    if(startRes.status === 402){
+      let e; try { e = JSON.parse(await startRes.text()); } catch {}
+      throw new Error((e && e.error) || 'Not enough credits for this scenario.');
+    }
+    if(!startRes.ok){
+      let e; try { e = JSON.parse(await startRes.text()); } catch {}
+      throw new Error((e && e.error) || ('Could not start scenario generation (HTTP ' + startRes.status + ').'));
+    }
+
+    const resultUrl = await pollForResult(jobId, auth);
+
+    bucket[scenarioKey] = { status: 'done', jobId, resultUrl, error: null };
+    if(accessMode === 'account') refreshCredits(0);
+
+  } catch(err){
+    const msg = (err && err.message) || 'Scenario generation failed.';
+    const prevJobId = bucket[scenarioKey] && bucket[scenarioKey].jobId;
+    bucket[scenarioKey] = { status: 'error', jobId: prevJobId, resultUrl: null, error: msg };
+    if(accessMode === 'account') refreshCredits(0);
+  }
+
+  syncScenarioBtns();
+  renderScenarioResult(scenarioKey);
+}
+
+function escapeHtml(str){
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function renderScenarioResult(scenarioKey){
+  const results = document.getElementById('scenarioResults');
+  if(!results) return;
+
+  // Find or create card for this scenario key
+  let card = document.getElementById('scenResult_' + scenarioKey);
+  if(!card){
+    card = document.createElement('div');
+    card.className = 'scenario-result-card';
+    card.id = 'scenResult_' + scenarioKey;
+    results.appendChild(card);
+  }
+
+  const sl = activeSlot();
+  const s = scenarioBucket()[scenarioKey]; // Fix 2: read from per-angle bucket
+
+  if(!s){
+    card.innerHTML = '';
+    return;
+  }
+
+  const label = SCENARIO_LABELS[scenarioKey] || scenarioKey;
+
+  let bodyHtml = '';
+
+  if(s.status === 'generating'){
+    bodyHtml = '<div class="scenario-status">Generating scenario... this may take 1-3 minutes. Keep this tab open.</div>';
+  } else if(s.status === 'error'){
+    // Fix 5: escape error string before inserting into HTML
+    bodyHtml = '<div class="scenario-error">Generation failed: ' + escapeHtml(s.error || 'Unknown error.') + '</div>';
+  } else if(s.status === 'done' && s.resultUrl){
+    // Show the 6-month baseline (apply at 1.0) next to the scenario result,
+    // matching what the scenario was actually built from.
+    const baselineDisplayUrl = (state.type === 'biostim' && sl && sl.apply)
+      ? sl.apply(1.0)
+      : (sl ? (sl.resultDataUrl || sl.beforeDataUrl || sl.originalDataUrl || '') : '');
+    bodyHtml =
+      '<div class="scenario-img-pair">' +
+        '<div class="scenario-img-cell"><img src="' + baselineDisplayUrl + '" alt="Baseline simulation" /><div class="scenario-cell-tag">Baseline (expected)</div></div>' +
+        '<div class="scenario-img-cell"><img src="' + s.resultUrl + '" alt="' + escapeHtml(label) + ' scenario" /><div class="scenario-cell-tag sim">' + escapeHtml(label) + '</div></div>' +
+      '</div>';
+  }
+
+  card.innerHTML =
+    '<div class="scenario-result-header">' +
+      '<span class="scenario-result-label">' + escapeHtml(label) + '</span>' +
+      '<span class="scenario-result-disclaimer">Scenario simulation — not a guaranteed outcome</span>' +
+    '</div>' +
+    bodyHtml;
+}
+
+// Wire scenario buttons
+document.querySelectorAll('.scenario-btn[data-scenario]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const key = btn.dataset.scenario;
+    if(!key) return;
+    const s = scenarioBucket()[key]; // Fix 2: check per-angle bucket
+    if(s && s.status === 'generating') return; // already running
+    runScenario(key);
+  });
 });
 
 /* ───────── Init ───────── */
