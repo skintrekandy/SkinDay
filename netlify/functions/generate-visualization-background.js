@@ -288,89 +288,80 @@ async function resolveReference(f, billing) {
 //
 // Falls back to the static scenario prompt on any failure.
 
-const SCENARIO_PLANNER_SYSTEM = `You are a clinical aesthetics AI assistant helping to generate precise image-editing prompts for an aesthetic medicine consultation tool. 
-You will receive two medical consultation photos of the same patient and a scenario type. Your job is to analyze the patient's face and produce a tailored, specific image prompt for the scenario.
+const SCENARIO_PLANNER_SYSTEM = `You are an internal clinical prompt-composer for an aesthetic medicine AI tool. You are NOT a patient-facing assistant. You do not produce medical advice or claims.
 
-Rules you must follow without exception:
-- You write prompts for an image edit model, not for a human. Be direct and specific.
-- Always lead with absolute prohibitions: what must not change. This is the most important part.
+Your only job is to write a controlled image-editing prompt that tells an image model exactly what structural change to make and what must not change.
+
+ABSOLUTE RULES you must follow:
+- You are not trying to make the patient prettier, younger, or more attractive. You are writing a clinical simulation prompt.
 - The output image must show the exact same person: same identity, same skin tone, same apparent age, same skin texture, same pores, same asymmetry, same hair, same clothing, same expression, same head angle, same lighting, same background.
-- Do not allow any brightening, smoothing, skin retouching, eye enlargement, brow lift, lip change, nose change, or any beautification.
-- Describe only the structural change the scenario adds. Be specific about location and magnitude.
-- Keep the prompt under 350 words. Shorter is better if precise.
-- Return only the image prompt text. No preamble, no explanation, no JSON, no markdown.`;
+- Never allow: skin smoothing, skin brightening, contrast increase, eye enlargement, brow lift, lip change, nose change, hair change, lighting change, or global beautification.
+- Describe only the specific structural change the scenario adds. Be precise about location and magnitude.
+- If the choice is between too much change and too little, always choose too little.
+- The image prompt you write must be under 300 words. Shorter and more precise is better.
+
+You must return valid JSON and nothing else. No preamble, no explanation, no markdown fences. The JSON must have exactly these four fields:
+{
+  "caseSummary": "1-2 sentences describing this patient's relevant anatomy and what the baseline already achieved",
+  "scenarioStrategy": "1-2 sentences describing what this specific scenario should add for this patient",
+  "imagePrompt": "the complete image-editing prompt to send to the image model, under 300 words",
+  "riskFlags": ["list of specific risks to prohibit for this patient, e.g. avoid skin brightening, avoid anterior cheek fill, avoid chin over-projection"]
+}`;
 
 const SCENARIO_PLANNER_USER = {
   stronger_sculptra: `TWO IMAGES:
 Image 1 = the Visualize baseline (already shows a moderate Sculptra biostimulator response).
 Image 2 = the original pre-treatment photo.
 
-Scenario: Stronger Sculptra response -- upper-range lateral collagen support built on top of the baseline.
+SCENARIO: Stronger Sculptra response.
+This means: the same lateral support shown in the baseline, but modestly more developed. One step beyond the baseline, not a transformation.
 
 Analyze:
-- What the baseline already achieved (compare Image 1 vs Image 2)
-- What specific lateral support this patient's face still needs beyond the baseline
-- What areas must stay completely unchanged
+- What the baseline already achieved compared to Image 2 (what changed: lateral cheek, temple, jowl, folds)
+- What specific lateral support this patient still needs (hollow temples? weak lateral cheek? jowl still present?)
+- What must not move at all (eyes, lips, nose, skin, lighting, identity)
 
-Then write a precise image editing prompt that:
-1. Opens with absolute identity and feature preservation rules
-2. Describes only the additional lateral cheek/temple/prejowl support needed for THIS face specifically
-3. States that the change must be subtle and diffuse -- if the choice is between too much and too little, choose too little
-4. Explicitly prohibits averaging back toward Image 2
-
-Do not describe a "comprehensive" or "dramatic" change. This is one step beyond the baseline, not a full transformation.`,
+Write the imagePrompt to show a modest increase in lateral collagen support only. Conservative. If unsure, do less.`,
 
   add_chin_jaw_filler: `TWO IMAGES:
 Image 1 = the Visualize baseline (already shows a Sculptra biostimulator response).
 Image 2 = the original pre-treatment photo.
 
-Scenario: Add chin and jawline HA filler on top of the Sculptra baseline.
+SCENARIO: Add chin and jawline HA filler on top of the Sculptra baseline.
 
 Analyze:
-- This patient's lower-face anatomy: chin projection, mandibular border definition, prejowl support, face shape (oval, round, square)
-- Whether this is a male or female face (chin shape target differs significantly)
-- What specific lower-face structural improvements would be clinically appropriate
+- Patient's face shape and lower-face anatomy from Image 1: chin projection, mandibular border, prejowl, jowl
+- Sex of the patient (critical: male = wide squared chin, female = tapered defined chin)
+- What specific lower-face structural change would be clinically appropriate for this face
 
-Then write a precise image editing prompt that:
-1. Opens with absolute identity and feature preservation rules for all areas ABOVE the lower third
-2. Describes the specific lower-face structural change: chin projection, jawline definition, prejowl support
-3. States the correct chin shape goal for this patient's sex and face type
-4. Prohibits any change to midface, cheeks, temples, eyes, brows, nose, lips`,
+Write the imagePrompt to show: chin projection, jawline definition, prejowl support -- localized to the lower third only. Everything above the lower third is completely unchanged.`,
 
   add_temple_support: `TWO IMAGES:
 Image 1 = the Visualize baseline (already shows a Sculptra biostimulator response).
 Image 2 = the original pre-treatment photo.
 
-Scenario: Add focused temple volume on top of the Sculptra baseline.
+SCENARIO: Add focused temple volume on top of the Sculptra baseline.
 
 Analyze:
-- Whether this patient shows temporal hollowing or flat temple contour
-- The temple-to-cheek transition in the baseline vs the original
-- How much improvement is appropriate without over-filling
+- Whether this patient shows temporal hollowing or flat temple contour in Image 2 vs Image 1
+- How much the baseline already improved the temple-to-cheek transition
+- Whether additional temple support would be visible and appropriate for this face
 
-Then write a precise image editing prompt that:
-1. Opens with absolute identity and feature preservation rules
-2. Describes only the temporal hollow fill and forehead-to-cheek continuity improvement
-3. States the change must look like soft tissue returning, not a localized lump
-4. Prohibits any change below the zygomatic arch and any change to eyes, brows, or upper eyelid`,
+Write the imagePrompt to show: temporal hollow fill and improved forehead-to-cheek continuity only. No change below the zygomatic arch. No change to eyes, brows, or upper eyelid.`,
 
   combination_plan: `TWO IMAGES:
 Image 1 = the Visualize baseline (already shows a Sculptra biostimulator response).
 Image 2 = the original pre-treatment photo.
 
-Scenario: Full combination treatment -- Sculptra support increase + chin/jaw HA filler + temple volume.
+SCENARIO: Full combination treatment -- Sculptra support increase + chin/jaw HA filler + temple volume.
 
 Analyze:
-- What the baseline already achieved
-- What three specific localized additions would make the strongest clinical impression for THIS patient
-- What the patient's dominant concerns appear to be based on anatomy (hollowing, descent, lower-face balance, temple, etc.)
+- What the baseline already achieved (compare Image 1 vs Image 2)
+- This patient's three most prominent anatomical concerns visible in Image 2 that the baseline has not fully addressed
+- What sex-appropriate chin shape is correct for this patient
+- What areas would create the strongest clinical impression if addressed together
 
-Then write a precise image editing prompt that:
-1. Opens with absolute identity and feature preservation rules
-2. Describes three numbered localized changes, each specific to this patient's anatomy
-3. Keeps each change proportionate -- together they should read as "comprehensive support" not "different person"
-4. States that identity, skin, expression, and all untreated features must be identical to Image 1
-5. Prohibits skin smoothing, brightening, and global beautification`
+Write the imagePrompt to show three specific, localized additions proportional to what this face actually needs. Each change must be described with anatomical precision. Together they should read as "same person, better supported" not "different person." Skin, eyes, lips, nose, hair, lighting, expression are locked.`
 };
 
 async function runScenarioPlanner({ client, scenarioKey, view, sex, angle, baselineB64, baseMime, originalB64, origMime, staticFallback, provider }) {
@@ -380,25 +371,21 @@ async function runScenarioPlanner({ client, scenarioKey, view, sex, angle, basel
     return staticFallback;
   }
 
-  // Build vision message content
   const isOblique = (view === 'oblique_left' || view === 'oblique_right' || view === 'l45' || view === 'r45' || view === 'oblique');
   const viewNote = isOblique
-    ? '\n\nVIEW NOTE: These are three-quarter oblique photos. Preserve the exact head angle, crop, and perspective. Do not rotate toward frontal.'
-    : '\n\nVIEW NOTE: These are frontal photos. Preserve the exact frontal pose and head position.';
-
-  const sexNote = sex ? ('\n\nPATIENT SEX: ' + sex + '. This affects chin shape goals and aesthetic targets.') : '';
+    ? '\n\nVIEW: Three-quarter oblique. Preserve exact head angle, crop, and perspective. Do not rotate toward frontal.'
+    : '\n\nVIEW: Frontal. Preserve exact frontal pose and head position.';
+  const sexNote = sex ? ('\n\nPATIENT SEX: ' + sex + '. This affects chin shape goals significantly.') : '';
 
   const userContent = [
     { type: 'text', text: userTemplate + viewNote + sexNote }
   ];
 
-  // Attach baseline image (Image 1)
   userContent.push({
     type: 'image_url',
     image_url: { url: 'data:' + (baseMime || 'image/jpeg') + ';base64,' + baselineB64, detail: 'high' }
   });
 
-  // Attach original image (Image 2) if available
   if (originalB64) {
     userContent.push({
       type: 'image_url',
@@ -406,30 +393,80 @@ async function runScenarioPlanner({ client, scenarioKey, view, sex, angle, basel
     });
   }
 
-  // Currently only OpenAI provider is implemented.
-  // To add Anthropic: check provider === 'anthropic' and use Anthropic SDK here.
   if (provider !== 'openai') {
     console.warn('[M12.5] provider=' + provider + ' not implemented, falling back to openai');
   }
 
   const plannerModel = process.env.SCENARIO_PLANNER_MODEL || 'gpt-4o';
-  const response = await client.chat.completions.create({
+  const plannerTimeoutMs = parseInt(process.env.SCENARIO_PLANNER_TIMEOUT_MS || '8000', 10);
+
+  // Race the planner call against a timeout so a slow model never blocks generation.
+  const plannerCallPromise = client.chat.completions.create({
     model: plannerModel,
-    max_tokens: 500,
+    max_tokens: 600,
+    response_format: { type: 'json_object' },
     messages: [
       { role: 'system', content: SCENARIO_PLANNER_SYSTEM },
       { role: 'user', content: userContent }
     ]
   });
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('planner timeout after ' + plannerTimeoutMs + 'ms')), plannerTimeoutMs)
+  );
 
-  const plannerPrompt = response.choices && response.choices[0] && response.choices[0].message && response.choices[0].message.content;
-  if (!plannerPrompt || plannerPrompt.trim().length < 50) {
-    console.warn('[M12.5] planner returned empty/short response, using static fallback');
+  let response;
+  try {
+    response = await Promise.race([plannerCallPromise, timeoutPromise]);
+  } catch (e) {
+    console.warn('[M12.5] planner call failed or timed out:', (e && e.message) || e, '-- using static fallback');
     return staticFallback;
   }
 
-  console.log('[M12.5] planner prompt (' + plannerPrompt.length + ' chars): ' + plannerPrompt.slice(0, 120) + '…');
-  return plannerPrompt.trim();
+  const raw = response.choices && response.choices[0] && response.choices[0].message && response.choices[0].message.content;
+  if (!raw || raw.trim().length < 10) {
+    console.warn('[M12.5] planner returned empty response, using static fallback');
+    return staticFallback;
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (e) {
+    console.warn('[M12.5] planner JSON parse failed, using static fallback. raw:', raw.slice(0, 200));
+    return staticFallback;
+  }
+
+  const imagePrompt = parsed.imagePrompt && parsed.imagePrompt.trim();
+  if (!imagePrompt || imagePrompt.length < 50) {
+    console.warn('[M12.5] planner imagePrompt missing or too short, using static fallback');
+    return staticFallback;
+  }
+
+  // Append riskFlags as additional hard prohibitions at the end of the prompt.
+  // This closes the loop: the planner identifies patient-specific risks, and
+  // they feed back into the image prompt as explicit constraints.
+  // Cap at 5 flags and enforce short concrete format to avoid confusing the image model.
+  let finalPrompt = imagePrompt;
+  let riskFlags = Array.isArray(parsed.riskFlags) && parsed.riskFlags.length > 0 ? parsed.riskFlags : null;
+  if (riskFlags) {
+    // Trim each flag to max 60 chars and cap list at 5 to keep prohibitions tight.
+    riskFlags = riskFlags
+      .map(r => String(r || '').trim().slice(0, 60))
+      .filter(r => r.length > 4)
+      .slice(0, 5);
+    if (riskFlags.length > 0) {
+      finalPrompt += ' ADDITIONAL PATIENT-SPECIFIC PROHIBITIONS: ' + riskFlags.map(r => '- ' + r).join('; ') + '.';
+    } else {
+      riskFlags = null;
+    }
+  }
+
+  console.log('[M12.5] planner OK | case: ' + (parsed.caseSummary || '').slice(0, 80)
+    + ' | strategy: ' + (parsed.scenarioStrategy || '').slice(0, 80)
+    + ' | risks: ' + (riskFlags ? riskFlags.join(', ') : 'none')
+    + ' | prompt length: ' + finalPrompt.length);
+
+  return finalPrompt;
 }
 
 exports.handler = async (event) => {
@@ -514,10 +551,14 @@ exports.handler = async (event) => {
       // (default 'openai') so it can be swapped to 'anthropic' for A/B testing later.
       const PLANNER_SCENARIOS = ['stronger_sculptra', 'combination_plan', 'add_chin_jaw_filler', 'add_temple_support'];
       const plannerProvider = process.env.SCENARIO_PLANNER_PROVIDER || 'openai';
+      // Kill switch: set SCENARIO_PLANNER_ENABLED=false in Netlify env to disable
+      // the planner without redeploying code. Useful if planner output is unexpected
+      // right before a demo. Defaults to enabled.
+      const plannerEnabled = process.env.SCENARIO_PLANNER_ENABLED !== 'false';
       let scenarioPrompt = staticPrompt;
       let plannerUsed = false;
 
-      if (PLANNER_SCENARIOS.includes(scenarioKey) && job.imageB64) {
+      if (plannerEnabled && PLANNER_SCENARIOS.includes(scenarioKey) && job.imageB64) {
         try {
           scenarioPrompt = await runScenarioPlanner({
             client,
