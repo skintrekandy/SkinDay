@@ -561,7 +561,7 @@ exports.handler = async (event) => {
       let scenarioPrompt = staticPrompt;
       let plannerUsed = false;
 
-      if (plannerEnabled && PLANNER_SCENARIOS.includes(scenarioKey) && primaryB64) {
+      if (plannerEnabled && PLANNER_SCENARIOS.includes(scenarioKey) && sourceImageB64) {
         try {
           scenarioPrompt = await runScenarioPlanner({
             client,
