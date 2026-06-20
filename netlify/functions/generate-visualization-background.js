@@ -288,6 +288,15 @@ async function resolveReference(f, billing) {
 //
 // Falls back to the static scenario prompt on any failure.
 
+const SCULPTRA_EMPHASIS_SYSTEM = `You are an internal clinical prompt-composer for an aesthetic medicine AI tool.
+
+Return exactly one short patient-specific emphasis sentence for a Sculptra 6-month scenario.
+Do not return JSON. Do not return markdown. Do not write a full image prompt.
+Format exactly:
+Patient-specific emphasis: [priority zone]. Avoid: [specific risk].
+
+Keep it under 40 words.`;
+
 const SCENARIO_PLANNER_SYSTEM = `You are an internal clinical prompt-composer for an aesthetic medicine AI tool. You are NOT a patient-facing assistant. You do not produce medical advice or claims.
 
 Your only job is to write a controlled image-editing prompt that tells an image model exactly what structural change to make and what must not change.
@@ -309,18 +318,27 @@ You must return valid JSON and nothing else. No preamble, no explanation, no mar
 }`;
 
 const SCENARIO_PLANNER_USER = {
+  // M12.7: stronger_sculptra planner returns a SHORT patient-specific emphasis line only.
+  // The full prompt is SCULPTRA_SCENARIO_BASE (fixed, proven). The planner must NOT
+  // rewrite the treatment description -- it overthinks and produces cautious language.
+  // The planner output is appended to the base prompt, not used as a replacement.
   stronger_sculptra: `TWO IMAGES PROVIDED AS CONTEXT:
 Image 1 = the Visualize baseline (shows a moderate Sculptra biostimulator response already achieved).
 Image 2 = the original pre-treatment photo (THIS is the photo the image model will edit).
 
-YOUR JOB: Write an image-editing prompt for the image model that tells it to edit Image 2 (the original photo) to show the full upper-range Sculptra response directly.
+YOUR JOB: Analyze this patient's face and return ONE SHORT patient-specific emphasis sentence only.
+Do NOT write a full image prompt. Do NOT describe the treatment. The base prompt is already fixed.
+You are adding one sentence of patient-specific anatomical guidance.
 
 Analyze:
-- What the baseline (Image 1) already shows: lateral cheek, temple, jowl, fold improvement
-- What more this patient's face needs for an upper-range response (hollow temples? weak lateral cheek? jowl still present?)
-- What must stay completely unchanged (eyes, lips, nose, skin texture, lighting, hair, expression)
+- Where this patient shows the most significant hollowing, descent, or lateral support loss
+- What specific zone needs the most emphasis (lateral cheek, preauricular, submalar, temple, prejowl)
+- What to avoid for this specific face (e.g. do not add anterior cheek volume if the face is already round centrally)
 
-Write the imagePrompt to simulate the full Sculptra collagen response at the upper-range level from the original photo. Show a clearly visible but natural upper-range Sculptra response. The result should read as noticeably more supported than the baseline, mainly through stronger lateral cheek/temple scaffold, smoother submalar-to-prejowl transition, and cleaner mandibular support. Do not make the patient look like a different person, do not beautify skin globally, and do not change eyes, nose, lips, hair, lighting, or expression. One-pass generation from the original.`,
+Return ONLY this format (under 40 words):
+"Patient-specific emphasis: [zone/priority for this patient]. Avoid: [specific risk for this patient's anatomy]."
+
+Example: "Patient-specific emphasis: prioritize preauricular and lateral cheek support; submalar hollowing is the dominant concern. Avoid: anterior cheek fill, do not make the face rounder centrally."`,
 
   add_chin_jaw_filler: `TWO IMAGES PROVIDED AS CONTEXT:
 Image 1 = the Visualize baseline (shows a moderate Sculptra biostimulator response already achieved).
@@ -400,14 +418,21 @@ async function runScenarioPlanner({ client, scenarioKey, view, sex, angle, basel
 
   const plannerModel = process.env.SCENARIO_PLANNER_MODEL || 'gpt-4o';
   const plannerTimeoutMs = parseInt(process.env.SCENARIO_PLANNER_TIMEOUT_MS || '8000', 10);
+  const isSculptraEmphasis = (scenarioKey === 'stronger_sculptra');
+
+  // stronger_sculptra: plain text (one emphasis line appended to fixed base)
+  // all others: JSON object with imagePrompt + riskFlags
+  const responseFormat = isSculptraEmphasis
+    ? undefined
+    : { type: 'json_object' };
 
   // Race the planner call against a timeout so a slow model never blocks generation.
   const plannerCallPromise = client.chat.completions.create({
     model: plannerModel,
     max_tokens: 600,
-    response_format: { type: 'json_object' },
+    ...(responseFormat ? { response_format: responseFormat } : {}),
     messages: [
-      { role: 'system', content: SCENARIO_PLANNER_SYSTEM },
+      { role: 'system', content: isSculptraEmphasis ? SCULPTRA_EMPHASIS_SYSTEM : SCENARIO_PLANNER_SYSTEM },
       { role: 'user', content: userContent }
     ]
   });
@@ -429,45 +454,55 @@ async function runScenarioPlanner({ client, scenarioKey, view, sex, angle, basel
     return staticFallback;
   }
 
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch (e) {
-    console.warn('[M12.5] planner JSON parse failed, using static fallback. raw:', raw.slice(0, 200));
-    return staticFallback;
-  }
+  // M12.7: for stronger_sculptra, the planner returns a patient-specific emphasis
+  // line only, which is appended to the fixed SCULPTRA_SCENARIO_BASE.
+  // For all other scenarios, the planner output is used as the full imagePrompt.
+  // This prevents the planner from overthinking and writing cautious language for Sculptra.
+  const isSculptraEmphasisMode = (scenarioKey === 'stronger_sculptra');
 
-  const imagePrompt = parsed.imagePrompt && parsed.imagePrompt.trim();
-  if (!imagePrompt || imagePrompt.length < 50) {
-    console.warn('[M12.5] planner imagePrompt missing or too short, using static fallback');
-    return staticFallback;
-  }
-
-  // Append riskFlags as additional hard prohibitions at the end of the prompt.
-  // This closes the loop: the planner identifies patient-specific risks, and
-  // they feed back into the image prompt as explicit constraints.
-  // Cap at 5 flags and enforce short concrete format to avoid confusing the image model.
-  let finalPrompt = imagePrompt;
-  let riskFlags = Array.isArray(parsed.riskFlags) && parsed.riskFlags.length > 0 ? parsed.riskFlags : null;
-  if (riskFlags) {
-    // Trim each flag to max 60 chars and cap list at 5 to keep prohibitions tight.
-    riskFlags = riskFlags
-      .map(r => String(r || '').trim().slice(0, 60))
-      .filter(r => r.length > 4)
-      .slice(0, 5);
-    if (riskFlags.length > 0) {
-      finalPrompt += ' ADDITIONAL PATIENT-SPECIFIC PROHIBITIONS: ' + riskFlags.map(r => '- ' + r).join('; ') + '.';
-    } else {
-      riskFlags = null;
+  let imagePrompt;
+  if (isSculptraEmphasisMode) {
+    // The planner returned a patient-specific emphasis line.
+    // Use the fixed base from staticFallback (which is SCULPTRA_SCENARIO_BASE)
+    // and append the emphasis line.
+    const emphasisLine = raw.trim();
+    imagePrompt = staticFallback + ' ' + emphasisLine;
+    console.log('[M12.7] Sculptra emphasis mode: appended "' + emphasisLine.slice(0, 80) + '"');
+  } else {
+    // Parse JSON for other scenarios
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (e) {
+      console.warn('[M12.5] planner JSON parse failed, using static fallback. raw:', raw.slice(0, 200));
+      return staticFallback;
     }
+
+    imagePrompt = parsed.imagePrompt && parsed.imagePrompt.trim();
+    if (!imagePrompt || imagePrompt.length < 50) {
+      console.warn('[M12.5] planner imagePrompt missing or too short, using static fallback');
+      return staticFallback;
+    }
+
+    // Append riskFlags as additional hard prohibitions
+    let riskFlags = Array.isArray(parsed.riskFlags) && parsed.riskFlags.length > 0 ? parsed.riskFlags : null;
+    if (riskFlags) {
+      riskFlags = riskFlags
+        .map(r => String(r || '').trim().slice(0, 60))
+        .filter(r => r.length > 4)
+        .slice(0, 5);
+      if (riskFlags.length > 0) {
+        imagePrompt += ' ADDITIONAL PATIENT-SPECIFIC PROHIBITIONS: ' + riskFlags.map(r => '- ' + r).join('; ') + '.';
+      }
+    }
+
+    console.log('[M12.5] planner OK | case: ' + (parsed.caseSummary || '').slice(0, 80)
+      + ' | strategy: ' + (parsed.scenarioStrategy || '').slice(0, 80)
+      + ' | risks: ' + (riskFlags ? riskFlags.join(', ') : 'none')
+      + ' | prompt length: ' + imagePrompt.length);
   }
 
-  console.log('[M12.5] planner OK | case: ' + (parsed.caseSummary || '').slice(0, 80)
-    + ' | strategy: ' + (parsed.scenarioStrategy || '').slice(0, 80)
-    + ' | risks: ' + (riskFlags ? riskFlags.join(', ') : 'none')
-    + ' | prompt length: ' + finalPrompt.length);
-
-  return finalPrompt;
+  return imagePrompt;
 }
 
 exports.handler = async (event) => {

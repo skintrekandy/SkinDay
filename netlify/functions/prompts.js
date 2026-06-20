@@ -609,20 +609,37 @@ const SCENARIO_SAFETY =
   'The result must be unmistakably the same person. ' +
   'Do not add text, labels, watermarks, or annotations.';
 
+// M12.7: Fixed proven base prompt for the stronger_sculptra scenario.
+// Framed as "create a believable 6-month after-photo" not "stronger than baseline."
+// The planner adds only a short patient-specific emphasis line at the end.
+// Do not let the planner rewrite this prompt -- it overthinks and writes cautious
+// clinical language that produces timid results.
+const SCULPTRA_SCENARIO_BASE =
+  'Create a realistic clinical-style after-photo simulating the appearance 6 months after Sculptra treatment. ' +
+  'Use the original patient photo as the direct edit target. Keep the same head angle, head position, gaze direction, ' +
+  'neutral expression, lighting, clothing, hair, background, and camera framing exactly. ' +
+  'Make the result look like a believable 6-month Sculptra outcome: gradual collagen-stimulator improvement, ' +
+  'not sharp filler-like augmentation. Show mild-to-moderate broad soft-tissue restoration and support in the ' +
+  'temples, lateral cheeks, submalar/preauricular area, lower cheek, prejowl region, and along the mandibular line. ' +
+  'The face should look subtly fuller and better suspended, with a smoother transition from cheek to jawline, ' +
+  'slightly softened hollowing and shadowing, a more continuous lateral cheek-to-jaw contour, and a cleaner but ' +
+  'still natural lower-face outline. The improvement should be clearly visible when compared with the original, ' +
+  'but still clinically plausible and not overfilled. ' +
+  'Preserve identity exactly. Do not change ethnicity, apparent age dramatically, eye shape, nose, lips, hairstyle, ' +
+  'clothing, background, pose, or expression. Do not add makeup. Do not create a beauty-filter look. ' +
+  'Preserve natural skin texture, pores, pigmentation, and lighting. ' +
+  'Avoid global skin smoothing, brightening, face slimming, teeth changes, or unrelated beautification. ' +
+  'The result should look like the same patient photographed in the same setup, ' +
+  'only with a realistic 6-month Sculptra improvement.';
+
 const SCENARIO_PROMPTS = {
 
   stronger_sculptra: {
     label: 'Stronger Sculptra response',
     description: 'Upper-range 6-month collagen response',
-    prompt: SCENARIO_PROMPT_BASE +
-      'Treatment to simulate: Sculptra biostimulator at the upper-range 6-month response level. ' +
-      'Show a clearly visible but natural lateral scaffold response: ' +
-      'fuller lateral cheek and temple convexity with more continuous support; ' +
-      'the jowl clearly lifted and the lower cheek better suspended; ' +
-      'nasolabial and marionette shadows softened from lateral support. ' +
-      'This is a LATERAL and DIFFUSE collagen response -- no central anterior volume, no filler-like localized fill, no facelift tightening. ' +
-      'If the choice is between too much and too little, choose too little.' +
-      SCENARIO_SAFETY
+    // M12.7: uses fixed proven base prompt. Planner adds patient-specific line only.
+    // NO_TEXT_RULE is prepended by buildScenarioPrompt(), so not included here.
+    prompt: SCULPTRA_SCENARIO_BASE
   },
 
   add_chin_jaw_filler: {
@@ -679,12 +696,23 @@ function buildScenarioPrompt(scenarioKey, view) {
   const isOblique = (view === 'oblique_left' || view === 'oblique_right' || view === 'oblique' ||
                      view === 'l45' || view === 'r45');
 
-  const viewLead = isOblique
-    ? 'IMPORTANT: this is a three-quarter (oblique) consultation photograph. ' +
-      'Preserve the exact head angle, crop, perspective, and facial orientation exactly. ' +
-      'Do not rotate the face toward frontal. Do not rebuild, repaint, or re-render the face. ' +
-      'Make the minimum change consistent with the treatment plan below. '
-    : '';
+  // stronger_sculptra needs an oblique lead that preserves pose WITHOUT saying
+  // "minimum change" -- that phrasing suppresses the Sculptra magnitude we want.
+  // Other scenarios keep the conservative minimum-change lead.
+  let viewLead = '';
+  if (isOblique) {
+    if (scenarioKey === 'stronger_sculptra') {
+      viewLead = 'IMPORTANT: this is a three-quarter oblique consultation photograph. ' +
+        'Preserve the exact head angle, crop, perspective, and facial orientation. ' +
+        'Do not rotate the face toward frontal. ' +
+        'Keep identity, lighting, hair, expression, and background unchanged. ';
+    } else {
+      viewLead = 'IMPORTANT: this is a three-quarter (oblique) consultation photograph. ' +
+        'Preserve the exact head angle, crop, perspective, and facial orientation exactly. ' +
+        'Do not rotate the face toward frontal. Do not rebuild, repaint, or re-render the face. ' +
+        'Make the minimum change consistent with the treatment plan below. ';
+    }
+  }
 
   return NO_TEXT_RULE + ' ' + viewLead + s.prompt;
 }
