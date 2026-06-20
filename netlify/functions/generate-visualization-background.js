@@ -320,7 +320,7 @@ Analyze:
 - What more this patient's face needs for an upper-range response (hollow temples? weak lateral cheek? jowl still present?)
 - What must stay completely unchanged (eyes, lips, nose, skin texture, lighting, hair, expression)
 
-Write the imagePrompt to simulate the full Sculptra collagen response at the upper-range level from the original photo. Conservative -- if unsure, do less. One-pass generation from the original.`,
+Write the imagePrompt to simulate the full Sculptra collagen response at the upper-range level from the original photo. Show a clearly visible but natural upper-range Sculptra response. The result should read as noticeably more supported than the baseline, mainly through stronger lateral cheek/temple scaffold, smoother submalar-to-prejowl transition, and cleaner mandibular support. Do not make the patient look like a different person, do not beautify skin globally, and do not change eyes, nose, lips, hair, lighting, or expression. One-pass generation from the original.`,
 
   add_chin_jaw_filler: `TWO IMAGES PROVIDED AS CONTEXT:
 Image 1 = the Visualize baseline (shows a moderate Sculptra biostimulator response already achieved).
