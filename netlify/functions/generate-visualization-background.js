@@ -42,7 +42,7 @@
 
 const OpenAI = require('openai');
 const { getStore, connectLambda } = require('@netlify/blobs');
-const { buildCorePrompt, CHIN_JAW_SAFETY, usesChinJawSafety } = require('./prompts');
+const { buildCorePrompt, CHIN_JAW_SAFETY, usesChinJawSafety, buildScenarioPrompt } = require('./prompts');
 const { logGeneration } = require('./log-generation');
 
 // === VERBATIM from generate-visualization.js. Do not diverge this copy in isolation. ===
@@ -289,8 +289,118 @@ exports.handler = async (event) => {
 
     const f = job.params || {};
 
-    // SERVER_SAFETY policy (M7.5). Sculptra has its own safety base (since M4)
-    // and chin/jawline filler now has its own too (CHIN_JAW_SAFETY in prompts.js,
+    // M12.2: SCENARIO MODE
+    // When f.scenarioMode === 'true', bypass the standard prompt-assembly path.
+    // The scenario prompt is built here from f.scenarioKey + f.view.
+    // Input: TWO images -- image[0] = simulated baseline, image[1] = original photo.
+    // The original photo keeps identity and skin texture anchored across the scenario.
+    // No mask is applied (full-frame scenario generation). 1 credit per scenario.
+    // Safety tail: none -- the scenario prompts carry their own complete safety base.
+    const isScenario = (f.scenarioMode === 'true' || f.scenarioMode === true);
+    if (isScenario) {
+      const scenarioKey = f.scenarioKey;
+      if (!scenarioKey) {
+        await fail('Scenario mode missing scenarioKey', 'bad_request');
+        await refundIfBilled(store, jobId, 'missing scenarioKey');
+        return { statusCode: 200 };
+      }
+
+      let scenarioPrompt;
+      try {
+        scenarioPrompt = buildScenarioPrompt(scenarioKey, f.view || 'frontal');
+      } catch (e) {
+        await fail('Invalid scenario key: ' + scenarioKey, 'bad_request');
+        await refundIfBilled(store, jobId, 'invalid scenarioKey');
+        return { statusCode: 200 };
+      }
+
+      const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+      // image[0]: simulated baseline (primary edit target -- the treatment anchor)
+      const baselineBuffer = Buffer.from(job.imageB64, 'base64');
+      const baselineFile = await OpenAI.toFile(baselineBuffer, job.filename || 'baseline.jpg', { type: job.mime || 'image/jpeg' });
+
+      // image[1]: original patient photo (identity + skin texture reference)
+      // Stored in job.originalImageB64 by start-visualization for scenario jobs.
+      let imageArray = [baselineFile];
+      if (job.originalImageB64) {
+        try {
+          const origBuffer = Buffer.from(job.originalImageB64, 'base64');
+          const origFile = await OpenAI.toFile(origBuffer, 'original.jpg', { type: job.originalMime || 'image/jpeg' });
+          imageArray = [baselineFile, origFile];
+          console.log('[M12.2] scenario: two-image input (baseline + original)');
+        } catch (e) {
+          console.warn('[M12.2] scenario: original image load failed; falling back to baseline-only.', e && e.message);
+        }
+      } else {
+        console.log('[M12.2] scenario: no originalImageB64; single-image fallback');
+      }
+
+      const scenarioParams = {
+        model: 'gpt-image-1',
+        image: imageArray.length === 1 ? imageArray[0] : imageArray,
+        prompt: scenarioPrompt,
+        size: 'auto',
+        input_fidelity: 'high',
+        output_format: 'jpeg',
+        output_compression: 85
+      };
+      // No mask for scenario generations.
+
+      const billing = await store.get(jobId + ':billing', { type: 'json' }).catch(() => null);
+
+      let scenarioResult;
+      try {
+        scenarioResult = await client.images.edit(scenarioParams);
+      } catch (err) {
+        const code = err && (err.code || (err.error && err.error.code));
+        const msg = (err && err.message) || '';
+        const blocked = code === 'moderation_blocked' || /safety system|moderation|not allowed/i.test(msg);
+        if (blocked) {
+          await fail('The AI provider blocked this scenario edit under its safety system. Try a different photo or scenario.', 'moderation_blocked');
+          await refundIfBilled(store, jobId, 'moderation blocked');
+          await logGeneration({ jobId, status: 'blocked', failureReason: 'moderation_blocked', model: 'gpt-image-1' }).catch(() => {});
+        } else {
+          await fail(msg || 'Scenario generation failed', code || 'error');
+          await refundIfBilled(store, jobId, code ? String(code) : 'scenario generation failed');
+          await logGeneration({ jobId, status: 'failed', failureReason: code || msg || 'unknown', model: 'gpt-image-1' }).catch(() => {});
+        }
+        return { statusCode: 200 };
+      }
+
+      const b64 = scenarioResult.data && scenarioResult.data[0] && scenarioResult.data[0].b64_json;
+      if (!b64) {
+        await fail('No image returned for scenario', 'no_image');
+        await refundIfBilled(store, jobId, 'no image returned');
+        return { statusCode: 200 };
+      }
+
+      await store.set(jobId + ':result', 'data:image/jpeg;base64,' + b64);
+      await store.setJSON(jobId + ':status', { state: 'done', updatedAt: Date.now() });
+      try { await store.delete(jobId + ':job'); } catch (e) { /* free payload */ }
+
+      try {
+        await logGeneration({
+          jobId,
+          userId: billing ? billing.userId : null,
+          betaKeyUsed: !billing,
+          treatmentType: 'scenario',
+          angle: f.angle || null,
+          isRegen: false,
+          model: 'gpt-image-1',
+          imageSize: scenarioParams.size || 'auto',
+          imageQuality: 'high',
+          openAIUsage: scenarioResult.usage || null,
+          creditsCharged: billing ? billing.cost : null,
+          referenceMode: null,
+          status: 'success',
+        });
+      } catch (logErr) { console.error('[logGeneration] scenario success log failed:', logErr.message); }
+
+      return { statusCode: 200 };
+    }
+
+    // ── Standard / Enhanced generation path (unchanged below) ──
     // v7): the generic tail's "do NOT slim the face or jaw" and "subtly adjusted"
     // were contradicting the chin/jaw content and capping the anchor, which is
     // why oblique chin/jaw came out timid. All other filler areas and hdr keep
