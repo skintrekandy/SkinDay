@@ -4156,6 +4156,17 @@ function syncScenarioBtns(){
   });
 }
 
+// M12.6: compositor scope per scenario.
+// stronger_sculptra and combination_plan use full Sculptra mask.
+// add_chin_jaw_filler uses chin-jaw mask.
+// add_temple_support uses full mask (no dedicated temple scope yet).
+const SCENARIO_COMPOSITOR_SCOPE = {
+  stronger_sculptra:   'full',
+  combination_plan:    'full',
+  add_chin_jaw_filler: 'chin_jaw',
+  add_temple_support:  'full'
+};
+
 async function runScenario(scenarioKey){
   const sl = activeSlot();
   if(!sl || sl.status !== 'done' || !sl.resultDataUrl){
@@ -4175,30 +4186,21 @@ async function runScenario(scenarioKey){
   const angleId = state.activeAngle;
   const bucket  = scenarioBucket();
 
-  // Mark as generating in the per-angle bucket
-  bucket[scenarioKey] = { status: 'generating', jobId: null, resultUrl: null, error: null };
+  bucket[scenarioKey] = { status: 'generating', jobId: null, resultUrl: null, rawResultUrl: null, error: null };
   syncScenarioBtns();
   renderScenarioResult(scenarioKey);
 
   try {
     const auth = await authHeaders();
 
-    // Baseline image for the scenario.
-    // ?scenarioRaw=1: use the raw AI output (pre-compositor) as the scenario input.
-    //   Tests whether the composited baseline is limiting the model's output quality.
-    //   Raw AI is sharper and less processed, but may reintroduce beautification.
-    // Default: sl.apply(1.0) -- full 6-month composited baseline.
-    //   Clinically honest; the model sees exactly what we showed the patient.
-    const useRawScenario = /[?&]scenarioRaw=1\b/i.test(location.search);
-    const baselineForScenario = (useRawScenario && sl.rawAiDataUrl)
-      ? sl.rawAiDataUrl
-      : ((state.type === 'biostim' && sl.apply) ? sl.apply(1.0) : sl.resultDataUrl);
-    if(useRawScenario && sl.rawAiDataUrl){
-      console.log('%c[Visualize M12.2] scenarioRaw=1: using raw AI output as scenario baseline.', 'color:#e65100;font-weight:bold');
-    }
+    // M12.6: send the original photo as the primary image (edit target).
+    // The baseline is sent as originalImage so the server can pass it to the planner.
+    // The image model generates directly from the original -- one clean pass.
+    const originalDataUrl = sl.beforeDataUrl || sl.originalDataUrl;
+    const baselineDataUrl = (state.type === 'biostim' && sl.apply) ? sl.apply(1.0) : sl.resultDataUrl;
 
-    const baselineBlob  = await resizeToUpload(baselineForScenario);
-    const originalBlob  = await resizeToUpload(sl.beforeDataUrl || sl.originalDataUrl);
+    const originalBlob = await resizeToUpload(originalDataUrl);
+    const baselineBlob = await resizeToUpload(baselineDataUrl);
 
     const jobId = (window.crypto && crypto.randomUUID && crypto.randomUUID()) ||
                   (Date.now() + '-' + Math.random().toString(36).slice(2));
@@ -4206,15 +4208,16 @@ async function runScenario(scenarioKey){
     bucket[scenarioKey].jobId = jobId;
 
     const form = new FormData();
-    form.append('image',         baselineBlob,  'baseline-' + angleId + '.jpg');
-    form.append('originalImage', originalBlob,  'original-' + angleId + '.jpg');
+    // image = original photo (primary edit target for the image model)
+    // originalImage = baseline (planner context: what Sculptra already achieved)
+    form.append('image',         originalBlob,  'original-' + angleId + '.jpg');
+    form.append('originalImage', baselineBlob,  'baseline-' + angleId + '.jpg');
     form.append('jobId',         jobId);
     form.append('type',          'biostim');
     form.append('product',       'sculptra');
     form.append('scenarioMode',  'true');
     form.append('scenarioKey',   scenarioKey);
-    form.append('rawScenarioMode', useRawScenario ? 'true' : 'false'); // A/B logging
-    // Fix 1: forward sourceJobId so the server can verify baseline ownership.
+    form.append('rawScenarioMode', 'false');
     if(sl.jobId) form.append('sourceJobId', sl.jobId);
     const promptView = angleId === 'r45' ? 'oblique_right'
                      : angleId === 'l45' ? 'oblique_left'
@@ -4237,15 +4240,49 @@ async function runScenario(scenarioKey){
       throw new Error((e && e.error) || ('Could not start scenario generation (HTTP ' + startRes.status + ').'));
     }
 
-    const resultUrl = await pollForResult(jobId, auth);
+    // Poll for raw AI result
+    const rawResultUrl = await pollForResult(jobId, auth);
 
-    bucket[scenarioKey] = { status: 'done', jobId, resultUrl, error: null };
+    // M12.6: run the compositor on the scenario result.
+    // Uses the same sculptra-mask.js / chin-jaw-mask.js pipeline as the baseline.
+    // The original photo is the compositor anchor (identity + skin texture lock).
+    // The raw scenario AI output provides the structural change.
+    // This prevents global portrait drift the same way the baseline compositor does.
+    let resultUrl = rawResultUrl;
+    const compScope = SCENARIO_COMPOSITOR_SCOPE[scenarioKey] || 'full';
+    try {
+      const originalImg = await loadImage(originalDataUrl);
+      const scenarioImg = await loadImage(rawResultUrl);
+      let applyFn;
+      if(compScope === 'chin_jaw'){
+        const { makeChinJawCompositor } = await import('./chin-jaw-mask.js?v=' + MASK_MODULE_VERSION);
+        applyFn = await makeChinJawCompositor(originalImg, scenarioImg, {
+          sex: state.sex, angleId, _maskModuleVersion: MASK_MODULE_VERSION
+        });
+      } else {
+        const { makeSculptraCompositor } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
+        applyFn = await makeSculptraCompositor(originalImg, scenarioImg, {
+          scope: compScope, sex: state.sex,
+          warp: true, jowlTexRelease: true, jawDef: true, angleId
+        });
+      }
+      if(applyFn){
+        resultUrl = applyFn(1.0);
+        console.log('%c[M12.6] scenario compositor OK: ' + scenarioKey + ' scope=' + compScope, 'color:#2e7d32;font-weight:bold');
+      } else {
+        console.warn('[M12.6] scenario compositor null (no face); showing raw AI for ' + scenarioKey);
+      }
+    } catch(compErr){
+      console.error('%c[M12.6] scenario compositor failed for ' + scenarioKey + '; showing raw AI.', 'color:#c62828;font-weight:bold', compErr);
+    }
+
+    bucket[scenarioKey] = { status: 'done', jobId, resultUrl, rawResultUrl, error: null };
     if(accessMode === 'account') refreshCredits(0);
 
   } catch(err){
     const msg = (err && err.message) || 'Scenario generation failed.';
     const prevJobId = bucket[scenarioKey] && bucket[scenarioKey].jobId;
-    bucket[scenarioKey] = { status: 'error', jobId: prevJobId, resultUrl: null, error: msg };
+    bucket[scenarioKey] = { status: 'error', jobId: prevJobId, resultUrl: null, rawResultUrl: null, error: msg };
     if(accessMode === 'account') refreshCredits(0);
   }
 
