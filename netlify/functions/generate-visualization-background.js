@@ -621,21 +621,39 @@ exports.handler = async (event) => {
       }
 
       const SCENARIO_FIDELITY = {
-        stronger_sculptra:   'low',   // M12.7 DIAGNOSTIC: testing whether fidelity is the limiter for diffuse Sculptra change. Revert to 'high' if identity drifts.
+        stronger_sculptra:   'high',  // diagnostic confirmed: low fidelity breaks identity; high is the least-bad on gpt-image-1.
         combination_plan:    'high',
         add_chin_jaw_filler: 'high',
         add_temple_support:  'high'
       };
+
+      // M12.8: swappable image model per scenario.
+      // gpt-image-1 hits a ceiling on diffuse Sculptra (visible change vs identity is a forced tradeoff).
+      // gpt-image-2 has better identity preservation and prompt adherence; the architecture is ready
+      // for it. Controlled by env vars so the model can be swapped without a redeploy once access lands:
+      //   SCENARIO_SCULPTRA_IMAGE_MODEL -- model for stronger_sculptra (the hard diffuse case)
+      //   SCENARIO_IMAGE_MODEL          -- model for all other scenarios
+      // IMPORTANT: gpt-image-2 always processes inputs at high fidelity and rejects input_fidelity.
+      // So input_fidelity is omitted for any model other than gpt-image-1.
+      const imageModel = (scenarioKey === 'stronger_sculptra')
+        ? (process.env.SCENARIO_SCULPTRA_IMAGE_MODEL || 'gpt-image-1')
+        : (process.env.SCENARIO_IMAGE_MODEL || 'gpt-image-1');
+
       // M12.6: image = original photo only. Single image, one clean pass.
       const scenarioParams = {
-        model: 'gpt-image-1',
+        model: imageModel,
         image: primaryFile,
         prompt: scenarioPrompt,
         size: 'auto',
-        input_fidelity: SCENARIO_FIDELITY[scenarioKey] || 'high',
         output_format: 'jpeg',
         output_compression: 85
       };
+      // input_fidelity only applies to gpt-image-1. gpt-image-2 always runs high-fidelity
+      // and will error if the param is passed.
+      if (imageModel === 'gpt-image-1') {
+        scenarioParams.input_fidelity = SCENARIO_FIDELITY[scenarioKey] || 'high';
+      }
+      console.log('[M12.8] scenario image model: ' + imageModel + ' (scenario=' + scenarioKey + ')');
       // No mask for scenario generations.
 
       const billing = await store.get(jobId + ':billing', { type: 'json' }).catch(() => null);
@@ -650,11 +668,11 @@ exports.handler = async (event) => {
         if (blocked) {
           await fail('The AI provider blocked this scenario edit under its safety system. Try a different photo or scenario.', 'moderation_blocked');
           await refundIfBilled(store, jobId, 'moderation blocked');
-          await logGeneration({ jobId, status: 'blocked', failureReason: 'moderation_blocked', model: 'gpt-image-1' }).catch(() => {});
+          await logGeneration({ jobId, status: 'blocked', failureReason: 'moderation_blocked', model: imageModel }).catch(() => {});
         } else {
           await fail(msg || 'Scenario generation failed', code || 'error');
           await refundIfBilled(store, jobId, code ? String(code) : 'scenario generation failed');
-          await logGeneration({ jobId, status: 'failed', failureReason: code || msg || 'unknown', model: 'gpt-image-1' }).catch(() => {});
+          await logGeneration({ jobId, status: 'failed', failureReason: code || msg || 'unknown', model: imageModel }).catch(() => {});
         }
         return { statusCode: 200 };
       }
@@ -678,9 +696,9 @@ exports.handler = async (event) => {
           treatmentType: 'scenario',
           angle: f.angle || null,
           isRegen: false,
-          model: 'gpt-image-1',
+          model: imageModel,
           imageSize: scenarioParams.size || 'auto',
-          imageQuality: scenarioParams.input_fidelity,
+          imageQuality: scenarioParams.input_fidelity || 'n/a',
           scenarioKey,
           plannerUsed,
           plannerProvider: plannerUsed ? plannerProvider : null,
