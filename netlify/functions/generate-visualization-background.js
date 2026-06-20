@@ -366,6 +366,19 @@ Analyze:
 
 Write the imagePrompt to simulate: the Sculptra lateral scaffold (at baseline level) PLUS temporal hollow fill so the forehead-to-cheek arc reads more continuous. No change below the zygomatic arch, no change to eyes, brows, or eyelid.`,
 
+  add_tear_trough: `TWO IMAGES PROVIDED AS CONTEXT:
+Image 1 = the Visualize baseline (shows a moderate Sculptra biostimulator response already achieved).
+Image 2 = the original pre-treatment photo (THIS is the photo the image model will edit).
+
+YOUR JOB: Write an image-editing prompt for the image model that tells it to edit Image 2 (the original photo) to show the baseline support PLUS under-eye (tear trough) hyaluronic acid correction.
+
+Analyze:
+- The depth and shape of this patient's tear trough hollow and lid-cheek junction in the original
+- Whether the under-eye darkness is from a true hollow (shadow cast by depression, correctable with filler) versus pigmentation (NOT correctable, must not be erased)
+- How much support the upper medial cheek needs to smooth the transition
+
+Write the imagePrompt to simulate: the tear trough hollow filled and supported from beneath so the lid-cheek junction reads smooth and the shadow softens naturally. Subtle and natural, never puffy or over-filled. Do not change eye shape/size/lid/lashes, do not brighten or erase pigmentation, do not touch the lower face, lips, nose, or brows.`,
+
   combination_plan: `TWO IMAGES PROVIDED AS CONTEXT:
 Image 1 = the Visualize baseline (shows a moderate Sculptra biostimulator response already achieved).
 Image 2 = the original pre-treatment photo (THIS is the photo the image model will edit).
@@ -587,7 +600,7 @@ exports.handler = async (event) => {
       // over a fixed prompt. Falls back to staticPrompt on any error so generation
       // is never blocked. Provider is controlled by SCENARIO_PLANNER_PROVIDER env var
       // (default 'openai') so it can be swapped to 'anthropic' for A/B testing later.
-      const PLANNER_SCENARIOS = ['stronger_sculptra', 'combination_plan', 'add_chin_jaw_filler', 'add_temple_support'];
+      const PLANNER_SCENARIOS = ['stronger_sculptra', 'combination_plan', 'add_chin_jaw_filler', 'add_temple_support', 'add_tear_trough'];
       const plannerProvider = process.env.SCENARIO_PLANNER_PROVIDER || 'openai';
       // Kill switch: set SCENARIO_PLANNER_ENABLED=false in Netlify env to disable
       // the planner without redeploying code. Useful if planner output is unexpected
@@ -624,7 +637,8 @@ exports.handler = async (event) => {
         stronger_sculptra:   'high',  // diagnostic confirmed: low fidelity breaks identity; high is the least-bad on gpt-image-1.
         combination_plan:    'high',
         add_chin_jaw_filler: 'high',
-        add_temple_support:  'high'
+        add_temple_support:  'high',
+        add_tear_trough:     'high'
       };
 
       // M12.8: swappable image model per scenario.

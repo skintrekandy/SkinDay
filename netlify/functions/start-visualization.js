@@ -164,7 +164,7 @@ exports.handler = async (event) => {
     // credit instead of the 2-credit biostim baseline.
     // Beta-key users are exempt from ownership verification (internal use).
     if (fields.scenarioMode === 'true') {
-      const VALID_SCENARIO_KEYS = ['stronger_sculptra', 'add_chin_jaw_filler', 'add_temple_support', 'combination_plan'];
+      const VALID_SCENARIO_KEYS = ['stronger_sculptra', 'add_chin_jaw_filler', 'add_temple_support', 'add_tear_trough', 'combination_plan'];
       if (!VALID_SCENARIO_KEYS.includes(fields.scenarioKey)) {
         return { statusCode: 400, headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ error: 'Invalid scenario key.', code: 'BAD_SCENARIO_KEY' }) };

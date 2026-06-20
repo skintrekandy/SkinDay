@@ -661,6 +661,19 @@ const SCENARIO_PROMPTS = {
       SCENARIO_SAFETY
   },
 
+  add_tear_trough: {
+    label: 'Add under-eye (tear trough) support',
+    description: 'Baseline + under-eye hollow correction',
+    prompt: SCENARIO_PROMPT_BASE +
+      'Treatment to simulate: the baseline collagen response PLUS hyaluronic acid correction of the under-eye (tear trough) hollow. ' +
+      'Show: the under-eye hollow and tear trough groove softened so the lid-cheek junction reads as a smooth, continuous, well-supported transition. ' +
+      'The dark shadow cast by the hollow is reduced because the depression is filled and supported from beneath, not because the skin is brightened or the dark circle is painted over. ' +
+      'The change is strictly the tear trough and the immediately adjacent upper medial cheek that supports it. ' +
+      'Keep it subtle and natural -- a refreshed, less tired appearance, never puffy, never over-filled, never a smooth featureless under-eye. ' +
+      'Do not change the eye shape, eye size, eyelid, lashes, or iris. Do not brighten or erase pigmentation. Do not touch the lower face, jawline, lips, nose, or brows.' +
+      SCENARIO_SAFETY
+  },
+
   combination_plan: {
     label: 'Full combination plan',
     description: 'Sculptra + chin/jaw filler + temple support',
