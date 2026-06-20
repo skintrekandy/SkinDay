@@ -446,6 +446,26 @@
     .scenario-cell-tag.sim { color:rgba(201,169,110,.95); }
     .scenario-status { font-size:.76rem; color:var(--muted); padding:10px 14px; }
     .scenario-error { font-size:.76rem; color:var(--rose); padding:10px 14px; }
+    /* Scenario card header action buttons (fullscreen + download) */
+    .scenario-result-actions { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+    .scenario-act-btn { display:inline-flex; align-items:center; gap:5px; padding:5px 10px; font-size:.66rem; font-weight:600; letter-spacing:.03em; text-transform:uppercase; color:var(--deep); background:transparent; border:1px solid var(--border); border-radius:5px; cursor:pointer; transition:background .15s,border-color .15s; }
+    .scenario-act-btn:hover { background:var(--warm); border-color:var(--gold); }
+    .scenario-act-btn:disabled { opacity:.4; cursor:default; }
+    .scenario-act-btn svg { width:13px; height:13px; }
+    /* Fullscreen overlay for the three-panel grid */
+    .scenario-fs-overlay { position:fixed; inset:0; z-index:9000; background:rgba(28,23,20,.94); display:none; flex-direction:column; padding:24px; }
+    .scenario-fs-overlay.open { display:flex; }
+    .scenario-fs-bar { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; flex-shrink:0; }
+    .scenario-fs-title { font-size:.9rem; font-weight:600; color:var(--cream); }
+    .scenario-fs-disclaimer { font-size:.66rem; color:var(--rose); letter-spacing:.04em; text-transform:uppercase; font-weight:600; }
+    .scenario-fs-actions { display:flex; gap:10px; align-items:center; }
+    .scenario-fs-btn { display:inline-flex; align-items:center; gap:6px; padding:8px 14px; font-size:.72rem; font-weight:600; color:var(--cream); background:transparent; border:1px solid rgba(250,247,242,.35); border-radius:6px; cursor:pointer; }
+    .scenario-fs-btn:hover { border-color:var(--gold); color:var(--gold); }
+    .scenario-fs-grid { flex:1; display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; min-height:0; }
+    @media(max-width:700px){ .scenario-fs-grid { grid-template-columns:1fr; overflow-y:auto; } }
+    .scenario-fs-cell { position:relative; min-height:0; background:#000; border-radius:6px; overflow:hidden; display:flex; align-items:center; justify-content:center; }
+    .scenario-fs-cell img { max-width:100%; max-height:100%; width:auto; height:auto; object-fit:contain; }
+    .scenario-fs-cell .scenario-cell-tag { position:absolute; }
     @media(max-width:540px){ .scenarios-grid { grid-template-columns:1fr; } }
   </style>
 </head>
@@ -741,13 +761,13 @@
     <div class="scenarios-subtitle">Build on the baseline simulation to explore what is possible. Each scenario consumes 1 credit and generates in the background.</div>
     <div class="scenarios-grid">
       <button class="scenario-btn" type="button" data-scenario="stronger_sculptra" id="scenBtn_stronger_sculptra">
-        <strong>Stronger Sculptra response</strong>
-        <span>Upper-range 6-month collagen response with more lateral lift</span>
+        <strong>Stronger biostimulation response</strong>
+        <span>A more complete collagen response with more lateral lift</span>
         <em class="credit-tag">1 credit</em>
       </button>
       <button class="scenario-btn" type="button" data-scenario="add_chin_jaw_filler" id="scenBtn_add_chin_jaw_filler">
         <strong>Add chin + jawline filler</strong>
-        <span>2 syringes HA filler added to the Sculptra baseline</span>
+        <span>Hyaluronic acid filler added to the chin and jawline</span>
         <em class="credit-tag">1 credit</em>
       </button>
       <button class="scenario-btn" type="button" data-scenario="add_temple_support" id="scenBtn_add_temple_support">
@@ -755,14 +775,37 @@
         <span>Focused upper lateral face volume on the baseline</span>
         <em class="credit-tag">1 credit</em>
       </button>
+      <button class="scenario-btn" type="button" data-scenario="add_tear_trough" id="scenBtn_add_tear_trough">
+        <strong>Add under-eye (tear trough) support</strong>
+        <span>Softens the under-eye hollow on the baseline</span>
+        <em class="credit-tag">1 credit</em>
+      </button>
       <button class="scenario-btn" type="button" data-scenario="combination_plan" id="scenBtn_combination_plan">
         <strong>Full combination plan</strong>
-        <span>Sculptra + chin/jaw filler + temple support combined</span>
+        <span>Biostimulation + chin/jaw filler + temple support combined</span>
         <em class="credit-tag">1 credit</em>
       </button>
     </div>
     <div class="scenario-results" id="scenarioResults"></div>
   </section>
+
+  <!-- Fullscreen overlay for scenario three-panel view -->
+  <div class="scenario-fs-overlay" id="scenarioFsOverlay" role="dialog" aria-modal="true" aria-label="Scenario fullscreen view">
+    <div class="scenario-fs-bar">
+      <div>
+        <div class="scenario-fs-title" id="scenarioFsTitle"></div>
+        <div class="scenario-fs-disclaimer">Scenario simulation — not a guaranteed outcome</div>
+      </div>
+      <div class="scenario-fs-actions">
+        <button class="scenario-fs-btn" type="button" id="scenarioFsDownload">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download
+        </button>
+        <button class="scenario-fs-btn" type="button" id="scenarioFsClose">Close</button>
+      </div>
+    </div>
+    <div class="scenario-fs-grid" id="scenarioFsGrid"></div>
+  </div>
 </div>
 
 <footer>
@@ -4093,9 +4136,10 @@ function scenarioBucket() {
 }
 
 const SCENARIO_LABELS = {
-  stronger_sculptra:  'Stronger Sculptra response',
+  stronger_sculptra:  'Stronger biostimulation response',
   add_chin_jaw_filler: 'Add chin + jawline filler',
   add_temple_support: 'Add temple support',
+  add_tear_trough:    'Add under-eye (tear trough) support',
   combination_plan:   'Full combination plan'
 };
 
@@ -4297,15 +4341,186 @@ function renderScenarioResult(scenarioKey){
         '<div class="scenario-img-cell"><img src="' + baselineDisplayUrl + '" alt="Sculptra baseline" /><div class="scenario-cell-tag">Baseline (expected)</div></div>' +
         '<div class="scenario-img-cell"><img src="' + s.resultUrl + '" alt="' + escapeHtml(label) + ' scenario" /><div class="scenario-cell-tag sim">' + escapeHtml(label) + '</div></div>' +
       '</div>';
+    // Stash the three panel URLs on the card so fullscreen/download can use them.
+    card._panels = { originalUrl, baselineDisplayUrl, scenarioUrl: s.resultUrl, label };
   }
+
+  const isDone = (s.status === 'done' && s.resultUrl);
+  const actionsHtml = isDone
+    ? '<div class="scenario-result-actions">' +
+        '<button class="scenario-act-btn" type="button" data-fs="' + scenarioKey + '">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>' +
+          'Fullscreen' +
+        '</button>' +
+        '<button class="scenario-act-btn" type="button" data-dl="' + scenarioKey + '">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>' +
+          'Download' +
+        '</button>' +
+      '</div>'
+    : '';
 
   card.innerHTML =
     '<div class="scenario-result-header">' +
       '<span class="scenario-result-label">' + escapeHtml(label) + '</span>' +
       '<span class="scenario-result-disclaimer">Scenario simulation — not a guaranteed outcome</span>' +
+      actionsHtml +
     '</div>' +
     bodyHtml;
+
+  // Wire the per-card action buttons (re-query since innerHTML was replaced)
+  const fsBtn = card.querySelector('[data-fs]');
+  const dlBtn = card.querySelector('[data-dl]');
+  if(fsBtn) fsBtn.addEventListener('click', () => openScenarioFullscreen(scenarioKey));
+  if(dlBtn) dlBtn.addEventListener('click', () => downloadScenarioGrid(scenarioKey));
 }
+
+// ───────── Scenario fullscreen + download ─────────
+// Both operate on the three panels stashed on the card (_panels): original,
+// baseline, scenario. Fullscreen shows them in a contain-fit overlay; download
+// stitches them into a single labelled image via canvas.
+
+function getScenarioPanels(scenarioKey){
+  const card = document.getElementById('scenResult_' + scenarioKey);
+  return card && card._panels ? card._panels : null;
+}
+
+function openScenarioFullscreen(scenarioKey){
+  const panels = getScenarioPanels(scenarioKey);
+  if(!panels) return;
+  const overlay = document.getElementById('scenarioFsOverlay');
+  const grid = document.getElementById('scenarioFsGrid');
+  const title = document.getElementById('scenarioFsTitle');
+  if(!overlay || !grid) return;
+
+  title.textContent = panels.label || 'Scenario';
+  grid.innerHTML =
+    '<div class="scenario-fs-cell"><img src="' + panels.originalUrl + '" alt="Original" /><div class="scenario-cell-tag">Original</div></div>' +
+    '<div class="scenario-fs-cell"><img src="' + panels.baselineDisplayUrl + '" alt="Baseline" /><div class="scenario-cell-tag">Baseline (expected)</div></div>' +
+    '<div class="scenario-fs-cell"><img src="' + panels.scenarioUrl + '" alt="' + escapeHtml(panels.label) + '" /><div class="scenario-cell-tag sim">' + escapeHtml(panels.label) + '</div></div>';
+
+  // Download button inside the overlay targets the same scenario
+  const dlBtn = document.getElementById('scenarioFsDownload');
+  if(dlBtn) dlBtn.onclick = () => downloadScenarioGrid(scenarioKey);
+
+  overlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeScenarioFullscreen(){
+  const overlay = document.getElementById('scenarioFsOverlay');
+  if(overlay) overlay.classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// Stitch the three panels into one downloadable image with labels.
+async function downloadScenarioGrid(scenarioKey){
+  const panels = getScenarioPanels(scenarioKey);
+  if(!panels) return;
+
+  const loadImg = (src) => new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+
+  try {
+    const [origImg, baseImg, scenImg] = await Promise.all([
+      loadImg(panels.originalUrl),
+      loadImg(panels.baselineDisplayUrl),
+      loadImg(panels.scenarioUrl)
+    ]);
+
+    // Each panel rendered at a fixed cell size, 4:5 aspect, cover-cropped.
+    const cellW = 768, cellH = 960, gap = 0;
+    const headerH = 64;
+    const footerH = 56;
+    const canvas = document.createElement('canvas');
+    canvas.width = cellW * 3 + gap * 2;
+    canvas.height = cellH + headerH + footerH;
+    const ctx = canvas.getContext('2d');
+
+    // Background
+    ctx.fillStyle = '#1C1714';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Header: scenario label (left) + disclaimer (right)
+    ctx.fillStyle = '#FAF7F2';
+    ctx.font = '600 26px "DM Sans", system-ui, sans-serif';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(panels.label || 'Scenario', 28, headerH / 2);
+    ctx.fillStyle = '#C8725A';
+    ctx.font = '600 16px "DM Sans", system-ui, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText('SCENARIO SIMULATION — NOT A GUARANTEED OUTCOME', canvas.width - 28, headerH / 2);
+    ctx.textAlign = 'left';
+
+    // cover-crop draw helper
+    const drawCover = (img, dx, dy, dw, dh) => {
+      const ir = img.width / img.height;
+      const dr = dw / dh;
+      let sx, sy, sw, sh;
+      if(ir > dr){ sh = img.height; sw = sh * dr; sx = (img.width - sw) / 2; sy = 0; }
+      else { sw = img.width; sh = sw / dr; sx = 0; sy = (img.height - sh) / 2; }
+      ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+    };
+
+    const cells = [
+      { img: origImg, tag: 'ORIGINAL', sim: false },
+      { img: baseImg, tag: 'BASELINE (EXPECTED)', sim: false },
+      { img: scenImg, tag: (panels.label || 'SCENARIO').toUpperCase(), sim: true }
+    ];
+
+    cells.forEach((c, i) => {
+      const dx = i * (cellW + gap);
+      const dy = headerH;
+      drawCover(c.img, dx, dy, cellW, cellH);
+      // gradient + tag at the bottom of each cell
+      const grad = ctx.createLinearGradient(0, dy + cellH - 90, 0, dy + cellH);
+      grad.addColorStop(0, 'rgba(28,23,20,0)');
+      grad.addColorStop(1, 'rgba(28,23,20,0.78)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(dx, dy + cellH - 90, cellW, 90);
+      ctx.fillStyle = c.sim ? 'rgba(201,169,110,0.97)' : 'rgba(250,247,242,0.92)';
+      ctx.font = '600 18px "DM Sans", system-ui, sans-serif';
+      ctx.fillText(c.tag, dx + 24, dy + cellH - 30);
+    });
+
+    // Footer brand line
+    ctx.fillStyle = 'rgba(250,247,242,0.55)';
+    ctx.font = '500 15px "DM Sans", system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('SkinDay Visualize · AI-generated, not a prediction of results', canvas.width / 2, headerH + cellH + footerH / 2);
+    ctx.textAlign = 'left';
+
+    const url = canvas.toDataURL('image/jpeg', 0.92);
+    const a = document.createElement('a');
+    const safeName = (scenarioKey || 'scenario').replace(/[^a-z0-9_-]/gi, '_');
+    a.href = url;
+    a.download = 'skinday-' + safeName + '-' + (state.activeAngle || 'view') + '.jpg';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  } catch(err){
+    console.error('[scenario download] failed:', err);
+    setStatus('Could not prepare the download. Please try again.', 'warn');
+  }
+}
+
+// Overlay close wiring (click backdrop, Close button, Escape key)
+(function wireScenarioFsOverlay(){
+  const overlay = document.getElementById('scenarioFsOverlay');
+  const closeBtn = document.getElementById('scenarioFsClose');
+  if(closeBtn) closeBtn.addEventListener('click', closeScenarioFullscreen);
+  if(overlay) overlay.addEventListener('click', (e) => { if(e.target === overlay) closeScenarioFullscreen(); });
+  document.addEventListener('keydown', (e) => {
+    if(e.key === 'Escape'){
+      const ov = document.getElementById('scenarioFsOverlay');
+      if(ov && ov.classList.contains('open')) closeScenarioFullscreen();
+    }
+  });
+})();
 
 // Wire scenario buttons
 document.querySelectorAll('.scenario-btn[data-scenario]').forEach(btn => {

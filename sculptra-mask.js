@@ -2449,7 +2449,14 @@ const SCULPTRA_DARK_FLOOR = 16;
 // photos. Real-world results show the skin brightness lift is a legitimate
 // clinical outcome (collagen glow). 16 recovers most of it while staying
 // below the 18 that caused patchy artefacts on clinic snapshots.
-const SCULPTRA_BRIGHT_CAP_FULL = 16;
+// v72: 16 -> 13. The 16 value reintroduced a faint warm/tan patch in the
+// lateral cheek zone on oblique views of poorly-lit photos (the exact failure
+// mode the v65 12-cap fixed). 13 is a compromise: most of the v70 glow recovery
+// is retained, but the flat-brightness lift soft-knees earlier so the patch is
+// suppressed. Well-lit cases are nearly unaffected (typical deltas of 8-12 sit
+// below both caps). Reversal: restore to 16 if collagen glow reads flat on a
+// well-lit case, or to 12 if the patch persists on poorly-lit obliques.
+const SCULPTRA_BRIGHT_CAP_FULL = 13;
 // 18 -> 12 (M10.5 v65): Sculptra oblique discolouration on poorly-lit clinic photos.
 // The AI's broad brightening was exceeding the local light field of the original face,
 // creating a warm/tan patch in the lateral cheek zone that reads as colour shift
