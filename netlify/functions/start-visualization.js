@@ -121,7 +121,7 @@ const FIELD_KEYS = [
   'timeline', 'note', 'prompt', 'isStrongPass',
   'angle', 'sex', 'view', 'phenotype', 'sculptraPhenotype', 'patientAge',
   'sourceJobId',
-  'scenarioMode', 'scenarioKey'  // M12.2: scenario exploration pass
+  'scenarioMode', 'scenarioKey', 'rawScenarioMode'  // M12.2: scenario exploration pass
 ];
 
 exports.handler = async (event) => {

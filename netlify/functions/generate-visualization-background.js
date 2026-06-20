@@ -336,12 +336,24 @@ exports.handler = async (event) => {
         console.log('[M12.2] scenario: no originalImageB64; single-image fallback');
       }
 
+      // M12.2: per-scenario input_fidelity.
+      // Diffuse scenarios (stronger_sculptra, combination_plan) need latitude to
+      // push clearly beyond the baseline image. 'high' was anchoring the output
+      // too close to the composited input and producing under-powered results.
+      // Localized scenarios (add_chin_jaw_filler, add_temple_support) keep 'high'
+      // because their changes are concrete and well-contained.
+      const SCENARIO_FIDELITY = {
+        stronger_sculptra:   'low',
+        combination_plan:    'low',
+        add_chin_jaw_filler: 'high',
+        add_temple_support:  'high'
+      };
       const scenarioParams = {
         model: 'gpt-image-1',
         image: imageArray.length === 1 ? imageArray[0] : imageArray,
         prompt: scenarioPrompt,
         size: 'auto',
-        input_fidelity: 'high',
+        input_fidelity: SCENARIO_FIDELITY[scenarioKey] || 'high',
         output_format: 'jpeg',
         output_compression: 85
       };
@@ -389,7 +401,9 @@ exports.handler = async (event) => {
           isRegen: false,
           model: 'gpt-image-1',
           imageSize: scenarioParams.size || 'auto',
-          imageQuality: 'high',
+          imageQuality: scenarioParams.input_fidelity,   // actual fidelity used, not hardcoded
+          scenarioKey,                                   // which scenario was run
+          rawScenarioMode: f.rawScenarioMode || null,    // 'true'|'false'|null for A/B tracking
           openAIUsage: scenarioResult.usage || null,
           creditsCharged: billing ? billing.cost : null,
           referenceMode: null,
