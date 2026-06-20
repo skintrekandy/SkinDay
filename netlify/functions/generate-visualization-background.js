@@ -521,22 +521,27 @@ exports.handler = async (event) => {
 
       const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-      // M12.6: PRIMARY image = original patient photo (edit target for the image model).
-      // job.originalImageB64 is the original; job.imageB64 is the baseline.
-      // If no originalImageB64 is present, fall back to job.imageB64 (baseline).
-      const primaryB64  = job.originalImageB64 || job.imageB64;
-      const primaryMime = job.originalImageB64 ? (job.originalMime || 'image/jpeg') : (job.mime || 'image/jpeg');
-      const primaryName = 'original.jpg';
+      // M12.6 role mapping (corrected):
+      // Frontend sends: image = original photo, originalImage = baseline
+      // start-visualization stores: image → job.imageB64, originalImage → job.originalImageB64
+      // So: job.imageB64 = original photo (edit target for image model)
+      //     job.originalImageB64 = baseline (planner context only)
+      // The previous code had this backwards, causing the baseline to be
+      // used as the generation source instead of the original photo.
+      const sourceImageB64  = job.imageB64;                    // original photo = edit target
+      const sourceImageMime = job.mime || 'image/jpeg';
+      const baselineRefB64  = job.originalImageB64 || null;    // baseline = planner context only
+      const baselineRefMime = job.originalMime || 'image/jpeg';
 
-      const primaryBuffer = Buffer.from(primaryB64, 'base64');
-      const primaryFile   = await OpenAI.toFile(primaryBuffer, primaryName, { type: primaryMime });
-      console.log('[M12.6] scenario image target: ' + (job.originalImageB64 ? 'original photo' : 'baseline (fallback, no original stored)'));
+      const primaryBuffer = Buffer.from(sourceImageB64, 'base64');
+      const primaryFile   = await OpenAI.toFile(primaryBuffer, 'original.jpg', { type: sourceImageMime });
+      console.log('[M12.6] scenario image target: original photo (' + sourceImageMime + ') | baseline ref: ' + (baselineRefB64 ? 'present' : 'none'));
 
-      // Planner context: both images. Baseline = what Sculptra already achieved.
-      // Original = the photo the image model will edit.
-      const baselineB64ForPlanner  = job.imageB64;           // baseline (context only)
-      const originalB64ForPlanner  = job.originalImageB64;   // original (edit target)
-      const origMimeForPlanner     = job.originalMime || 'image/jpeg';
+      // Planner context: baseline = what Sculptra already achieved (reference)
+      // Original = the photo the image model will edit
+      const baselineB64ForPlanner = baselineRefB64;
+      const originalB64ForPlanner = sourceImageB64;
+      const origMimeForPlanner    = sourceImageMime;
 
       // M12.5: SCENARIO PLANNER
       // Before generating the image, run a vision-capable text model to analyze
