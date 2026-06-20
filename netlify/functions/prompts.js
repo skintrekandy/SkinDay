@@ -598,19 +598,24 @@ const SCENARIO_PROMPT_BASE =
   'TWO IMAGES ARE PROVIDED. ' +
   'Image 1 is the treated face after a Sculptra biostimulator session (the baseline simulation). ' +
   'Image 2 is the original pre-treatment photo of the same patient. ' +
-  'Use Image 2 as an identity and skin-texture reference ONLY: do not copy, import, or be influenced by the pre-treatment volume, contour, folds, or any volume state from Image 2. ' +
-  'The output must show Image 1 (the treated baseline) with the ADDITIONAL change described below applied on top. ' +
+  'CRITICAL: Image 2 is an identity and skin-texture reference ONLY. ' +
+  'Do NOT copy, import, revert toward, or be influenced by the pre-treatment volume, contour, folds, anatomy, or any volume state from Image 2. ' +
+  'Do NOT average between Image 1 and Image 2. Do NOT pull anatomy back toward Image 2. ' +
+  'The output must show Image 1 (the treated baseline) with the ADDITIONAL change described below applied on top, pushed clearly BEYOND the baseline, never back toward the original. ' +
   'This is a clinical scenario simulation for consultation purposes. ';
 
 const SCENARIO_SAFETY =
   ' ABSOLUTE PROHIBITIONS that apply before and after the described change: ' +
-  'Do not smooth or retouch skin anywhere. Do not brighten, whiten, even out, or raise contrast anywhere on the face. ' +
+  'Do not smooth or retouch skin in untreated areas. Do not brighten, whiten, raise contrast, or apply any filter-like effect anywhere on the face. ' +
   'Do not enlarge, open, or brighten the eyes. Do not raise, darken, thicken, or reshape the brows. ' +
   'Do not change lip size, lip shape, lip color, lip fullness, lip border, cupid\'s bow, or mouth expression. ' +
-  'Do not refine, narrow, or alter the nose. Do not slim, carve, or create a V-line jaw beyond what the described treatment achieves. ' +
+  'Do not refine, narrow, or alter the nose. ' +
   'Do not change hairstyle, clothing, jewellery, head angle, camera crop, lighting direction, or background. ' +
   'Do not reduce apparent age. Preserve identity, ethnicity, and all ethnic features exactly. ' +
-  'The result must be unmistakably the same person with only the described structural change added. ' +
+  'In the zones directly affected by the described treatment change, natural shadow redistribution and soft-contour improvement are expected and permitted: ' +
+  'treated areas may look softer, fuller, better-supported, and more lifted as a natural consequence of the structural change. ' +
+  'This is not beautification -- it is the clinical visual consequence of the treatment. ' +
+  'The result must be unmistakably the same person with only the described structural change added on top of the baseline. ' +
   'Do not add text, labels, watermarks, captions, or annotations of any kind.';
 
 const SCENARIO_PROMPTS = {
@@ -619,15 +624,14 @@ const SCENARIO_PROMPTS = {
     label: 'Stronger Sculptra response',
     description: 'Upper-range 6-month collagen response',
     prompt: SCENARIO_PROMPT_BASE +
-      'Additional change to apply on top of the baseline: simulate the upper-range end (top 20-25%) of a Sculptra collagen-stimulator response at full 6-month maturity. ' +
-      'This means more lateral cheek and temple support than shown in the baseline: the lateral cheek fat pads are more fully re-inflated and lifted, the temple convexity is stronger and more continuous, ' +
-      'the lid-cheek junction and ogee curve are more smoothly supported from below, ' +
-      'the jowl is more clearly lifted and lightened, and the prejowl is better suspended so the jawline reads cleaner and more defined. ' +
-      'Nasolabial and marionette shadows soften further as a secondary consequence of the increased lateral scaffold. ' +
-      'The change is LATERAL and DIFFUSE: add no central anterior volume, no filler-like localized fullness, no carving or sharpening of the jaw, and no facelift tightening. ' +
-      'If the face reads round or full with signs of descent in the baseline, the stronger response draws the central fullness further upward and outward so the front narrows slightly more; ' +
-      'a young, well-supported full face stays near the baseline magnitude. ' +
-      'The extra strength shows as softer, broader, more diffuse lateral volume and support only, never as darker shadows, sharper edges, or increased contrast.' +
+      'Additional change to apply on top of the baseline: show the upper-range end of a Sculptra collagen response -- the same lateral support shown in the baseline, but modestly more developed. ' +
+      'The change is subtle and diffuse, not dramatic. If the choice is between too much and too little, always choose too little. ' +
+      'The only permitted change is: slightly broader lateral cheek and temple convexity so those areas look a little more filled and better supported; ' +
+      'a slightly cleaner lower cheek and prejowl shadow as the lateral scaffold lifts the tissue a little further; ' +
+      'nasolabial and marionette shadows a little softer from the increased support. ' +
+      'The change must read as soft tissue returning under the same skin -- not as a different lighting, a different person, a different skin tone, or a beautified portrait. ' +
+      'Identity, skin character, skin tone, apparent age, and all facial features must be preserved exactly. ' +
+      'The result must be unmistakably the same person as Image 1, with only a modest increase in lateral soft-tissue support.' +
       SCENARIO_SAFETY
   },
 
@@ -669,16 +673,14 @@ const SCENARIO_PROMPTS = {
     label: 'Full combination plan',
     description: 'Sculptra + chin/jaw filler + temple support combined',
     prompt: SCENARIO_PROMPT_BASE +
-      'Additional change to apply on top of the baseline: simulate a full multi-modality combination treatment plan added on top of the Sculptra baseline. ' +
-      'This scenario combines three additions simultaneously: ' +
-      '(1) A stronger Sculptra response at the upper-range end: more lateral cheek and temple support, a more fully re-inflated lateral scaffold, a cleaner and more defined jawline from improved jowl suspension. ' +
-      '(2) Hyaluronic acid chin and jawline filler: a clearly visible increase in chin projection and vertical height, clean mandibular border definition, and prejowl support that integrates seamlessly with the Sculptra lift. ' +
-      '(3) Focused temple volume: the temporal hollow fills in so the upper lateral face reads as a continuous, supported arc. ' +
-      'All three changes must read as a single coherent, harmonious facial improvement, not as three separate patches. ' +
-      'The overall effect should read as: the face is comprehensively re-supported from temple to jaw, with strong lateral scaffold, a balanced and defined lower face, and a full, continuous forehead-to-cheek-to-jaw arc. ' +
-      'The result should look natural, not surgical, and unmistakably like the same person at a clearly improved structural baseline. ' +
-      'Do not carve, slim, over-define, or make the face look operated-on. ' +
-      'The skin, eyes, brows, nose, lips, hair, clothing, background, and lighting stay exactly as in the baseline.' +
+      'Additional change to apply on top of the baseline: show three localized structural additions simultaneously. ' +
+      'Apply only what is described here and nothing else. ' +
+      '(1) Modest increase in lateral Sculptra support: slightly broader lateral cheek and temple convexity, slightly cleaner lower cheek and prejowl shadow. Subtle, not dramatic. ' +
+      '(2) Chin and jawline HA filler: a clearly visible but natural increase in chin projection and vertical height, cleaner mandibular border, prejowl support that integrates with the lower face. ' +
+      'For a female face: the lower third reads slightly more defined and oval. For a male face: chin is wider and squared at the mentum. ' +
+      '(3) Focused temple volume: the temporal hollow fills in slightly so the forehead-to-cheek arc reads more continuous. ' +
+      'All three changes are additive and localized. The face must be unmistakably the same person as Image 1 with only these specific structural additions. ' +
+      'Identity, skin character, skin tone, apparent age, eyes, lips, nose, and all untreated features are preserved exactly.' +
       SCENARIO_SAFETY
   }
 };

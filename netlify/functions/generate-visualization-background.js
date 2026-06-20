@@ -265,6 +265,173 @@ async function resolveReference(f, billing) {
   return { refFile: null, referenceMode: null };
 }
 
+// M12.5: SCENARIO PLANNER
+// Analyzes both the original photo and the Visualize baseline using a vision
+// text model, then returns a case-specific image generation prompt tailored
+// to this patient's anatomy and the selected scenario.
+//
+// The planner looks at the actual face and decides what this specific case
+// needs -- the same judgment an experienced injector makes. This replaces the
+// static scenario templates for the listed scenarios and is the key quality
+// improvement that bridges the gap between a fixed prompt library and adaptive
+// clinical reasoning.
+//
+// Provider abstraction: SCENARIO_PLANNER_PROVIDER env var controls which model
+// runs the planner (default 'openai', future option 'anthropic'). Currently
+// only 'openai' is implemented; the abstraction makes A/B testing easy later.
+//
+// The planner prompt is careful to:
+//   - Lead with what MUST be preserved (identity, skin, lighting, features)
+//   - Analyze what the baseline already achieved
+//   - Describe only the additional change this scenario adds
+//   - Return a compact, specific image prompt rather than a long generic one
+//
+// Falls back to the static scenario prompt on any failure.
+
+const SCENARIO_PLANNER_SYSTEM = `You are a clinical aesthetics AI assistant helping to generate precise image-editing prompts for an aesthetic medicine consultation tool. 
+You will receive two medical consultation photos of the same patient and a scenario type. Your job is to analyze the patient's face and produce a tailored, specific image prompt for the scenario.
+
+Rules you must follow without exception:
+- You write prompts for an image edit model, not for a human. Be direct and specific.
+- Always lead with absolute prohibitions: what must not change. This is the most important part.
+- The output image must show the exact same person: same identity, same skin tone, same apparent age, same skin texture, same pores, same asymmetry, same hair, same clothing, same expression, same head angle, same lighting, same background.
+- Do not allow any brightening, smoothing, skin retouching, eye enlargement, brow lift, lip change, nose change, or any beautification.
+- Describe only the structural change the scenario adds. Be specific about location and magnitude.
+- Keep the prompt under 350 words. Shorter is better if precise.
+- Return only the image prompt text. No preamble, no explanation, no JSON, no markdown.`;
+
+const SCENARIO_PLANNER_USER = {
+  stronger_sculptra: `TWO IMAGES:
+Image 1 = the Visualize baseline (already shows a moderate Sculptra biostimulator response).
+Image 2 = the original pre-treatment photo.
+
+Scenario: Stronger Sculptra response -- upper-range lateral collagen support built on top of the baseline.
+
+Analyze:
+- What the baseline already achieved (compare Image 1 vs Image 2)
+- What specific lateral support this patient's face still needs beyond the baseline
+- What areas must stay completely unchanged
+
+Then write a precise image editing prompt that:
+1. Opens with absolute identity and feature preservation rules
+2. Describes only the additional lateral cheek/temple/prejowl support needed for THIS face specifically
+3. States that the change must be subtle and diffuse -- if the choice is between too much and too little, choose too little
+4. Explicitly prohibits averaging back toward Image 2
+
+Do not describe a "comprehensive" or "dramatic" change. This is one step beyond the baseline, not a full transformation.`,
+
+  add_chin_jaw_filler: `TWO IMAGES:
+Image 1 = the Visualize baseline (already shows a Sculptra biostimulator response).
+Image 2 = the original pre-treatment photo.
+
+Scenario: Add chin and jawline HA filler on top of the Sculptra baseline.
+
+Analyze:
+- This patient's lower-face anatomy: chin projection, mandibular border definition, prejowl support, face shape (oval, round, square)
+- Whether this is a male or female face (chin shape target differs significantly)
+- What specific lower-face structural improvements would be clinically appropriate
+
+Then write a precise image editing prompt that:
+1. Opens with absolute identity and feature preservation rules for all areas ABOVE the lower third
+2. Describes the specific lower-face structural change: chin projection, jawline definition, prejowl support
+3. States the correct chin shape goal for this patient's sex and face type
+4. Prohibits any change to midface, cheeks, temples, eyes, brows, nose, lips`,
+
+  add_temple_support: `TWO IMAGES:
+Image 1 = the Visualize baseline (already shows a Sculptra biostimulator response).
+Image 2 = the original pre-treatment photo.
+
+Scenario: Add focused temple volume on top of the Sculptra baseline.
+
+Analyze:
+- Whether this patient shows temporal hollowing or flat temple contour
+- The temple-to-cheek transition in the baseline vs the original
+- How much improvement is appropriate without over-filling
+
+Then write a precise image editing prompt that:
+1. Opens with absolute identity and feature preservation rules
+2. Describes only the temporal hollow fill and forehead-to-cheek continuity improvement
+3. States the change must look like soft tissue returning, not a localized lump
+4. Prohibits any change below the zygomatic arch and any change to eyes, brows, or upper eyelid`,
+
+  combination_plan: `TWO IMAGES:
+Image 1 = the Visualize baseline (already shows a Sculptra biostimulator response).
+Image 2 = the original pre-treatment photo.
+
+Scenario: Full combination treatment -- Sculptra support increase + chin/jaw HA filler + temple volume.
+
+Analyze:
+- What the baseline already achieved
+- What three specific localized additions would make the strongest clinical impression for THIS patient
+- What the patient's dominant concerns appear to be based on anatomy (hollowing, descent, lower-face balance, temple, etc.)
+
+Then write a precise image editing prompt that:
+1. Opens with absolute identity and feature preservation rules
+2. Describes three numbered localized changes, each specific to this patient's anatomy
+3. Keeps each change proportionate -- together they should read as "comprehensive support" not "different person"
+4. States that identity, skin, expression, and all untreated features must be identical to Image 1
+5. Prohibits skin smoothing, brightening, and global beautification`
+};
+
+async function runScenarioPlanner({ client, scenarioKey, view, sex, angle, baselineB64, baseMime, originalB64, origMime, staticFallback, provider }) {
+  const userTemplate = SCENARIO_PLANNER_USER[scenarioKey];
+  if (!userTemplate) {
+    console.warn('[M12.5] no planner template for scenarioKey=' + scenarioKey + ', using static fallback');
+    return staticFallback;
+  }
+
+  // Build vision message content
+  const isOblique = (view === 'oblique_left' || view === 'oblique_right' || view === 'l45' || view === 'r45' || view === 'oblique');
+  const viewNote = isOblique
+    ? '\n\nVIEW NOTE: These are three-quarter oblique photos. Preserve the exact head angle, crop, and perspective. Do not rotate toward frontal.'
+    : '\n\nVIEW NOTE: These are frontal photos. Preserve the exact frontal pose and head position.';
+
+  const sexNote = sex ? ('\n\nPATIENT SEX: ' + sex + '. This affects chin shape goals and aesthetic targets.') : '';
+
+  const userContent = [
+    { type: 'text', text: userTemplate + viewNote + sexNote }
+  ];
+
+  // Attach baseline image (Image 1)
+  userContent.push({
+    type: 'image_url',
+    image_url: { url: 'data:' + (baseMime || 'image/jpeg') + ';base64,' + baselineB64, detail: 'high' }
+  });
+
+  // Attach original image (Image 2) if available
+  if (originalB64) {
+    userContent.push({
+      type: 'image_url',
+      image_url: { url: 'data:' + (origMime || 'image/jpeg') + ';base64,' + originalB64, detail: 'high' }
+    });
+  }
+
+  // Currently only OpenAI provider is implemented.
+  // To add Anthropic: check provider === 'anthropic' and use Anthropic SDK here.
+  if (provider !== 'openai') {
+    console.warn('[M12.5] provider=' + provider + ' not implemented, falling back to openai');
+  }
+
+  const plannerModel = process.env.SCENARIO_PLANNER_MODEL || 'gpt-4o';
+  const response = await client.chat.completions.create({
+    model: plannerModel,
+    max_tokens: 500,
+    messages: [
+      { role: 'system', content: SCENARIO_PLANNER_SYSTEM },
+      { role: 'user', content: userContent }
+    ]
+  });
+
+  const plannerPrompt = response.choices && response.choices[0] && response.choices[0].message && response.choices[0].message.content;
+  if (!plannerPrompt || plannerPrompt.trim().length < 50) {
+    console.warn('[M12.5] planner returned empty/short response, using static fallback');
+    return staticFallback;
+  }
+
+  console.log('[M12.5] planner prompt (' + plannerPrompt.length + ' chars): ' + plannerPrompt.slice(0, 120) + '…');
+  return plannerPrompt.trim();
+}
+
 exports.handler = async (event) => {
   connectLambda(event); // wire Blobs context into the classic handler signature
   let jobId;
@@ -305,9 +472,9 @@ exports.handler = async (event) => {
         return { statusCode: 200 };
       }
 
-      let scenarioPrompt;
+      let staticPrompt;
       try {
-        scenarioPrompt = buildScenarioPrompt(scenarioKey, f.view || 'frontal');
+        staticPrompt = buildScenarioPrompt(scenarioKey, f.view || 'frontal');
       } catch (e) {
         await fail('Invalid scenario key: ' + scenarioKey, 'bad_request');
         await refundIfBilled(store, jobId, 'invalid scenarioKey');
@@ -323,11 +490,13 @@ exports.handler = async (event) => {
       // image[1]: original patient photo (identity + skin texture reference)
       // Stored in job.originalImageB64 by start-visualization for scenario jobs.
       let imageArray = [baselineFile];
+      let origB64ForPlanner = null;
       if (job.originalImageB64) {
         try {
           const origBuffer = Buffer.from(job.originalImageB64, 'base64');
           const origFile = await OpenAI.toFile(origBuffer, 'original.jpg', { type: job.originalMime || 'image/jpeg' });
           imageArray = [baselineFile, origFile];
+          origB64ForPlanner = job.originalImageB64;
           console.log('[M12.2] scenario: two-image input (baseline + original)');
         } catch (e) {
           console.warn('[M12.2] scenario: original image load failed; falling back to baseline-only.', e && e.message);
@@ -336,15 +505,45 @@ exports.handler = async (event) => {
         console.log('[M12.2] scenario: no originalImageB64; single-image fallback');
       }
 
-      // M12.2: per-scenario input_fidelity.
-      // Diffuse scenarios (stronger_sculptra, combination_plan) need latitude to
-      // push clearly beyond the baseline image. 'high' was anchoring the output
-      // too close to the composited input and producing under-powered results.
-      // Localized scenarios (add_chin_jaw_filler, add_temple_support) keep 'high'
-      // because their changes are concrete and well-contained.
+      // M12.5: SCENARIO PLANNER
+      // Before generating the image, run a vision-capable text model to analyze
+      // both images and produce a case-specific scenario prompt. This replaces the
+      // static template for the specified scenarios and is the key quality improvement
+      // over a fixed prompt. Falls back to staticPrompt on any error so generation
+      // is never blocked. Provider is controlled by SCENARIO_PLANNER_PROVIDER env var
+      // (default 'openai') so it can be swapped to 'anthropic' for A/B testing later.
+      const PLANNER_SCENARIOS = ['stronger_sculptra', 'combination_plan', 'add_chin_jaw_filler', 'add_temple_support'];
+      const plannerProvider = process.env.SCENARIO_PLANNER_PROVIDER || 'openai';
+      let scenarioPrompt = staticPrompt;
+      let plannerUsed = false;
+
+      if (PLANNER_SCENARIOS.includes(scenarioKey) && job.imageB64) {
+        try {
+          scenarioPrompt = await runScenarioPlanner({
+            client,
+            scenarioKey,
+            view: f.view || 'frontal',
+            sex: f.sex || null,
+            angle: f.angle || null,
+            baselineB64: job.imageB64,
+            baseMime: job.mime || 'image/jpeg',
+            originalB64: origB64ForPlanner,
+            origMime: job.originalMime || 'image/jpeg',
+            staticFallback: staticPrompt,
+            provider: plannerProvider
+          });
+          plannerUsed = true;
+          console.log('[M12.5] planner succeeded for ' + scenarioKey + ' (provider=' + plannerProvider + ')');
+        } catch (planErr) {
+          console.warn('[M12.5] planner failed, using static prompt fallback:', (planErr && planErr.message) || planErr);
+          scenarioPrompt = staticPrompt;
+          plannerUsed = false;
+        }
+      }
+
       const SCENARIO_FIDELITY = {
-        stronger_sculptra:   'low',
-        combination_plan:    'low',
+        stronger_sculptra:   'high',
+        combination_plan:    'high',
         add_chin_jaw_filler: 'high',
         add_temple_support:  'high'
       };
@@ -401,9 +600,11 @@ exports.handler = async (event) => {
           isRegen: false,
           model: 'gpt-image-1',
           imageSize: scenarioParams.size || 'auto',
-          imageQuality: scenarioParams.input_fidelity,   // actual fidelity used, not hardcoded
-          scenarioKey,                                   // which scenario was run
-          rawScenarioMode: f.rawScenarioMode || null,    // 'true'|'false'|null for A/B tracking
+          imageQuality: scenarioParams.input_fidelity,
+          scenarioKey,
+          plannerUsed,
+          plannerProvider: plannerUsed ? plannerProvider : null,
+          rawScenarioMode: f.rawScenarioMode || null,
           openAIUsage: scenarioResult.usage || null,
           creditsCharged: billing ? billing.cost : null,
           referenceMode: null,
