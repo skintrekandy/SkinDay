@@ -438,6 +438,8 @@
     .scenario-result-label { font-size:.74rem; font-weight:600; color:var(--deep); }
     .scenario-result-disclaimer { font-size:.66rem; color:var(--rose); letter-spacing:.04em; text-transform:uppercase; font-weight:600; }
     .scenario-img-pair { display:grid; grid-template-columns:1fr 1fr; gap:0; }
+    .scenario-img-triple { display:grid; grid-template-columns:1fr 1fr 1fr; gap:0; }
+    @media(max-width:600px){ .scenario-img-triple { grid-template-columns:1fr; } }
     .scenario-img-cell { position:relative; aspect-ratio:4/5; background:var(--deep); overflow:hidden; }
     .scenario-img-cell img { display:block; width:100%; height:100%; object-fit:cover; }
     .scenario-cell-tag { position:absolute; bottom:0; left:0; right:0; padding:7px 10px; background:linear-gradient(transparent,rgba(28,23,20,.72)); font-size:.62rem; letter-spacing:.1em; text-transform:uppercase; color:rgba(250,247,242,.9); }
@@ -4181,13 +4183,19 @@ async function runScenario(scenarioKey){
   try {
     const auth = await authHeaders();
 
-    // Fix 3: always build the scenario from the full 6-month baseline (apply at 1.0),
-    // not from whatever the slider currently shows. Ensures the scenario prompt
-    // ("upper-range 6-month response") is applied on top of the full expected baseline,
-    // not a 3-month intermediate state. Falls back to resultDataUrl if no apply fn.
-    const baselineForScenario = (state.type === 'biostim' && sl.apply)
-      ? sl.apply(1.0)
-      : sl.resultDataUrl;
+    // Baseline image for the scenario.
+    // ?scenarioRaw=1: use the raw AI output (pre-compositor) as the scenario input.
+    //   Tests whether the composited baseline is limiting the model's output quality.
+    //   Raw AI is sharper and less processed, but may reintroduce beautification.
+    // Default: sl.apply(1.0) -- full 6-month composited baseline.
+    //   Clinically honest; the model sees exactly what we showed the patient.
+    const useRawScenario = /[?&]scenarioRaw=1\b/i.test(location.search);
+    const baselineForScenario = (useRawScenario && sl.rawAiDataUrl)
+      ? sl.rawAiDataUrl
+      : ((state.type === 'biostim' && sl.apply) ? sl.apply(1.0) : sl.resultDataUrl);
+    if(useRawScenario && sl.rawAiDataUrl){
+      console.log('%c[Visualize M12.2] scenarioRaw=1: using raw AI output as scenario baseline.', 'color:#e65100;font-weight:bold');
+    }
 
     const baselineBlob  = await resizeToUpload(baselineForScenario);
     const originalBlob  = await resizeToUpload(sl.beforeDataUrl || sl.originalDataUrl);
@@ -4205,6 +4213,7 @@ async function runScenario(scenarioKey){
     form.append('product',       'sculptra');
     form.append('scenarioMode',  'true');
     form.append('scenarioKey',   scenarioKey);
+    form.append('rawScenarioMode', useRawScenario ? 'true' : 'false'); // A/B logging
     // Fix 1: forward sourceJobId so the server can verify baseline ownership.
     if(sl.jobId) form.append('sourceJobId', sl.jobId);
     const promptView = angleId === 'r45' ? 'oblique_right'
@@ -4279,14 +4288,17 @@ function renderScenarioResult(scenarioKey){
     // Fix 5: escape error string before inserting into HTML
     bodyHtml = '<div class="scenario-error">Generation failed: ' + escapeHtml(s.error || 'Unknown error.') + '</div>';
   } else if(s.status === 'done' && s.resultUrl){
-    // Show the 6-month baseline (apply at 1.0) next to the scenario result,
-    // matching what the scenario was actually built from.
+    // Three-panel layout: original photo | Sculptra 6-month baseline | scenario result.
+    // This lets the patient see the full journey: where they started, what Sculptra
+    // achieves, and what the add-on scenario adds on top.
+    const originalUrl = sl ? (sl.beforeDataUrl || sl.originalDataUrl || '') : '';
     const baselineDisplayUrl = (state.type === 'biostim' && sl && sl.apply)
       ? sl.apply(1.0)
-      : (sl ? (sl.resultDataUrl || sl.beforeDataUrl || sl.originalDataUrl || '') : '');
+      : (sl ? (sl.resultDataUrl || '') : '');
     bodyHtml =
-      '<div class="scenario-img-pair">' +
-        '<div class="scenario-img-cell"><img src="' + baselineDisplayUrl + '" alt="Baseline simulation" /><div class="scenario-cell-tag">Baseline (expected)</div></div>' +
+      '<div class="scenario-img-triple">' +
+        '<div class="scenario-img-cell"><img src="' + originalUrl + '" alt="Original" /><div class="scenario-cell-tag">Original</div></div>' +
+        '<div class="scenario-img-cell"><img src="' + baselineDisplayUrl + '" alt="Sculptra baseline" /><div class="scenario-cell-tag">Baseline (expected)</div></div>' +
         '<div class="scenario-img-cell"><img src="' + s.resultUrl + '" alt="' + escapeHtml(label) + ' scenario" /><div class="scenario-cell-tag sim">' + escapeHtml(label) + '</div></div>' +
       '</div>';
   }
