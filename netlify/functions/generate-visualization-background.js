@@ -495,12 +495,14 @@ exports.handler = async (event) => {
     const f = job.params || {};
 
     // M12.2: SCENARIO MODE
-    // M12.6 ARCHITECTURE CHANGE: scenarios now generate from the ORIGINAL patient
-    // photo, not the Visualize baseline. The planner receives both images as context
-    // and writes a prompt describing the full combined treatment. The image model
-    // receives only the original photo as the edit target -- one clean pass.
-    // The scenario result is composited client-side through sculptra-mask.js /
-    // chin-jaw-mask.js, giving the same pixel-level identity lock as the baseline.
+    // M12.6 ARCHITECTURE: scenarios generate from the ORIGINAL patient photo,
+    // not the Visualize baseline. The planner receives both images as context
+    // and writes a case-specific prompt describing the full combined treatment.
+    // The image model receives only the original photo as the edit target -- one
+    // clean pass, no compositor, no mask, no warp. The raw AI result is displayed
+    // directly. If the result drifts, fix the prompt -- not the compositor.
+    // (Compositor was removed in M12.7 after it caused artifacts and suppressed
+    // aesthetic lift. Do not reintroduce it for scenario generation.)
     const isScenario = (f.scenarioMode === 'true' || f.scenarioMode === true);
     if (isScenario) {
       const scenarioKey = f.scenarioKey;
@@ -568,7 +570,7 @@ exports.handler = async (event) => {
             sex: f.sex || null,
             angle: f.angle || null,
             baselineB64: baselineB64ForPlanner,   // baseline = planner context (what Sculptra achieved)
-            baseMime: job.mime || 'image/jpeg',
+            baseMime: baselineRefMime,
             originalB64: originalB64ForPlanner,   // original = what the image model will edit
             origMime: origMimeForPlanner,
             staticFallback: staticPrompt,
