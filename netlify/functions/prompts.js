@@ -615,22 +615,14 @@ const SCENARIO_SAFETY =
 // Do not let the planner rewrite this prompt -- it overthinks and writes cautious
 // clinical language that produces timid results.
 const SCULPTRA_SCENARIO_BASE =
-  'Create a realistic clinical-style after-photo simulating the appearance 6 months after Sculptra treatment. ' +
-  'Use the original patient photo as the direct edit target. Keep the same head angle, head position, gaze direction, ' +
-  'neutral expression, lighting, clothing, hair, background, and camera framing exactly. ' +
-  'Make the result look like a believable 6-month Sculptra outcome: gradual collagen-stimulator improvement, ' +
-  'not sharp filler-like augmentation. Show mild-to-moderate broad soft-tissue restoration and support in the ' +
-  'temples, lateral cheeks, submalar/preauricular area, lower cheek, prejowl region, and along the mandibular line. ' +
-  'The face should look subtly fuller and better suspended, with a smoother transition from cheek to jawline, ' +
-  'slightly softened hollowing and shadowing, a more continuous lateral cheek-to-jaw contour, and a cleaner but ' +
-  'still natural lower-face outline. The improvement should be clearly visible when compared with the original, ' +
-  'but still clinically plausible and not overfilled. ' +
-  'Preserve identity exactly. Do not change ethnicity, apparent age dramatically, eye shape, nose, lips, hairstyle, ' +
-  'clothing, background, pose, or expression. Do not add makeup. Do not create a beauty-filter look. ' +
-  'Preserve natural skin texture, pores, pigmentation, and lighting. ' +
-  'Avoid global skin smoothing, brightening, face slimming, teeth changes, or unrelated beautification. ' +
-  'The result should look like the same patient photographed in the same setup, ' +
-  'only with a realistic 6-month Sculptra improvement.';
+  'Create a realistic clinical-style after-photo simulating an upper-range 6-month Sculptra result. ' +
+  'Use the original patient photo as the direct edit target. Keep the same head angle, head position, gaze direction, neutral expression, lighting, clothing, hair, background, and camera framing. ' +
+  'This is a strong but believable collagen-stimulator response, not filler augmentation and not surgery. ' +
+  'The improvement must be clearly visible compared with the original photo. Show moderate-to-strong broad soft-tissue restoration and lateral scaffold support in the temples, lateral cheeks, preauricular/submalar area, lower cheek, prejowl region, and mandibular transition. ' +
+  'Restore lateral cheek convexity so the zygomatic/lateral cheek highlight reads more present and continuous. Improve temple-to-cheek continuity. Soften submalar hollowing and the cheek-to-jaw transition. Support the prejowl and jowl shadow so the lower face reads cleaner and better suspended. ' +
+  'The face should look visibly fuller and better supported laterally, with a smoother continuous contour from temple to cheek to jawline. The result should read as a real upper-range Sculptra responder after several months: better collagen support, better suspension, and softer shadows, while still natural and not overfilled. ' +
+  'Preserve identity exactly. Do not change ethnicity, eye shape, nose, lips, hairstyle, clothing, background, pose, or expression. Do not add makeup. Do not create a beauty-filter look. Preserve natural skin texture, pores, pigmentation, and lighting. Avoid global skin smoothing, brightening, face slimming, teeth changes, or unrelated beautification. ' +
+  'The result should look like the same patient photographed in the same setup, only with a clearly visible upper-range 6-month Sculptra improvement.';
 
 const SCENARIO_PROMPTS = {
 

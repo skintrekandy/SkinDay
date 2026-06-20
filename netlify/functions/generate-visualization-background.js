@@ -621,7 +621,7 @@ exports.handler = async (event) => {
       }
 
       const SCENARIO_FIDELITY = {
-        stronger_sculptra:   'high',
+        stronger_sculptra:   'low',   // M12.7 DIAGNOSTIC: testing whether fidelity is the limiter for diffuse Sculptra change. Revert to 'high' if identity drifts.
         combination_plan:    'high',
         add_chin_jaw_filler: 'high',
         add_temple_support:  'high'
