@@ -1312,16 +1312,15 @@ function openBuyModal(){
     btn.textContent = 'Buy';
     btn.addEventListener('click', async () => {
       btn.disabled = true; btn.textContent = 'Opening…';
-      // Open the checkout tab SYNCHRONOUSLY on the click so popup blockers allow
-      // it; its URL is set once the session is created. Opening in a NEW TAB keeps
-      // THIS page alive, so buying credits never destroys finished simulations.
-      // The credit balance on this tab refreshes when the user returns (see the
-      // visibilitychange listener). If the browser blocks the popup, fall back to
-      // a same-tab redirect (saving photos + selections so inputs at least
-      // restore after the round-trip).
-      const checkoutTab = window.open('', '_blank');
-      if(checkoutTab){
-        try { checkoutTab.document.write('<p style="font-family:system-ui;padding:24px;color:#555">Opening secure checkout…</p>'); } catch(_e){}
+      // Open checkout in a small POPUP WINDOW (opened synchronously on the click
+      // so popup blockers allow it). The popup runs Stripe, then on return closes
+      // itself and notifies THIS page to refresh credits (see handlePurchasePopup
+      // + the 'message' listener). This keeps the current page — and every
+      // generated simulation — alive in memory, so buying credits never destroys
+      // finished work. If the popup is blocked, fall back to a same-tab redirect.
+      const checkoutWin = window.open('', 'sd_checkout', 'width=480,height=760,menubar=no,toolbar=no,location=no,status=no');
+      if(checkoutWin){
+        try { checkoutWin.document.write('<p style="font-family:system-ui;padding:24px;color:#555">Opening secure checkout…</p>'); } catch(_e){}
       }
       try {
         const res = await fetch('/.netlify/functions/create-checkout-session', {
@@ -1331,18 +1330,16 @@ function openBuyModal(){
         });
         const d = await res.json().catch(() => ({}));
         if(res.ok && d.url){
-          if(checkoutTab){
-            // New-tab path: this page stays intact with all generated results;
-            // balance refreshes when the user returns to this tab.
-            checkoutTab.location.href = d.url;
+          if(checkoutWin && !checkoutWin.closed){
+            // Popup path: this page stays intact with all results; the popup
+            // notifies us to refresh the balance when payment completes.
+            checkoutWin.location.href = d.url;
             btn.textContent = 'Buy'; btn.disabled = false;
             closeBuyModal();
-            setStatus('Complete your purchase in the new tab. Your simulations stay right here, and your balance updates when you come back.', 'idle');
+            setStatus('Complete your purchase in the popup window. Your simulations stay right here.', 'idle');
           } else {
-            // Popup blocked: same-tab fallback. Save the current generation state
-            // so we can resume after returning from Stripe. File objects cannot
-            // be serialized, but originalDataUrl can. Store per-slot data URLs +
-            // all selections.
+            // Popup blocked: same-tab fallback. Save photos + selections so the
+            // inputs at least restore after the round-trip.
             try {
               const pendingSlots = {};
               state.selectedAngles.forEach(id => {
@@ -1365,13 +1362,13 @@ function openBuyModal(){
           }
           return;
         }
-        if(checkoutTab) checkoutTab.close();
+        if(checkoutWin && !checkoutWin.closed) checkoutWin.close();
         btn.textContent = 'Buy';
         btn.disabled = false;
         setStatus(d.error || 'Could not start the checkout. Please try again.', 'warn');
         closeBuyModal();
       } catch(e){
-        if(checkoutTab) checkoutTab.close();
+        if(checkoutWin && !checkoutWin.closed) checkoutWin.close();
         btn.textContent = 'Buy'; btn.disabled = false;
         setStatus('Could not start the checkout. Please try again.', 'warn');
         closeBuyModal();
@@ -1727,6 +1724,41 @@ document.getElementById('creditsInfoModal').addEventListener('click', e => { if(
 document.getElementById('buyModal').addEventListener('click', e => { if(e.target === document.getElementById('buyModal')) closeBuyModal(); });
 
 /* Boot: config, then saved beta key, then account session, then the lock UI. */
+// If THIS page was opened as the credit-purchase popup and Stripe has redirected
+// it back with a result, notify the opener (the page holding the user's work) to
+// refresh its credit balance, then close the popup so the user is returned to
+// their simulations automatically. Runs before initAccess so the popup never
+// renders the full app. If window.close() is blocked, the app loads normally and
+// shows the success message (the opener was still notified first).
+(function handlePurchasePopup(){
+  try {
+    const qp = new URLSearchParams(location.search);
+    const purchase = qp.get('purchase');
+    if(purchase && window.opener && !window.opener.closed){
+      try { window.opener.postMessage({ sdPurchase: purchase }, location.origin); } catch(_e){}
+      window.close();
+    }
+  } catch(_e){}
+})();
+
+// Opener side: when the checkout popup reports a completed purchase, refresh the
+// credit balance in place. The user's generated results are untouched because
+// this page never navigated away.
+window.addEventListener('message', (ev) => {
+  if(ev.origin !== location.origin) return;
+  const d = ev.data;
+  if(d && d.sdPurchase && accessMode === 'account'){
+    if(d.sdPurchase === 'success'){
+      setStatus('Payment received. Updating your credit balance…', 'spin');
+      refreshCredits(4).then(bal => {
+        setStatus(bal != null ? ('Payment received. Credit balance: ' + bal + '.') : 'Payment received. Your balance will update shortly.', 'ok');
+      });
+    } else if(d.sdPurchase === 'cancelled'){
+      setStatus('Checkout cancelled. No charge was made.', 'idle');
+    }
+  }
+});
+
 (async function initAccess(){
   try {
     SD_CFG = await (await fetch('/.netlify/functions/visualize-config')).json();
