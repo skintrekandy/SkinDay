@@ -97,6 +97,15 @@
     .consent input { margin-top:2px; width:16px; height:16px; flex-shrink:0; accent-color:var(--rose); cursor:pointer; }
     .status { display:flex; align-items:center; gap:10px; padding:11px 15px; background:#fff; border:1px solid var(--border); border-radius:6px; font-size:.83rem; color:var(--muted); margin-top:14px; }
     .field-hint { font-size:.74rem; color:var(--muted); line-height:1.45; }
+    /* Age + sex intake row: two columns on desktop, stacked on mobile so the
+       wrapping "Patient age" label can't push the input out of line with the
+       sex pills. align-items:start keeps both columns top-aligned. */
+    .intake-age-sex { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:4px; align-items:start; }
+    @media(max-width:720px){
+      .intake-age-sex { grid-template-columns:1fr; }
+      /* keep Female/Male side by side even when other pill-grids stack on mobile */
+      #patientSexToggle { grid-template-columns:repeat(2,1fr); }
+    }
     .dot { width:6px; height:6px; border-radius:50%; background:var(--border); flex-shrink:0; }
     .dot.spin { background:var(--gold); animation:blink 1s infinite; }
     .dot.ok { background:#3D7A55; }
@@ -466,6 +475,9 @@
     .scenario-fs-cell { position:relative; min-height:0; background:#000; border-radius:6px; overflow:hidden; display:flex; align-items:center; justify-content:center; }
     .scenario-fs-cell img { max-width:100%; max-height:100%; width:auto; height:auto; object-fit:contain; }
     .scenario-fs-cell .scenario-cell-tag { position:absolute; }
+    /* two-panel variant (before/after consultation preview) */
+    .scenario-fs-grid.two { grid-template-columns:1fr 1fr; }
+    @media(max-width:700px){ .scenario-fs-grid.two { grid-template-columns:1fr; } }
     @media(max-width:540px){ .scenarios-grid { grid-template-columns:1fr; } }
   </style>
 </head>
@@ -589,14 +601,14 @@
         </div>
 
         <!-- Patient intake: age, sex, primary concern (all optional) -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:4px;">
+        <div class="intake-age-sex">
           <div class="field">
             <label>Patient age <span style="font-weight:400;color:var(--muted);">(optional)</span></label>
             <input id="patientAge" type="number" min="18" max="99" placeholder="e.g. 45" style="width:100%;" />
           </div>
           <div class="field">
             <label>Sex <span style="font-weight:400;color:var(--muted);">(optional)</span></label>
-            <div class="pill-grid" id="patientSexToggle" style="margin-top:6px;">
+            <div class="pill-grid" id="patientSexToggle">
               <button class="pill" data-sex="female" type="button">Female</button>
               <button class="pill" data-sex="male" type="button">Male</button>
             </div>
@@ -680,6 +692,10 @@
       <span id="zoomLabel">100%</span>
       <button class="zoom-btn" id="zoomIn" type="button" aria-label="Zoom in">+</button>
       <button class="zoom-reset" id="zoomReset" type="button">Reset</button>
+      <button class="zoom-reset" id="previewFsBtn" type="button" style="display:inline-flex;align-items:center;gap:5px;text-decoration:none;border:1px solid var(--border);border-radius:6px;padding:6px 12px;color:var(--deep);">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+        Fullscreen
+      </button>
     </div>
     <div class="result-grid">
       <div class="result-card"><img id="originalResult" alt="Original photo" /><div class="result-tag">Original</div></div>
@@ -800,6 +816,24 @@
       </div>
     </div>
     <div class="scenario-fs-grid" id="scenarioFsGrid"></div>
+  </div>
+
+  <!-- Fullscreen overlay for the main before/after consultation preview -->
+  <div class="scenario-fs-overlay" id="previewFsOverlay" role="dialog" aria-modal="true" aria-label="Consultation preview fullscreen view">
+    <div class="scenario-fs-bar">
+      <div>
+        <div class="scenario-fs-title" id="previewFsTitle"></div>
+        <div class="scenario-fs-disclaimer">AI-generated visualization for consultation purposes only</div>
+      </div>
+      <div class="scenario-fs-actions">
+        <button class="scenario-fs-btn" type="button" id="previewFsDownload">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download
+        </button>
+        <button class="scenario-fs-btn" type="button" id="previewFsClose">Close</button>
+      </div>
+    </div>
+    <div class="scenario-fs-grid two" id="previewFsGrid"></div>
   </div>
 </div>
 
@@ -4225,11 +4259,12 @@ const SCENARIO_LABELS = {
 };
 
 // Export label: every scenario builds on the biostimulation baseline, so the
-// downloaded grid leads with "Biostimulator + <add-on>". stronger_sculptra
-// already names biostimulation, so it is left as-is (no double-up).
+// downloaded grid header and the third-panel tag both lead with
+// "Biostimulator + <add-on>" for a consistent deliverable. stronger_sculptra
+// gets a hand-written form to avoid doubling up the word "biostimulation".
 function scenarioExportLabel(scenarioKey, baseLabel){
   const lbl = baseLabel || SCENARIO_LABELS[scenarioKey] || scenarioKey;
-  if(scenarioKey === 'stronger_sculptra') return lbl;
+  if(scenarioKey === 'stronger_sculptra') return 'Biostimulator + stronger response';
   return 'Biostimulator + ' + lbl.replace(/^Add\s+/i, '');
 }
 
@@ -4667,6 +4702,50 @@ async function downloadScenarioGrid(scenarioKey){
     if(e.key === 'Escape'){
       const ov = document.getElementById('scenarioFsOverlay');
       if(ov && ov.classList.contains('open')) closeScenarioFullscreen();
+    }
+  });
+})();
+
+// ── Fullscreen for the main before/after consultation preview ──
+// Mirrors the scenario fullscreen, but shows the two live panels (the current
+// angle + timeline position exactly as displayed). Reuses the scenario-fs CSS.
+function openPreviewFullscreen(){
+  const origUrl = (document.getElementById('originalResult') || {}).src || '';
+  const simUrl  = (document.getElementById('aiResult') || {}).src || '';
+  if(!simUrl) return; // nothing generated yet
+  const overlay = document.getElementById('previewFsOverlay');
+  const grid    = document.getElementById('previewFsGrid');
+  const title   = document.getElementById('previewFsTitle');
+  if(!overlay || !grid) return;
+  const simTagEl = document.getElementById('simTag');
+  const simLabel = (simTagEl && simTagEl.textContent ? simTagEl.textContent : 'Simulated').trim();
+  // Title shows the descriptive part (treatment / angle / timeline) without the
+  // leading "Simulated ·" so it reads as a heading.
+  if(title) title.textContent = simLabel.replace(/^simulated\s*[·\-]\s*/i, '') || 'Consultation preview';
+  grid.innerHTML =
+    '<div class="scenario-fs-cell"><img src="' + origUrl + '" alt="Original" /><div class="scenario-cell-tag">Original</div></div>' +
+    '<div class="scenario-fs-cell"><img src="' + simUrl + '" alt="Simulated" /><div class="scenario-cell-tag sim">' + escapeHtml(simLabel) + '</div></div>';
+  const dlBtn = document.getElementById('previewFsDownload');
+  if(dlBtn) dlBtn.onclick = () => { const d = document.getElementById('downloadBtn'); if(d) d.click(); };
+  overlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closePreviewFullscreen(){
+  const overlay = document.getElementById('previewFsOverlay');
+  if(overlay) overlay.classList.remove('open');
+  document.body.style.overflow = '';
+}
+(function wirePreviewFsOverlay(){
+  const btn = document.getElementById('previewFsBtn');
+  if(btn) btn.addEventListener('click', openPreviewFullscreen);
+  const overlay = document.getElementById('previewFsOverlay');
+  const closeBtn = document.getElementById('previewFsClose');
+  if(closeBtn) closeBtn.addEventListener('click', closePreviewFullscreen);
+  if(overlay) overlay.addEventListener('click', (e) => { if(e.target === overlay) closePreviewFullscreen(); });
+  document.addEventListener('keydown', (e) => {
+    if(e.key === 'Escape'){
+      const ov = document.getElementById('previewFsOverlay');
+      if(ov && ov.classList.contains('open')) closePreviewFullscreen();
     }
   });
 })();
