@@ -1110,6 +1110,14 @@ function fillCreditCopy(){
   const f = creditCostFor('filler'), b = creditCostFor('biostim');
   const set = (id, v) => { const el = document.getElementById(id); if(el) el.textContent = v; };
   set('ciFiller', f); set('ciBiostim', b); set('ciCaseF', 3 * f); set('ciCaseB', 3 * b);
+  // Scenario cost labels: keep the buttons and subtitle in sync with the server
+  // price so nothing reads "1 credit" while the server charges the scaled amount.
+  const sc = scenarioCreditCost();
+  document.querySelectorAll('.scenario-btn .credit-tag').forEach(el => {
+    el.textContent = sc + (sc === 1 ? ' credit' : ' credits');
+  });
+  const sub = document.querySelector('.scenarios-subtitle');
+  if(sub) sub.textContent = 'Build on the baseline simulation to explore what is possible. Each scenario consumes ' + sc + (sc === 1 ? ' credit' : ' credits') + ' and generates in the background.';
 }
 let sb = null;                  // supabase client (account mode)
 let accessMode = null;          // 'beta' | 'account'
@@ -4188,7 +4196,13 @@ document.getElementById('newBtn').addEventListener('click', () => {
    Results are displayed alongside the baseline in the panel with a mandatory
    "Scenario simulation" disclaimer label. Scenarios are biostim/Sculptra only. */
 
-const SCENARIO_CREDIT_COST = 1;
+// Scenario cost is read from server config (SD_CFG.costs.scenario) at call time,
+// so it always matches the server-side VISUALIZE_COST_SCENARIO env. Falls back to
+// 1 only if config has not loaded. Evaluated lazily (not a const) because SD_CFG
+// loads asynchronously after this script parses.
+function scenarioCreditCost(){
+  return (SD_CFG && SD_CFG.costs && SD_CFG.costs.scenario) || 1;
+}
 
 // Scenario state: per-angle, per-scenarioKey.
 // scenarioState[angleId][scenarioKey] -> { status, jobId, resultUrl, error }
@@ -4285,7 +4299,7 @@ async function runScenario(scenarioKey){
 
   // Credit pre-flight
   if(accessMode === 'account'){
-    if(creditBalance != null && creditBalance < SCENARIO_CREDIT_COST){
+    if(creditBalance != null && creditBalance < scenarioCreditCost()){
       setStatus('Not enough credits for this scenario. Top up to continue.', 'warn');
       openBuyModal();
       return;
