@@ -8,7 +8,9 @@
 // beta-password-only mode, exactly the pre-M8 behavior.
 //
 // Env (optional): SUPABASE_URL, SUPABASE_ANON_KEY, VISUALIZE_PACKS,
-//                 VISUALIZE_SIGNUP_GRANT
+//                 VISUALIZE_SIGNUP_GRANT,
+//                 VISUALIZE_COST_FILLER, VISUALIZE_COST_BIOSTIM,
+//                 VISUALIZE_COST_SCENARIO, VISUALIZE_COST_ENHANCED
 // VISUALIZE_PACKS overrides the default packs without a code change. JSON, e.g.
 // [{"id":"starter","label":"Starter","credits":20,"cad":5900}, ...]
 // (cad is in cents).
@@ -45,8 +47,10 @@ exports.handler = async () => {
         supabaseAnonKey,
         packs: packs(),
         costs: {
-          filler:  parseInt(process.env.VISUALIZE_COST_FILLER  || '1', 10) || 1,
-          biostim: parseInt(process.env.VISUALIZE_COST_BIOSTIM || '2', 10) || 2
+          filler:   parseInt(process.env.VISUALIZE_COST_FILLER   || '1', 10) || 1,
+          biostim:  parseInt(process.env.VISUALIZE_COST_BIOSTIM  || '2', 10) || 2,
+          scenario: parseInt(process.env.VISUALIZE_COST_SCENARIO || '1', 10) || 1,
+          enhanced: parseInt(process.env.VISUALIZE_COST_ENHANCED || '1', 10) || 1
         },
         signupGrant: parseInt(process.env.VISUALIZE_SIGNUP_GRANT || '6', 10) || 0
       }

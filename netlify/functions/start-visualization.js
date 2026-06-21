@@ -54,12 +54,18 @@ const SIGNUP_GRANT = parseInt(process.env.VISUALIZE_SIGNUP_GRANT || '6', 10) || 
 const REGEN_WINDOW_MS = 90 * 1000; // server window; the client advertises 60s
 
 // Per-generation costs, env-tunable so pricing changes never need code edits.
-const COST_FILLER  = parseInt(process.env.VISUALIZE_COST_FILLER  || '1', 10) || 1;
-const COST_BIOSTIM = parseInt(process.env.VISUALIZE_COST_BIOSTIM || '2', 10) || 2;
+// All four action costs are env-driven; defaults preserve the original
+// "credit ~= one generation" scale (filler 1, biostim 2, scenario 1, enhanced 1).
+// To rescale the credit denomination, multiply every VISUALIZE_COST_* by the
+// same factor as the pack sizes in VISUALIZE_PACKS so margin is unchanged.
+const COST_FILLER   = parseInt(process.env.VISUALIZE_COST_FILLER   || '1', 10) || 1;
+const COST_BIOSTIM  = parseInt(process.env.VISUALIZE_COST_BIOSTIM  || '2', 10) || 2;
+const COST_SCENARIO = parseInt(process.env.VISUALIZE_COST_SCENARIO || '1', 10) || 1;
+const COST_ENHANCED = parseInt(process.env.VISUALIZE_COST_ENHANCED || '1', 10) || 1;
 function creditCost(fields) {
-  // M12.2: scenario exploration pass always costs 1 credit.
+  // M12.2: scenario exploration pass cost (env-driven; default 1).
   // Server verifies baseline ownership below before this price applies.
-  if (fields && fields.scenarioMode === 'true') return 1;
+  if (fields && fields.scenarioMode === 'true') return COST_SCENARIO;
   return (fields && fields.type === 'biostim') ? COST_BIOSTIM : COST_FILLER;
 }
 
@@ -233,7 +239,7 @@ exports.handler = async (event) => {
           const sourceBilling = await store.get(sourceJobId + ':billing', { type: 'json' });
           const sourceStatus  = await store.get(sourceJobId + ':status',  { type: 'json' });
           if (sourceBilling && sourceBilling.userId === user.id && sourceStatus && sourceStatus.state === 'done') {
-            cost = 1; // Enhanced pass costs 1 credit per angle regardless of treatment type
+            cost = COST_ENHANCED; // Enhanced pass cost per angle (env-driven; default 1)
           }
         } catch (e) { /* source lookup best-effort; full price applies if lookup fails */ }
       }
