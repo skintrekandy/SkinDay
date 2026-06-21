@@ -780,11 +780,6 @@
         <span>Softens the under-eye hollow on the baseline</span>
         <em class="credit-tag">1 credit</em>
       </button>
-      <button class="scenario-btn" type="button" data-scenario="combination_plan" id="scenBtn_combination_plan">
-        <strong>Full combination plan</strong>
-        <span>Biostimulation + chin/jaw filler + temple support combined</span>
-        <em class="credit-tag">1 credit</em>
-      </button>
     </div>
     <div class="scenario-results" id="scenarioResults"></div>
   </section>
@@ -1040,7 +1035,7 @@ const FREE_REGEN_MS = 60000;
 // stay the same module instance (shared face-detection cache). v35 = M9.0
 // jowl blending (alpha lobes over marionette/jowl shadows + prejowl notch-fill
 // warp kernels) (v34 = M8.2 shade reconciliation; v33 = M8.1 convex chin).
-const MASK_MODULE_VERSION = '73';
+const MASK_MODULE_VERSION = '74';
 
 /* M7: a case is one or more ANGLES, each with its own photo, QC result, job,
    and compositor. Treatment settings are shared across the case; the response
@@ -1317,6 +1312,17 @@ function openBuyModal(){
     btn.textContent = 'Buy';
     btn.addEventListener('click', async () => {
       btn.disabled = true; btn.textContent = 'Opening…';
+      // Open the checkout tab SYNCHRONOUSLY on the click so popup blockers allow
+      // it; its URL is set once the session is created. Opening in a NEW TAB keeps
+      // THIS page alive, so buying credits never destroys finished simulations.
+      // The credit balance on this tab refreshes when the user returns (see the
+      // visibilitychange listener). If the browser blocks the popup, fall back to
+      // a same-tab redirect (saving photos + selections so inputs at least
+      // restore after the round-trip).
+      const checkoutTab = window.open('', '_blank');
+      if(checkoutTab){
+        try { checkoutTab.document.write('<p style="font-family:system-ui;padding:24px;color:#555">Opening secure checkout…</p>'); } catch(_e){}
+      }
       try {
         const res = await fetch('/.netlify/functions/create-checkout-session', {
           method: 'POST',
@@ -1325,35 +1331,47 @@ function openBuyModal(){
         });
         const d = await res.json().catch(() => ({}));
         if(res.ok && d.url){
-          // Before navigating away, save the current generation state so we
-          // can resume automatically after the user returns from Stripe.
-          // File objects cannot be serialized, but originalDataUrl (already
-          // read into memory) can. Store per-slot data URLs + all selections.
-          try {
-            const pendingSlots = {};
-            state.selectedAngles.forEach(id => {
-              const sl = state.slots[id];
-              if(sl.originalDataUrl) pendingSlots[id] = sl.originalDataUrl;
-            });
-            if(Object.keys(pendingSlots).length > 0){
-              const pending = {
-                type: state.type, product: state.product, timeline: state.timeline,
-                projection: state.projection, sex: state.sex, blackBg: state.blackBg,
-                sculptraPhenotype: state.sculptraPhenotype || null,
-                intensityPct: state.intensityPct,
-                selectedAngles: state.selectedAngles,
-                slots: pendingSlots
-              };
-              sessionStorage.setItem('sd_pending_gen', JSON.stringify(pending));
-            }
-          } catch(saveErr){ console.warn('[Visualize] Could not save pending state:', saveErr); }
-          window.location.href = d.url; return;
+          if(checkoutTab){
+            // New-tab path: this page stays intact with all generated results;
+            // balance refreshes when the user returns to this tab.
+            checkoutTab.location.href = d.url;
+            btn.textContent = 'Buy'; btn.disabled = false;
+            closeBuyModal();
+            setStatus('Complete your purchase in the new tab. Your simulations stay right here, and your balance updates when you come back.', 'idle');
+          } else {
+            // Popup blocked: same-tab fallback. Save the current generation state
+            // so we can resume after returning from Stripe. File objects cannot
+            // be serialized, but originalDataUrl can. Store per-slot data URLs +
+            // all selections.
+            try {
+              const pendingSlots = {};
+              state.selectedAngles.forEach(id => {
+                const sl = state.slots[id];
+                if(sl.originalDataUrl) pendingSlots[id] = sl.originalDataUrl;
+              });
+              if(Object.keys(pendingSlots).length > 0){
+                const pending = {
+                  type: state.type, product: state.product, timeline: state.timeline,
+                  projection: state.projection, sex: state.sex, blackBg: state.blackBg,
+                  sculptraPhenotype: state.sculptraPhenotype || null,
+                  intensityPct: state.intensityPct,
+                  selectedAngles: state.selectedAngles,
+                  slots: pendingSlots
+                };
+                sessionStorage.setItem('sd_pending_gen', JSON.stringify(pending));
+              }
+            } catch(saveErr){ console.warn('[Visualize] Could not save pending state:', saveErr); }
+            window.location.href = d.url;
+          }
+          return;
         }
+        if(checkoutTab) checkoutTab.close();
         btn.textContent = 'Buy';
         btn.disabled = false;
         setStatus(d.error || 'Could not start the checkout. Please try again.', 'warn');
         closeBuyModal();
       } catch(e){
+        if(checkoutTab) checkoutTab.close();
         btn.textContent = 'Buy'; btn.disabled = false;
         setStatus('Could not start the checkout. Please try again.', 'warn');
         closeBuyModal();
@@ -1807,6 +1825,19 @@ document.getElementById('buyModal').addEventListener('click', e => { if(e.target
     setLockMode('beta');
   }
 })();
+
+// Refresh the credit balance when the user returns to this tab (e.g. after
+// completing a purchase in the checkout tab opened by "Add credits"). This keeps
+// the balance current without a page reload, so generated simulations on this
+// page are never destroyed just to buy more credits.
+document.addEventListener('visibilitychange', () => {
+  if(document.visibilityState === 'visible' && accessMode === 'account'){
+    refreshCredits(2);
+  }
+});
+window.addEventListener('focus', () => {
+  if(accessMode === 'account') refreshCredits(1);
+});
 
 /* ───────── Helpers ───────── */
 const generateBtn = document.getElementById('generateBtn');
@@ -4439,7 +4470,31 @@ async function downloadScenarioGrid(scenarioKey){
     // Each panel rendered at a fixed cell size, 4:5 aspect, cover-cropped.
     const cellW = 768, cellH = 960, gap = 0;
     const headerH = 64;
-    const footerH = 56;
+
+    // Make sure web fonts are ready so DM Sans renders into the canvas.
+    await (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve());
+
+    // Optional clinic branding (same fields as the baseline export): the clinic
+    // name from #clinicName and the uploaded logo (clinicLogoDataUrl). The footer
+    // grows to fit whatever is present, so logo + name appear on the grid export.
+    const clinicName = (document.getElementById('clinicName') ? document.getElementById('clinicName').value : '').trim();
+    let logoImg = null;
+    if(clinicLogoDataUrl){
+      logoImg = await new Promise(resolve => {
+        const im = new Image();
+        im.crossOrigin = 'anonymous';
+        im.onload = () => resolve(im);
+        im.onerror = () => resolve(null);
+        im.src = clinicLogoDataUrl;
+      });
+    }
+    const footerPad = 22;
+    const discH  = 26;                   // disclaimer line
+    const nameH  = clinicName ? 34 : 0;  // clinic name line
+    const logoH  = logoImg ? 60 : 0;     // logo row height
+    const brandH = 26;                   // "Powered by SkinDay Visualize"
+    const footerH = footerPad * 2 + discH + nameH + Math.max(logoH, brandH);
+
     const canvas = document.createElement('canvas');
     canvas.width = cellW * 3 + gap * 2;
     canvas.height = cellH + headerH + footerH;
@@ -4491,12 +4546,47 @@ async function downloadScenarioGrid(scenarioKey){
       ctx.fillText(c.tag, dx + 24, dy + cellH - 30);
     });
 
-    // Footer brand line
-    ctx.fillStyle = 'rgba(250,247,242,0.55)';
-    ctx.font = '500 15px "DM Sans", system-ui, sans-serif';
+    // Footer: disclaimer, optional clinic name, optional logo + brand line.
+    const fy = headerH + cellH;          // footer top
+    let cy = fy + footerPad;
     ctx.textAlign = 'center';
-    ctx.fillText('SkinDay Visualize · AI-generated, not a prediction of results', canvas.width / 2, headerH + cellH + footerH / 2);
+    ctx.textBaseline = 'top';
+    // disclaimer
+    ctx.fillStyle = 'rgba(250,247,242,0.62)';
+    ctx.font = '400 15px "DM Sans", system-ui, sans-serif';
+    ctx.fillText('AI-generated visualization for consultation purposes only. Not a prediction of actual results.', canvas.width / 2, cy);
+    cy += discH;
+    // clinic name
+    if(clinicName){
+      ctx.fillStyle = 'rgba(250,247,242,0.92)';
+      ctx.font = '500 20px "DM Sans", system-ui, sans-serif';
+      ctx.fillText(clinicName, canvas.width / 2, cy + 4);
+      cy += nameH;
+    }
+    // logo + "Powered by SkinDay Visualize", centered as one group
+    ctx.textBaseline = 'middle';
+    const rowY = cy + Math.max(logoH, brandH) / 2;
+    const pre = 'Powered by ', brand = 'SkinDay Visualize';
+    ctx.font = '500 16px "DM Sans", system-ui, sans-serif';
+    const preW = ctx.measureText(pre).width;
+    const brandW = ctx.measureText(brand).width;
+    let drawLogoW = 0;
+    if(logoImg) drawLogoW = Math.round(logoImg.naturalWidth * (logoH / logoImg.naturalHeight));
+    const logoGap = logoImg ? 16 : 0;
+    const groupW = drawLogoW + logoGap + preW + brandW;
+    let gx = (canvas.width - groupW) / 2;
+    if(logoImg){
+      ctx.globalAlpha = 0.9;
+      ctx.drawImage(logoImg, gx, rowY - logoH / 2, drawLogoW, logoH);
+      ctx.globalAlpha = 1.0;
+      gx += drawLogoW + logoGap;
+    }
     ctx.textAlign = 'left';
+    ctx.fillStyle = 'rgba(181,168,159,0.85)';
+    ctx.fillText(pre, gx, rowY);
+    ctx.fillStyle = '#C9A96E';
+    ctx.fillText(brand, gx + preW, rowY);
+    ctx.textBaseline = 'alphabetic';
 
     const url = canvas.toDataURL('image/jpeg', 0.92);
     const a = document.createElement('a');

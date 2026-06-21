@@ -2494,7 +2494,7 @@ const SCULPTRA_BRIGHT_CAP_FULL = 13;
 // jawContinuity:false (visualize.html ?jawcont=off) to A/B or disable.
 // Tuning: SCULPTRA_JAW_TIGHT_CAP lower (5) = stronger continuity / flatter
 // lower cheek; higher (8) = gentler, less effect on the clean angle.
-const SCULPTRA_JAW_TIGHT_CAP   = 6;     // tightened bright cap at the jaw border
+const SCULPTRA_JAW_TIGHT_CAP   = 7;     // tightened bright cap at the jaw border
 const SCULPTRA_JAW_FEATHER_LO  = 0.45;  // ramp start: fraction of the zygion->jaw drop (0=zygion, 1=jaw)
 const SCULPTRA_JAW_FEATHER_LAT_LO = 0.16; // lateral gate inner edge (fraction of face width from midline)
 const SCULPTRA_JAW_FEATHER_LAT_HI = 0.40; // lateral gate outer edge (full feather beyond this)
