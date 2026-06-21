@@ -420,6 +420,53 @@
         cursor: pointer;
       }
     }
+    /* ── M12.2: Explore Scenarios panel ── */
+    .scenarios-panel { margin-top:28px; background:#fff; border:1px solid var(--border); border-radius:10px; padding:20px 20px 18px; }
+    .scenarios-title { font-size:.68rem; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:var(--dim); margin-bottom:6px; }
+    .scenarios-subtitle { font-size:.82rem; color:var(--muted); line-height:1.5; margin-bottom:16px; }
+    .scenarios-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .scenario-btn { border:1.5px solid var(--border); background:var(--warm); border-radius:8px; padding:12px 14px; cursor:pointer; text-align:left; transition:.2s; }
+    .scenario-btn:hover:not(:disabled) { border-color:var(--gold); background:#fdf6ec; }
+    .scenario-btn:disabled { opacity:.45; cursor:not-allowed; }
+    .scenario-btn.generating { border-color:var(--gold); background:#fdf6ec; animation:blink 1s infinite; }
+    .scenario-btn strong { display:block; font-size:.82rem; color:var(--deep); margin-bottom:3px; }
+    .scenario-btn span { display:block; font-size:.69rem; color:var(--muted); line-height:1.35; }
+    .scenario-btn .credit-tag { display:inline-block; margin-top:5px; font-size:.62rem; letter-spacing:.08em; text-transform:uppercase; color:var(--rose); font-weight:600; }
+    .scenario-results { margin-top:18px; display:flex; flex-direction:column; gap:18px; }
+    .scenario-result-card { border:1px solid var(--border); border-radius:8px; overflow:hidden; background:var(--warm); }
+    .scenario-result-header { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border-bottom:1px solid var(--border); gap:12px; }
+    .scenario-result-label { font-size:.74rem; font-weight:600; color:var(--deep); }
+    .scenario-result-disclaimer { font-size:.66rem; color:var(--rose); letter-spacing:.04em; text-transform:uppercase; font-weight:600; }
+    .scenario-img-pair { display:grid; grid-template-columns:1fr 1fr; gap:0; }
+    .scenario-img-triple { display:grid; grid-template-columns:1fr 1fr 1fr; gap:0; }
+    @media(max-width:600px){ .scenario-img-triple { grid-template-columns:1fr; } }
+    .scenario-img-cell { position:relative; aspect-ratio:4/5; background:var(--deep); overflow:hidden; }
+    .scenario-img-cell img { display:block; width:100%; height:100%; object-fit:cover; }
+    .scenario-cell-tag { position:absolute; bottom:0; left:0; right:0; padding:7px 10px; background:linear-gradient(transparent,rgba(28,23,20,.72)); font-size:.62rem; letter-spacing:.1em; text-transform:uppercase; color:rgba(250,247,242,.9); }
+    .scenario-cell-tag.sim { color:rgba(201,169,110,.95); }
+    .scenario-status { font-size:.76rem; color:var(--muted); padding:10px 14px; }
+    .scenario-error { font-size:.76rem; color:var(--rose); padding:10px 14px; }
+    /* Scenario card header action buttons (fullscreen + download) */
+    .scenario-result-actions { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+    .scenario-act-btn { display:inline-flex; align-items:center; gap:5px; padding:5px 10px; font-size:.66rem; font-weight:600; letter-spacing:.03em; text-transform:uppercase; color:var(--deep); background:transparent; border:1px solid var(--border); border-radius:5px; cursor:pointer; transition:background .15s,border-color .15s; }
+    .scenario-act-btn:hover { background:var(--warm); border-color:var(--gold); }
+    .scenario-act-btn:disabled { opacity:.4; cursor:default; }
+    .scenario-act-btn svg { width:13px; height:13px; }
+    /* Fullscreen overlay for the three-panel grid */
+    .scenario-fs-overlay { position:fixed; inset:0; z-index:9000; background:rgba(28,23,20,.94); display:none; flex-direction:column; padding:24px; }
+    .scenario-fs-overlay.open { display:flex; }
+    .scenario-fs-bar { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; flex-shrink:0; }
+    .scenario-fs-title { font-size:.9rem; font-weight:600; color:var(--cream); }
+    .scenario-fs-disclaimer { font-size:.66rem; color:var(--rose); letter-spacing:.04em; text-transform:uppercase; font-weight:600; }
+    .scenario-fs-actions { display:flex; gap:10px; align-items:center; }
+    .scenario-fs-btn { display:inline-flex; align-items:center; gap:6px; padding:8px 14px; font-size:.72rem; font-weight:600; color:var(--cream); background:transparent; border:1px solid rgba(250,247,242,.35); border-radius:6px; cursor:pointer; }
+    .scenario-fs-btn:hover { border-color:var(--gold); color:var(--gold); }
+    .scenario-fs-grid { flex:1; display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; min-height:0; }
+    @media(max-width:700px){ .scenario-fs-grid { grid-template-columns:1fr; overflow-y:auto; } }
+    .scenario-fs-cell { position:relative; min-height:0; background:#000; border-radius:6px; overflow:hidden; display:flex; align-items:center; justify-content:center; }
+    .scenario-fs-cell img { max-width:100%; max-height:100%; width:auto; height:auto; object-fit:contain; }
+    .scenario-fs-cell .scenario-cell-tag { position:absolute; }
+    @media(max-width:540px){ .scenarios-grid { grid-template-columns:1fr; } }
   </style>
 </head>
 <body>
@@ -494,8 +541,8 @@
     <div class="card">
       <div class="step-num">Step 1 · What do you want to visualize?</div>
       <div class="type-toggle quad" id="typeToggle">
-        <button class="type-btn" data-type="filler" type="button"><strong>HA Fillers</strong></button>
         <button class="type-btn active" data-type="biostim" type="button"><strong>Biostimulation</strong></button>
+        <button class="type-btn soon" data-type="filler" type="button" disabled><strong>HA Fillers</strong><em class="soon-tag">Coming soon</em></button>
         <button class="type-btn soon" data-type="neurotoxin" type="button" disabled><strong>Neurotoxin</strong><em class="soon-tag">Coming soon</em></button>
         <button class="type-btn soon" data-type="laser" type="button" disabled><strong>Skin &amp; Laser</strong><em class="soon-tag">Coming soon</em></button>
       </div>
@@ -708,6 +755,52 @@
       </div>
     </div>
   </section>
+  <!-- ── M12.2: Explore Scenarios panel (appears after baseline is generated) ── -->
+  <section class="scenarios-panel hidden" id="scenariosPanel">
+    <div class="scenarios-title">Explore scenarios</div>
+    <div class="scenarios-subtitle">Build on the baseline simulation to explore what is possible. Each scenario consumes 1 credit and generates in the background.</div>
+    <div class="scenarios-grid">
+      <button class="scenario-btn" type="button" data-scenario="stronger_sculptra" id="scenBtn_stronger_sculptra">
+        <strong>Stronger biostimulation response</strong>
+        <span>A more complete collagen response with more lateral lift</span>
+        <em class="credit-tag">1 credit</em>
+      </button>
+      <button class="scenario-btn" type="button" data-scenario="add_chin_jaw_filler" id="scenBtn_add_chin_jaw_filler">
+        <strong>Add chin + jawline filler</strong>
+        <span>Hyaluronic acid filler added to the chin and jawline</span>
+        <em class="credit-tag">1 credit</em>
+      </button>
+      <button class="scenario-btn" type="button" data-scenario="add_temple_support" id="scenBtn_add_temple_support">
+        <strong>Add temple support</strong>
+        <span>Focused upper lateral face volume on the baseline</span>
+        <em class="credit-tag">1 credit</em>
+      </button>
+      <button class="scenario-btn" type="button" data-scenario="add_tear_trough" id="scenBtn_add_tear_trough">
+        <strong>Add under-eye (tear trough) support</strong>
+        <span>Softens the under-eye hollow on the baseline</span>
+        <em class="credit-tag">1 credit</em>
+      </button>
+    </div>
+    <div class="scenario-results" id="scenarioResults"></div>
+  </section>
+
+  <!-- Fullscreen overlay for scenario three-panel view -->
+  <div class="scenario-fs-overlay" id="scenarioFsOverlay" role="dialog" aria-modal="true" aria-label="Scenario fullscreen view">
+    <div class="scenario-fs-bar">
+      <div>
+        <div class="scenario-fs-title" id="scenarioFsTitle"></div>
+        <div class="scenario-fs-disclaimer">Scenario simulation — not a guaranteed outcome</div>
+      </div>
+      <div class="scenario-fs-actions">
+        <button class="scenario-fs-btn" type="button" id="scenarioFsDownload">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download
+        </button>
+        <button class="scenario-fs-btn" type="button" id="scenarioFsClose">Close</button>
+      </div>
+    </div>
+    <div class="scenario-fs-grid" id="scenarioFsGrid"></div>
+  </div>
 </div>
 
 <footer>
@@ -942,7 +1035,7 @@ const FREE_REGEN_MS = 60000;
 // stay the same module instance (shared face-detection cache). v35 = M9.0
 // jowl blending (alpha lobes over marionette/jowl shadows + prejowl notch-fill
 // warp kernels) (v34 = M8.2 shade reconciliation; v33 = M8.1 convex chin).
-const MASK_MODULE_VERSION = '72';
+const MASK_MODULE_VERSION = '74';
 
 /* M7: a case is one or more ANGLES, each with its own photo, QC result, job,
    and compositor. Treatment settings are shared across the case; the response
@@ -1219,6 +1312,16 @@ function openBuyModal(){
     btn.textContent = 'Buy';
     btn.addEventListener('click', async () => {
       btn.disabled = true; btn.textContent = 'Opening…';
+      // Open checkout in a small POPUP WINDOW (opened synchronously on the click
+      // so popup blockers allow it). The popup runs Stripe, then on return closes
+      // itself and notifies THIS page to refresh credits (see handlePurchasePopup
+      // + the 'message' listener). This keeps the current page — and every
+      // generated simulation — alive in memory, so buying credits never destroys
+      // finished work. If the popup is blocked, fall back to a same-tab redirect.
+      const checkoutWin = window.open('', 'sd_checkout', 'width=480,height=760,menubar=no,toolbar=no,location=no,status=no');
+      if(checkoutWin){
+        try { checkoutWin.document.write('<p style="font-family:system-ui;padding:24px;color:#555">Opening secure checkout…</p>'); } catch(_e){}
+      }
       try {
         const res = await fetch('/.netlify/functions/create-checkout-session', {
           method: 'POST',
@@ -1227,35 +1330,45 @@ function openBuyModal(){
         });
         const d = await res.json().catch(() => ({}));
         if(res.ok && d.url){
-          // Before navigating away, save the current generation state so we
-          // can resume automatically after the user returns from Stripe.
-          // File objects cannot be serialized, but originalDataUrl (already
-          // read into memory) can. Store per-slot data URLs + all selections.
-          try {
-            const pendingSlots = {};
-            state.selectedAngles.forEach(id => {
-              const sl = state.slots[id];
-              if(sl.originalDataUrl) pendingSlots[id] = sl.originalDataUrl;
-            });
-            if(Object.keys(pendingSlots).length > 0){
-              const pending = {
-                type: state.type, product: state.product, timeline: state.timeline,
-                projection: state.projection, sex: state.sex, blackBg: state.blackBg,
-                sculptraPhenotype: state.sculptraPhenotype || null,
-                intensityPct: state.intensityPct,
-                selectedAngles: state.selectedAngles,
-                slots: pendingSlots
-              };
-              sessionStorage.setItem('sd_pending_gen', JSON.stringify(pending));
-            }
-          } catch(saveErr){ console.warn('[Visualize] Could not save pending state:', saveErr); }
-          window.location.href = d.url; return;
+          if(checkoutWin && !checkoutWin.closed){
+            // Popup path: this page stays intact with all results; the popup
+            // notifies us to refresh the balance when payment completes.
+            checkoutWin.location.href = d.url;
+            btn.textContent = 'Buy'; btn.disabled = false;
+            closeBuyModal();
+            setStatus('Complete your purchase in the popup window. Your simulations stay right here.', 'idle');
+          } else {
+            // Popup blocked: same-tab fallback. Save photos + selections so the
+            // inputs at least restore after the round-trip.
+            try {
+              const pendingSlots = {};
+              state.selectedAngles.forEach(id => {
+                const sl = state.slots[id];
+                if(sl.originalDataUrl) pendingSlots[id] = sl.originalDataUrl;
+              });
+              if(Object.keys(pendingSlots).length > 0){
+                const pending = {
+                  type: state.type, product: state.product, timeline: state.timeline,
+                  projection: state.projection, sex: state.sex, blackBg: state.blackBg,
+                  sculptraPhenotype: state.sculptraPhenotype || null,
+                  intensityPct: state.intensityPct,
+                  selectedAngles: state.selectedAngles,
+                  slots: pendingSlots
+                };
+                sessionStorage.setItem('sd_pending_gen', JSON.stringify(pending));
+              }
+            } catch(saveErr){ console.warn('[Visualize] Could not save pending state:', saveErr); }
+            window.location.href = d.url;
+          }
+          return;
         }
+        if(checkoutWin && !checkoutWin.closed) checkoutWin.close();
         btn.textContent = 'Buy';
         btn.disabled = false;
         setStatus(d.error || 'Could not start the checkout. Please try again.', 'warn');
         closeBuyModal();
       } catch(e){
+        if(checkoutWin && !checkoutWin.closed) checkoutWin.close();
         btn.textContent = 'Buy'; btn.disabled = false;
         setStatus('Could not start the checkout. Please try again.', 'warn');
         closeBuyModal();
@@ -1611,6 +1724,41 @@ document.getElementById('creditsInfoModal').addEventListener('click', e => { if(
 document.getElementById('buyModal').addEventListener('click', e => { if(e.target === document.getElementById('buyModal')) closeBuyModal(); });
 
 /* Boot: config, then saved beta key, then account session, then the lock UI. */
+// If THIS page was opened as the credit-purchase popup and Stripe has redirected
+// it back with a result, notify the opener (the page holding the user's work) to
+// refresh its credit balance, then close the popup so the user is returned to
+// their simulations automatically. Runs before initAccess so the popup never
+// renders the full app. If window.close() is blocked, the app loads normally and
+// shows the success message (the opener was still notified first).
+(function handlePurchasePopup(){
+  try {
+    const qp = new URLSearchParams(location.search);
+    const purchase = qp.get('purchase');
+    if(purchase && window.opener && !window.opener.closed){
+      try { window.opener.postMessage({ sdPurchase: purchase }, location.origin); } catch(_e){}
+      window.close();
+    }
+  } catch(_e){}
+})();
+
+// Opener side: when the checkout popup reports a completed purchase, refresh the
+// credit balance in place. The user's generated results are untouched because
+// this page never navigated away.
+window.addEventListener('message', (ev) => {
+  if(ev.origin !== location.origin) return;
+  const d = ev.data;
+  if(d && d.sdPurchase && accessMode === 'account'){
+    if(d.sdPurchase === 'success'){
+      setStatus('Payment received. Updating your credit balance…', 'spin');
+      refreshCredits(4).then(bal => {
+        setStatus(bal != null ? ('Payment received. Credit balance: ' + bal + '.') : 'Payment received. Your balance will update shortly.', 'ok');
+      });
+    } else if(d.sdPurchase === 'cancelled'){
+      setStatus('Checkout cancelled. No charge was made.', 'idle');
+    }
+  }
+});
+
 (async function initAccess(){
   try {
     SD_CFG = await (await fetch('/.netlify/functions/visualize-config')).json();
@@ -1709,6 +1857,19 @@ document.getElementById('buyModal').addEventListener('click', e => { if(e.target
     setLockMode('beta');
   }
 })();
+
+// Refresh the credit balance when the user returns to this tab (e.g. after
+// completing a purchase in the checkout tab opened by "Add credits"). This keeps
+// the balance current without a page reload, so generated simulations on this
+// page are never destroyed just to buy more credits.
+document.addEventListener('visibilitychange', () => {
+  if(document.visibilityState === 'visible' && accessMode === 'account'){
+    refreshCredits(2);
+  }
+});
+window.addEventListener('focus', () => {
+  if(accessMode === 'account') refreshCredits(1);
+});
 
 /* ───────── Helpers ───────── */
 const generateBtn = document.getElementById('generateBtn');
@@ -1959,6 +2120,7 @@ document.querySelectorAll('#typeToggle .type-btn').forEach(btn => {
     document.getElementById('biostimControls').classList.toggle('hidden', state.type !== 'biostim');
     updatePhotoGuide();
     updateLibIndicator(); // M12: show/hide library indicator when switching treatment type
+    syncScenariosVisibility(); // M12.2: hide scenarios when not Sculptra
   });
 });
 
@@ -2705,9 +2867,11 @@ async function finishSlot(angleId, auth, fillerIntensity){
         const jowlTexOn = !/[?&]jowltex=off\b/i.test(location.search);
         // M9.7 A/B hook: ?jawdef=off disables the deterministic border light.
         const jawDefOn = !/[?&]jawdef=off\b/i.test(location.search);
+        // M10.6 A/B hook: ?jawcont=off disables the jaw-continuity feather.
+        const jawContOn = !/[?&]jawcont=off\b/i.test(location.search);
         apply = await makeSculptraCompositor(beforeImg, aiImg, {
           scope: compScope, sex: state.sex,
-          warp: warpOn, jowlTexRelease: jowlTexOn, jawDef: jawDefOn, angleId
+          warp: warpOn, jowlTexRelease: jowlTexOn, jawDef: jawDefOn, jawContinuity: jawContOn, angleId
         });
       }
       if(apply){
@@ -2837,6 +3001,7 @@ async function runGeneration(isRegen){
     document.getElementById('outputSection').classList.add('visible');
     document.getElementById('outputSection').scrollIntoView({ behavior:'smooth', block:'start' });
     updateRegenNote();
+    syncScenariosVisibility(); // M12.2: show Explore Scenarios panel for Sculptra
   }
   if(!failIds.length){
     setStatus(doneIds.length > 1 ? 'All ' + doneIds.length + ' previews generated.' : 'Preview generated.', 'ok');
@@ -2950,6 +3115,7 @@ function renderActiveSlot(){
   // Show More button when there's a result to act on
   const moreBtnEl = document.getElementById('moreBtn');
   if(moreBtnEl) moreBtnEl.style.display = (sl && sl.status === 'done') ? '' : 'none';
+  syncScenariosVisibility(); // M12.2
 }
 generateBtn.addEventListener('click', () => runGeneration(false));
 regenBtn.addEventListener('click', () => runGeneration(true));
@@ -3089,6 +3255,8 @@ async function startEnhancedSlot(angleId, auth){
             const warpOn = !/[?&]warp=off\b/i.test(location.search);
             const jowlTexOn = !/[?&]jowltex=off\b/i.test(location.search);
             const jawDefOn = !/[?&]jawdef=off\b/i.test(location.search);
+            // M10.6 A/B hook: ?jawcont=off disables the jaw-continuity feather.
+            const jawContOn = !/[?&]jawcont=off\b/i.test(location.search);
             // M11.1 Enhanced compositor: SAFETY CLAMP role only.
             // The full-frame AI output should already be structurally correct.
             // The compositor's job here is:
@@ -3101,7 +3269,7 @@ async function startEnhancedSlot(angleId, auth){
             // liftSat 1.0 keeps warp geometry active for structural consistency.
             const enhancedOpts = {
               scope: maskScope, sex: state.sex,
-              warp: warpOn, jowlTexRelease: jowlTexOn, jawDef: jawDefOn, angleId,
+              warp: warpOn, jowlTexRelease: jowlTexOn, jawDef: jawDefOn, jawContinuity: jawContOn, angleId,
               liftSat:       1.0,
               deltaGain:     1.3,  // increased from 1.0 to amplify spatial displacement on Enhanced
               glowApply:     0,
@@ -4000,11 +4168,504 @@ document.getElementById('newBtn').addEventListener('click', () => {
   resetZoom();
   document.getElementById('outputSection').classList.remove('visible');
   document.getElementById('angleTabs').style.display = 'none';
-  renderSlots();
+  hideScenariosPanel(); // M12.2: clear scenarios on new case
+  Object.keys(scenarioState).forEach(k => { delete scenarioState[k]; });
+  const scenResults = document.getElementById('scenarioResults');
+  if(scenResults) scenResults.innerHTML = '';  renderSlots();
   updatePhotoGuide();
   syncGenerateBtn();
   setStatus('Choose a treatment, then add the patient photo' + (state.selectedAngles.length > 1 ? 's' : ''), 'idle');
   window.scrollTo({ top:0, behavior:'smooth' });
+});
+
+/* ───────── M12.2: Explore Scenarios ─────────
+   After the baseline Sculptra simulation is generated, an Explore Scenarios
+   panel appears. Each of the four scenario buttons fires one generation:
+     - input image[0]: the active-angle baseline result (treatment anchor)
+     - input image[1]: the original patient photo (identity + texture reference)
+     - prompt: a controlled clinical scenario template from prompts.js
+     - 1 credit per scenario, deducted at start-visualization (debit-at-reserve)
+   Results are displayed alongside the baseline in the panel with a mandatory
+   "Scenario simulation" disclaimer label. Scenarios are biostim/Sculptra only. */
+
+const SCENARIO_CREDIT_COST = 1;
+
+// Scenario state: per-angle, per-scenarioKey.
+// scenarioState[angleId][scenarioKey] -> { status, jobId, resultUrl, error }
+// Using per-angle buckets means switching angle tabs never shows a stale
+// scenario result from a different angle.
+const scenarioState = {};
+
+function scenarioBucket() {
+  const angle = state.activeAngle;
+  if (!scenarioState[angle]) scenarioState[angle] = {};
+  return scenarioState[angle];
+}
+
+const SCENARIO_LABELS = {
+  stronger_sculptra:  'Stronger biostimulation response',
+  add_chin_jaw_filler: 'Add chin + jawline filler',
+  add_temple_support: 'Add temple support',
+  add_tear_trough:    'Add under-eye (tear trough) support',
+  combination_plan:   'Full combination plan'
+};
+
+// Export label: every scenario builds on the biostimulation baseline, so the
+// downloaded grid leads with "Biostimulator + <add-on>". stronger_sculptra
+// already names biostimulation, so it is left as-is (no double-up).
+function scenarioExportLabel(scenarioKey, baseLabel){
+  const lbl = baseLabel || SCENARIO_LABELS[scenarioKey] || scenarioKey;
+  if(scenarioKey === 'stronger_sculptra') return lbl;
+  return 'Biostimulator + ' + lbl.replace(/^Add\s+/i, '');
+}
+
+const SCENARIO_DESCRIPTIONS = {
+  stronger_sculptra:   'Higher-responder scenario. Upper-range result, not guaranteed.',
+  add_chin_jaw_filler: 'Combination-treatment scenario. Not a guaranteed outcome.',
+  add_temple_support:  'Add-on scenario. Upper-range outcome, not guaranteed.',
+  combination_plan:    'Full multi-modality combination scenario. Possible upper-range outcome.'
+};
+
+function showScenariosPanel(){
+  const panel = document.getElementById('scenariosPanel');
+  if(panel) panel.classList.remove('hidden');
+
+  // Clear all existing scenario cards before re-rendering the active angle's
+  // results. Without this, switching from an angle that has scenario results
+  // to one that doesn't leaves the old angle's cards visible in the DOM.
+  const results = document.getElementById('scenarioResults');
+  if(results) results.innerHTML = '';
+
+  const bucket = scenarioBucket();
+  Object.keys(SCENARIO_LABELS).forEach(key => {
+    if(bucket[key]) renderScenarioResult(key);
+  });
+  syncScenarioBtns();
+}
+
+function hideScenariosPanel(){
+  const panel = document.getElementById('scenariosPanel');
+  if(panel) panel.classList.add('hidden');
+}
+
+// Show the panel only when a Sculptra baseline is done for the active angle.
+function syncScenariosVisibility(){
+  const sl = activeSlot();
+  const isSculptra = state.type === 'biostim' && (state.product === 'sculptra' || !state.product);
+  if(isSculptra && sl && sl.status === 'done' && sl.resultDataUrl){
+    showScenariosPanel();
+  } else {
+    hideScenariosPanel();
+    // Rebuild the scenario results panel for the (now-hidden) state --
+    // results are preserved per-angle in scenarioState so switching tabs
+    // back restores them. Only the display is cleared here.
+    const results = document.getElementById('scenarioResults');
+    if(results) results.innerHTML = '';
+  }
+}
+
+function syncScenarioBtns(){
+  const bucket = scenarioBucket();
+  Object.keys(SCENARIO_LABELS).forEach(key => {
+    const btn = document.getElementById('scenBtn_' + key);
+    if(!btn) return;
+    const s = bucket[key];
+    const isGenerating = s && s.status === 'generating';
+    btn.disabled = isGenerating;
+    btn.classList.toggle('generating', !!isGenerating);
+  });
+}
+
+async function runScenario(scenarioKey){
+  const sl = activeSlot();
+  if(!sl || sl.status !== 'done' || !sl.resultDataUrl){
+    setStatus('Generate the baseline first before exploring scenarios.', 'warn');
+    return;
+  }
+
+  // Credit pre-flight
+  if(accessMode === 'account'){
+    if(creditBalance != null && creditBalance < SCENARIO_CREDIT_COST){
+      setStatus('Not enough credits for this scenario. Top up to continue.', 'warn');
+      openBuyModal();
+      return;
+    }
+  }
+
+  const angleId = state.activeAngle;
+  const bucket  = scenarioBucket();
+
+  bucket[scenarioKey] = { status: 'generating', jobId: null, resultUrl: null, rawResultUrl: null, error: null };
+  syncScenarioBtns();
+  renderScenarioResult(scenarioKey);
+
+  try {
+    const auth = await authHeaders();
+
+    // M12.6: send the original photo as the primary image (edit target).
+    // The baseline is sent as originalImage so the server can pass it to the planner.
+    // The image model generates directly from the original -- one clean pass.
+    const originalDataUrl = sl.beforeDataUrl || sl.originalDataUrl;
+    const baselineDataUrl = (state.type === 'biostim' && sl.apply) ? sl.apply(1.0) : sl.resultDataUrl;
+
+    const originalBlob = await resizeToUpload(originalDataUrl);
+    const baselineBlob = await resizeToUpload(baselineDataUrl);
+
+    const jobId = (window.crypto && crypto.randomUUID && crypto.randomUUID()) ||
+                  (Date.now() + '-' + Math.random().toString(36).slice(2));
+
+    bucket[scenarioKey].jobId = jobId;
+
+    const form = new FormData();
+    // image = original photo (primary edit target for the image model)
+    // originalImage = baseline (planner context: what Sculptra already achieved)
+    form.append('image',         originalBlob,  'original-' + angleId + '.jpg');
+    form.append('originalImage', baselineBlob,  'baseline-' + angleId + '.jpg');
+    form.append('jobId',         jobId);
+    form.append('type',          'biostim');
+    form.append('product',       'sculptra');
+    form.append('scenarioMode',  'true');
+    form.append('scenarioKey',   scenarioKey);
+    form.append('rawScenarioMode', 'false');
+    if(sl.jobId) form.append('sourceJobId', sl.jobId);
+    const promptView = angleId === 'r45' ? 'oblique_right'
+                     : angleId === 'l45' ? 'oblique_left'
+                     : 'frontal';
+    form.append('angle', angleId);
+    form.append('view',  promptView);
+    if(state.sex) form.append('sex', state.sex);
+
+    const startRes = await fetch('/.netlify/functions/start-visualization', {
+      method: 'POST', headers: auth, body: form
+    });
+
+    if(startRes.status === 401){ await handleAuthFailure(); throw new Error('Session expired.'); }
+    if(startRes.status === 402){
+      let e; try { e = JSON.parse(await startRes.text()); } catch {}
+      throw new Error((e && e.error) || 'Not enough credits for this scenario.');
+    }
+    if(!startRes.ok){
+      let e; try { e = JSON.parse(await startRes.text()); } catch {}
+      throw new Error((e && e.error) || ('Could not start scenario generation (HTTP ' + startRes.status + ').'));
+    }
+
+    // M12.6 / M12.7: poll for result and display directly.
+    // No compositor, no mask, no warp, no texture restore.
+    // The original photo + planner prompt + gpt-image-1 is one clean generation.
+    // Trust the model. If it drifts on a specific photo, fix the prompt -- not the compositor.
+    const rawResultUrl = await pollForResult(jobId, auth);
+
+    bucket[scenarioKey] = { status: 'done', jobId, resultUrl: rawResultUrl, rawResultUrl, error: null };
+    if(accessMode === 'account') refreshCredits(0);
+
+  } catch(err){
+    const msg = (err && err.message) || 'Scenario generation failed.';
+    const prevJobId = bucket[scenarioKey] && bucket[scenarioKey].jobId;
+    bucket[scenarioKey] = { status: 'error', jobId: prevJobId, resultUrl: null, rawResultUrl: null, error: msg };
+    if(accessMode === 'account') refreshCredits(0);
+  }
+
+  syncScenarioBtns();
+  renderScenarioResult(scenarioKey);
+}
+
+function escapeHtml(str){
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function renderScenarioResult(scenarioKey){
+  const results = document.getElementById('scenarioResults');
+  if(!results) return;
+
+  // Find or create card for this scenario key
+  let card = document.getElementById('scenResult_' + scenarioKey);
+  if(!card){
+    card = document.createElement('div');
+    card.className = 'scenario-result-card';
+    card.id = 'scenResult_' + scenarioKey;
+    results.appendChild(card);
+  }
+
+  const sl = activeSlot();
+  const s = scenarioBucket()[scenarioKey]; // Fix 2: read from per-angle bucket
+
+  if(!s){
+    card.innerHTML = '';
+    return;
+  }
+
+  const label = SCENARIO_LABELS[scenarioKey] || scenarioKey;
+
+  let bodyHtml = '';
+
+  if(s.status === 'generating'){
+    bodyHtml = '<div class="scenario-status">Generating scenario... this may take 1-3 minutes. Keep this tab open.</div>';
+  } else if(s.status === 'error'){
+    // Fix 5: escape error string before inserting into HTML
+    bodyHtml = '<div class="scenario-error">Generation failed: ' + escapeHtml(s.error || 'Unknown error.') + '</div>';
+  } else if(s.status === 'done' && s.resultUrl){
+    // Three-panel layout: original photo | Sculptra 6-month baseline | scenario result.
+    // This lets the patient see the full journey: where they started, what Sculptra
+    // achieves, and what the add-on scenario adds on top.
+    const originalUrl = sl ? (sl.beforeDataUrl || sl.originalDataUrl || '') : '';
+    const baselineDisplayUrl = (state.type === 'biostim' && sl && sl.apply)
+      ? sl.apply(1.0)
+      : (sl ? (sl.resultDataUrl || '') : '');
+    bodyHtml =
+      '<div class="scenario-img-triple">' +
+        '<div class="scenario-img-cell"><img src="' + originalUrl + '" alt="Original" /><div class="scenario-cell-tag">Original</div></div>' +
+        '<div class="scenario-img-cell"><img src="' + baselineDisplayUrl + '" alt="Sculptra baseline" /><div class="scenario-cell-tag">Baseline (expected)</div></div>' +
+        '<div class="scenario-img-cell"><img src="' + s.resultUrl + '" alt="' + escapeHtml(label) + ' scenario" /><div class="scenario-cell-tag sim">' + escapeHtml(label) + '</div></div>' +
+      '</div>';
+    // Stash the three panel URLs on the card so fullscreen/download can use them.
+    card._panels = { originalUrl, baselineDisplayUrl, scenarioUrl: s.resultUrl, label };
+  }
+
+  const isDone = (s.status === 'done' && s.resultUrl);
+  const actionsHtml = isDone
+    ? '<div class="scenario-result-actions">' +
+        '<button class="scenario-act-btn" type="button" data-fs="' + scenarioKey + '">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>' +
+          'Fullscreen' +
+        '</button>' +
+        '<button class="scenario-act-btn" type="button" data-dl="' + scenarioKey + '">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>' +
+          'Download' +
+        '</button>' +
+      '</div>'
+    : '';
+
+  card.innerHTML =
+    '<div class="scenario-result-header">' +
+      '<span class="scenario-result-label">' + escapeHtml(label) + '</span>' +
+      '<span class="scenario-result-disclaimer">Scenario simulation — not a guaranteed outcome</span>' +
+      actionsHtml +
+    '</div>' +
+    bodyHtml;
+
+  // Wire the per-card action buttons (re-query since innerHTML was replaced)
+  const fsBtn = card.querySelector('[data-fs]');
+  const dlBtn = card.querySelector('[data-dl]');
+  if(fsBtn) fsBtn.addEventListener('click', () => openScenarioFullscreen(scenarioKey));
+  if(dlBtn) dlBtn.addEventListener('click', () => downloadScenarioGrid(scenarioKey));
+}
+
+// ───────── Scenario fullscreen + download ─────────
+// Both operate on the three panels stashed on the card (_panels): original,
+// baseline, scenario. Fullscreen shows them in a contain-fit overlay; download
+// stitches them into a single labelled image via canvas.
+
+function getScenarioPanels(scenarioKey){
+  const card = document.getElementById('scenResult_' + scenarioKey);
+  return card && card._panels ? card._panels : null;
+}
+
+function openScenarioFullscreen(scenarioKey){
+  const panels = getScenarioPanels(scenarioKey);
+  if(!panels) return;
+  const overlay = document.getElementById('scenarioFsOverlay');
+  const grid = document.getElementById('scenarioFsGrid');
+  const title = document.getElementById('scenarioFsTitle');
+  if(!overlay || !grid) return;
+
+  title.textContent = panels.label || 'Scenario';
+  grid.innerHTML =
+    '<div class="scenario-fs-cell"><img src="' + panels.originalUrl + '" alt="Original" /><div class="scenario-cell-tag">Original</div></div>' +
+    '<div class="scenario-fs-cell"><img src="' + panels.baselineDisplayUrl + '" alt="Baseline" /><div class="scenario-cell-tag">Baseline (expected)</div></div>' +
+    '<div class="scenario-fs-cell"><img src="' + panels.scenarioUrl + '" alt="' + escapeHtml(panels.label) + '" /><div class="scenario-cell-tag sim">' + escapeHtml(panels.label) + '</div></div>';
+
+  // Download button inside the overlay targets the same scenario
+  const dlBtn = document.getElementById('scenarioFsDownload');
+  if(dlBtn) dlBtn.onclick = () => downloadScenarioGrid(scenarioKey);
+
+  overlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeScenarioFullscreen(){
+  const overlay = document.getElementById('scenarioFsOverlay');
+  if(overlay) overlay.classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// Stitch the three panels into one downloadable image with labels.
+async function downloadScenarioGrid(scenarioKey){
+  const panels = getScenarioPanels(scenarioKey);
+  if(!panels) return;
+
+  const loadImg = (src) => new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+
+  try {
+    const [origImg, baseImg, scenImg] = await Promise.all([
+      loadImg(panels.originalUrl),
+      loadImg(panels.baselineDisplayUrl),
+      loadImg(panels.scenarioUrl)
+    ]);
+
+    // Each panel rendered at a fixed cell size, 4:5 aspect, cover-cropped.
+    const cellW = 768, cellH = 960, gap = 0;
+    const headerH = 64;
+
+    // Make sure web fonts are ready so DM Sans renders into the canvas.
+    await (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve());
+
+    // Optional clinic branding (same fields as the baseline export): the clinic
+    // name from #clinicName and the uploaded logo (clinicLogoDataUrl). The footer
+    // grows to fit whatever is present, so logo + name appear on the grid export.
+    const clinicName = (document.getElementById('clinicName') ? document.getElementById('clinicName').value : '').trim();
+    let logoImg = null;
+    if(clinicLogoDataUrl){
+      logoImg = await new Promise(resolve => {
+        const im = new Image();
+        im.crossOrigin = 'anonymous';
+        im.onload = () => resolve(im);
+        im.onerror = () => resolve(null);
+        im.src = clinicLogoDataUrl;
+      });
+    }
+    const footerPad = 22;
+    const discH  = 26;                   // disclaimer line
+    const nameH  = clinicName ? 34 : 0;  // clinic name line
+    const logoH  = logoImg ? 60 : 0;     // logo row height
+    const brandH = 26;                   // "Powered by SkinDay Visualize"
+    const footerH = footerPad * 2 + discH + nameH + Math.max(logoH, brandH);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = cellW * 3 + gap * 2;
+    canvas.height = cellH + headerH + footerH;
+    const ctx = canvas.getContext('2d');
+
+    // Background
+    ctx.fillStyle = '#1C1714';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Header: scenario label (left) + disclaimer (right)
+    ctx.fillStyle = '#FAF7F2';
+    ctx.font = '600 26px "DM Sans", system-ui, sans-serif';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(scenarioExportLabel(scenarioKey, panels.label), 28, headerH / 2);
+    ctx.fillStyle = '#C8725A';
+    ctx.font = '600 16px "DM Sans", system-ui, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText('SCENARIO SIMULATION — NOT A GUARANTEED OUTCOME', canvas.width - 28, headerH / 2);
+    ctx.textAlign = 'left';
+
+    // cover-crop draw helper
+    const drawCover = (img, dx, dy, dw, dh) => {
+      const ir = img.width / img.height;
+      const dr = dw / dh;
+      let sx, sy, sw, sh;
+      if(ir > dr){ sh = img.height; sw = sh * dr; sx = (img.width - sw) / 2; sy = 0; }
+      else { sw = img.width; sh = sw / dr; sx = 0; sy = (img.height - sh) / 2; }
+      ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+    };
+
+    const cells = [
+      { img: origImg, tag: 'ORIGINAL', sim: false },
+      { img: baseImg, tag: 'BASELINE (EXPECTED)', sim: false },
+      { img: scenImg, tag: scenarioExportLabel(scenarioKey, panels.label).toUpperCase(), sim: true }
+    ];
+
+    cells.forEach((c, i) => {
+      const dx = i * (cellW + gap);
+      const dy = headerH;
+      drawCover(c.img, dx, dy, cellW, cellH);
+      // gradient + tag at the bottom of each cell
+      const grad = ctx.createLinearGradient(0, dy + cellH - 90, 0, dy + cellH);
+      grad.addColorStop(0, 'rgba(28,23,20,0)');
+      grad.addColorStop(1, 'rgba(28,23,20,0.78)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(dx, dy + cellH - 90, cellW, 90);
+      ctx.fillStyle = c.sim ? 'rgba(201,169,110,0.97)' : 'rgba(250,247,242,0.92)';
+      ctx.font = '600 18px "DM Sans", system-ui, sans-serif';
+      ctx.fillText(c.tag, dx + 24, dy + cellH - 30);
+    });
+
+    // Footer: disclaimer, optional clinic name, optional logo + brand line.
+    const fy = headerH + cellH;          // footer top
+    let cy = fy + footerPad;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    // disclaimer
+    ctx.fillStyle = 'rgba(250,247,242,0.62)';
+    ctx.font = '400 15px "DM Sans", system-ui, sans-serif';
+    ctx.fillText('AI-generated visualization for consultation purposes only. Not a prediction of actual results.', canvas.width / 2, cy);
+    cy += discH;
+    // clinic name
+    if(clinicName){
+      ctx.fillStyle = 'rgba(250,247,242,0.92)';
+      ctx.font = '500 20px "DM Sans", system-ui, sans-serif';
+      ctx.fillText(clinicName, canvas.width / 2, cy + 4);
+      cy += nameH;
+    }
+    // logo + "Powered by SkinDay Visualize", centered as one group
+    ctx.textBaseline = 'middle';
+    const rowY = cy + Math.max(logoH, brandH) / 2;
+    const pre = 'Powered by ', brand = 'SkinDay Visualize';
+    ctx.font = '500 16px "DM Sans", system-ui, sans-serif';
+    const preW = ctx.measureText(pre).width;
+    const brandW = ctx.measureText(brand).width;
+    let drawLogoW = 0;
+    if(logoImg) drawLogoW = Math.round(logoImg.naturalWidth * (logoH / logoImg.naturalHeight));
+    const logoGap = logoImg ? 16 : 0;
+    const groupW = drawLogoW + logoGap + preW + brandW;
+    let gx = (canvas.width - groupW) / 2;
+    if(logoImg){
+      ctx.globalAlpha = 0.9;
+      ctx.drawImage(logoImg, gx, rowY - logoH / 2, drawLogoW, logoH);
+      ctx.globalAlpha = 1.0;
+      gx += drawLogoW + logoGap;
+    }
+    ctx.textAlign = 'left';
+    ctx.fillStyle = 'rgba(181,168,159,0.85)';
+    ctx.fillText(pre, gx, rowY);
+    ctx.fillStyle = '#C9A96E';
+    ctx.fillText(brand, gx + preW, rowY);
+    ctx.textBaseline = 'alphabetic';
+
+    const url = canvas.toDataURL('image/jpeg', 0.92);
+    const a = document.createElement('a');
+    const safeName = (scenarioKey || 'scenario').replace(/[^a-z0-9_-]/gi, '_');
+    a.href = url;
+    a.download = 'skinday-' + safeName + '-' + (state.activeAngle || 'view') + '.jpg';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  } catch(err){
+    console.error('[scenario download] failed:', err);
+    setStatus('Could not prepare the download. Please try again.', 'warn');
+  }
+}
+
+// Overlay close wiring (click backdrop, Close button, Escape key)
+(function wireScenarioFsOverlay(){
+  const overlay = document.getElementById('scenarioFsOverlay');
+  const closeBtn = document.getElementById('scenarioFsClose');
+  if(closeBtn) closeBtn.addEventListener('click', closeScenarioFullscreen);
+  if(overlay) overlay.addEventListener('click', (e) => { if(e.target === overlay) closeScenarioFullscreen(); });
+  document.addEventListener('keydown', (e) => {
+    if(e.key === 'Escape'){
+      const ov = document.getElementById('scenarioFsOverlay');
+      if(ov && ov.classList.contains('open')) closeScenarioFullscreen();
+    }
+  });
+})();
+
+// Wire scenario buttons
+document.querySelectorAll('.scenario-btn[data-scenario]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const key = btn.dataset.scenario;
+    if(!key) return;
+    const s = scenarioBucket()[key]; // Fix 2: check per-angle bucket
+    if(s && s.status === 'generating') return; // already running
+    runScenario(key);
+  });
 });
 
 /* ───────── Init ───────── */
