@@ -5,12 +5,35 @@
 
 const { createClient } = require('@supabase/supabase-js');
 
-// Credit pack definitions (mirror from visualize-generate.js)
-const PACKS = [
-  { id: 'starter', credits: 20,  price_cad: 29 },
-  { id: 'clinic',  credits: 60,  price_cad: 69 },
-  { id: 'studio',  credits: 150, price_cad: 139 },
-];
+// Credit pack definitions. Read from the same VISUALIZE_PACKS env the live app
+// uses, so the dashboard can never drift from production pricing. VISUALIZE_PACKS
+// stores cad in CENTS; convert to whole CAD here for display. Falls back to the
+// current (post-redenomination) scale if the env is absent.
+function loadPacks(){
+  const fallback = [
+    { id: 'starter', credits: 2000,  price_cad: 29 },
+    { id: 'clinic',  credits: 6000,  price_cad: 69 },
+    { id: 'studio',  credits: 15000, price_cad: 139 },
+  ];
+  try {
+    const env = process.env.VISUALIZE_PACKS;
+    if(!env) return fallback;
+    const parsed = JSON.parse(env);
+    if(Array.isArray(parsed) && parsed.length &&
+       parsed.every(p => p.id && p.credits > 0 && p.cad > 0)){
+      return parsed.map(p => ({ id: p.id, credits: p.credits, price_cad: p.cad / 100 }));
+    }
+  } catch(e){ /* fall through to fallback */ }
+  return fallback;
+}
+const PACKS = loadPacks();
+
+// Per-action credit costs (mirror the live app's VISUALIZE_COST_* env). Used to
+// convert pack credits into generation counts and to value each generation.
+const FILLER_COST   = parseInt(process.env.VISUALIZE_COST_FILLER   || '100', 10) || 100;
+const BIOSTIM_COST  = parseInt(process.env.VISUALIZE_COST_BIOSTIM  || '200', 10) || 200;
+const SCENARIO_COST = parseInt(process.env.VISUALIZE_COST_SCENARIO || '100', 10) || 100;
+
 // Exchange rate for display (USD cost vs CAD revenue)
 const CAD_TO_USD = parseFloat(process.env.CAD_TO_USD || '0.73');
 
@@ -50,19 +73,38 @@ exports.handler = async (event) => {
     const avgCostSuccess  = successful.length ? successCostUsd / successful.length : 0;
     const totalCredits    = successful.reduce((s, r) => s + (r.credits_charged || 0), 0);
 
-    // Revenue estimate from credits (credits -> nearest pack -> CAD price)
-    // Rough: assume 1 credit sold at effective rate of Clinic pack ($69/60cr = $1.15 CAD/cr)
-    const effectiveRateCAD = 69 / 60;
-    const revenueEstCAD    = totalCredits * effectiveRateCAD;
+    // Revenue estimate. CAD per credit is taken from the Clinic pack (or the
+    // first pack) at current pricing. Revenue is then computed from GENERATION
+    // COUNTS x per-generation CAD value, NOT from the raw credits_charged sum.
+    // This is scale-invariant: a biostim generation is the same product whether
+    // it was billed 2 credits (old scale) or 200 (new scale), so a 30-day window
+    // that straddles the redenomination stays accurate. (Summing credits_charged
+    // directly would value old-scale rows at the new rate, badly skewing totals.)
+    const refPack = PACKS.find(p => p.id === 'clinic') || PACKS[0];
+    const cadPerCredit = refPack && refPack.credits ? (refPack.price_cad / refPack.credits) : 0;
+    const genCadByType = {
+      biostim:  BIOSTIM_COST  * cadPerCredit,
+      filler:   FILLER_COST   * cadPerCredit,
+      scenario: SCENARIO_COST * cadPerCredit,
+    };
+    const revenueEstCAD = successful.reduce((s, r) => {
+      const t = r.treatment_type || 'filler';
+      const perGen = (genCadByType[t] != null) ? genCadByType[t] : (FILLER_COST * cadPerCredit);
+      return s + perGen;
+    }, 0);
     const revenueEstUSD    = revenueEstCAD * CAD_TO_USD;
     const marginUSD        = revenueEstUSD - successCostUsd;
 
     // Pack margin analysis
     const packMargins = PACKS.map(p => {
       const revenueUsd    = p.price_cad * CAD_TO_USD;
-      const costPerCredit = avgCostSuccess; // biostim = 2cr, filler = 1cr
-      const costIfAllFiller  = p.credits * costPerCredit;
-      const costIfAllBiostim = (p.credits / 2) * costPerCredit; // half as many gens
+      // avgCostSuccess is cost per GENERATION. Convert pack credits into
+      // generation counts using the per-action credit cost, so the math holds at
+      // any credit scale (old: filler=1/biostim=2; new: filler=100/biostim=200).
+      const fillerGens    = p.credits / FILLER_COST;
+      const biostimGens   = p.credits / BIOSTIM_COST;
+      const costIfAllFiller  = fillerGens  * avgCostSuccess;
+      const costIfAllBiostim = biostimGens * avgCostSuccess;
       return {
         pack:              p.id,
         credits:           p.credits,
