@@ -579,4 +579,147 @@ function usesChinJawSafety(type, areasField){
   return areas.includes('chin') && areas.includes('jawline');
 }
 
-module.exports = { buildCorePrompt, VERSIONS, CHIN_JAW_SAFETY, usesChinJawSafety, FILLER_CHIN_JAWLINE_OVERFILLED };
+// ---- M12.2 / M12.6: Scenario Exploration prompts ---------------------------------
+// Architecture (M12.6 rebuild): scenarios now generate from the ORIGINAL patient
+// photo, not the Visualize baseline. The planner receives both images as context
+// and writes a prompt describing the full combined treatment from scratch.
+// The scenario result is then composited through the standard Sculptra/chin-jaw
+// mask pipeline client-side, giving the same pixel-level identity lock the
+// baseline enjoys. This produces cleaner one-pass results without the compositor
+// degradation and identity drift that came from chaining two AI generations.
+//
+// Static prompts (used as planner fallback): rewritten for original-photo-first.
+// The planner overrides these with case-specific prompts when enabled.
+
+const SCENARIO_PROMPT_BASE =
+  'This is an original medical consultation photograph. ' +
+  'Simulate the result of the combined treatment plan described below as a single generation from this original photo. ' +
+  'A Sculptra biostimulator baseline response has already been established for this patient as context. ' +
+  'Show the full combined treatment result in one pass, starting from this original photo. ';
+
+const SCENARIO_SAFETY =
+  ' ABSOLUTE PROHIBITIONS: ' +
+  'Do not smooth or retouch skin anywhere. Do not brighten, whiten, raise contrast, or apply any filter or beauty effect. ' +
+  'Do not enlarge, open, or alter the eyes in any way. Do not raise, darken, or reshape the brows. ' +
+  'Do not change lip size, shape, color, fullness, or border. Do not alter the nose, mouth, or expression. ' +
+  'Do not change hairstyle, hair color, clothing, jewellery, head angle, camera crop, lighting, or background. ' +
+  'Do not reduce apparent age or add any de-aging effect. ' +
+  'Preserve identity, skin tone, ethnicity, and all ethnic features exactly as in the original photo. ' +
+  'In treated structural zones only, natural shadow redistribution from volume change is permitted. ' +
+  'The result must be unmistakably the same person. ' +
+  'Do not add text, labels, watermarks, or annotations.';
+
+// M12.7: Fixed proven base prompt for the stronger_sculptra scenario.
+// Framed as "create a believable 6-month after-photo" not "stronger than baseline."
+// The planner adds only a short patient-specific emphasis line at the end.
+// Do not let the planner rewrite this prompt -- it overthinks and writes cautious
+// clinical language that produces timid results.
+const SCULPTRA_SCENARIO_BASE =
+  'Create a realistic clinical-style after-photo simulating an upper-range 6-month Sculptra result. ' +
+  'Use the original patient photo as the direct edit target. Keep the same head angle, head position, gaze direction, neutral expression, lighting, clothing, hair, background, and camera framing. ' +
+  'This is a strong but believable collagen-stimulator response, not filler augmentation and not surgery. ' +
+  'The improvement must be clearly visible compared with the original photo. Show moderate-to-strong broad soft-tissue restoration and lateral scaffold support in the temples, lateral cheeks, preauricular/submalar area, lower cheek, prejowl region, and mandibular transition. ' +
+  'Restore lateral cheek convexity so the zygomatic/lateral cheek highlight reads more present and continuous. Improve temple-to-cheek continuity. Soften submalar hollowing and the cheek-to-jaw transition. Support the prejowl and jowl shadow so the lower face reads cleaner and better suspended. ' +
+  'The face should look visibly fuller and better supported laterally, with a smoother continuous contour from temple to cheek to jawline. The result should read as a real upper-range Sculptra responder after several months: better collagen support, better suspension, and softer shadows, while still natural and not overfilled. ' +
+  'Preserve identity exactly. Do not change ethnicity, eye shape, nose, lips, hairstyle, clothing, background, pose, or expression. Do not add makeup. Do not create a beauty-filter look. Preserve natural skin texture, pores, pigmentation, and lighting. Avoid global skin smoothing, brightening, face slimming, teeth changes, or unrelated beautification. ' +
+  'The result should look like the same patient photographed in the same setup, only with a clearly visible upper-range 6-month Sculptra improvement.';
+
+const SCENARIO_PROMPTS = {
+
+  stronger_sculptra: {
+    label: 'Stronger Sculptra response',
+    description: 'Upper-range 6-month collagen response',
+    // M12.7: uses fixed proven base prompt. Planner adds patient-specific line only.
+    // NO_TEXT_RULE is prepended by buildScenarioPrompt(), so not included here.
+    prompt: SCULPTRA_SCENARIO_BASE
+  },
+
+  add_chin_jaw_filler: {
+    label: 'Add chin + jawline filler',
+    description: 'Sculptra baseline + 2 syringes HA chin/jaw filler',
+    prompt: SCENARIO_PROMPT_BASE +
+      'Treatment to simulate: Sculptra biostimulator (baseline level) PLUS 2 syringes HA filler to the chin and jawline. ' +
+      'Show: the expected Sculptra lateral scaffold support AND a clearly visible lower-face structural change: ' +
+      'more chin projection and vertical chin height; clean, continuous mandibular border definition; prejowl support. ' +
+      'For a female patient: the lower third reads more refined and oval, the chin elongates forward, the face tapers gently. ' +
+      'For a male patient: the chin is wider and squared at the mentum, the mandibular border is structural and defined. ' +
+      'The lower-face change must be visible in the silhouette and shadow architecture. ' +
+      'Do not change the midface, cheekbones, upper face, eyes, or brows.' +
+      SCENARIO_SAFETY
+  },
+
+  add_temple_support: {
+    label: 'Add temple support',
+    description: 'Sculptra baseline + focused temple volume',
+    prompt: SCENARIO_PROMPT_BASE +
+      'Treatment to simulate: Sculptra biostimulator (baseline level) PLUS focused HA or Sculptra volume to the temples. ' +
+      'Show: the expected Sculptra lateral scaffold AND improved temporal hollow fill: ' +
+      'the temporal hollow fills in so the forehead-to-cheek transition reads as a more continuous convex surface; ' +
+      'the upper lateral face reads as a smooth connected arc from the lateral brow tail down into the zygomatic arch. ' +
+      'The temple change is strictly the temporal hollow and immediately adjacent tissue. ' +
+      'Do not touch the midface, lower face, jawline, eyes, brows, or upper eyelid.' +
+      SCENARIO_SAFETY
+  },
+
+  add_tear_trough: {
+    label: 'Add under-eye (tear trough) support',
+    description: 'Baseline + under-eye hollow correction',
+    prompt: SCENARIO_PROMPT_BASE +
+      'Treatment to simulate: the baseline collagen response PLUS hyaluronic acid correction of the under-eye (tear trough) hollow. ' +
+      'Show: the under-eye hollow and tear trough groove softened so the lid-cheek junction reads as a smooth, continuous, well-supported transition. ' +
+      'The dark shadow cast by the hollow is reduced because the depression is filled and supported from beneath, not because the skin is brightened or the dark circle is painted over. ' +
+      'The change is strictly the tear trough and the immediately adjacent upper medial cheek that supports it. ' +
+      'Keep it subtle and natural -- a refreshed, less tired appearance, never puffy, never over-filled, never a smooth featureless under-eye. ' +
+      'Do not change the eye shape, eye size, eyelid, lashes, or iris. Do not brighten or erase pigmentation. Do not touch the lower face, jawline, lips, nose, or brows.' +
+      SCENARIO_SAFETY
+  },
+
+  combination_plan: {
+    label: 'Full combination plan',
+    description: 'Sculptra + chin/jaw filler + temple support',
+    prompt: SCENARIO_PROMPT_BASE +
+      'Treatment to simulate: a full multi-modality combination plan -- ' +
+      'Sculptra biostimulator at strong lateral scaffold level, PLUS HA chin and jawline filler, PLUS temple volume support. ' +
+      'Show all three simultaneously as a single coherent result: ' +
+      '(1) Strong lateral cheek and temple support: fuller lateral cheek convexity, more continuous temple-to-cheek arc, cleaner jowl suspension. ' +
+      '(2) Chin and jawline filler: clearly more chin projection and height, clean mandibular border, prejowl support. ' +
+      'For female: tapered oval lower third. For male: wide squared mentum and structural jaw border. ' +
+      '(3) Temple volume: temporal hollow filled, forehead-to-cheek arc more continuous. ' +
+      'All three must read as one integrated clinical result: same person, comprehensively supported, not operated on. ' +
+      'Each change is localized to its anatomical zone. Skin, eyes, lips, nose, hair, lighting, expression are locked.' +
+      SCENARIO_SAFETY
+  }
+};
+
+// Build a complete scenario prompt for a given scenario key and view.
+// Used as the static fallback when the planner is disabled or fails.
+// NO_TEXT_RULE is prepended first (same pattern as buildSculptraPrompt).
+function buildScenarioPrompt(scenarioKey, view) {
+  const s = SCENARIO_PROMPTS[scenarioKey];
+  if (!s) throw new Error('Unknown scenario key: ' + scenarioKey);
+
+  const isOblique = (view === 'oblique_left' || view === 'oblique_right' || view === 'oblique' ||
+                     view === 'l45' || view === 'r45');
+
+  // stronger_sculptra needs an oblique lead that preserves pose WITHOUT saying
+  // "minimum change" -- that phrasing suppresses the Sculptra magnitude we want.
+  // Other scenarios keep the conservative minimum-change lead.
+  let viewLead = '';
+  if (isOblique) {
+    if (scenarioKey === 'stronger_sculptra') {
+      viewLead = 'IMPORTANT: this is a three-quarter oblique consultation photograph. ' +
+        'Preserve the exact head angle, crop, perspective, and facial orientation. ' +
+        'Do not rotate the face toward frontal. ' +
+        'Keep identity, lighting, hair, expression, and background unchanged. ';
+    } else {
+      viewLead = 'IMPORTANT: this is a three-quarter (oblique) consultation photograph. ' +
+        'Preserve the exact head angle, crop, perspective, and facial orientation exactly. ' +
+        'Do not rotate the face toward frontal. Do not rebuild, repaint, or re-render the face. ' +
+        'Make the minimum change consistent with the treatment plan below. ';
+    }
+  }
+
+  return NO_TEXT_RULE + ' ' + viewLead + s.prompt;
+}
+
+module.exports = { buildCorePrompt, VERSIONS, CHIN_JAW_SAFETY, usesChinJawSafety, FILLER_CHIN_JAWLINE_OVERFILLED, SCENARIO_PROMPTS, buildScenarioPrompt };

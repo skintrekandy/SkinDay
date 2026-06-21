@@ -57,6 +57,9 @@ const REGEN_WINDOW_MS = 90 * 1000; // server window; the client advertises 60s
 const COST_FILLER  = parseInt(process.env.VISUALIZE_COST_FILLER  || '1', 10) || 1;
 const COST_BIOSTIM = parseInt(process.env.VISUALIZE_COST_BIOSTIM || '2', 10) || 2;
 function creditCost(fields) {
+  // M12.2: scenario exploration pass always costs 1 credit.
+  // Server verifies baseline ownership below before this price applies.
+  if (fields && fields.scenarioMode === 'true') return 1;
   return (fields && fields.type === 'biostim') ? COST_BIOSTIM : COST_FILLER;
 }
 
@@ -117,7 +120,8 @@ const FIELD_KEYS = [
   'type', 'areas', 'goal', 'intensity', 'product', 'projection',
   'timeline', 'note', 'prompt', 'isStrongPass',
   'angle', 'sex', 'view', 'phenotype', 'sculptraPhenotype', 'patientAge',
-  'sourceJobId'
+  'sourceJobId',
+  'scenarioMode', 'scenarioKey', 'rawScenarioMode'  // M12.2: scenario exploration pass
 ];
 
 exports.handler = async (event) => {
@@ -153,6 +157,51 @@ exports.handler = async (event) => {
 
     const store = getStore('visualize-jobs');
 
+    // M12.2: Scenario mode server-side verification.
+    // Scenarios are priced at 1 credit only when they build on a verified,
+    // completed Sculptra baseline that belongs to the same user. Without this
+    // gate, any user could call scenarioMode=true with any image and pay 1
+    // credit instead of the 2-credit biostim baseline.
+    // Beta-key users are exempt from ownership verification (internal use).
+    if (fields.scenarioMode === 'true') {
+      const VALID_SCENARIO_KEYS = ['stronger_sculptra', 'add_chin_jaw_filler', 'add_temple_support', 'add_tear_trough', 'combination_plan'];
+      if (!VALID_SCENARIO_KEYS.includes(fields.scenarioKey)) {
+        return { statusCode: 400, headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ error: 'Invalid scenario key.', code: 'BAD_SCENARIO_KEY' }) };
+      }
+      if (user) {
+        // Require sourceJobId for metered accounts.
+        const srcId = fields.sourceJobId;
+        if (!srcId || !/^[A-Za-z0-9._-]{8,128}$/.test(srcId)) {
+          return { statusCode: 400, headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ error: 'Scenario requires a valid source job.', code: 'MISSING_SOURCE_JOB' }) };
+        }
+        // Verify source job: must belong to this user, be done, and be a
+        // real Sculptra baseline (not itself a scenario or a different treatment).
+        try {
+          const srcBilling = await store.get(srcId + ':billing', { type: 'json' });
+          const srcStatus  = await store.get(srcId + ':status',  { type: 'json' });
+          if (!srcBilling || srcBilling.userId !== user.id) {
+            return { statusCode: 403, headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ error: 'Source job not found or belongs to a different account.', code: 'SOURCE_JOB_MISMATCH' }) };
+          }
+          if (!srcStatus || srcStatus.state !== 'done') {
+            return { statusCode: 400, headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ error: 'Source job has not completed successfully.', code: 'SOURCE_JOB_NOT_DONE' }) };
+          }
+          // Require source job to be a Sculptra biostim baseline, not a scenario.
+          if (srcBilling.type !== 'biostim' || srcBilling.product !== 'sculptra' || srcBilling.scenarioMode === true) {
+            return { statusCode: 400, headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ error: 'Source job must be a completed Sculptra baseline generation.', code: 'SOURCE_JOB_NOT_SCULPTRA' }) };
+          }
+        } catch (e) {
+          console.error('[M12.2] scenario source job lookup failed:', (e && e.message) || e);
+          return { statusCode: 500, headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ error: 'Could not verify source job. Please try again.', code: 'SOURCE_JOB_LOOKUP_ERROR' }) };
+        }
+      }
+    }
+
     // M8 metering: reserve credits before any work, atomically and balance-
     // checked server-side. Beta key: cost 0, no account touched.
     let billing = null;
@@ -160,7 +209,9 @@ exports.handler = async (event) => {
       let cost = creditCost(fields);
 
       // Free re-generate window, enforced by job lineage.
-      const regenOf = fields.regenOf;
+      // M12.2: regenOf is explicitly disabled for scenario mode -- scenarios
+      // must always cost 1 credit and cannot inherit a free-regen from a baseline job.
+      const regenOf = fields.scenarioMode === 'true' ? null : fields.regenOf;
       if (cost > 0 && regenOf && /^[A-Za-z0-9._-]{8,128}$/.test(regenOf)) {
         try {
           const prev = await store.get(regenOf + ':billing', { type: 'json' });
@@ -194,20 +245,31 @@ exports.handler = async (event) => {
           return { statusCode: 402, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Not enough credits for this generation.', code: 'INSUFFICIENT_CREDITS', cost }) };
         }
       }
-      billing = { userId: user.id, cost, createdAt: Date.now(), regenUsed: false };
+      billing = { userId: user.id, cost, createdAt: Date.now(), regenUsed: false,
+        type: fields.type || null,
+        product: fields.product || null,
+        scenarioMode: fields.scenarioMode === 'true'
+      };
     }
 
     // Full payload for the worker (image as base64). Kept separate from the
     // small status object so the poller never has to download the image.
     // The optional mask rides along in the same payload.
+    // M12.2: scenario mode sends an originalImage field alongside the baseline
+    // image so the background worker can pass both to gpt-image-1 as a two-
+    // image input: image[0] = baseline (treatment anchor), image[1] = original
+    // patient photo (identity + skin-texture reference).
     const maskFile = files.mask;
+    const originalImageFile = files.originalImage; // M12.2: scenario only
     await store.setJSON(jobId + ':job', {
       params,
       imageB64: imageFile.buffer.toString('base64'),
       mime: imageFile.mimeType,
       filename: imageFile.filename,
       maskB64: maskFile ? maskFile.buffer.toString('base64') : null,
-      maskMime: maskFile ? maskFile.mimeType : null
+      maskMime: maskFile ? maskFile.mimeType : null,
+      originalImageB64: originalImageFile ? originalImageFile.buffer.toString('base64') : null,
+      originalMime:     originalImageFile ? originalImageFile.mimeType : null
     });
     await store.setJSON(jobId + ':status', { state: 'pending', createdAt: Date.now() });
     if (billing) await store.setJSON(jobId + ':billing', billing);
