@@ -4178,6 +4178,15 @@ const SCENARIO_LABELS = {
   combination_plan:   'Full combination plan'
 };
 
+// Export label: every scenario builds on the biostimulation baseline, so the
+// downloaded grid leads with "Biostimulator + <add-on>". stronger_sculptra
+// already names biostimulation, so it is left as-is (no double-up).
+function scenarioExportLabel(scenarioKey, baseLabel){
+  const lbl = baseLabel || SCENARIO_LABELS[scenarioKey] || scenarioKey;
+  if(scenarioKey === 'stronger_sculptra') return lbl;
+  return 'Biostimulator + ' + lbl.replace(/^Add\s+/i, '');
+}
+
 const SCENARIO_DESCRIPTIONS = {
   stronger_sculptra:   'Higher-responder scenario. Upper-range result, not guaranteed.',
   add_chin_jaw_filler: 'Combination-treatment scenario. Not a guaranteed outcome.',
@@ -4508,7 +4517,7 @@ async function downloadScenarioGrid(scenarioKey){
     ctx.fillStyle = '#FAF7F2';
     ctx.font = '600 26px "DM Sans", system-ui, sans-serif';
     ctx.textBaseline = 'middle';
-    ctx.fillText(panels.label || 'Scenario', 28, headerH / 2);
+    ctx.fillText(scenarioExportLabel(scenarioKey, panels.label), 28, headerH / 2);
     ctx.fillStyle = '#C8725A';
     ctx.font = '600 16px "DM Sans", system-ui, sans-serif';
     ctx.textAlign = 'right';
@@ -4528,7 +4537,7 @@ async function downloadScenarioGrid(scenarioKey){
     const cells = [
       { img: origImg, tag: 'ORIGINAL', sim: false },
       { img: baseImg, tag: 'BASELINE (EXPECTED)', sim: false },
-      { img: scenImg, tag: (panels.label || 'SCENARIO').toUpperCase(), sim: true }
+      { img: scenImg, tag: scenarioExportLabel(scenarioKey, panels.label).toUpperCase(), sim: true }
     ];
 
     cells.forEach((c, i) => {
