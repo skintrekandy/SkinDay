@@ -473,8 +473,12 @@
     .scenario-fs-grid { flex:1; display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; min-height:0; }
     @media(max-width:700px){ .scenario-fs-grid { grid-template-columns:1fr; overflow-y:auto; } }
     .scenario-fs-cell { position:relative; min-height:0; background:#000; border-radius:6px; overflow:hidden; display:flex; align-items:center; justify-content:center; }
-    .scenario-fs-cell img { max-width:100%; max-height:100%; width:auto; height:auto; object-fit:contain; }
+    .scenario-fs-cell img { max-width:100%; max-height:100%; width:auto; height:auto; object-fit:contain; will-change:transform; }
     .scenario-fs-cell .scenario-cell-tag { position:absolute; }
+    /* fullscreen zoom controls */
+    .fs-zoom { display:inline-flex; align-items:center; gap:6px; }
+    .fs-zoom-btn { padding:6px 11px; font-size:1.05rem; line-height:1; min-width:34px; justify-content:center; }
+    .fs-zoom-label { font-size:.72rem; color:var(--cream); min-width:44px; text-align:center; }
     /* two-panel variant (before/after consultation preview) */
     .scenario-fs-grid.two { grid-template-columns:1fr 1fr; }
     @media(max-width:700px){ .scenario-fs-grid.two { grid-template-columns:1fr; } }
@@ -808,6 +812,11 @@
         <div class="scenario-fs-disclaimer">Scenario simulation — not a guaranteed outcome</div>
       </div>
       <div class="scenario-fs-actions">
+        <div class="fs-zoom">
+          <button class="scenario-fs-btn fs-zoom-btn" type="button" id="scnZoomOut" aria-label="Zoom out">−</button>
+          <span class="fs-zoom-label" id="scnZoomLabel">100%</span>
+          <button class="scenario-fs-btn fs-zoom-btn" type="button" id="scnZoomIn" aria-label="Zoom in">+</button>
+        </div>
         <button class="scenario-fs-btn" type="button" id="scenarioFsDownload">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Download
@@ -826,6 +835,11 @@
         <div class="scenario-fs-disclaimer">AI-generated visualization for consultation purposes only</div>
       </div>
       <div class="scenario-fs-actions">
+        <div class="fs-zoom">
+          <button class="scenario-fs-btn fs-zoom-btn" type="button" id="prvZoomOut" aria-label="Zoom out">−</button>
+          <span class="fs-zoom-label" id="prvZoomLabel">100%</span>
+          <button class="scenario-fs-btn fs-zoom-btn" type="button" id="prvZoomIn" aria-label="Zoom in">+</button>
+        </div>
         <button class="scenario-fs-btn" type="button" id="previewFsDownload">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Download
@@ -4504,6 +4518,72 @@ function renderScenarioResult(scenarioKey){
 // baseline, scenario. Fullscreen shows them in a contain-fit overlay; download
 // stitches them into a single labelled image via canvas.
 
+// ── Shared fullscreen zoom/pan ──
+// One controller per overlay grid. Zoom is synchronized across all panels (so
+// before/after stay aligned), driven by the +/- buttons, the scroll wheel, and
+// drag-to-pan when zoomed in. Listeners bind to the persistent grid element, so
+// they survive innerHTML swaps; reset() is called whenever an overlay opens.
+let scnFsZoom = null, prvFsZoom = null;
+function makeFsZoom(grid, label){
+  const MIN = 1, MAX = 4, STEP = 0.25;
+  let scale = 1, tx = 0, ty = 0;
+  let dragging = false, startX = 0, startY = 0, origX = 0, origY = 0;
+  function clampPan(){
+    const cell = grid.querySelector('.scenario-fs-cell');
+    if(!cell){ tx = 0; ty = 0; return; }
+    const r = cell.getBoundingClientRect();
+    const mx = Math.max(0, (r.width  * (scale - 1)) / 2);
+    const my = Math.max(0, (r.height * (scale - 1)) / 2);
+    tx = Math.max(-mx, Math.min(mx, tx));
+    ty = Math.max(-my, Math.min(my, ty));
+  }
+  function apply(){
+    clampPan();
+    grid.querySelectorAll('img').forEach(img => {
+      img.style.transformOrigin = 'center center';
+      img.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + scale + ')';
+      img.style.cursor = scale > 1 ? (dragging ? 'grabbing' : 'grab') : 'default';
+    });
+    if(label) label.textContent = Math.round(scale * 100) + '%';
+  }
+  function setScale(s){ scale = Math.max(MIN, Math.min(MAX, s)); if(scale === 1){ tx = 0; ty = 0; } apply(); }
+  grid.addEventListener('wheel', (e) => { e.preventDefault(); setScale(scale + (e.deltaY < 0 ? STEP : -STEP)); }, { passive:false });
+  grid.addEventListener('pointerdown', (e) => {
+    if(scale <= 1) return;
+    dragging = true; startX = e.clientX; startY = e.clientY; origX = tx; origY = ty;
+    try { grid.setPointerCapture(e.pointerId); } catch(_){}
+    apply();
+  });
+  grid.addEventListener('pointermove', (e) => {
+    if(!dragging) return;
+    tx = origX + (e.clientX - startX); ty = origY + (e.clientY - startY); apply();
+  });
+  const endDrag = () => { if(dragging){ dragging = false; apply(); } };
+  grid.addEventListener('pointerup', endDrag);
+  grid.addEventListener('pointercancel', endDrag);
+  return {
+    reset: () => { scale = 1; tx = 0; ty = 0; apply(); },
+    zoomIn: () => setScale(scale + STEP),
+    zoomOut: () => setScale(scale - STEP)
+  };
+}
+(function wireFsZoom(){
+  const scnGrid = document.getElementById('scenarioFsGrid');
+  if(scnGrid){
+    scnFsZoom = makeFsZoom(scnGrid, document.getElementById('scnZoomLabel'));
+    const i = document.getElementById('scnZoomIn'), o = document.getElementById('scnZoomOut');
+    if(i) i.addEventListener('click', scnFsZoom.zoomIn);
+    if(o) o.addEventListener('click', scnFsZoom.zoomOut);
+  }
+  const prvGrid = document.getElementById('previewFsGrid');
+  if(prvGrid){
+    prvFsZoom = makeFsZoom(prvGrid, document.getElementById('prvZoomLabel'));
+    const i = document.getElementById('prvZoomIn'), o = document.getElementById('prvZoomOut');
+    if(i) i.addEventListener('click', prvFsZoom.zoomIn);
+    if(o) o.addEventListener('click', prvFsZoom.zoomOut);
+  }
+})();
+
 function getScenarioPanels(scenarioKey){
   const card = document.getElementById('scenResult_' + scenarioKey);
   return card && card._panels ? card._panels : null;
@@ -4529,6 +4609,7 @@ function openScenarioFullscreen(scenarioKey){
 
   overlay.classList.add('open');
   document.body.style.overflow = 'hidden';
+  if(scnFsZoom) scnFsZoom.reset();
 }
 
 function closeScenarioFullscreen(){
@@ -4729,6 +4810,7 @@ function openPreviewFullscreen(){
   if(dlBtn) dlBtn.onclick = () => { const d = document.getElementById('downloadBtn'); if(d) d.click(); };
   overlay.classList.add('open');
   document.body.style.overflow = 'hidden';
+  if(prvFsZoom) prvFsZoom.reset();
 }
 function closePreviewFullscreen(){
   const overlay = document.getElementById('previewFsOverlay');
