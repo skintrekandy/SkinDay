@@ -1040,7 +1040,7 @@ const FREE_REGEN_MS = 60000;
 // stay the same module instance (shared face-detection cache). v35 = M9.0
 // jowl blending (alpha lobes over marionette/jowl shadows + prejowl notch-fill
 // warp kernels) (v34 = M8.2 shade reconciliation; v33 = M8.1 convex chin).
-const MASK_MODULE_VERSION = '72';
+const MASK_MODULE_VERSION = '73';
 
 /* M7: a case is one or more ANGLES, each with its own photo, QC result, job,
    and compositor. Treatment settings are shared across the case; the response
@@ -2804,9 +2804,11 @@ async function finishSlot(angleId, auth, fillerIntensity){
         const jowlTexOn = !/[?&]jowltex=off\b/i.test(location.search);
         // M9.7 A/B hook: ?jawdef=off disables the deterministic border light.
         const jawDefOn = !/[?&]jawdef=off\b/i.test(location.search);
+        // M10.6 A/B hook: ?jawcont=off disables the jaw-continuity feather.
+        const jawContOn = !/[?&]jawcont=off\b/i.test(location.search);
         apply = await makeSculptraCompositor(beforeImg, aiImg, {
           scope: compScope, sex: state.sex,
-          warp: warpOn, jowlTexRelease: jowlTexOn, jawDef: jawDefOn, angleId
+          warp: warpOn, jowlTexRelease: jowlTexOn, jawDef: jawDefOn, jawContinuity: jawContOn, angleId
         });
       }
       if(apply){
@@ -3190,6 +3192,8 @@ async function startEnhancedSlot(angleId, auth){
             const warpOn = !/[?&]warp=off\b/i.test(location.search);
             const jowlTexOn = !/[?&]jowltex=off\b/i.test(location.search);
             const jawDefOn = !/[?&]jawdef=off\b/i.test(location.search);
+            // M10.6 A/B hook: ?jawcont=off disables the jaw-continuity feather.
+            const jawContOn = !/[?&]jawcont=off\b/i.test(location.search);
             // M11.1 Enhanced compositor: SAFETY CLAMP role only.
             // The full-frame AI output should already be structurally correct.
             // The compositor's job here is:
@@ -3202,7 +3206,7 @@ async function startEnhancedSlot(angleId, auth){
             // liftSat 1.0 keeps warp geometry active for structural consistency.
             const enhancedOpts = {
               scope: maskScope, sex: state.sex,
-              warp: warpOn, jowlTexRelease: jowlTexOn, jawDef: jawDefOn, angleId,
+              warp: warpOn, jowlTexRelease: jowlTexOn, jawDef: jawDefOn, jawContinuity: jawContOn, angleId,
               liftSat:       1.0,
               deltaGain:     1.3,  // increased from 1.0 to amplify spatial displacement on Enhanced
               glowApply:     0,

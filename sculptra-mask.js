@@ -763,6 +763,11 @@ function buildTextureDelta(b,a0,w,h,W,opts){
   // texture. Built over the jowl-blend lobes for chin_jaw; null everywhere
   // else, so nothing outside the lobes changes.
   const rel = opts.releaseField || null;
+  // M10.6: optional jaw-continuity feather (Sculptra 'full' only). Per-pixel
+  // weight 0..1 that tightens the positive bright cap toward jawTightCap in the
+  // lower-lateral cheek so the cheek-to-jaw tone stays continuous. Null = off.
+  const jawFeather = opts.jawFeatherField || null;
+  const jawTightCap = (opts.jawTightCap==null ? SCULPTRA_JAW_TIGHT_CAP : Math.max(0, opts.jawTightCap));
   // M9.8 (v43): optional three-band mid keep (see CHIN_JAW_MID_KEEP).
   const midK = (opts.midKeep==null ? 0 : Math.max(0, Math.min(1, opts.midKeep)));
   const midR = Math.max(0, Math.round((opts.midRadiusFrac ?? 0)*W));
@@ -861,7 +866,19 @@ function buildTextureDelta(b,a0,w,h,W,opts){
       if(lowShift < -darkFloor) lowShift = -darkFloor;
       // M6.3: soft-knee the broad brightening so the response gain amplifies
       // shading structure, not flat brightness (see SCULPTRA_BRIGHT_CAP_FULL).
-      else if(brightCap > 0 && lowShift > 0) lowShift = brightCap*Math.tanh(lowShift/brightCap);
+      // M10.6: in the jaw-continuity band, tighten the cap toward jawTightCap so
+      // the lower-lateral cheek cannot pull brighter than the jaw below it. The
+      // tanh self-gates: a modest lift passes a tighter cap nearly unchanged; an
+      // extreme lift is clamped. Upper/mid cheek (jawFeather 0) keeps full cap.
+      else if(brightCap > 0 && lowShift > 0){
+        let capEff = brightCap;
+        if(jawFeather){
+          const fw = jawFeather[i];
+          if(fw > 0) capEff = brightCap + (jawTightCap - brightCap) * fw;
+        }
+        if(capEff <= 0) lowShift = 0;
+        else lowShift = capEff*Math.tanh(lowShift/capEff);
+      }
       lowShift += glow;
       // High-frequency band. Brightening passes; darkening (a fake shadow the
       // guard would otherwise paint at the jaw/edge) is scaled down. The
@@ -2457,6 +2474,31 @@ const SCULPTRA_DARK_FLOOR = 16;
 // below both caps). Reversal: restore to 16 if collagen glow reads flat on a
 // well-lit case, or to 12 if the patch persists on poorly-lit obliques.
 const SCULPTRA_BRIGHT_CAP_FULL = 13;
+// ─────────────────────────────────────────────────────────────────────────
+// M10.6 (v73): JAW-CONTINUITY FEATHER. Diagnosis (R45 patch, L45 clean):
+// the offense is not hue/chroma drift, it is a cheek-to-jaw LUMINANCE
+// CONTINUITY break. On the larger-warp oblique the near-side lower-lateral
+// cheek brightens while the jawline below stays dark, so the cheek-to-jaw
+// tonal gap exceeds the original photo's and the bright zone reads as a
+// pasted-on oval. The global bright cap (13) cannot fix this: lowering it
+// dims every angle and every patient (the L45 that is already perfect).
+//
+// Fix: in the lower-lateral-cheek-to-jaw band ONLY, tighten the bright cap
+// from SCULPTRA_BRIGHT_CAP_FULL toward SCULPTRA_JAW_TIGHT_CAP. The upper and
+// mid cheek (the zygomatic lift + glow, the actual Sculptra effect) keep the
+// full cap and are untouched. Self-gating: the existing tanh soft-knee means
+// a modest lift (L45's lower cheek) passes a tighter cap nearly unchanged,
+// while an extreme lift (R45's blown patch) is clamped hard. So the patch is
+// pulled down toward jaw-continuous tone without dimming the good angle and
+// without hard-coding which side is the near side. Kill switch: pass
+// jawContinuity:false (visualize.html ?jawcont=off) to A/B or disable.
+// Tuning: SCULPTRA_JAW_TIGHT_CAP lower (5) = stronger continuity / flatter
+// lower cheek; higher (8) = gentler, less effect on the clean angle.
+const SCULPTRA_JAW_TIGHT_CAP   = 6;     // tightened bright cap at the jaw border
+const SCULPTRA_JAW_FEATHER_LO  = 0.45;  // ramp start: fraction of the zygion->jaw drop (0=zygion, 1=jaw)
+const SCULPTRA_JAW_FEATHER_LAT_LO = 0.16; // lateral gate inner edge (fraction of face width from midline)
+const SCULPTRA_JAW_FEATHER_LAT_HI = 0.40; // lateral gate outer edge (full feather beyond this)
+// ─────────────────────────────────────────────────────────────────────────
 // 18 -> 12 (M10.5 v65): Sculptra oblique discolouration on poorly-lit clinic photos.
 // The AI's broad brightening was exceeding the local light field of the original face,
 // creating a warm/tan patch in the lateral cheek zone that reads as colour shift
@@ -2564,6 +2606,62 @@ function buildJowlReleaseField(L, w, h){
       let v=0;
       for(let k=0;k<segs.length;k++){ const sg=segs[k]; const dd=distToSeg(x,y,sg[0],sg[1]); const g=Math.exp(-(dd*dd)/twoSig); if(g>v) v=g; }
       f[y*w+x]=JOWL_TEX_RELEASE*v;
+    }
+  }
+  return f;
+}
+
+// M10.6 (v73): build the jaw-continuity feather field for Sculptra ('full').
+// Returns a Float32Array(w*h) of tightening weights 0..1, where 0 = keep the
+// full bright cap (upper/mid cheek, lift preserved) and 1 = tightest cap (at
+// the mandibular border, lower-lateral cheek). Two gates multiply:
+//   vertical: 0 above the submalar, ramping to 1 from SCULPTRA_JAW_FEATHER_LO
+//             of the zygion->jaw drop down to the jaw line.
+//   lateral:  0 near the midline (chin/perioral untouched), ramping to 1 out
+//             on the lateral cheek. So only the lower-LATERAL cheek is feathered.
+// Bilateral and pose-agnostic: the mask and the tanh self-gating decide where
+// it actually bites, so the clean angle is left alone without a side hard-code.
+function buildJawContinuityFeather(L, w, h){
+  const lm = L.map(p=>({x:p.x*w, y:p.y*h}));
+  const p10=lm[10], p152=lm[152];
+  const zr=lm[ZYGION.r], zl=lm[ZYGION.l];
+  if(!p10||!p152||!zr||!zl) return null;
+  const dirUp = norm(sub(p10, p152));          // up the face (menton -> glabella)
+  const dirOut = { x:-dirUp.y, y:dirUp.x };    // lateral axis
+  const W = Math.abs(dot(sub(zl, zr), dirOut)) || (0.4*w);
+  const faceH = dot(sub(p10, p152), dirUp) || 1;
+
+  // Heights (along dirUp) above the menton.
+  const heightOf = (pt) => (pt.x - p152.x)*dirUp.x + (pt.y - p152.y)*dirUp.y;
+  const zygY = (heightOf(zr) + heightOf(zl)) / 2;   // upper-cheek level (weight 0)
+  // Jaw line level: gonion+prejowl midpoints if present, else a low fallback.
+  const gr=lm[GONION.r], gl=lm[GONION.l], pr=lm[PREJOWL.r], pl=lm[PREJOWL.l];
+  let jawY;
+  if(gr&&gl&&pr&&pl){
+    jawY = (heightOf(gr)+heightOf(gl)+heightOf(pr)+heightOf(pl)) / 4;
+  } else {
+    jawY = 0.18*faceH;
+  }
+  const span = (zygY - jawY) || 1;             // vertical drop, zygion -> jaw
+
+  const latLo = SCULPTRA_JAW_FEATHER_LAT_LO * W;
+  const latHi = SCULPTRA_JAW_FEATHER_LAT_HI * W;
+
+  const f = new Float32Array(w*h);
+  for(let y=0;y<h;y++){
+    const ry = y - p152.y;
+    for(let x=0;x<w;x++){
+      const rx = x - p152.x;
+      const heightAbove = rx*dirUp.x + ry*dirUp.y;     // along dirUp, 0 at menton
+      // vertical: 0 at/above zygion, 1 at/below jaw, ramp starts partway down
+      const vt = (zygY - heightAbove) / span;          // 0 at zygion, 1 at jaw
+      const vWeight = smoothstep(SCULPTRA_JAW_FEATHER_LO, 1.0, vt);
+      if(vWeight <= 0) continue;
+      // lateral: 0 near midline, 1 out on the cheek
+      const lat = Math.abs(rx*dirOut.x + ry*dirOut.y);
+      const latWeight = smoothstep(latLo, latHi, lat);
+      const wgt = vWeight * latWeight;
+      if(wgt > 0) f[y*w+x] = wgt;
     }
   }
   return f;
@@ -2694,6 +2792,10 @@ export async function compositeSculptra(beforeImg, aiImg, opts){
     // jowlTexRelease false for the v35 A/B).
     if(scope === 'chin_jaw' && !(opts && opts.jowlTexRelease === false)){
       try { tdOpts.releaseField = buildJowlReleaseField(landmarks, w, h); } catch(e){ /* release is optional */ }
+    }
+    // M10.6: jaw-continuity feather (Sculptra 'full' only; ?jawcont=off disables).
+    if(scope === 'full' && !(opts && opts.jawContinuity === false)){
+      try { tdOpts.jawFeatherField = buildJawContinuityFeather(landmarks, w, h); } catch(e){ /* feather is optional */ }
     }
     const gain = tdOpts.deltaGain || 1;
     const glowApply = tdOpts.glowApply || 0;
@@ -2827,6 +2929,10 @@ export async function makeSculptraCompositor(beforeImg, aiImg, opts){
     // jowlTexRelease false for the v35 A/B).
     if(scope === 'chin_jaw' && !(opts && opts.jowlTexRelease === false)){
       try { tdOpts.releaseField = buildJowlReleaseField(landmarks, w, h); } catch(e){ /* release is optional */ }
+    }
+    // M10.6: jaw-continuity feather (Sculptra 'full' only; ?jawcont=off disables).
+    if(scope === 'full' && !(opts && opts.jawContinuity === false)){
+      try { tdOpts.jawFeatherField = buildJawContinuityFeather(landmarks, w, h); } catch(e){ /* feather is optional */ }
     }
     gain = tdOpts.deltaGain || 1;
     glowApply = tdOpts.glowApply || 0;
