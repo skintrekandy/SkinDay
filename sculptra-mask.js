@@ -706,6 +706,35 @@ const JOWL_CREASE_HI = 12;
 const GUARD_DETAIL_LO = 4;
 const GUARD_DETAIL_HI = 10;
 
+// M11 (staging): general local tone-preservation guard. gpt-image-1 tends to
+// apply its own beauty-filter lift -- a broad, uniform brightening of the whole
+// treatment zone -- which reads as airbrushed and leaves a visible luminance
+// step against the darker untreated skin beside it (worst at the cheek-to-jaw
+// and submalar boundaries, and it varies run to run because the model is
+// unseeded). This guard caps the broad POSITIVE luminance lift RELATIVE to the
+// local original skin tone: a well-lit region may still lift toward
+// TONE_LIFT_CEIL, but a darker / shadowed region (untreated-adjacent) is held
+// near TONE_LIFT_FLOOR, so the treated zone can never pull far brighter than its
+// own surroundings. It is deterministic, so it corrects every draw the same way.
+// Darkening, texture, chroma, and the glow term are all left untouched.
+//
+// TUNING (do this on STAGING against real generations, then promote):
+//   TONE_GUARD        0 = OFF (production-safe). 0..1 = how hard the over-bright
+//                     lift is pulled back toward the cap. Higher = flatter/safer.
+//   TONE_LIFT_CEIL    max broad lift (luma levels) allowed in well-lit skin.
+//                     Lower if bright cheeks still look airbrushed.
+//   TONE_LIFT_FLOOR   max broad lift in dark / shadowed skin. Lower to kill the
+//                     bright patch next to the jaw; raise if the effect dies in
+//                     shadow. Keep <= TONE_LIFT_CEIL.
+//   TONE_GUARD_RADIUS_FRAC  blur radius (fraction of face width) used to read
+//                     the "surrounding" skin tone.
+// NOTE: this file is shipped with the guard ON at a conservative starting point
+// for STAGING tuning. Do not promote to production until the look is dialed in.
+const TONE_GUARD             = 0.65;   // STAGING: set to 0 for production-safe (no-op)
+const TONE_LIFT_CEIL         = 30;
+const TONE_LIFT_FLOOR        = 10;
+const TONE_GUARD_RADIUS_FRAC = 0.05;
+
 // repeated separable box blur on a Float32 plane -> approximate gaussian
 function blurPlane(src,w,h,r,passes){
   if(r<=0) return src.slice();
@@ -747,6 +776,12 @@ function buildTextureDelta(b,a0,w,h,W,opts){
   const glow      = (opts.glowLuma==null ? GLOW_LUMA : opts.glowLuma);
   const brightCap = (opts.brightCap==null ? 0 : Math.max(0,opts.brightCap)); // 0 = uncapped
   const highDark  = (opts.highDarkenScale==null ? HIGH_DARKEN_SCALE : Math.max(0,Math.min(1,opts.highDarkenScale)));
+  // M11 tone guard (see constants above). opts override the constants so the
+  // values can be tuned live from the call site without editing this file.
+  const toneGuard           = (opts.toneGuard==null ? TONE_GUARD : Math.max(0,Math.min(1,opts.toneGuard)));
+  const toneLiftCeil        = (opts.toneLiftCeil==null ? TONE_LIFT_CEIL : Math.max(0,opts.toneLiftCeil));
+  const toneLiftFloor       = (opts.toneLiftFloor==null ? TONE_LIFT_FLOOR : Math.max(0,opts.toneLiftFloor));
+  const toneGuardRadiusFrac = (opts.toneGuardRadiusFrac==null ? TONE_GUARD_RADIUS_FRAC : Math.max(0,opts.toneGuardRadiusFrac));
   // For Sculptra (inflation, no moved silhouette) the moved-edge guard is not
   // needed and is actively harmful: where the AI paints a fake submalar/cheek
   // shadow, the guard reads the sharp shadow as a moved edge and passes the AI's
@@ -791,6 +826,16 @@ function buildTextureDelta(b,a0,w,h,W,opts){
     }
     YoM=blurPlane(Yo,w,h,midR,1);
     YaM=blurPlane(Ya,w,h,midR,1);
+  }
+
+  // M11: regional original luminance (broad blur of the original luma) used as
+  // the reference for the tone guard's relative cap. Computed once; null when
+  // the guard is off so there is zero overhead in the production-safe config.
+  let YoReg=null;
+  if(toneGuard>0){
+    const Yo2=new Float32Array(N);
+    for(let i=0;i<N;i++) Yo2[i]=0.299*bR[i]+0.587*bG[i]+0.114*bB[i];
+    YoReg=blurPlane(Yo2,w,h,Math.max(2,Math.round(toneGuardRadiusFrac*W)),1);
   }
 
   // moved-edge guard: local variation of the low-band luma difference. A moved
@@ -878,6 +923,18 @@ function buildTextureDelta(b,a0,w,h,W,opts){
         }
         if(capEff <= 0) lowShift = 0;
         else lowShift = capEff*Math.tanh(lowShift/capEff);
+      }
+      // M11: general local tone-preservation guard. Caps the broad positive lift
+      // relative to the local original skin tone (stricter where the original is
+      // darker), so the treated zone cannot beauty-filter itself brighter than
+      // its untreated surroundings. Deterministic across draws. No-op when off.
+      if(toneGuard>0 && YoReg && lowShift>0){
+        const regN   = Math.max(0,Math.min(1,YoReg[i]/255));
+        const relCap = toneLiftFloor + (toneLiftCeil - toneLiftFloor)*regN;
+        if(relCap>1e-3){
+          const capped = relCap*Math.tanh(lowShift/relCap);
+          lowShift = lowShift + (capped - lowShift)*toneGuard;
+        }
       }
       lowShift += glow;
       // High-frequency band. Brightening passes; darkening (a fake shadow the
