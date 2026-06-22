@@ -316,7 +316,6 @@
       #mobileSlider::-moz-range-track {
         height: 4px; border-radius: 2px; background: rgba(250,247,242,.25);
       }
-      /* centre the 28px thumb on the 4px track */
       #mobileSlider::-webkit-slider-thumb { margin-top: -12px; }
       #msbActionBtn {
         display: block;
@@ -364,19 +363,28 @@
         text-decoration: underline;
       }
     }
-    /* Landscape phone: compact nav + single-row bar */
-    @media(pointer: coarse) and (orientation: landscape){
+    /* Landscape phone: compact nav + single-row fixed bar */
+    @media(pointer: coarse) and (orientation: landscape) and (max-height: 500px){
       body.slider-bar-active .page { padding-bottom: 72px; }
       /* Nav collapses to 44px */
       nav { height: 44px; }
-      /* Bar goes single row: label + slider + download inline */
+      /* Bar goes single row: label + slider + download inline, still pinned to the footer */
       #mobileSliderBar {
+        display: flex;
+        position: fixed;
+        bottom: 0; left: 0; right: 0;
+        z-index: 90;
         flex-direction: row;
         align-items: center;
         gap: 10px;
         padding: 8px 16px;
         flex-wrap: nowrap;
+        background: rgba(28,23,20,.97);
+        border-top: 1px solid rgba(201,169,110,.2);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
       }
+      #mobileSliderBar.bar-hidden { display: none !important; }
       .msb-row { flex: 1; min-width: 0; gap: 6px; }
       .msb-ends { display: none; }
       #mobileSlider { margin-top: 0; }
