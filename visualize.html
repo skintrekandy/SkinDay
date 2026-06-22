@@ -1360,7 +1360,7 @@ function openBuyModal(){
     const left = document.createElement('div');
     const reg = (pk.regularCad && pk.regularCad > pk.cad) ? pk.regularCad : null;
     const price = reg
-      ? '<strong>CA$' + (pk.cad/100).toFixed(2) + '</strong> <s>CA$' + (reg/100).toFixed(2) + '</s> <span>regular after beta</span>'
+      ? '<strong>CA$' + (pk.cad/100).toFixed(2) + '</strong> <s>CA$' + (reg/100).toFixed(2) + '</s> <span>regular price after beta</span>'
       : 'CA$' + (pk.cad/100).toFixed(2);
     left.innerHTML = '<div class="pack-name">' + pk.label + ' · ' + pk.credits + ' credits</div>'
       + '<div class="pack-sub">' + price + '</div>';
