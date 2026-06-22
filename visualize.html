@@ -95,6 +95,9 @@
     .consent { display:flex; gap:10px; align-items:flex-start; padding:12px 14px; background:#fff; border:1.5px solid var(--border); border-radius:6px; font-size:.79rem; color:var(--deep); line-height:1.5; margin-top:14px; cursor:pointer; transition:border-color .2s; }
     .consent.checked { border-color:var(--rose); background:#fdf1ee; }
     .consent input { margin-top:2px; width:16px; height:16px; flex-shrink:0; accent-color:var(--rose); cursor:pointer; }
+    .consent-tools { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:8px; font-size:.74rem; color:var(--muted); }
+    .consent-tools a { color:var(--rose); text-decoration:underline; cursor:pointer; }
+    .consent-tools .sep { color:var(--border); }
     .status { display:flex; align-items:center; gap:10px; padding:11px 15px; background:#fff; border:1px solid var(--border); border-radius:6px; font-size:.83rem; color:var(--muted); margin-top:14px; }
     .field-hint { font-size:.74rem; color:var(--muted); line-height:1.45; }
     /* Age + sex intake row: two columns on desktop, stacked on mobile so the
@@ -676,6 +679,12 @@
         <input type="checkbox" id="consentChk" />
         <span>I have this patient's consent to upload their photo to an AI image provider for consultation visualization purposes.</span>
       </label>
+      <div class="consent-tools">
+        <span>Need a consent form? Download a template:</span>
+        <a href="/SkinDay-Patient-Consent-Template.pdf" download>PDF</a>
+        <span class="sep">·</span>
+        <a href="/SkinDay-Patient-Consent-Template.docx" download>Word</a>
+      </div>
 
       <div class="disclaimer"><span>⚠️</span><span>Every export is labelled and carries a permanent consultation-only disclaimer. Outputs are simulations for communication, never a guaranteed result or medical prediction.</span></div>
       <p style="font-size:.72rem;color:var(--muted);margin:8px 0 0;line-height:1.5;">Early access · We're continuously improving results. Quality varies by photo  -  see the photo guide for best outcomes.</p>
