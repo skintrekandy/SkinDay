@@ -303,10 +303,21 @@
       }
       #mobileSlider {
         width: 100%;
+        -webkit-appearance: none;
+        appearance: none;
+        height: 28px;            /* room for the 28px touch thumb so it isn't clipped */
+        background: transparent;
         accent-color: var(--rose);
-        height: 4px;
         cursor: pointer;
       }
+      #mobileSlider::-webkit-slider-runnable-track {
+        height: 4px; border-radius: 2px; background: rgba(250,247,242,.25);
+      }
+      #mobileSlider::-moz-range-track {
+        height: 4px; border-radius: 2px; background: rgba(250,247,242,.25);
+      }
+      /* centre the 28px thumb on the 4px track */
+      #mobileSlider::-webkit-slider-thumb { margin-top: -12px; }
       #msbActionBtn {
         display: block;
         width: 100%;
