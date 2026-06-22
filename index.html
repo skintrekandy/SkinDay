@@ -3508,6 +3508,28 @@ function buildApiUrl(page) {
   return '/api/get-clinics?' + params.toString();
 }
 
+// ─── FEATURED / PINNED CLINIC ─────────────────────────────────
+// Floats a featured listing to the very top of the list, ahead of every sort.
+// Only applies when the clinic is actually present in the current filtered
+// results, so it never shows up in unrelated city/province views. Match by
+// exact clinic id when known (most precise, survives a name change); the
+// name + area entry is the fallback so it works before the id is filled in.
+const PINNED_CLINIC_IDS = [];                          // e.g. ['rejuuv-markham-id']
+const PINNED_CLINIC_MATCH = [
+  { name: 'rejuuv', area: 'markham' }                  // Rejuuv Medi Spa, Markham
+];
+function isPinnedClinic(c){
+  if (PINNED_CLINIC_IDS.length && PINNED_CLINIC_IDS.includes(String(c.id))) return true;
+  const n    = (c.name || '').toLowerCase();
+  const area = ((c.neighbourhood || '') + ' ' + (c.province || '')).toLowerCase();
+  return PINNED_CLINIC_MATCH.some(m => n.includes(m.name) && (!m.area || area.includes(m.area)));
+}
+function pinFeaturedClinics(list){
+  const pinned = [], rest = [];
+  for (const c of list) (isPinnedClinic(c) ? pinned : rest).push(c);
+  if (pinned.length){ list.length = 0; list.push(...pinned, ...rest); }
+}
+
 // ─── RENDER CARDS ─────────────────────────────────────────────
 function renderPageCards(clinicsData, append) {
   const grid = document.getElementById('cardsGrid');
@@ -3553,6 +3575,9 @@ function renderPageCards(clinicsData, append) {
       return da - db;
     });
   }
+
+  // Float the featured clinic to the top of the first page, after every sort.
+  if (!append) pinFeaturedClinics(clinicsData);
 
   const html = clinicsData.map(c => {
     const { cls, label } = getRankLabel(c.rank, c.price);
@@ -4934,7 +4959,7 @@ async function fetchMyVotes(clinicIds) {
     if (!session?.access_token) return;
     const ids = clinicIds.map(id => `clinic_id=eq.${encodeURIComponent(String(id))}`).join(',');
     const res = await fetch(
-      `${window.SB_URL}/rest/v1/clinic_visits?user_id=eq.${_currentUser.id}&or=(${ids})&select=clinic_id,would_return&flagged=eq.false`,
+      `${window.SB_URL}/rest/v1/clinic_visits?user_id=eq.${_currentUser.id}&or=(${ids})&select=clinic_id,would_return&flagged=not.is.true`,
       { headers: { 'apikey': window.SB_KEY, 'Authorization': `Bearer ${session.access_token}` } }
     );
     if (!res.ok) return;
