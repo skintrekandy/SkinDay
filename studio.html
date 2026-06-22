@@ -117,6 +117,8 @@
     .wm-pos-btn { border: 1.5px solid var(--border); border-radius: 6px; padding: 8px 4px; background: #fff; cursor: pointer; font-size: 0.72rem; color: var(--muted); text-align: center; transition: all 0.2s; display: flex; flex-direction: column; align-items: center; gap: 4px; }
     .wm-pos-btn:hover { border-color: var(--gold); }
     .wm-pos-btn.active { border-color: var(--rose); background: #fdf1ee; color: var(--deep); }
+    .wm-pos-grid.disabled { opacity: 0.45; pointer-events: none; }
+    .wm-pos-hint { font-size: 0.72rem; color: var(--muted); margin-top: 8px; }
     .wm-pos-icon { font-size: 14px; }
 
     .gen-wrap { display: flex; justify-content: center; margin: 8px 0 28px; }
@@ -339,6 +341,7 @@
           <button class="wm-pos-btn" data-pos="center" onclick="selWmPos('center')"><span class="wm-pos-icon">⊙</span>Centre</button>
           <button class="wm-pos-btn" data-pos="tile" onclick="selWmPos('tile')"><span class="wm-pos-icon">⊞</span>Tiled</button>
         </div>
+        <div class="wm-pos-hint" id="wmPosHint">Add a clinic or injector name above to enable the watermark.</div>
       </div>
 
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
@@ -526,10 +529,33 @@ function selPreset(k){
 }
 
 function selWmPos(pos){
+  // Watermark text is the clinic/injector name, so the position picker only
+  // applies when at least one name is present.
+  if(document.getElementById('wmPosGrid').classList.contains('disabled')) return;
   S.wmPos=pos;
   document.querySelectorAll('.wm-pos-btn').forEach(b=>b.classList.remove('active'));
   document.querySelector(`[data-pos="${pos}"]`).classList.add('active');
 }
+
+// Enable the watermark position picker only when a clinic or injector name is set.
+function updateWmPosState(){
+  const hasName = !!(
+    (document.getElementById('clinicName').value || '').trim() ||
+    (document.getElementById('injectorName').value || '').trim()
+  );
+  const grid = document.getElementById('wmPosGrid');
+  const hint = document.getElementById('wmPosHint');
+  if(grid){
+    grid.classList.toggle('disabled', !hasName);
+    grid.querySelectorAll('.wm-pos-btn').forEach(b => { b.disabled = !hasName; });
+  }
+  if(hint) hint.style.display = hasName ? 'none' : 'block';
+}
+['clinicName','injectorName'].forEach(id => {
+  const el = document.getElementById(id);
+  if(el) el.addEventListener('input', updateWmPosState);
+});
+updateWmPosState();
 
 function onZoom(which,val){
   const pct=parseInt(val);
@@ -576,11 +602,24 @@ function lmToBaseBox(lm,iw,ih,preset){
     cxAdjusted=cx;
   }
   let top,bot;
-  if(preset==='full') {top=foreY-faceH*.18;bot=chin.y+faceH*.22;}
+  // Full Face: generous crown/hairline headroom and a little neck room. The box
+  // is then normalized to a fixed 4:5 portrait panel below.
+  if(preset==='full') {top=foreY-faceH*.42;bot=chin.y+faceH*.28;}
   if(preset==='lower'){top=nose.y-faceH*.10;bot=chin.y+faceH*.38;}
   if(preset==='upper'){top=foreY-faceH*.15;bot=nose.y-faceH*.05;}
   if(preset==='eyes') {top=browY-faceH*.20;bot=nose.y+faceH*.08;}
-  return{x:cxAdjusted-halfW,y:top,w:halfW*2,h:bot-top,cx:cxAdjusted,cy:(top+bot)/2};
+  const box={x:cxAdjusted-halfW,y:top,w:halfW*2,h:bot-top,cx:cxAdjusted,cy:(top+bot)/2};
+  if(preset==='full'){
+    // Frame Full Face to a fixed 4:5 portrait. Expand the deficient dimension to
+    // reach the ratio so the face is never cropped just to fit it.
+    const targetAR=4/5;
+    const ar=box.w/box.h;
+    if(ar<targetAR) box.w=box.h*targetAR;        // too narrow -> widen
+    else if(ar>targetAR) box.h=box.w/targetAR;   // too wide -> add height
+    box.x=box.cx-box.w/2;
+    box.y=box.cy-box.h/2;
+  }
+  return box;
 }
 
 function fallbackBox(iw,ih,preset){
@@ -1129,6 +1168,7 @@ function loadSettings(){
     if(s.format)    document.getElementById('exportFormat').value=s.format;
     if(s.norm)      document.getElementById('norm').value=s.norm;
     if(s.enhance)   document.getElementById('enhance').value=s.enhance;
+    updateWmPosState(); // names may now be set, so enable the picker before restoring position
     if(s.wmPos)     selWmPos(s.wmPos);
   }catch(e){}
 }
