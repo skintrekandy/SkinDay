@@ -730,9 +730,9 @@ const GUARD_DETAIL_HI = 10;
 //                     the "surrounding" skin tone.
 // NOTE: this file is shipped with the guard ON at a conservative starting point
 // for STAGING tuning. Do not promote to production until the look is dialed in.
-const TONE_GUARD             = 0.65;   // STAGING: set to 0 for production-safe (no-op)
-const TONE_LIFT_CEIL         = 30;
-const TONE_LIFT_FLOOR        = 10;
+const TONE_GUARD             = 0.8;    // STAGING: set to 0 for production-safe (no-op)
+const TONE_LIFT_CEIL         = 20;
+const TONE_LIFT_FLOOR        = 8;
 const TONE_GUARD_RADIUS_FRAC = 0.05;
 
 // repeated separable box blur on a Float32 plane -> approximate gaussian
@@ -782,6 +782,9 @@ function buildTextureDelta(b,a0,w,h,W,opts){
   const toneLiftCeil        = (opts.toneLiftCeil==null ? TONE_LIFT_CEIL : Math.max(0,opts.toneLiftCeil));
   const toneLiftFloor       = (opts.toneLiftFloor==null ? TONE_LIFT_FLOOR : Math.max(0,opts.toneLiftFloor));
   const toneGuardRadiusFrac = (opts.toneGuardRadiusFrac==null ? TONE_GUARD_RADIUS_FRAC : Math.max(0,opts.toneGuardRadiusFrac));
+  // M11.1: the cap runs before the call site multiplies the delta by deltaGain,
+  // so divide the cap by that gain and the POST-gain lift respects the ceiling.
+  const tgGain = (opts.deltaGain==null ? 1 : Math.max(0.05, opts.deltaGain));
   // For Sculptra (inflation, no moved silhouette) the moved-edge guard is not
   // needed and is actively harmful: where the AI paints a fake submalar/cheek
   // shadow, the guard reads the sharp shadow as a moved edge and passes the AI's
@@ -930,7 +933,7 @@ function buildTextureDelta(b,a0,w,h,W,opts){
       // its untreated surroundings. Deterministic across draws. No-op when off.
       if(toneGuard>0 && YoReg && lowShift>0){
         const regN   = Math.max(0,Math.min(1,YoReg[i]/255));
-        const relCap = toneLiftFloor + (toneLiftCeil - toneLiftFloor)*regN;
+        const relCap = (toneLiftFloor + (toneLiftCeil - toneLiftFloor)*regN) / tgGain;
         if(relCap>1e-3){
           const capped = relCap*Math.tanh(lowShift/relCap);
           lowShift = lowShift + (capped - lowShift)*toneGuard;
