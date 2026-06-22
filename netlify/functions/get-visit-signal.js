@@ -23,7 +23,7 @@ exports.handler = async (event) => {
   }
 
   const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/clinic_visits?clinic_id=eq.${encodeURIComponent(clinic_id)}&flagged=eq.false&select=would_return`,
+    `${SUPABASE_URL}/rest/v1/clinic_visits?clinic_id=eq.${encodeURIComponent(clinic_id)}&flagged=not.is.true&select=would_return`,
     {
       headers: {
         'apikey':        SUPABASE_SERVICE_KEY,
@@ -42,7 +42,7 @@ exports.handler = async (event) => {
   const yes   = rows.filter(r => r.would_return === 'yes').length;
   const no    = rows.filter(r => r.would_return === 'no').length;
 
-  const headers = { 'Cache-Control': 'public, max-age=300' };
+  const headers = { 'Cache-Control': 'public, max-age=30' };
 
   // Phase 0 — no votes yet
   if (total === 0) {
