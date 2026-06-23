@@ -802,24 +802,28 @@ exports.handler = async (event) => {
     // skin, and ethnicity from bleeding into the output.
     const finalPrompt = (refFile && referenceMode) ? (prompt + REFERENCE_IDENTITY_LOCK) : prompt;
 
-    // M13: biostim (Sculptra) switches to gpt-image-2 for direct generation.
-    // gpt-image-2 rejects input_fidelity -- omit it for that model.
-    // Controlled by BIOSTIM_IMAGE_MODEL env var so it can be swapped without redeploy.
-    // Filler and all other treatments stay on gpt-image-1 unchanged.
-    modelName = isSculptra
-      ? (process.env.BIOSTIM_IMAGE_MODEL || 'gpt-image-2')
-      : 'gpt-image-1';
+    // M13: both biostim (Sculptra) and HA filler use gpt-image-2 for direct
+    // generation. gpt-image-2 rejects input_fidelity -- omit it for that model.
+    // BIOSTIM_IMAGE_MODEL controls biostim, FILLER_IMAGE_MODEL controls filler,
+    // so either can be reverted to gpt-image-1 without a redeploy.
+    if (f.type === 'biostim') {
+      modelName = process.env.BIOSTIM_IMAGE_MODEL || 'gpt-image-2';
+    } else if (f.type === 'filler') {
+      modelName = process.env.FILLER_IMAGE_MODEL || 'gpt-image-2';
+    } else {
+      modelName = 'gpt-image-1';
+    }
 
-    // input_fidelity policy (M12.1, filler only):
-    //   - Chin/jaw filler at OBLIQUE angles uses 'low'
-    //   - Chin/jaw filler at FRONTAL uses 'high'
+    // input_fidelity policy: only gpt-image-1 accepts it.
     //   - All other filler/hdr uses 'high'
     //   - gpt-image-2 (biostim) never receives input_fidelity
     const isChinJawFiller = isChinJaw && f.type === 'filler';
     const isOblique = canonicalAngle(f.angle || f.view) !== 'frontal';
     const editParams = {
       model:              modelName,
-      image:              file,
+      // M13 fix: when a reference image fired, the prompt says "TWO IMAGES" via
+      // REFERENCE_IDENTITY_LOCK, so the second image must actually be passed.
+      image:              (refFile && referenceMode) ? [file, refFile] : file,
       prompt:             finalPrompt,
       size:               'auto',
       output_format:      'jpeg',

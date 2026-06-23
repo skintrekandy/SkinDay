@@ -238,7 +238,15 @@ exports.handler = async (event) => {
         try {
           const sourceBilling = await store.get(sourceJobId + ':billing', { type: 'json' });
           const sourceStatus  = await store.get(sourceJobId + ':status',  { type: 'json' });
-          if (sourceBilling && sourceBilling.userId === user.id && sourceStatus && sourceStatus.state === 'done') {
+          // M13: discount applies if the source biostim job belongs to this user.
+          // The source need NOT be 'done' -- in parallel "Both" mode the Optimistic
+          // pass is fired at the same time as Expected, so Expected is still pending.
+          // Requiring 'done' here would overcharge parallel Both. Ownership + a
+          // valid pending/done biostim source job is sufficient proof of payment intent.
+          const validSource = sourceBilling && sourceBilling.userId === user.id &&
+            sourceBilling.type === 'biostim' &&
+            sourceStatus && (sourceStatus.state === 'done' || sourceStatus.state === 'pending');
+          if (validSource) {
             cost = COST_ENHANCED; // Enhanced pass cost per angle (env-driven; default 1)
           }
         } catch (e) { /* source lookup best-effort; full price applies if lookup fails */ }
