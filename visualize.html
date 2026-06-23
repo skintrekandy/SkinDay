@@ -114,6 +114,23 @@
     .dot.ok { background:#3D7A55; }
     .dot.warn { background:var(--rose); }
     @keyframes blink { 0%,100%{opacity:1}50%{opacity:.3} }
+    /* ── Generation progress card ── */
+    .gen-card { background:#fff; border:1px solid var(--border); border-radius:8px; padding:14px 16px; margin-top:14px; }
+    .gen-card-head { display:flex; align-items:flex-start; gap:11px; }
+    .gen-spin { width:16px; height:16px; flex-shrink:0; border:2px solid #e8e4df; border-top-color:var(--gold); border-radius:50%; animation:gen-rotate .8s linear infinite; margin-top:2px; }
+    @keyframes gen-rotate { to { transform:rotate(360deg); } }
+    .gen-card-title { font-size:.87rem; font-weight:600; color:var(--deep); margin-bottom:3px; }
+    .gen-card-sub { font-size:.74rem; color:var(--muted); line-height:1.45; }
+    .gen-rows { margin-top:10px; border-top:1px solid var(--border); }
+    .gen-row { display:flex; align-items:center; gap:10px; padding:7px 2px; border-bottom:1px solid var(--border); font-size:.8rem; }
+    .gen-row:last-child { border-bottom:none; }
+    .gen-row-icon { width:16px; text-align:center; font-size:.8rem; }
+    .gen-row-name { width:78px; font-weight:500; color:var(--deep); flex-shrink:0; }
+    .gen-row-st { flex:1; color:var(--muted); }
+    .gen-row-st.active { color:var(--gold); }
+    .gen-row-st.done { color:#3D7A55; font-weight:500; }
+    .gen-row-st.err { color:var(--rose); }
+    .gen-elapsed { font-size:.7rem; color:var(--muted); text-align:right; margin-top:7px; }
     .btn-gold { background:var(--gold); color:#fff; border-color:var(--gold); font-weight:600; }
     .btn-gold:hover { background:#b8954f; border-color:#b8954f; }
     .btn-gold:disabled { opacity:.45; cursor:not-allowed; }
@@ -737,6 +754,7 @@
       <p style="font-size:.72rem;color:var(--muted);margin:8px 0 0;line-height:1.5;">Early access · We're continuously improving results. Quality varies by photo  -  see the photo guide for best outcomes.</p>
 
       <div class="status"><div class="dot" id="dot"></div><span id="statusText">Choose a treatment, then add the patient photos</span></div>
+      <div id="genCard" class="gen-card" style="display:none;"></div>
 
       <div class="btn-row" style="text-align:center;margin-top:18px;"><button class="btn btn-primary" id="generateBtn" disabled>Generate simulated preview</button></div>
       <div class="cost-note" id="costNote"></div>
@@ -1664,19 +1682,18 @@ async function runFillerLevelGeneration(fillerIntensity){
   generateBtn.disabled = true; regenBtn.disabled = true;
   const t0 = Date.now();
   const levelName = fillerIntensity === 'natural' ? 'Subtle' : fillerIntensity === 'moderate' ? 'Balanced' : 'Enhanced';
-  setStatus('Generating ' + levelName + ' correction… this may take 1-3 minutes.', 'spin');
-  const ticker = setInterval(() => {
-    const secs = Math.round((Date.now() - t0) / 1000);
-    const done = angles.filter(id => state.slots[id].status === 'done').length;
-    setStatus('Generating ' + levelName + ' · ' + angles.length + ' angle' + (angles.length > 1 ? 's' : '') +
-      '… ' + secs + 's (' + done + '/' + angles.length + ' ready).', 'spin');
-  }, 1000);
+  _genPhases = {};
+  angles.forEach(id => { _genPhases[id] = 'waiting'; });
+  _showGenCard(angles, false);
 
   try {
     const started = [];
     for(const id of angles){
-      try { await prepAndStartSlot(id, auth, false, fillerIntensity); started.push(id); }
+      _genPhases[id] = 'preparing';
+      _renderGenCard(angles, false);
+      try { await prepAndStartSlot(id, auth, false, fillerIntensity); _genPhases[id] = 'generating'; started.push(id); }
       catch(err){
+        _genPhases[id] = 'error';
         console.error('[Visualize filler level] ' + id + ' failed to start:', err);
         const sl = state.slots[id]; sl.status = 'error'; sl.error = (err && err.message) || 'Could not start generation.';
       }
@@ -1690,7 +1707,7 @@ async function runFillerLevelGeneration(fillerIntensity){
       ));
     }
   } finally {
-    clearInterval(ticker);
+    _hideGenCard();
   }
 
   const doneIds = angles.filter(id => {
@@ -3073,6 +3090,87 @@ async function finishSlot(angleId, auth, fillerIntensity){
 
 let creditShortfall = false; // M8: set on any 402 during a run
 
+/* ── Generation progress card ────────────────────────────────────────────────
+   Replaces the single elapsed-time pill during generation with a card that
+   shows per-angle phase, a reassuring subtitle that shifts with elapsed time,
+   and a spinner. The existing .status pill is hidden while the card is open
+   so setStatus() calls for non-generation events (idle, ok, warn) still work
+   unchanged everywhere else. */
+let _genPhases = {};   // { angleId: 'waiting'|'preparing'|'generating'|'done'|'error' }
+let _genT0     = 0;    // generation start timestamp (ms)
+let _genTicker = null; // interval handle
+
+function _renderGenCard(angles, isRegen){
+  const card = document.getElementById('genCard');
+  if(!card || card.style.display === 'none') return;
+  const secs = Math.round((Date.now() - _genT0) / 1000);
+
+  // Subtitle shifts with elapsed time to reduce anxiety.
+  let sub;
+  if(secs < 60)       sub = 'This usually takes 30 to 90 seconds. Keep this tab open.';
+  else if(secs < 120) sub = 'Still working -- detailed previews can take a little longer.';
+  else                sub = 'Taking longer than usual. You can keep waiting or regenerate.';
+
+  const title = (isRegen ? 'Re-generating' : 'Generating') + ' your preview';
+
+  // Per-angle status rows.
+  let rows = '';
+  for(const id of angles){
+    const slSt = state.slots[id] ? state.slots[id].status : '';
+    const phase = _genPhases[id] || 'waiting';
+    let icon = '', stText, stCls;
+    if(slSt === 'done'){
+      icon = '✓'; stCls = 'done'; stText = 'Ready';
+    } else if(slSt === 'error'){
+      icon = '✗'; stCls = 'err'; stText = 'Failed';
+    } else if(phase === 'preparing'){
+      stCls = 'active'; stText = 'Preparing photo...';
+    } else if(phase === 'generating' || slSt === 'generating'){
+      stCls = 'active'; stText = 'Generating...';
+    } else {
+      stCls = ''; stText = 'Waiting...';
+    }
+    rows +=
+      '<div class="gen-row">' +
+        '<div class="gen-row-icon">' + icon + '</div>' +
+        '<div class="gen-row-name">' + (ANGLE_DEF[id] ? ANGLE_DEF[id].label : id) + '</div>' +
+        '<div class="gen-row-st ' + stCls + '">' + stText + '</div>' +
+      '</div>';
+  }
+
+  const elapsed = secs >= 10 ? '<div class="gen-elapsed">' + secs + 's elapsed</div>' : '';
+  card.innerHTML =
+    '<div class="gen-card-head">' +
+      '<div class="gen-spin"></div>' +
+      '<div>' +
+        '<div class="gen-card-title">' + title + '</div>' +
+        '<div class="gen-card-sub">' + sub + '</div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="gen-rows">' + rows + '</div>' +
+    elapsed;
+}
+
+function _showGenCard(angles, isRegen){
+  _genT0 = Date.now();
+  angles.forEach(id => { _genPhases[id] = 'waiting'; });
+  const card = document.getElementById('genCard');
+  const statusEl = document.querySelector('.status');
+  if(card) card.style.display = '';
+  if(statusEl) statusEl.style.display = 'none';
+  _renderGenCard(angles, isRegen);
+  if(_genTicker) clearInterval(_genTicker);
+  _genTicker = setInterval(() => _renderGenCard(angles, isRegen), 1000);
+}
+
+function _hideGenCard(){
+  if(_genTicker){ clearInterval(_genTicker); _genTicker = null; }
+  const card = document.getElementById('genCard');
+  const statusEl = document.querySelector('.status');
+  if(card) card.style.display = 'none';
+  if(statusEl) statusEl.style.display = '';
+}
+
 async function runGeneration(isRegen){
   const auth = await authHeaders();
   creditShortfall = false;
@@ -3103,14 +3201,12 @@ async function runGeneration(isRegen){
 
   generateBtn.disabled = true; regenBtn.disabled = true;
 
-  const t0 = Date.now();
-  setStatus((isRegen ? 'Re-generating' : 'Generating') + '… this may take 1-3 minutes.', 'spin');
-  const ticker = setInterval(() => {
-    const secs = Math.round((Date.now() - t0) / 1000);
-    const done = angles.filter(id => state.slots[id].status === 'done').length;
-    setStatus((isRegen ? 'Re-generating ' : 'Generating ') + angles.length + ' angle' + (angles.length > 1 ? 's' : '') +
-      '… ' + secs + 's (' + done + '/' + angles.length + ' ready). Runs in the background; keep this tab open.', 'spin');
-  }, 1000);
+  _genPhases = {};
+  angles.forEach(id => { _genPhases[id] = 'waiting'; });
+  _showGenCard(angles, isRegen);
+  // ticker kept for re-renders; _showGenCard starts its own interval but we
+  // keep a local ref so the finally block can clear it cleanly.
+  const ticker = _genTicker;
 
   try {
     // Prep and start sequentially: background isolation and the mask each run a
@@ -3124,8 +3220,11 @@ async function runGeneration(isRegen){
     const isBoth = (usesResponseModes() && state.responseMode === 'both' && !isRegen);
     const started = [];
     for(const id of angles){
+      _genPhases[id] = 'preparing';
+      _renderGenCard(angles, isRegen);
       try {
         await prepAndStartSlot(id, auth, isRegen, fillerIntensity);
+        _genPhases[id] = 'generating';
         started.push(id);
         if(isBoth){
           // Mark and fire the optimistic pass immediately, in parallel.
@@ -3140,6 +3239,7 @@ async function runGeneration(isRegen){
         }
       }
       catch(err){
+        _genPhases[id] = 'error';
         console.error('[Visualize] ' + id + ' failed to start:', err);
         const sl = state.slots[id]; sl.status = 'error'; sl.error = (err && err.message) || 'Could not start generation.';
       }
@@ -3159,7 +3259,7 @@ async function runGeneration(isRegen){
       ));
     }
   } finally {
-    clearInterval(ticker);
+    _hideGenCard();
   }
 
   const doneIds = angles.filter(id => state.slots[id].status === 'done');
