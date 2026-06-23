@@ -60,14 +60,16 @@ const REGEN_WINDOW_MS = 90 * 1000; // server window; the client advertises 60s
 // same factor as the pack sizes in VISUALIZE_PACKS so margin is unchanged.
 const COST_FILLER   = parseInt(process.env.VISUALIZE_COST_FILLER   || '1', 10) || 1;
 const COST_BIOSTIM  = parseInt(process.env.VISUALIZE_COST_BIOSTIM  || '2', 10) || 2;
+const COST_LASER    = parseInt(process.env.VISUALIZE_COST_LASER    || '1', 10) || 1;
 const COST_SCENARIO = parseInt(process.env.VISUALIZE_COST_SCENARIO || '1', 10) || 1;
 const COST_ENHANCED = parseInt(process.env.VISUALIZE_COST_ENHANCED || '1', 10) || 1;
 function creditCost(fields) {
   // M12.2: scenario exploration pass cost (env-driven; default 1).
   // Server verifies baseline ownership below before this price applies.
   if (fields && fields.scenarioMode === 'true') return COST_SCENARIO;
-  // Laser is priced like biostim (same Expected/Optimistic/Both model).
-  return (fields && (fields.type === 'biostim' || fields.type === 'laser')) ? COST_BIOSTIM : COST_FILLER;
+  // Energy-Based Devices (RF/HIFU) are a single Expected pass, priced at 100/angle.
+  if (fields && fields.type === 'laser') return COST_LASER;
+  return (fields && fields.type === 'biostim') ? COST_BIOSTIM : COST_FILLER;
 }
 
 async function verifyUser(event) {
@@ -183,7 +185,8 @@ exports.handler = async (event) => {
         add_tear_trough:     ['biostim', 'filler', 'laser'],
         add_nose_filler:     ['biostim', 'filler', 'laser'],
         add_lips_filler:     ['biostim', 'filler', 'laser'],
-        add_biostim_lift:    ['laser']
+        add_biostim_lift:    ['laser'],
+        stronger_laser:      ['laser']
       };
       if (!SCENARIO_SOURCE_TYPES[fields.scenarioKey]) {
         return { statusCode: 400, headers: { 'Content-Type': 'application/json' },

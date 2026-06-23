@@ -497,18 +497,17 @@ const LASER_NEGATIVE_GUARDRAIL =
   'Firmer, smoother, more lifted skin is the intended change, but do NOT de-age the patient, do NOT erase identity, and do NOT airbrush the skin into a flawless plastic texture. ' +
   'Preserve exactly: identity, apparent age, skin tone, ethnicity and all ethnic features, pigmentation, freckles, pores (they may read slightly refined but must remain visible), facial asymmetry, eye shape and size, brows, lips, nose, ears, hair, headband, neck, clothing, background, lighting, and camera angle. ' +
   'Do NOT add facial volume or filler-like fullness anywhere -- the change comes from tightening and lifting existing tissue, never from adding volume. ' +
+  'CRITICAL: do NOT add cheek or midface fullness, do NOT re-inflate, plump, or round out the face, and do NOT restore lost volume. That is a Sculptra or filler effect that energy-based devices physically cannot produce. The only permitted change is mild tightening and firming of existing skin. ' +
   'Do not enlarge eyes, change makeup, whiten teeth, or add gloss. ' +
   'The result must look like the same person after a real tightening treatment, not a younger or retouched person. ' +
   'Do not add text, labels, watermarks, or annotations.';
 
 const LASER_TX = {
   rf: {
-    expected:   'Magnitude: a subtle but visible non-surgical skin-tightening result from radiofrequency (such as Thermage). The skin looks firmer and more toned, fine crepey texture is gently reduced, and the lower face and jawline contour reads slightly tighter as lax skin retracts, with mild softening of early jowl and submental laxity. The effect is gradual and natural -- firmer, healthier, better-supported skin, not a facelift, not filler volume, not a sharply carved jaw.',
-    optimistic: 'Magnitude: an upper-range radiofrequency tightening result for a strong responder over a full course. Clearly firmer, more lifted skin with a visibly tighter jawline, reduced lower-face and submental laxity, smoother skin texture, and a more defined mandibular contour. Still natural and unmistakably the same person -- firmer and lifted, never surgical, never filler-volumized, never carved or angular.'
+    expected: 'Magnitude: a SUBTLE radiofrequency skin-tightening result, shown as the gradual outcome at roughly 6 months after a treatment course. The skin looks a little firmer and more toned and fine crepey texture is mildly reduced, with at most a very slight tightening along the jawline as lax skin retracts marginally. Keep this understated -- it is a skin-quality and mild-firmness change only. Do NOT add any fullness or volume to the cheeks or midface, do NOT re-inflate or plump the face, do NOT carve or sharpen the jaw, do NOT produce a facelift. Energy devices tighten existing skin slightly; they cannot restore lost volume.'
   },
   hifu: {
-    expected:   'Magnitude: a subtle but visible non-surgical lifting result from focused ultrasound (such as Ultherapy or Sofwave). The lower face and jawline look gently lifted and tightened, early jowl and submental laxity is softened, the jaw contour reads cleaner, and the skin looks firmer overall, with possibly a slight lift to the brow and midface. Gradual and natural -- a lift from tissue tightening, not a facelift, not filler volume.',
-    optimistic: 'Magnitude: an upper-range focused-ultrasound lift for a strong responder over a full course. A clearly lifted and tightened lower face with a defined jawline, noticeably reduced jowl and submental laxity, a cleaner neck-to-jaw transition, firmer midface, and a subtle brow lift. Still natural and unmistakably the same person -- lifted and firm, never surgical, never filler-volumized.'
+    expected: 'Magnitude: a SUBTLE focused-ultrasound tightening result, shown as the gradual outcome at roughly 6 months after a treatment course. The lower face and jawline look slightly tightened and a touch cleaner, and early submental and jowl laxity is mildly softened, with the skin looking a little firmer. Keep this understated and realistic. Do NOT add any fullness or volume to the cheeks or midface, do NOT re-inflate, plump, or round out the face, do NOT produce a facelift or a dramatic lift. Focused ultrasound gives a modest tightening of existing tissue; it cannot restore lost volume.'
   }
 };
 
@@ -517,7 +516,7 @@ function buildLaserPrompt(sel) {
   const tx = LASER_TX[sel.laserType] || LASER_TX.rf;
   const isStrong = sel.isStrongPass === 'true' || sel.isStrongPass === true;
   const projection = (sel.projection === 'optimistic' || isStrong) ? 'optimistic' : 'expected';
-  const magnitude = tx[projection];
+  const magnitude = tx[projection] || tx.expected;
   const isOblique = view !== 'frontal';
   const framing = isOblique
     ? 'Produce a clinically realistic photograph of the same person after an energy-based skin-tightening treatment, keeping the same oblique pose, identity, apparent age, skin character, lighting, and camera setup.'
@@ -869,7 +868,11 @@ const CROSS_ADDON_PROMPTS = {
     LIP_SAFETY,
   add_biostim_lift: CROSS_ADDON_BASE +
     'Add a biostimulator collagen response for more lateral lift: broader, softer support across the lateral cheek and temple so the midface reads lifted and the jawline cleaner, as a diffuse soft-tissue improvement returning under the skin. This is collagen-based volume and lift, not filler fullness and not shadow sculpting. Keep it soft, gradual, and three-dimensional, and do not deepen or darken any facial shadow.' +
-    addonSafety('a diffuse biostimulator lateral-lift response across the cheeks and temples')
+    addonSafety('a diffuse biostimulator lateral-lift response across the cheeks and temples'),
+  stronger_laser:
+    'This photograph already shows a subtle energy-based skin-tightening result. Intensify it MODESTLY to represent a strong responder over a full course of multiple sessions (results developing over several months): a bit more skin firmness and tightening, and a slightly cleaner, more defined jawline and lower face. ' +
+    'This is still an energy-device result and must stay clearly below what filler or Sculptra can do. Do NOT add any cheek or midface fullness, do NOT re-inflate, plump, or round out the face, do NOT restore lost volume, and do NOT produce a facelift -- energy devices tighten existing skin, they cannot add volume. ' +
+    'Preserve identity, apparent age, skin tone, ethnicity and all ethnic features, pores, pigmentation, freckles, facial asymmetry, eyes, brows, lips, nose, ears, hair, headband, neck, clothing, background, lighting, and camera angle exactly. The result must be understated, natural, and unmistakably the same person. Do not add text, labels, watermarks, or annotations.'
 };
 
 function buildScenarioPrompt(scenarioKey, view, baselineType) {
