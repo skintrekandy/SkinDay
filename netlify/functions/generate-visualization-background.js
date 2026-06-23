@@ -545,6 +545,8 @@ exports.handler = async (event) => {
   // Background endpoints are public URLs, so re-check the key.
   if (!checkKey(event)) { await fail('Unauthorized background invocation', 'INVALID_KEY'); return { statusCode: 401 }; }
 
+  let modelName = 'unknown'; // hoisted so the catch block can log it safely
+
   try {
     const job = await store.get(jobId + ':job', { type: 'json' });
     if (!job) {
@@ -804,7 +806,7 @@ exports.handler = async (event) => {
     // gpt-image-2 rejects input_fidelity -- omit it for that model.
     // Controlled by BIOSTIM_IMAGE_MODEL env var so it can be swapped without redeploy.
     // Filler and all other treatments stay on gpt-image-1 unchanged.
-    const modelName = isSculptra
+    modelName = isSculptra
       ? (process.env.BIOSTIM_IMAGE_MODEL || 'gpt-image-2')
       : 'gpt-image-1';
 
