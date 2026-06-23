@@ -539,6 +539,41 @@ function buildLaserPrompt(sel) {
   return `${NO_TEXT_RULE} ${framing} ${viewLock} Make ONLY this change: ${magnitude}${areaFocus}${magnitudeAnchor}${cleanNote}${LASER_NEGATIVE_GUARDRAIL}`;
 }
 
+// ---- Hyperdilute CaHA / Radiesse (biostimulatory skin firmness) -------------
+// Design intent (vs PLLA/Sculptra): hyperdilute CaHA is a DERMAL-FIRMNESS and
+// SKIN-QUALITY language, not soft-volume re-inflation. It overlaps the energy
+// guardrail (minimal volume, lower-face firmness, preserve age) but, being
+// biostimulatory, it may also add mild dermal density and slightly improve fine
+// crepey texture -- something energy tightening cannot. Scoring intent:
+// volume/support ~3, tightening ~6, skin quality ~7, jawline sharpness ~5.
+const HDR_GUARDRAIL =
+  ' CRITICAL TREATMENT CEILING: this is a hyperdilute calcium hydroxylapatite (CaHA, e.g. hyperdilute Radiesse) biostimulation result -- a change in SKIN FIRMNESS and SKIN QUALITY, NOT soft-volume re-inflation, NOT filler, NOT a facelift, and NOT a beauty filter. ' +
+  'Volume change must stay minimal: do NOT add facial volume or filler-like fullness, do NOT puff or round out the cheeks, do NOT re-inflate hollows or temples, and do NOT restore lost volume the way Sculptra or filler would. ' +
+  'PRESERVE THE PATIENT\'S AGE: the person must still clearly look their age. Deep static wrinkles, perioral and nasolabial lines, crow\'s feet, forehead lines, and under-eye laxity and hollowing must REMAIN substantially present. Mild improvement in fine crepey texture is acceptable, but do NOT erase wrinkles, do NOT resurface or airbrush the skin into a flawless texture, do NOT brighten the complexion or reduce pigmentation, and do NOT make the face look younger or filtered. ' +
+  'Do NOT create a facelift, a sharply sculpted jawline, or a V-line. Do not enlarge the eyes, lift the brows, change makeup, whiten teeth, or alter the lips or nose. ' +
+  'Preserve identity, ethnicity and all ethnic features, facial asymmetry, hair, headband, neck, clothing, background, lighting, and camera angle exactly. Do not add text, labels, watermarks, or annotations.';
+
+const HDR_EXPECTED =
+  'The dominant change is improved SKIN FIRMNESS and DERMAL DENSITY: the lower-face skin looks firmer, denser, and slightly more elastic, with fine crepey texture and superficial fine lines mildly improved (not erased). Alongside this there is mild lower-face and jawline tightening, a cleaner mandibular border, and a modest reduction in early jowl and prejowl laxity. Any change in volume is minimal -- this firms and tightens the existing skin envelope, it does not re-inflate, plump, or fill.';
+
+const HDR_AREA_FOCUS =
+  ' The visible change should be concentrated in the LOWER FACE and the skin envelope: firmer lower-cheek skin, jawline and mandibular border definition, prejowl and submental tightening, and mild improvement in lower-face and upper-neck crepey skin. Do not change midface volume, the temples, the upper face, eyes, brows, lips, or nose.';
+
+const HDR_MAGNITUDE =
+  ' Magnitude anchor: a modest, believable biostimulation result -- skin quality and firmness clearly improved and the lower-face contour mildly tightened, but volume barely changed and never a facelift. If uncertain, do less rather than more.';
+
+function buildHdrPrompt(sel, tp) {
+  const view = normalizeView(sel);
+  const isOblique = view !== 'frontal';
+  const framing = isOblique
+    ? 'Produce a clinically realistic photograph of the same person after a hyperdilute CaHA biostimulation treatment, keeping the same oblique pose, identity, apparent age, skin character, lighting, and camera setup.'
+    : 'Produce a clinically realistic photograph of the same person after a hyperdilute CaHA biostimulation treatment, keeping the same frontal pose, identity, apparent age, skin character, lighting, and camera setup.';
+  const viewLock = SCULPTRA_VIEW_LOCKS[view] || SCULPTRA_VIEW_LOCKS.frontal;
+  const timeline = tp ? (' ' + tp) : '';
+  const cleanNote = sanitizeNote(sel.note);
+  return `${NO_TEXT_RULE} ${framing} ${viewLock} Make ONLY this change: ${HDR_EXPECTED}${HDR_AREA_FOCUS}${HDR_MAGNITUDE}${timeline}${cleanNote}${HDR_GUARDRAIL}`;
+}
+
 // Assemble the CORE prompt from selections. The safety base is appended elsewhere.
 function buildCorePrompt(sel) {
   const sel_ = sel || {};
@@ -562,7 +597,13 @@ function buildCorePrompt(sel) {
       return buildSculptraPrompt(sel_, m, tp);
     }
 
-    // Other biostim products (hdr) use the legacy string-expected + PROJECTION path.
+    // Hyperdilute CaHA / Radiesse: dedicated firmness + skin-quality module
+    // (distinct visual language from Sculptra's soft-volume re-inflation).
+    if (product === 'hdr') {
+      return buildHdrPrompt(sel_, tp);
+    }
+
+    // Any other/legacy biostim product falls back to the string-expected path.
     let expected, mag;
     if (m.expected && typeof m.expected === 'object') {
       expected = m.expected[sel_.projection] || m.expected.expected;
