@@ -145,6 +145,7 @@
     .output { display:none; margin-top:34px; }
     .output.visible { display:block; }
     .result-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+    .result-grid.three-up { grid-template-columns:1fr 1fr 1fr; }
     .result-card { border:1px solid var(--border); border-radius:8px; background:var(--deep); overflow:hidden; position:relative; aspect-ratio:4/5; touch-action:pan-y; }
     .result-card img { display:block; width:100%; height:100%; object-fit:cover; transform-origin:center center; }
     .result-card.zoomable { cursor:grab; touch-action:none; }
@@ -251,7 +252,7 @@
     .pack-sub s { color:var(--dim); margin:0 2px; }
     .launch-badge { display:inline-block; margin:2px 0 4px; padding:5px 12px; border-radius:999px; background:rgba(201,169,110,.14); border:1px solid rgba(201,169,110,.35); color:#8A6D3B; font-size:.72rem; letter-spacing:.04em; }
     .hidden { display:none !important; }
-    @media(max-width:720px){ .grid,.result-grid{grid-template-columns:1fr;} .page{padding-left:16px;padding-right:16px;} .pill-grid,.area-grid,.type-toggle{grid-template-columns:1fr;} .nav-link{display:none;} }
+    @media(max-width:720px){ .grid,.result-grid,.result-grid.three-up{grid-template-columns:1fr;} .page{padding-left:16px;padding-right:16px;} .pill-grid,.area-grid,.type-toggle{grid-template-columns:1fr;} .nav-link{display:none;} }
 
     /* ── Mobile slider bar ── */
     #mobileSliderBar {
@@ -739,9 +740,10 @@
         Fullscreen
       </button>
     </div>
-    <div class="result-grid">
+    <div class="result-grid" id="resultGrid">
       <div class="result-card"><img id="originalResult" alt="Original photo" /><div class="result-tag">Original</div></div>
       <div class="result-card"><img id="aiResult" alt="AI simulated treatment preview" /><svg class="anno-svg" id="annoSvg" viewBox="0 0 100 125" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg><div class="result-tag sim" id="simTag">Simulated · AI Visualization</div></div>
+      <div class="result-card" id="optimisticCard" style="display:none;"><img id="optimisticResult" alt="AI optimistic simulated treatment preview" /><div class="result-tag sim" id="optimisticTag">Simulated · Optimistic</div></div>
     </div>
     <div id="intensityWrap" style="display:none;margin-top:14px;">
       <!-- Course segmented control (biostim only, Ceiling hidden) -->
@@ -2848,7 +2850,7 @@ async function pollForResult(jobId, auth){
 
     let data; try { data = JSON.parse(await res.text()); } catch { data = null; }
     if(data){
-      if(data.state === 'done' && data.image) return data.image;
+      if(data.state === 'done' && data.image) return { image: data.image, model: data.model || null };
       if(data.state === 'error') throw new Error(data.error || 'Generation failed in the background.');
       // 'pending' (or status not written yet): keep polling
     }
@@ -2974,7 +2976,9 @@ async function prepAndStartSlot(angleId, auth, isRegen, fillerIntensity){
 // switching buttons shows the cached result without a new generation.
 async function finishSlot(angleId, auth, fillerIntensity){
   const sl = state.slots[angleId];
-  sl.resultDataUrl = await pollForResult(sl.jobId, auth);
+  const polled = await pollForResult(sl.jobId, auth);
+  sl.resultDataUrl = polled.image;
+  sl.modelUsed = polled.model; // real model name reported by the backend, or null
   // M9.7: pre-composite frame for ?debug=layers. For filler per-level cache,
   // store rawAiDataUrl per level so the debug panel shows the correct Raw AI.
   const cacheKey = (state.type === 'filler' && fillerIntensity) ? fillerIntensity : null;
@@ -2997,7 +3001,9 @@ async function finishSlot(angleId, auth, fillerIntensity){
       if(!sl.fillerCache) sl.fillerCache = {};
       sl.fillerCache[cacheKey] = { rawAiDataUrl: sl.resultDataUrl, apply: sl.apply, resultDataUrl: sl.resultDataUrl };
     }
-    console.log('%c[Visualize] ' + angleId + ': ' + state.type + ' M13 -- raw gpt-image-2 output, no compositor.', 'color:#1b5e20;font-weight:bold');
+    const modelLabel = sl.modelUsed || 'unknown (old backend - model not reported)';
+    const labelColor = (sl.modelUsed === 'gpt-image-2') ? '#1b5e20' : '#b26a00';
+    console.log('%c[Visualize] ' + angleId + ': ' + state.type + ' M13 -- model=' + modelLabel + ', no compositor.', 'color:' + labelColor + ';font-weight:bold');
     return;
   }
   if(compScope){
@@ -3290,31 +3296,39 @@ function renderActiveSlot(){
   const strongBadge = document.getElementById('simTagStrong');
   if(strongBadge) strongBadge.style.display = (state.courseMode === 'enhanced' && sl.strongStatus === 'done') ? 'inline' : 'none';
 
-  // M13: biostim never shows the slider. Filler shows it if apply() exists.
-  const isBiostim = state.type === 'biostim';
-  // M13: neither biostim nor filler shows the slider any more (both gpt-image-2 direct)
-  const showSlider = false;
-  document.getElementById('intensityWrap').style.display = showSlider ? 'block' : 'none';
-  if(showSlider){
-    const sliderEl = document.getElementById('intensitySlider');
-    if(sliderEl){
-      sliderEl.disabled = false;
-      sliderEl.style.opacity = '';
-      sliderEl.style.pointerEvents = '';
-      sliderEl.value = state.intensityPct;
-      updateIntensityUI();
-    }
-  }
+  // M13: slider is gone for all treatments; intensityWrap stays hidden.
+  document.getElementById('intensityWrap').style.display = 'none';
 
-  // M13: show Expected/Optimistic toggle only when both are generated
+  // M13: Both mode shows a 3-up grid (Original | Expected | Optimistic) at once.
+  // When the optimistic pass is not yet done (still generating, or errored), the
+  // view falls back to the standard 2-up Expected result until it arrives.
+  const isBiostim = state.type === 'biostim';
+  const grid = document.getElementById('resultGrid');
+  const optCard = document.getElementById('optimisticCard');
+  const optImg = document.getElementById('optimisticResult');
   const biostimToggle = document.getElementById('biostimResultToggle');
-  if(biostimToggle){
-    const bothReady = isBiostim && state.responseMode === 'both' && sl.status === 'done' && sl.strongStatus === 'done';
-    biostimToggle.style.display = bothReady ? 'block' : 'none';
-    if(bothReady){
-      document.getElementById('biostimViewExpected').classList.toggle('active', state.courseMode !== 'enhanced');
-      document.getElementById('biostimViewOptimistic').classList.toggle('active', state.courseMode === 'enhanced');
-    }
+  if(biostimToggle) biostimToggle.style.display = 'none';
+  const bothMode = isBiostim && state.responseMode === 'both';
+  const bothReady = bothMode && sl.status === 'done' && sl.strongStatus === 'done' && sl.strongDataUrl;
+
+  if(bothReady){
+    // 3-up: Original | Expected | Optimistic
+    if(grid) grid.classList.add('three-up');
+    if(optCard) optCard.style.display = '';
+    if(optImg) optImg.src = sl.strongDataUrl;
+    // middle card is always the Expected result in Both mode
+    state.courseMode = 'standard';
+    let mid = 'Simulated · ' + treatmentName();
+    if(multi) mid += ' · ' + ANGLE_DEF[state.activeAngle].short;
+    document.getElementById('simTag').textContent = mid + ' · Expected';
+    let optTag = 'Simulated · ' + treatmentName();
+    if(multi) optTag += ' · ' + ANGLE_DEF[state.activeAngle].short;
+    const optTagEl = document.getElementById('optimisticTag');
+    if(optTagEl) optTagEl.textContent = optTag + ' · Optimistic';
+  } else {
+    // 2-up everywhere else (single mode, or Both while optimistic still pending)
+    if(grid) grid.classList.remove('three-up');
+    if(optCard) optCard.style.display = 'none';
   }
 
   const doneCount = state.selectedAngles.filter(id => state.slots[id].status === 'done').length;
@@ -3732,7 +3746,7 @@ function updateRegenNote(){
 
 /* ───────── Synchronized zoom + pan (both panels together) ───────── */
 const zoomState = { zoom:1, panX:0, panY:0, dragging:false, sx:0, sy:0, pinching:false, pinchStartDist:1, pinchStartZoom:1 };
-const zoomImgs = [document.getElementById('originalResult'), document.getElementById('aiResult')];
+const zoomImgs = [document.getElementById('originalResult'), document.getElementById('aiResult'), document.getElementById('optimisticResult')].filter(Boolean);
 const zoomCards = [...document.querySelectorAll('#outputSection .result-card')];
 
 function applyZoom(){
@@ -4614,7 +4628,9 @@ async function runScenario(scenarioKey){
     // No compositor, no mask, no warp, no texture restore.
     // The original photo + planner prompt + gpt-image-1 is one clean generation.
     // Trust the model. If it drifts on a specific photo, fix the prompt -- not the compositor.
-    const rawResultUrl = await pollForResult(jobId, auth);
+    const polledScenario = await pollForResult(jobId, auth);
+    const rawResultUrl = polledScenario.image;
+    if(polledScenario.model) console.log('[Visualize] scenario ' + scenarioKey + ': model=' + polledScenario.model);
 
     bucket[scenarioKey] = { status: 'done', jobId, resultUrl: rawResultUrl, rawResultUrl, error: null };
     if(accessMode === 'account') refreshCredits(0);
