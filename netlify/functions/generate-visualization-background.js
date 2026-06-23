@@ -379,6 +379,19 @@ Analyze:
 
 Write the imagePrompt to simulate: the tear trough hollow filled and supported from beneath so the lid-cheek junction reads smooth and the shadow softens naturally. Subtle and natural, never puffy or over-filled. Do not change eye shape/size/lid/lashes, do not brighten or erase pigmentation, do not touch the lower face, lips, nose, or brows.`,
 
+  add_nose_filler: `TWO IMAGES PROVIDED AS CONTEXT:
+Image 1 = the Visualize baseline (shows a moderate Sculptra biostimulator response already achieved).
+Image 2 = the original pre-treatment photo (THIS is the photo the image model will edit).
+
+YOUR JOB: Write an image-editing prompt for the image model that tells it to edit Image 2 (the original photo) to show the baseline support PLUS a subtle nasal HA filler result (liquid rhinoplasty).
+
+Analyze:
+- This patient's nasal profile in the original: is there a dorsal hump, tip ptosis, tip definition, nasal asymmetry?
+- What ONE or TWO nasal refinements would be most clinically visible and appropriate
+- The ethnicity and face shape (East Asian noses have different filler targets than Caucasian)
+
+Write the imagePrompt to simulate: the specific nasal change(s) this face needs -- smooth the dorsal hump if present, refine and slightly lift the tip if drooping, correct minor asymmetry if visible. Choose only what this nose actually needs. The result must look like a subtle, skilled injector result: the same nose, slightly more refined. Never a dramatic reshape, never a surgical result. Do not narrow nostrils, do not change nose width from the front, do not touch lips, chin, eyes, cheeks, or any other zone.`,
+
   combination_plan: `TWO IMAGES PROVIDED AS CONTEXT:
 Image 1 = the Visualize baseline (shows a moderate Sculptra biostimulator response already achieved).
 Image 2 = the original pre-treatment photo (THIS is the photo the image model will edit).
@@ -600,7 +613,7 @@ exports.handler = async (event) => {
       // over a fixed prompt. Falls back to staticPrompt on any error so generation
       // is never blocked. Provider is controlled by SCENARIO_PLANNER_PROVIDER env var
       // (default 'openai') so it can be swapped to 'anthropic' for A/B testing later.
-      const PLANNER_SCENARIOS = ['stronger_sculptra', 'combination_plan', 'add_chin_jaw_filler', 'add_temple_support', 'add_tear_trough'];
+      const PLANNER_SCENARIOS = ['stronger_sculptra', 'combination_plan', 'add_chin_jaw_filler', 'add_temple_support', 'add_tear_trough', 'add_nose_filler'];
       const plannerProvider = process.env.SCENARIO_PLANNER_PROVIDER || 'openai';
       // Kill switch: set SCENARIO_PLANNER_ENABLED=false in Netlify env to disable
       // the planner without redeploying code. Useful if planner output is unexpected
@@ -787,18 +800,19 @@ exports.handler = async (event) => {
     // skin, and ethnicity from bleeding into the output.
     const finalPrompt = (refFile && referenceMode) ? (prompt + REFERENCE_IDENTITY_LOCK) : prompt;
 
-    const modelName = 'gpt-image-1';
+    // M13: biostim (Sculptra) switches to gpt-image-2 for direct generation.
+    // gpt-image-2 rejects input_fidelity -- omit it for that model.
+    // Controlled by BIOSTIM_IMAGE_MODEL env var so it can be swapped without redeploy.
+    // Filler and all other treatments stay on gpt-image-1 unchanged.
+    const modelName = isSculptra
+      ? (process.env.BIOSTIM_IMAGE_MODEL || 'gpt-image-2')
+      : 'gpt-image-1';
 
-    // input_fidelity policy (M12.1):
-    //   - Chin/jaw filler at OBLIQUE angles uses 'low': the structural lower-face
-    //     contour change requires the model to diverge from the input geometry, and
-    //     the CHIN_JAW_OBLIQUE_FRAMING prompt now leads with anti-rebuild language
-    //     to compensate. Using 'high' at oblique was over-anchoring and suppressing
-    //     all lower-face change.
-    //   - Chin/jaw filler at FRONTAL uses 'high': frontal identity is well-preserved
-    //     by the prompt and compositor; 'low' was causing the model to beautify/
-    //     relight the whole face at frontal (regression introduced in M12).
-    //   - All other treatments (Sculptra, HDR, other filler) use 'high'.
+    // input_fidelity policy (M12.1, filler only):
+    //   - Chin/jaw filler at OBLIQUE angles uses 'low'
+    //   - Chin/jaw filler at FRONTAL uses 'high'
+    //   - All other filler/hdr uses 'high'
+    //   - gpt-image-2 (biostim) never receives input_fidelity
     const isChinJawFiller = isChinJaw && f.type === 'filler';
     const isOblique = canonicalAngle(f.angle || f.view) !== 'frontal';
     const editParams = {
@@ -806,10 +820,13 @@ exports.handler = async (event) => {
       image:              file,
       prompt:             finalPrompt,
       size:               'auto',
-      input_fidelity:     (isChinJawFiller && isOblique) ? 'low' : 'high',
       output_format:      'jpeg',
       output_compression: 85
     };
+    // input_fidelity only applies to gpt-image-1
+    if (modelName === 'gpt-image-1') {
+      editParams.input_fidelity = (isChinJawFiller && isOblique) ? 'low' : 'high';
+    }
     if (job.maskB64) {
       const maskBuf = Buffer.from(job.maskB64, 'base64');
       editParams.mask = await OpenAI.toFile(maskBuf, 'mask.png', { type: job.maskMime || 'image/png' });
@@ -855,11 +872,11 @@ exports.handler = async (event) => {
     if (blocked) {
       await fail('The AI provider blocked this specific edit under its safety system (the image-edit endpoint is strict and this cannot be turned down). Lip edits are a frequent trigger. Try a different area, or adjust the wording of the custom note.', 'moderation_blocked');
       await refundIfBilled(store, jobId, 'moderation blocked');
-      await logGeneration({ jobId, status: 'blocked', failureReason: 'moderation_blocked', model: 'gpt-image-1' }).catch(() => {});
+      await logGeneration({ jobId, status: 'blocked', failureReason: 'moderation_blocked', model: modelName || 'unknown' }).catch(() => {});
     } else {
       await fail(msg || 'Image generation failed', code || 'error');
       await refundIfBilled(store, jobId, (code ? String(code) : 'generation failed'));
-      await logGeneration({ jobId, status: 'failed', failureReason: code || msg || 'unknown', model: 'gpt-image-1' }).catch(() => {});
+      await logGeneration({ jobId, status: 'failed', failureReason: code || msg || 'unknown', model: modelName || 'unknown' }).catch(() => {});
     }
     return { statusCode: 200 };
   }

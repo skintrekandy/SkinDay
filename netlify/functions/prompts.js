@@ -409,6 +409,17 @@ const SCULPTRA_NLF_CONSTRAINT =
 const NO_TEXT_RULE =
   'ABSOLUTE RULE: Do not add any text, labels, watermarks, annotations, captions, overlays, logos, or written words anywhere on the output image. The output must be a clean photograph with no visible text of any kind.';
 
+// M13: NEGATIVE-LIST GUARDRAIL -- appended to every biostim prompt.
+// The key insight from GPT Image 2 testing: the model must be told explicitly
+// what DEFECTS to keep, not just what changes to make. "Natural" is insufficient.
+// The guardrail overrides the model's default beautification prior by name.
+// All biostim prompts receive this tail. It is NOT used for filler prompts.
+const BIOSTIM_NEGATIVE_GUARDRAIL =
+  ' CRITICAL ANTI-BEAUTIFICATION GUARDRAIL: Do not beautify, de-age, brighten, smooth, retouch, improve complexion, enlarge eyes, change makeup, improve hair, improve lighting, or make the face more globally attractive. ' +
+  'Preserve all of the following exactly as in the original photo: pores, pigmentation, freckles, under-eye shadows, skin redness, fine lines, skin texture, facial asymmetry, original photo quality and lighting, neck texture, hair messiness, and clothing. ' +
+  'This result must look like the same imperfect consultation photo, not a clinic after photo. ' +
+  'The only permitted changes are the soft-tissue structural ones described above.';
+
 function buildSculptraPrompt(sel, m, timelineText) {
   const view = normalizeView(sel);
   const phenotype = SCULPTRA_PHENOTYPES[normalizeSculptraPhenotype(sel)] || SCULPTRA_PHENOTYPES.mixed;
@@ -451,7 +462,8 @@ function buildSculptraPrompt(sel, m, timelineText) {
   const clinicalLogicBlock = isEnhanced ? '' : phenotype.clinicalLogic + ' ';
 
   // NO_TEXT_RULE is prepended first so it is the model's first instruction.
-  return `${NO_TEXT_RULE} ${SCULPTRA_NLF_CONSTRAINT} ${framing} ${SCULPTRA_FEATURE_LOCK} ${SCULPTRA_VIEW_LOCKS[view] || SCULPTRA_VIEW_LOCKS.frontal} ${allowedZones} ${clinicalLogicBlock}Make ONLY this change: ${magnitude} ${outputRules} ${timelineText}${cleanNote}`;
+  // M13: BIOSTIM_NEGATIVE_GUARDRAIL appended last -- explicit defect-preservation list.
+  return `${NO_TEXT_RULE} ${SCULPTRA_NLF_CONSTRAINT} ${framing} ${SCULPTRA_FEATURE_LOCK} ${SCULPTRA_VIEW_LOCKS[view] || SCULPTRA_VIEW_LOCKS.frontal} ${allowedZones} ${clinicalLogicBlock}Make ONLY this change: ${magnitude} ${outputRules} ${timelineText}${cleanNote}${BIOSTIM_NEGATIVE_GUARDRAIL}`;
 }
 
 // Assemble the CORE prompt from selections. The safety base is appended elsewhere.
@@ -622,7 +634,8 @@ const SCULPTRA_SCENARIO_BASE =
   'Restore lateral cheek convexity so the zygomatic/lateral cheek highlight reads more present and continuous. Improve temple-to-cheek continuity. Soften submalar hollowing and the cheek-to-jaw transition. Support the prejowl and jowl shadow so the lower face reads cleaner and better suspended. ' +
   'The face should look visibly fuller and better supported laterally, with a smoother continuous contour from temple to cheek to jawline. The result should read as a real upper-range Sculptra responder after several months: better collagen support, better suspension, and softer shadows, while still natural and not overfilled. ' +
   'Preserve identity exactly. Do not change ethnicity, eye shape, nose, lips, hairstyle, clothing, background, pose, or expression. Do not add makeup. Do not create a beauty-filter look. Preserve natural skin texture, pores, pigmentation, and lighting. Avoid global skin smoothing, brightening, face slimming, teeth changes, or unrelated beautification. ' +
-  'The result should look like the same patient photographed in the same setup, only with a clearly visible upper-range 6-month Sculptra improvement.';
+  'The result should look like the same patient photographed in the same setup, only with a clearly visible upper-range 6-month Sculptra improvement.' +
+  BIOSTIM_NEGATIVE_GUARDRAIL;
 
 const SCENARIO_PROMPTS = {
 
@@ -674,6 +687,53 @@ const SCENARIO_PROMPTS = {
       SCENARIO_SAFETY
   },
 
+  add_nose_filler: {
+    label: 'Add nose filler',
+    description: 'Baseline + liquid rhinoplasty (nasal HA filler)',
+    prompt: SCENARIO_PROMPT_BASE +
+      'Treatment to simulate: the Sculptra baseline PLUS hyaluronic acid filler to the nose (liquid rhinoplasty). ' +
+      'Show: a subtle, natural-looking nasal refinement consistent with a skilled injector. ' +
+      'The specific change depends on what this nose needs: smooth a dorsal hump so the nasal profile reads straighter; ' +
+      'or gently refine and lift the nasal tip so the tip reads slightly more defined and the nasolabial angle looks improved; ' +
+      'or improve subtle asymmetry where visible. Do only what this specific nose needs -- do not apply all changes if only one is indicated. ' +
+      'The change must be subtle: a perceptible refinement, never a dramatic reshape, never a surgical result. ' +
+      'The nose must still look like the same nose, only slightly more refined. ' +
+      'Do not narrow the nostrils, do not shorten or lengthen the nose, do not change the nose width from the front, ' +
+      'do not change the skin texture of the nose. ' +
+      'Do not touch the lips, chin, jawline, eyes, cheeks, or any other area.' +
+      ' ABSOLUTE PROHIBITIONS: ' +
+      'Do not smooth or retouch skin anywhere. Do not brighten, whiten, raise contrast, or apply any filter or beauty effect. ' +
+      'Do not enlarge, open, or alter the eyes in any way. Do not raise, darken, or reshape the brows. ' +
+      'Do not change lip size, shape, color, fullness, or border. ' +
+      'Do not change hairstyle, hair color, clothing, jewellery, head angle, camera crop, lighting, or background. ' +
+      'Do not reduce apparent age or add any de-aging effect. ' +
+      'Preserve identity, skin tone, ethnicity, and all ethnic features exactly as in the original photo. ' +
+      'The result must be unmistakably the same person. ' +
+      'Do not add text, labels, watermarks, or annotations.'
+  },
+
+  add_lips_filler: {
+    label: 'Add lip filler',
+    description: 'Baseline + natural lip volume enhancement',
+    prompt: SCENARIO_PROMPT_BASE +
+      'Treatment to simulate: the Sculptra baseline PLUS hyaluronic acid filler to the lips. ' +
+      'Show: a natural, tasteful increase in lip volume consistent with a subtle, skilled result. ' +
+      'The lips look slightly fuller and more defined, with a gently more visible vermilion border. ' +
+      'The upper and lower lips remain proportional -- do not invert the natural upper-to-lower balance. ' +
+      'The cupid\'s bow shape and position stay the same. The lips look hydrated and naturally fuller, never duck-shaped, shelf-like, or over-filled. ' +
+      'The change is strictly the lip body and border. Do not change lip color, do not add gloss or shine, do not whiten the teeth. ' +
+      'Do not touch the nose, chin, jawline, eyes, cheeks, or any other area.' +
+      ' ABSOLUTE PROHIBITIONS: ' +
+      'Do not smooth or retouch skin anywhere. Do not brighten, whiten, raise contrast, or apply any filter or beauty effect. ' +
+      'Do not enlarge, open, or alter the eyes in any way. Do not raise, darken, or reshape the brows. ' +
+      'Do not alter the nose, chin, or jaw. ' +
+      'Do not change hairstyle, hair color, clothing, jewellery, head angle, camera crop, lighting, or background. ' +
+      'Do not reduce apparent age or add any de-aging effect. ' +
+      'Preserve identity, skin tone, ethnicity, and all ethnic features exactly as in the original photo. ' +
+      'The result must be unmistakably the same person. ' +
+      'Do not add text, labels, watermarks, or annotations.'
+  },
+
   combination_plan: {
     label: 'Full combination plan',
     description: 'Sculptra + chin/jaw filler + temple support',
@@ -722,4 +782,4 @@ function buildScenarioPrompt(scenarioKey, view) {
   return NO_TEXT_RULE + ' ' + viewLead + s.prompt;
 }
 
-module.exports = { buildCorePrompt, VERSIONS, CHIN_JAW_SAFETY, usesChinJawSafety, FILLER_CHIN_JAWLINE_OVERFILLED, SCENARIO_PROMPTS, buildScenarioPrompt };
+module.exports = { buildCorePrompt, VERSIONS, CHIN_JAW_SAFETY, usesChinJawSafety, FILLER_CHIN_JAWLINE_OVERFILLED, SCENARIO_PROMPTS, buildScenarioPrompt, BIOSTIM_NEGATIVE_GUARDRAIL };
