@@ -2252,6 +2252,7 @@ document.querySelectorAll('#typeToggle .type-btn').forEach(btn => {
     document.getElementById('laserControls').classList.toggle('hidden', state.type !== 'laser');
     // Shared response-mode block shows for biostim and laser (both use Expected/Optimistic/Both)
     document.getElementById('responseModeBlock').classList.toggle('hidden', !usesResponseModes());
+    if(usesResponseModes()) syncResponseModeHelp(); // M14.1: device vs vials copy
     if(state.type === 'filler'){
       // ensure a single area is selected and the volume help reflects it
       if(!state.areas || state.areas.length !== 1) state.areas = ['chin_jawline'];
@@ -2356,18 +2357,32 @@ wirePills('fillerSex', 'sex');
 
 // Wire the Expected/Optimistic/Both selector
 const RESPONSE_MODE_HELP = {
-  expected:   'Expected: realistic outcome after 3-4 vials for most patients. 100 credits per angle.',
-  optimistic: 'Optimistic: upper-range result after 3-4 vials for strong responders. 100 credits per angle.',
-  both:       'Both: generates Expected and Optimistic together. 200 credits per angle.'
+  biostim: {
+    expected:   'Expected: realistic outcome after 3-4 vials for most patients. 100 credits per angle.',
+    optimistic: 'Optimistic: upper-range result after 3-4 vials for strong responders. 100 credits per angle.',
+    both:       'Both: generates Expected and Optimistic together. 200 credits per angle.'
+  },
+  laser: {
+    expected:   'Expected: a realistic single-course tightening and lifting result for most patients. 100 credits per angle.',
+    optimistic: 'Optimistic: an upper-range result for strong responders over a full treatment course. 100 credits per angle.',
+    both:       'Both: generates Expected and Optimistic together. 200 credits per angle.'
+  }
 };
+function responseModeHelpText(mode){
+  const group = RESPONSE_MODE_HELP[state.type] || RESPONSE_MODE_HELP.biostim;
+  return group[mode] || group.expected;
+}
+function syncResponseModeHelp(){
+  const help = document.getElementById('responseModeHelp');
+  if(help) help.textContent = responseModeHelpText(state.responseMode);
+}
 document.getElementById('responseModeToggle').addEventListener('click', e => {
   const btn = e.target.closest('[data-response-mode]');
   if(!btn) return;
   document.querySelectorAll('#responseModeToggle .pill').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   state.responseMode = btn.dataset.responseMode;
-  const help = document.getElementById('responseModeHelp');
-  if(help) help.textContent = RESPONSE_MODE_HELP[state.responseMode] || '';
+  syncResponseModeHelp();
   syncGenerateBtn(); // refresh cost note
 });
 
@@ -2938,25 +2953,10 @@ async function prepAndStartSlot(angleId, auth, isRegen, fillerIntensity){
   form.append('image', blob, 'patient-' + angleId + '.jpg');
   form.append('type', state.type);
 
-  // M13: both biostim and filler now run gpt-image-2 as a direct full-frame edit.
-  // No mask is sent for either -- gpt-image-2 works best unmasked, and the
-  // negative-list guardrail in the prompt controls what does not change.
-  const maskScope = null;
-  if(maskScope){
-    try {
-      const beforeImg = await loadImage(beforeDataUrl);
-      const mod = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
-      const maskBlob = await mod.buildSculptraMaskBlob(beforeImg, { maxDim:1024, scope:maskScope, sex:state.sex });
-      if(maskBlob){
-        form.append('mask', maskBlob, 'mask.png');
-        console.log('%c[Visualize] ' + angleId + ': mask v' + MASK_MODULE_VERSION + ' built (' + Math.round(maskBlob.size/1024) + ' kB).', 'color:#2e7d32;font-weight:bold');
-      } else {
-        console.warn('[Visualize] ' + angleId + ': mask empty (no face); sending WITHOUT a mask (raw AI).');
-      }
-    } catch(err){
-      console.error('%c[Visualize] ' + angleId + ': mask FAILED; sending WITHOUT a mask (raw AI).', 'color:#c62828;font-weight:bold', err);
-    }
-  }
+  // M13/M14: biostim, filler, and laser all run gpt-image-2 as a direct
+  // full-frame edit. No client-side mask is ever sent -- gpt-image-2 works best
+  // unmasked, and the negative-list guardrail in the prompt controls what does
+  // not change. The legacy mask compositor path has been removed.
 
   if(state.type === 'filler'){
     const area = (state.areas && state.areas[0]) || 'chin_jawline';
@@ -3036,7 +3036,6 @@ async function finishSlot(angleId, auth, fillerIntensity){
   // is the final result. A passthrough apply() is set so the intensity slider
   // path doesn't break (it simply returns the raw AI at any slider position).
   // M13: BOTH biostim and filler now run gpt-image-2 direct, no compositor.
-  const compScope = null;
   if(state.type === 'biostim' || state.type === 'filler' || state.type === 'laser'){
     // Passthrough: no slider blend; raw gpt-image-2 output is the final result
     sl.apply = () => sl.resultDataUrl;
@@ -3049,90 +3048,6 @@ async function finishSlot(angleId, auth, fillerIntensity){
     const labelColor = (sl.modelUsed === 'gpt-image-2') ? '#1b5e20' : '#b26a00';
     console.log('%c[Visualize] ' + angleId + ': ' + state.type + ' M13 -- model=' + modelLabel + ', no compositor.', 'color:' + labelColor + ';font-weight:bold');
     return;
-  }
-  if(compScope){
-    // M9.1 diagnostic hook: ?composite=raw shows the AI's UNTOUCHED output for
-    // every angle (no mask composite, no texture restore, no warp; the slider
-    // skips these angles). One look settles whether the model is painting the
-    // requested change at all, before any composite or warp tuning.
-    if(/[?&]composite=raw\b/i.test(location.search)){
-      console.warn('%c[Visualize] ' + angleId + ': composite=raw hook active; showing the RAW AI output (no composite, no warp).', 'color:#e65100;font-weight:bold');
-      sl.status = 'done';
-      return;
-    }
-    try {
-      const beforeImg = await loadImage(sl.beforeDataUrl || sl.originalDataUrl);
-      const aiImg = await loadImage(sl.resultDataUrl);
-      // M12: chin/jaw filler uses its own dedicated compositor (chin-jaw-mask.js)
-      // with parameters tuned for mandibular edge definition, not Sculptra soft volume.
-      // Sculptra still uses sculptra-mask.js untouched.
-      let apply;
-      if(compScope === 'chin_jaw'){
-        const { makeChinJawCompositor } = await import('./chin-jaw-mask.js?v=' + MASK_MODULE_VERSION);
-        apply = await makeChinJawCompositor(beforeImg, aiImg, {
-          sex: state.sex,
-          angleId,
-          _maskModuleVersion: MASK_MODULE_VERSION
-        });
-      } else {
-        const { makeSculptraCompositor } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
-        // M6 A/B hook: append ?warp=off to compare against the pure M5 composite.
-        const warpOn = !/[?&]warp=off\b/i.test(location.search);
-        // M9.1 A/B hook: append ?jowltex=off to disable the jowl-lobe texture release.
-        const jowlTexOn = !/[?&]jowltex=off\b/i.test(location.search);
-        // M9.7 A/B hook: ?jawdef=off disables the deterministic border light.
-        const jawDefOn = !/[?&]jawdef=off\b/i.test(location.search);
-        // M10.6 A/B hook: ?jawcont=off disables the jaw-continuity feather.
-        const jawContOn = !/[?&]jawcont=off\b/i.test(location.search);
-        apply = await makeSculptraCompositor(beforeImg, aiImg, {
-          scope: compScope, sex: state.sex,
-          warp: warpOn, jowlTexRelease: jowlTexOn, jawDef: jawDefOn, jawContinuity: jawContOn, angleId
-        });
-      }
-      if(apply){
-        sl.apply = apply;
-        sl.resultDataUrl = apply(state.intensityPct / 100);
-        // M12.1: cache the compositor and composited result per filler level
-        // so switching buttons instantly shows the cached result without regenerating.
-        if(cacheKey && sl.fillerCache && sl.fillerCache[cacheKey]){
-          sl.fillerCache[cacheKey].apply = apply;
-          sl.fillerCache[cacheKey].resultDataUrl = sl.resultDataUrl;
-        }
-        console.log('%c[Visualize] ' + angleId + ': compositor ready; outside the treatment zone is the original photo.', 'color:#2e7d32;font-weight:bold');
-        // Debug: ?debug=layers shows raw AI + composited result side by side
-        if(/[?&]debug=layers\b/i.test(location.search)){
-          const panel = document.createElement('div');
-          panel.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#111;z-index:9999;padding:12px;display:flex;gap:8px;overflow-x:auto;';
-          const closeBtn = document.createElement('button');
-          closeBtn.textContent = 'Close debug';
-          closeBtn.style.cssText = 'position:absolute;top:8px;right:8px;background:#c00;color:#fff;border:none;padding:6px 12px;cursor:pointer;border-radius:4px;';
-          closeBtn.onclick = () => panel.remove();
-          panel.appendChild(closeBtn);
-          [
-            { label: 'Original (' + angleId + ')', src: sl.beforeDataUrl || sl.originalDataUrl },
-            { label: 'Raw AI (before compositor)', src: sl.rawAiDataUrl },
-            { label: 'Composited result', src: sl.resultDataUrl }
-          ].forEach(({ label, src }) => {
-            const wrap = document.createElement('div');
-            wrap.style.cssText = 'flex-shrink:0;text-align:center;';
-            const img = document.createElement('img');
-            img.src = src || '';
-            img.style.cssText = 'height:300px;display:block;border:1px solid #444;';
-            const cap = document.createElement('div');
-            cap.textContent = label;
-            cap.style.cssText = 'color:#aaa;font-size:11px;margin-top:4px;';
-            wrap.appendChild(img);
-            wrap.appendChild(cap);
-            panel.appendChild(wrap);
-          });
-          document.body.prepend(panel);
-        }
-      } else {
-        console.warn('[Visualize] ' + angleId + ': compositor null (no face); showing RAW AI for this angle, slider skips it.');
-      }
-    } catch(err){
-      console.error('%c[Visualize] ' + angleId + ': compositor FAILED; showing RAW AI for this angle.', 'color:#c62828;font-weight:bold', err);
-    }
   }
   sl.status = 'done';
 }
@@ -3236,7 +3151,6 @@ async function runGeneration(isRegen){
     if(!doneIds.includes(state.activeAngle)) state.activeAngle = doneIds[0];
     renderTabs();
     renderActiveSlot();
-    if(/[?&]debug=layers\b/i.test(location.search)) buildLayerDebugSheet(state.activeAngle); // M9.7
     document.getElementById('outputSection').classList.add('visible');
     document.getElementById('outputSection').scrollIntoView({ behavior:'smooth', block:'start' });
     updateRegenNote();
@@ -3394,14 +3308,11 @@ generateBtn.addEventListener('click', () => runGeneration(false));
 regenBtn.addEventListener('click', () => runGeneration(true));
 
 /* ───────── Enhanced course second pass ─────────
-   Fires a second masked generation for all done angles. Uses the SAME
-   Sculptra mask and compositor pipeline as the standard pass -- the only
-   difference is projection:optimistic and a stronger prompt anchor.
-   Raw AI output is NEVER shown to the user. Every enhanced result goes
-   through makeSculptraCompositor before being stored in sl.strongDataUrl.
-   If the compositor fails, the enhanced view is suppressed and the standard
-   result is shown instead. Patient-facing output is always:
-     original photo + masked local biostimulator change.
+   Fires a second generation for all done angles. The only difference from the
+   standard pass is projection:optimistic and a stronger prompt anchor.
+   M13/M14: this is a direct gpt-image-2 generation with NO compositor -- the raw
+   output is the final Optimistic result (the legacy mask/compositor pipeline has
+   been removed).
    Cost: 1 credit per angle (server-verified via isStrongPass + sourceJobId). */
 // M11.1: STRONG_PROMPT_SUFFIX is now a minimal signal only.
 // The actual Enhanced magnitude instruction is ENHANCED_MAGNITUDE in prompts.js,
@@ -3423,12 +3334,9 @@ const STRONG_PROMPT_SUFFIX = 'Enhanced course: upper-range biostimulator respons
 // were all full-frame edits where the model solved lighting, shadow, and
 // volume globally.
 //
-// After generation, makeSculptraCompositor still runs as a SAFETY CLAMP:
-//   - Caps extreme color drift (chromaLock)
-//   - Preserves background/hair/clothing via mask exclusion
-//   - Lets the intensity slider work
-// But the compositor is NOT the source of the structural effect. The raw AI
-// output must already look correct before compositing touches it.
+// M13/M14: Enhanced/Optimistic is a direct gpt-image-2 generation. No mask is
+// sent and no compositor runs -- the raw AI output is the final result. The
+// negative-list guardrail in the prompt controls what does not change.
 async function startEnhancedSlot(angleId, auth){
   const sl = state.slots[angleId];
   if(!sl || !sl.originalDataUrl) return;
@@ -3467,7 +3375,6 @@ async function startEnhancedSlot(angleId, auth){
 
   // maskScope: biostim has no compositor in M13, so maskScope is only needed
   // for filler's post-generation compositor safety clamp.
-  const maskScope = (state.type === 'filler') ? 'chin_jaw' : null;
 
   console.log('[Visualize Enhanced] ' + angleId + ': sending to start-visualization…');
   let startRes;
@@ -3530,66 +3437,10 @@ async function startEnhancedSlot(angleId, auth){
           return;
         }
 
-        // Run compositor for filler -- same path as finishSlot.
-        // On any failure, suppress enhanced rather than show raw AI.
-        let composited = null;
-        if(maskScope){
-          try {
-            const beforeImg = await loadImage(beforeDataUrl);
-            const aiImg = await loadImage(data.image);
-            const { makeSculptraCompositor } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
-            const warpOn = !/[?&]warp=off\b/i.test(location.search);
-            const jowlTexOn = !/[?&]jowltex=off\b/i.test(location.search);
-            const jawDefOn = !/[?&]jawdef=off\b/i.test(location.search);
-            // M10.6 A/B hook: ?jawcont=off disables the jaw-continuity feather.
-            const jawContOn = !/[?&]jawcont=off\b/i.test(location.search);
-            // M11.1 Enhanced compositor: SAFETY CLAMP role only.
-            // The full-frame AI output should already be structurally correct.
-            // The compositor's job here is:
-            //   1. Preserve background, hair, clothing (mask exclusion)
-            //   2. Clamp extreme color drift (chromaLock 0.96)
-            //   3. Let the intensity slider work via apply(pct)
-            // It must NOT fight the AI's correct global lighting changes.
-            // deltaGain is 1.0 (neutral pass-through, no amplification).
-            // brightCap is 30 (loose) to allow the AI's restored highlights through.
-            // liftSat 1.0 keeps warp geometry active for structural consistency.
-            const enhancedOpts = {
-              scope: maskScope, sex: state.sex,
-              warp: warpOn, jowlTexRelease: jowlTexOn, jawDef: jawDefOn, jawContinuity: jawContOn, angleId,
-              liftSat:       1.0,
-              deltaGain:     1.3,  // increased from 1.0 to amplify spatial displacement on Enhanced
-              glowApply:     0,
-              brightCap:     60,
-              darkFloor:     6,
-              texRadiusFrac: 0.08,
-              texStrength:   0.92,
-              chromaLock:    0.96  // tightened back from 0.94 -- skin tone improvement comes from AI prompt, not chroma loosening
-            };
-            const apply = await makeSculptraCompositor(beforeImg, aiImg, enhancedOpts);
-            if(apply){
-              composited = apply(state.intensityPct / 100);
-              sl.strongApply = apply; // so the intensity slider also works on the enhanced view
-              console.log('%c[Visualize Enhanced] ' + angleId + ': compositor ready.', 'color:#1565c0;font-weight:bold');
-            } else {
-              console.warn('[Visualize Enhanced] ' + angleId + ': compositor null (no face); suppressing enhanced.');
-            }
-          } catch(err){
-            console.error('%c[Visualize Enhanced] ' + angleId + ': compositor failed; suppressing enhanced.', 'color:#c62828;font-weight:bold', err);
-          }
-        }
-
-        if(composited){
-          sl.strongDataUrl = composited;
-          sl.strongStatus = 'done';
-          // viewMode is now global (state.courseMode); auto-switch to enhanced when all done
-          const allDone = state.selectedAngles.every(id => state.slots[id].strongStatus === 'done' || state.slots[id].status !== 'done');
-          if(allDone) state.courseMode = 'enhanced';
-        } else {
-          // Compositor failed or unavailable -- do not show raw AI
-          sl.strongStatus = 'error';
-        }
+        // M14: startEnhancedSlot is only ever called for response-mode types
+        // (biostim / laser), which return above. No compositor path remains.
+        sl.strongStatus = 'error';
         updateStrongBtn();
-        if(angleId === state.activeAngle) applyActiveView();
 
       } else if(data.state === 'error'){
         sl.strongStatus = 'error';
@@ -3868,215 +3719,6 @@ window.addEventListener('touchend', e => {
   if(e.touches.length === 0) endDrag();
 });
 
-/* ───────── M9.7 layer attribution sheet (?debug=layers) ───────── */
-// One generation, every layer isolated, one downloaded contact sheet. Renders
-// the active angle six ways at the CURRENT slider value: original, raw AI,
-// composite without warp, plus warp (no sharpen, no border light), plus
-// sharpen, and the full pipeline. Diagnosis by evidence instead of guesswork.
-async function buildLayerDebugSheet(angleId){
-  try {
-    const sl = state.slots[angleId];
-    // M13: biostim has no compositor -- debug sheet shows raw AI only
-    const compScope = (state.type === 'filler') ? 'chin_jaw' : null;
-    if(!sl || !compScope || !sl.rawAiDataUrl) return;
-    const t = (state.intensityPct || 70) / 100;
-    const beforeImg = await loadImage(sl.beforeDataUrl || sl.originalDataUrl);
-    const aiImg = await loadImage(sl.rawAiDataUrl);
-    setStatus('Building the layer attribution sheet (4 composites)…', 'spin');
-    let v3, v4, v5, v6;
-    if(compScope === 'chin_jaw'){
-      // Debug sheet uses chin/jaw compositor so it matches the live result exactly
-      const { makeChinJawCompositor } = await import('./chin-jaw-mask.js?v=' + MASK_MODULE_VERSION);
-      const applyFn = await makeChinJawCompositor(beforeImg, aiImg, {
-        sex: state.sex, angleId, _maskModuleVersion: MASK_MODULE_VERSION
-      });
-      // For chin/jaw debug: show raw AI, no-warp, with-warp, full pipeline
-      const { compositeSculptra } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
-      const base = { scope: 'chin_jaw', sex: state.sex, intensity: t };
-      v3 = await compositeSculptra(beforeImg, aiImg, { ...base, warp: false });
-      v4 = await compositeSculptra(beforeImg, aiImg, { ...base, warp: false, midKeep: 0.28, texRadiusFrac: 0.005 });
-      v5 = await compositeSculptra(beforeImg, aiImg, { ...base, midKeep: 0.28, texRadiusFrac: 0.005, jawDef: false });
-      v6 = applyFn ? applyFn(t) : await compositeSculptra(beforeImg, aiImg, { ...base, midKeep: 0.28, texRadiusFrac: 0.005 });
-    } else {
-      const { compositeSculptra } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
-      const base = { scope: compScope, sex: state.sex, intensity: t };
-      v3 = await compositeSculptra(beforeImg, aiImg, { ...base, warp:false });
-      v4 = await compositeSculptra(beforeImg, aiImg, { ...base, warpSharpen:false, jawDef:false });
-      v5 = await compositeSculptra(beforeImg, aiImg, { ...base, jawDef:false });
-      v6 = await compositeSculptra(beforeImg, aiImg, { ...base });
-    }
-    const cells = [
-      { src: sl.beforeDataUrl || sl.originalDataUrl, label: '1. Original' },
-      { src: sl.rawAiDataUrl,                        label: '2. Raw AI output' },
-      { src: v3,                                     label: '3. Composite, warp off' },
-      { src: v4,                                     label: '4. + warp (no sharpen, no border light)' },
-      { src: v5,                                     label: '5. + sharpen' },
-      { src: v6,                                     label: '6. Full pipeline' }
-    ];
-    const imgs = await Promise.all(cells.map(c => c.src ? loadImage(c.src) : null));
-    const pw = 512, gap = 12, labelH = 34;
-    const ph = Math.round(pw * (imgs[0].height / imgs[0].width));
-    const canvas = document.createElement('canvas');
-    canvas.width = 3 * pw + 4 * gap;
-    canvas.height = 2 * (ph + labelH) + 3 * gap;
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#1C1714';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.font = '600 16px "DM Sans", sans-serif';
-    ctx.textBaseline = 'middle';
-    for(let k = 0; k < cells.length; k++){
-      const col = k % 3, row = (k / 3) | 0;
-      const x = gap + col * (pw + gap);
-      const y = gap + row * (ph + labelH + gap);
-      if(imgs[k]) ctx.drawImage(imgs[k], x, y, pw, ph);
-      ctx.fillStyle = '#FAF7F2';
-      ctx.fillText(cells[k].label + '  ·  slider ' + (state.intensityPct || 70), x + 4, y + ph + labelH / 2);
-    }
-    const a = document.createElement('a');
-    a.download = 'visualize-layer-sheet-' + angleId + '.jpg';
-    a.href = canvas.toDataURL('image/jpeg', 0.92);
-    a.click();
-    setStatus('Layer attribution sheet downloaded.', 'ok');
-  } catch(err){
-    console.error('[Visualize] layer debug sheet failed:', err);
-    setStatus('Layer sheet failed: ' + ((err && err.message) || err), 'warn');
-  }
-}
-
-/* ───────── Enhanced layer debug sheet ───────── */
-// Call window.debugEnhanced('frontal') (or 'r45', 'l45') from the browser
-// console after an Enhanced generation to download a 5-panel sheet:
-//   1. Original   2. Mask (white=treated, black=protected)
-//   3. Raw Enhanced AI (rawStrongAiDataUrl, never patient-facing)
-//   4. Composited Enhanced at 100%   5. Difference map (amplified 3x)
-// This isolates exactly where the effect is being suppressed:
-//   - If panel 3 has clear volume but panel 4 is flat -> compositor too strong
-//   - If panel 3 is already flat -> AI generation is underpowered
-//   - If panel 2 misses a zone -> mask needs expanding
-async function buildEnhancedDebugSheet(angleId){
-  try {
-    const sl = state.slots[angleId];
-    // M13: biostim has no compositor -- debug sheet not applicable
-    const compScope = (state.type === 'filler') ? 'chin_jaw' : null;
-    if(!sl || !compScope){
-      console.warn('[EnhancedDebug] slot not ready or wrong treatment type (biostim has no compositor in M13)');
-      return;
-    }
-    if(!sl.rawStrongAiDataUrl){
-      console.warn('[EnhancedDebug] rawStrongAiDataUrl missing -- run Enhanced generation first');
-      return;
-    }
-    setStatus('Building enhanced debug sheet…', 'spin');
-    const beforeDataUrl = sl.beforeDataUrl || sl.originalDataUrl;
-    const beforeImg = await loadImage(beforeDataUrl);
-    const rawAiImg  = await loadImage(sl.rawStrongAiDataUrl);
-
-    const { buildSculptraMaskBlob, compositeSculptra } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
-
-    // Panel 2: mask visualisation (white = AI-editable, black = protected)
-    const maskBlob = await buildSculptraMaskBlob(beforeImg, { maxDim:1024, scope:compScope, sex:state.sex });
-    let maskUrl = null;
-    if(maskBlob){
-      maskUrl = await new Promise(res => {
-        const fr = new FileReader(); fr.onload = e => res(e.target.result); fr.readAsDataURL(maskBlob);
-      });
-      // Invert mask for display: buildSculptraMaskBlob uses alpha=0 for editable.
-      // Re-render as a white-on-black luminance image for human reading.
-      const mc = document.createElement('canvas');
-      const mi = await loadImage(maskUrl);
-      mc.width = mi.naturalWidth; mc.height = mi.naturalHeight;
-      const mx = mc.getContext('2d');
-      mx.drawImage(mi, 0, 0);
-      const md = mx.getImageData(0,0,mc.width,mc.height);
-      for(let i=0;i<md.data.length;i+=4){
-        // alpha channel: 0=editable(white in display), 255=protected(black)
-        const v = 255 - md.data[i+3];
-        md.data[i]=v; md.data[i+1]=v; md.data[i+2]=v; md.data[i+3]=255;
-      }
-      mx.putImageData(md,0,0);
-      maskUrl = mc.toDataURL('image/jpeg', 0.92);
-    }
-
-    // Panel 4: composited enhanced at 100% with safety-clamp opts (M11.1)
-    const enhancedOpts = {
-      scope: compScope, sex: state.sex,
-      warp: true, jowlTexRelease: true, jawDef: true,
-      intensity: 1.0,
-      liftSat:       1.0,
-      deltaGain:     1.0,
-      glowApply:     10,
-      brightCap:     30,
-      darkFloor:     16,
-      texRadiusFrac: 0.08,
-      texStrength:   0.92,
-      chromaLock:    0.96
-    };
-    const composited100 = await compositeSculptra(beforeImg, rawAiImg, enhancedOpts);
-
-    // Panel 5: difference map (composited - original, amplified 3x, centred at 128)
-    let diffUrl = null;
-    if(composited100){
-      const dc = document.createElement('canvas');
-      const oi = await loadImage(beforeDataUrl);
-      const ci = await loadImage(composited100);
-      dc.width = oi.naturalWidth; dc.height = oi.naturalHeight;
-      const dx = dc.getContext('2d');
-      dx.drawImage(oi, 0, 0, dc.width, dc.height);
-      const orig = dx.getImageData(0,0,dc.width,dc.height);
-      dx.drawImage(ci, 0, 0, dc.width, dc.height);
-      const comp = dx.getImageData(0,0,dc.width,dc.height);
-      const diff = dx.createImageData(dc.width, dc.height);
-      for(let i=0;i<diff.data.length;i+=4){
-        diff.data[i]   = Math.max(0,Math.min(255, 128 + (comp.data[i]   - orig.data[i])   * 3));
-        diff.data[i+1] = Math.max(0,Math.min(255, 128 + (comp.data[i+1] - orig.data[i+1]) * 3));
-        diff.data[i+2] = Math.max(0,Math.min(255, 128 + (comp.data[i+2] - orig.data[i+2]) * 3));
-        diff.data[i+3] = 255;
-      }
-      dx.putImageData(diff,0,0);
-      diffUrl = dc.toDataURL('image/jpeg', 0.92);
-    }
-
-    const cells = [
-      { src: beforeDataUrl,           label: '1. Original' },
-      { src: maskUrl,                 label: '2. Mask (white=treated)' },
-      { src: sl.rawStrongAiDataUrl,   label: '3. Raw Enhanced AI' },
-      { src: composited100,           label: '4. Composited Enhanced 100%' },
-      { src: diffUrl,                 label: '5. Diff x3 (grey=no change)' },
-    ];
-    const validCells = cells.filter(c => c.src);
-    const imgs = await Promise.all(validCells.map(c => loadImage(c.src)));
-    const pw = 600, gap = 14, labelH = 36;
-    const ph = Math.round(pw * (imgs[0].naturalHeight / imgs[0].naturalWidth));
-    const cols = 3, rows = Math.ceil(validCells.length / cols);
-    const canvas = document.createElement('canvas');
-    canvas.width  = cols * pw + (cols + 1) * gap;
-    canvas.height = rows * (ph + labelH) + (rows + 1) * gap;
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#1C1714';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.font = '600 15px "DM Sans", sans-serif';
-    ctx.fillStyle = '#FAF7F2';
-    ctx.textBaseline = 'middle';
-    for(let k = 0; k < validCells.length; k++){
-      const col = k % cols, row = Math.floor(k / cols);
-      const x = gap + col * (pw + gap);
-      const y = gap + row * (ph + labelH + gap);
-      ctx.drawImage(imgs[k], x, y, pw, ph);
-      ctx.fillText(validCells[k].label + '  ·  ' + angleId, x + 4, y + ph + labelH / 2);
-    }
-    const a = document.createElement('a');
-    a.download = 'enhanced-debug-' + angleId + '.jpg';
-    a.href = canvas.toDataURL('image/jpeg', 0.92);
-    a.click();
-    setStatus('Enhanced debug sheet downloaded.', 'ok');
-    console.log('[EnhancedDebug] sheet downloaded for ' + angleId);
-  } catch(err){
-    console.error('[EnhancedDebug] failed:', err);
-    setStatus('Enhanced debug failed: ' + ((err && err.message) || err), 'warn');
-  }
-}
-// Expose globally so it can be called from the browser console
-window.debugEnhanced = buildEnhancedDebugSheet;
 
 /* ───────── M9.9 hi-res export render ───────── */
 // Forensics on a real export showed the simulated panel was globally softer
@@ -4086,40 +3728,9 @@ window.debugEnhanced = buildEnhancedDebugSheet;
 // from the ORIGINAL, so output crispness scales with the grid). Cached per
 // angle and slider value; falls back to the live 1024 result on any error.
 const EXPORT_MAXDIM = 2048;
-function exportCompScope(){
-  // M13: neither biostim nor filler uses a compositor (both gpt-image-2 direct).
-  // Export falls back to the raw result image for both.
-  return null;
-}
 async function hiResResultFor(angleId){
-  const sl = state.slots[angleId];
-  const compScope = exportCompScope();
-  if(!sl || !compScope || !sl.rawAiDataUrl || !sl.apply) return null;
-  const pct = state.intensityPct || 70;
-  if(sl.hiRes && sl.hiRes.pct === pct) return sl.hiRes.url;
-  const beforeImg = await loadImage(sl.beforeDataUrl || sl.originalDataUrl);
-  const aiImg = await loadImage(sl.rawAiDataUrl);
-  let url;
-  if(compScope === 'chin_jaw'){
-    // Use dedicated chin/jaw compositor -- same path as live result
-    const { makeChinJawCompositor } = await import('./chin-jaw-mask.js?v=' + MASK_MODULE_VERSION);
-    const applyHiRes = await makeChinJawCompositor(beforeImg, aiImg, {
-      sex: state.sex, angleId, maxDim: EXPORT_MAXDIM,
-      _maskModuleVersion: MASK_MODULE_VERSION
-    });
-    url = applyHiRes ? applyHiRes(pct / 100) : null;
-  } else {
-    const { compositeSculptra } = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
-    const warpOn = !/[?&]warp=off\b/i.test(location.search);
-    const jowlTexOn = !/[?&]jowltex=off\b/i.test(location.search);
-    const jawDefOn = !/[?&]jawdef=off\b/i.test(location.search);
-    url = await compositeSculptra(beforeImg, aiImg, {
-      scope: compScope, sex: state.sex, warp: warpOn, jowlTexRelease: jowlTexOn,
-      jawDef: jawDefOn, intensity: pct / 100, maxDim: EXPORT_MAXDIM
-    });
-  }
-  if(url) sl.hiRes = { pct, url };
-  return url;
+  // M14: no compositor remains; exports use the raw gpt-image-2 result directly.
+  return null;
 }
 
 /* ───────── Export (canvas) ───────── */
