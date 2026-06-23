@@ -615,6 +615,8 @@ exports.handler = async (event) => {
       // over a fixed prompt. Falls back to staticPrompt on any error so generation
       // is never blocked. Provider is controlled by SCENARIO_PLANNER_PROVIDER env var
       // (default 'openai') so it can be swapped to 'anthropic' for A/B testing later.
+      // add_lips_filler is intentionally NOT in this list: it uses the static
+      // prompt only (the planner tends to over-hedge lip changes into invisibility).
       const PLANNER_SCENARIOS = ['stronger_sculptra', 'combination_plan', 'add_chin_jaw_filler', 'add_temple_support', 'add_tear_trough', 'add_nose_filler'];
       const plannerProvider = process.env.SCENARIO_PLANNER_PROVIDER || 'openai';
       // Kill switch: set SCENARIO_PLANNER_ENABLED=false in Netlify env to disable
@@ -664,9 +666,16 @@ exports.handler = async (event) => {
       //   SCENARIO_IMAGE_MODEL          -- model for all other scenarios
       // IMPORTANT: gpt-image-2 always processes inputs at high fidelity and rejects input_fidelity.
       // So input_fidelity is omitted for any model other than gpt-image-1.
+      // M13: the new HA-filler scenarios (lips, nose) run on gpt-image-2 -- the
+      // same model validated for the main filler path. gpt-image-1 at high
+      // input_fidelity suppressed these localized changes into invisibility.
+      // SCENARIO_FILLER_IMAGE_MODEL lets this be reverted without a redeploy.
+      const FILLER_SCENARIOS = ['add_lips_filler', 'add_nose_filler'];
       const imageModel = (scenarioKey === 'stronger_sculptra')
         ? (process.env.SCENARIO_SCULPTRA_IMAGE_MODEL || 'gpt-image-1')
-        : (process.env.SCENARIO_IMAGE_MODEL || 'gpt-image-1');
+        : FILLER_SCENARIOS.includes(scenarioKey)
+          ? (process.env.SCENARIO_FILLER_IMAGE_MODEL || 'gpt-image-2')
+          : (process.env.SCENARIO_IMAGE_MODEL || 'gpt-image-1');
 
       // M12.6: image = original photo only. Single image, one clean pass.
       const scenarioParams = {
@@ -714,7 +723,7 @@ exports.handler = async (event) => {
       }
 
       await store.set(jobId + ':result', 'data:image/jpeg;base64,' + b64);
-      await store.setJSON(jobId + ':status', { state: 'done', updatedAt: Date.now() });
+      await store.setJSON(jobId + ':status', { state: 'done', model: imageModel, updatedAt: Date.now() });
       try { await store.delete(jobId + ':job'); } catch (e) { /* free payload */ }
 
       try {
@@ -844,7 +853,7 @@ exports.handler = async (event) => {
     if (!b64) throw new Error('No image returned by model');
 
     await store.set(jobId + ':result', 'data:image/jpeg;base64,' + b64);
-    await store.setJSON(jobId + ':status', { state: 'done', updatedAt: Date.now() });
+    await store.setJSON(jobId + ':status', { state: 'done', model: modelName, updatedAt: Date.now() });
     try { await store.delete(jobId + ':job'); } catch (e) { /* free the large input payload */ }
 
     // Log cost for this successful generation (non-blocking).

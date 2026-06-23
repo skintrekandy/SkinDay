@@ -637,6 +637,24 @@ const SCULPTRA_SCENARIO_BASE =
   'The result should look like the same patient photographed in the same setup, only with a clearly visible upper-range 6-month Sculptra improvement.' +
   BIOSTIM_NEGATIVE_GUARDRAIL;
 
+// Lip-specific safety block. Unlike SCENARIO_SAFETY (which locks the lips),
+// this EXPLICITLY permits lip volume/shape/border enhancement within the lips,
+// while still forbidding lip color/gloss/makeup/teeth and every other region.
+// Used only by add_lips_filler.
+const LIP_SAFETY =
+  ' ABSOLUTE PROHIBITIONS: ' +
+  'Lip volume, fullness, shape, and vermilion border MAY be enhanced -- but only within the lips themselves. ' +
+  'Do not change lip color. Do not add gloss, shine, lipstick, or any makeup. Do not whiten, change, or reveal more teeth. ' +
+  'Do not change the mouth width or the expression. ' +
+  'Do not smooth or retouch skin anywhere. Do not brighten, whiten, raise contrast, or apply any filter or beauty effect. ' +
+  'Do not enlarge, open, or alter the eyes in any way. Do not raise, darken, or reshape the brows. ' +
+  'Do not alter the nose, chin, jaw, or cheeks. ' +
+  'Do not change hairstyle, hair color, clothing, jewellery, head angle, camera crop, lighting, or background. ' +
+  'Do not reduce apparent age or add any de-aging effect. ' +
+  'Preserve identity, skin tone, ethnicity, and all ethnic features exactly as in the original photo. ' +
+  'The result must be unmistakably the same person. ' +
+  'Do not add text, labels, watermarks, or annotations.';
+
 const SCENARIO_PROMPTS = {
 
   stronger_sculptra: {
@@ -716,22 +734,14 @@ const SCENARIO_PROMPTS = {
     label: 'Add lip filler',
     description: 'Baseline + natural lip volume enhancement',
     prompt: SCENARIO_PROMPT_BASE +
-      'Treatment to simulate: the Sculptra baseline PLUS hyaluronic acid filler to the lips. ' +
-      'Show: a natural, tasteful increase in lip volume consistent with a subtle, skilled result. ' +
-      'The lips look slightly fuller and more defined, with a gently more visible vermilion border. ' +
-      'The upper and lower lips remain proportional -- do not invert the natural upper-to-lower balance. ' +
-      'The cupid\'s bow shape and position stay the same. The lips look hydrated and naturally fuller, never duck-shaped, shelf-like, or over-filled. ' +
-      'The change is strictly the lip body and border. Do not change lip color, do not add gloss or shine, do not whiten the teeth. ' +
-      'Do not touch the nose, chin, jawline, eyes, cheeks, or any other area.' +
-      ' ABSOLUTE PROHIBITIONS: ' +
-      'Do not smooth or retouch skin anywhere. Do not brighten, whiten, raise contrast, or apply any filter or beauty effect. ' +
-      'Do not enlarge, open, or alter the eyes in any way. Do not raise, darken, or reshape the brows. ' +
-      'Do not alter the nose, chin, or jaw. ' +
-      'Do not change hairstyle, hair color, clothing, jewellery, head angle, camera crop, lighting, or background. ' +
-      'Do not reduce apparent age or add any de-aging effect. ' +
-      'Preserve identity, skin tone, ethnicity, and all ethnic features exactly as in the original photo. ' +
-      'The result must be unmistakably the same person. ' +
-      'Do not add text, labels, watermarks, or annotations.'
+      'Treatment to simulate: the baseline PLUS hyaluronic acid lip filler. ' +
+      'This is a lip augmentation: the lips MUST end up clearly fuller than in the original photo, while still natural and tasteful. ' +
+      'Show a visible, believable increase in lip volume and projection. Both the upper and lower lip are fuller and better defined, ' +
+      'the vermilion border reads more defined, and the lips look hydrated and healthy. ' +
+      'Keep a natural upper-to-lower proportion (the lower lip stays slightly fuller than the upper), keep the cupid\'s bow shape and position, ' +
+      'and keep the mouth width unchanged. The result is a refined, natural lip enhancement -- never duck-shaped, shelf-like, everted, or over-filled, ' +
+      'but the increase in fullness must be plainly visible when compared to the original.' +
+      LIP_SAFETY
   },
 
   combination_plan: {

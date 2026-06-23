@@ -74,7 +74,7 @@ exports.handler = async (event) => {
 
     if (status.state === 'done') {
       const image = await store.get(jobId + ':result');
-      if (image) return json(200, { state: 'done', image });
+      if (image) return json(200, { state: 'done', image, model: status.model || null });
       return json(200, { state: 'error', error: 'The result has expired. Please generate again.', code: 'expired' });
     }
     if (status.state === 'error') {
