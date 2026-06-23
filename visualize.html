@@ -582,7 +582,7 @@
       <div class="type-toggle quad" id="typeToggle">
         <button class="type-btn active" data-type="biostim" type="button"><strong>Biostimulation</strong></button>
         <button class="type-btn" data-type="filler" type="button"><strong>HA Fillers</strong></button>
-        <button class="type-btn soon" data-type="neurotoxin" type="button" disabled><strong>Neurotoxin</strong><em class="soon-tag">Coming soon</em></button>
+        <button class="type-btn" data-type="tox" type="button"><strong>Neurotoxin</strong></button>
         <button class="type-btn" data-type="laser" type="button"><strong>Energy-Based Devices</strong></button>
       </div>
     </div>
@@ -665,7 +665,12 @@
             <button class="pill active" data-laser-type="rf" type="button"><strong>RF</strong></button>
             <button class="pill" data-laser-type="hifu" type="button"><strong>HIFU</strong></button>
           </div>
-          <div class="small" id="laserTypeHelp" style="margin-top:6px;color:var(--muted);font-style:italic;">RF: radiofrequency skin tightening (e.g. Thermage, XERF). Results develop gradually over about 3 to 6 months.</div>
+      </div>
+
+      <div id="toxControls" class="hidden">
+        <div class="field">
+          <label>Indication</label>
+          <div class="small" style="margin-top:6px;color:var(--muted);font-style:italic;">Lower-face contouring: masseter slimming and platysma / Nefertiti lift for a slimmer lower face and a cleaner jawline. This is not an anti-wrinkle simulation. Results develop over about 6 to 8 weeks.</div>
         </div>
       </div>
     </div>
@@ -1221,6 +1226,7 @@ function creditCostFor(type){
   // Costs here are in credit units (100 = one angle), matching SD_CFG.costs.
   // M14.2: Optimistic/Both removed, so no doubling. Laser is 100/angle like filler.
   if(type === 'laser')   return c.laser   || 100;
+  if(type === 'tox')     return c.tox     || 100;
   if(type === 'biostim') return c.biostim || 100;
   return c.filler || 100;
 }
@@ -2246,6 +2252,7 @@ document.querySelectorAll('#typeToggle .type-btn').forEach(btn => {
     document.getElementById('fillerControls').classList.toggle('hidden', state.type !== 'filler');
     document.getElementById('biostimControls').classList.toggle('hidden', state.type !== 'biostim');
     document.getElementById('laserControls').classList.toggle('hidden', state.type !== 'laser');
+    document.getElementById('toxControls').classList.toggle('hidden', state.type !== 'tox');
     if(state.type === 'filler'){
       // ensure a single area is selected and the volume help reflects it
       if(!state.areas || state.areas.length !== 1) state.areas = ['chin_jawline'];
@@ -2267,6 +2274,8 @@ function updatePhotoGuide(){
     tip = 'Frontal plus both 45° angles shows the full biostimulator effect (temple and cheek read best on the obliques). Same angles every visit.';
   } else if(state.type === 'laser'){
     tip = 'Frontal plus both 45° angles shows the tightening and lifting effect best (the jawline and lower face read clearly on the obliques). Same angles every visit.';
+  } else if(state.type === 'tox'){
+    tip = 'Frontal plus both 45° angles shows the lower-face contour change best (masseter width and the jaw angle read clearly on the obliques). Same angles every visit.';
   } else {
     const a = state.areas || [];
     if(a.includes('nose') || a.includes('chin_jawline') || a.includes('jawline') || a.includes('chin')){
@@ -3004,7 +3013,7 @@ async function finishSlot(angleId, auth, fillerIntensity){
   // is the final result. A passthrough apply() is set so the intensity slider
   // path doesn't break (it simply returns the raw AI at any slider position).
   // M13: BOTH biostim and filler now run gpt-image-2 direct, no compositor.
-  if(state.type === 'biostim' || state.type === 'filler' || state.type === 'laser'){
+  if(state.type === 'biostim' || state.type === 'filler' || state.type === 'laser' || state.type === 'tox'){
     // Passthrough: no slider blend; raw gpt-image-2 output is the final result
     sl.apply = () => sl.resultDataUrl;
     sl.status = 'done';
@@ -3705,9 +3714,9 @@ async function hiResResultFor(angleId){
 // Clinic-facing treatment name for tags and export kickers. The footer line
 // still carries the AI-generated disclosure, so the kicker can lead with the
 // treatment the patient is actually considering.
-// M14: biostim and laser both use the Expected/Optimistic/Both response-mode
-// machinery (gpt-image-2 direct, no compositor, 3-up Both grid, parallel passes).
-function usesResponseModes(){ return state.type === 'biostim' || state.type === 'laser'; }
+// M14: biostim, laser, and tox use the Expected response display (gpt-image-2
+// direct, no compositor, no filler volume tiers; Optimistic/Both removed).
+function usesResponseModes(){ return state.type === 'biostim' || state.type === 'laser' || state.type === 'tox'; }
 
 // Clinic-facing area labels for filler, used in result tags and exports.
 const FILLER_AREA_LABELS = {
@@ -3721,6 +3730,7 @@ const FILLER_AREA_LABELS = {
 function treatmentName(){
   if(state.type === 'biostim') return state.product === 'hdr' ? 'Hyperdilute Radiesse' : 'Biostimulator';
   if(state.type === 'laser') return state.laserType === 'hifu' ? 'HIFU' : 'RF';
+  if(state.type === 'tox') return 'Neurotoxin';
   if(state.type === 'filler'){
     // Always name the area treated, e.g. "HA Filler · Nose".
     const area = (state.areas && state.areas[0]) || 'chin_jawline';
@@ -3738,7 +3748,7 @@ function simKicker(angleId){
   // M14.2: Optimistic/Both removed, so the initial result is always Expected.
   // Laser additionally carries the gradual 6-month timeframe in the label.
   if(usesResponseModes()){
-    parts.push(state.type === 'laser' ? 'Expected (~6 mo)' : 'Expected');
+    parts.push(state.type === 'laser' ? 'Expected (~6 mo)' : state.type === 'tox' ? 'Expected (~6-8 wk)' : 'Expected');
   }
   if(state.type === 'filler' && sl.apply){
     // M14.1: label from the selected volume tier (conservative/moderate/enhanced),
