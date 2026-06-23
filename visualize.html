@@ -1169,18 +1169,18 @@ const ANGLE_DEF = {
 };
 const ANGLE_ORDER = ['frontal','r45','l45'];
 
-// Upload QC thresholds. Pose and face size are hard gates (a wrong pose or a
-// tiny face wastes a generation); exposure and sharpness are warnings only,
-// since those heuristics can false-positive on legitimate clinic photos.
-// M11.1: MAX_FACE_FRAC added -- tight crops (face > 75% of frame) clip the
-// warp window and reduce oblique accuracy; flagged as a warning.
-const QC = { MIN_FACE_FRAC:0.05, MAX_FACE_FRAC:0.75, LUMA_LO:55, LUMA_HI:205, SHARP_MIN:16 };
+// Upload QC thresholds. M14: all hard gates removed -- gpt-image-2 handles dark,
+// soft, and small-face photos well enough that rejections only add friction. The
+// only advisory note still shown is MAX_FACE_FRAC (step back if face fills the
+// whole frame, because tight crops hurt oblique angle accuracy).
+const QC = { MAX_FACE_FRAC:0.75 };
 
 function makeSlot(){
   return { file:null, originalDataUrl:null, beforeDataUrl:null, blackBgCache:null,
            resultDataUrl:null, apply:null, jobId:null, error:null,
            status:'empty', qcMsg:'',
            faceBbox:null, cropCache:null,
+           cropBeforeCache:null, cropResultCache:null, cropStrongCache:null, // M14: face/neck crop caches
            // Strong Response second pass (biostim only)
            strongDataUrl:null, strongJobId:null, strongStatus:'idle',
            viewMode:'standard' }; // 'standard' | 'strong'
@@ -1956,9 +1956,13 @@ window.addEventListener('message', (ev) => {
                 const mod = await import('./sculptra-mask.js?v=' + MASK_MODULE_VERSION);
                 const a = await mod.analyzePhoto(img);
                 const gate = poseMatches(id, a);
-                if(a && a.faceBbox) sl.faceBbox = a.faceBbox;
-                sl.status = gate.ok ? 'ready' : 'bad';
-                sl.qcMsg = gate.ok ? ('✓ ' + gate.msg) : ('✗ ' + gate.msg);
+                if(a && a.faceBbox){
+                  sl.faceBbox = a.faceBbox;
+                  try { sl.cropCache = await cropToFace(dataUrl, sl.faceBbox); } catch(e){}
+                }
+                // M14: advisory only, mirrors onSlotFile.
+                sl.status = 'ready';
+                sl.qcMsg = gate.ok ? ('✓ ' + gate.msg) : ('Note: ' + gate.msg);
               } catch(qcErr){
                 sl.status = 'ready'; sl.qcMsg = 'Photo restored. Ready to generate.';
               }
@@ -2161,7 +2165,7 @@ function renderSlots(){
     label.className = 'upload-zone' + (sl.originalDataUrl ? ' filled' : '');
     label.innerHTML =
       (sl.originalDataUrl
-        ? '<img src="' + sl.originalDataUrl + '" alt="" />'
+        ? '<img src="' + (sl.cropCache || sl.originalDataUrl) + '" alt="" />'
         : '<div class="upload-plus">+</div><div class="upload-txt">' + A.hint + '</div>')
       + '<input type="file" accept="image/*" data-angle="' + id + '" />'
       + '<div class="zone-tag">' + A.label + '</div>';
@@ -2186,6 +2190,7 @@ async function onSlotFile(angleId, file){
   sl.file = file;
   sl.originalDataUrl = await fileToDataUrl(file);
   sl.blackBgCache = null; sl.beforeDataUrl = null; sl.resultDataUrl = null; sl.apply = null; sl.error = null; sl.hiRes = null; sl.rawAiDataUrl = null; sl.cropCache = null;
+  sl.cropBeforeCache = null; sl.cropResultCache = null; sl.cropStrongCache = null;
   sl.status = 'checking'; sl.qcMsg = 'Checking pose and photo quality…';
   renderSlots(); syncGenerateBtn();
   try {
@@ -2194,20 +2199,20 @@ async function onSlotFile(angleId, file){
     const a = await mod.analyzePhoto(img);
     console.log('%c[Visualize] QC ' + angleId + ': view=' + (a && a.view) + ' yaw≈' + (a && a.yawDeg != null ? Math.round(a.yawDeg) : '?') + '° nearSide=' + (a && a.nearSide) + ' faceFrac=' + (a && a.faceFrac != null ? a.faceFrac.toFixed(3) : '?') + ' luma=' + (a && a.meanLuma != null ? Math.round(a.meanLuma) : '?') + ' sharp=' + (a && a.sharpness != null ? Math.round(a.sharpness) : '?'), 'color:#C8725A');
     const gate = poseMatches(angleId, a);
-    if(a && a.faceBbox) sl.faceBbox = a.faceBbox; // M11.1: store for display crop
-    if(!gate.ok){
-      sl.status = 'bad'; sl.qcMsg = '✗ ' + gate.msg;
-    } else if(a.faceFrac != null && a.faceFrac < QC.MIN_FACE_FRAC){
-      sl.status = 'bad'; sl.qcMsg = '✗ Face is too small in the frame. Move closer so the face fills most of the photo.';
-    } else {
-      const warns = [];
-      if(a.meanLuma != null && a.meanLuma < QC.LUMA_LO) warns.push('photo is quite dark');
-      if(a.meanLuma != null && a.meanLuma > QC.LUMA_HI) warns.push('photo is very bright');
-      if(a.sharpness != null && a.sharpness < QC.SHARP_MIN) warns.push('may be slightly blurry');
-      if(a.faceFrac != null && a.faceFrac > QC.MAX_FACE_FRAC) warns.push('face fills too much of the frame -- step back slightly for best oblique accuracy');
-      sl.status = 'ready';
-      sl.qcMsg = '✓ ' + gate.msg + (warns.length ? ' Note: ' + warns.join('; ') + '. Even light and a steady shot give the best result.' : '');
+    if(a && a.faceBbox){
+      sl.faceBbox = a.faceBbox; // M11.1: store for display crop
+      // M14: pre-compute cropped thumbnail for upload slot display.
+      try { sl.cropCache = await cropToFace(sl.originalDataUrl, sl.faceBbox); } catch(e){}
     }
+    // M14: all gates are advisory only -- no photo is ever rejected.
+    // Pose mismatch and no-face-detected become notes; luma/sharpness checks removed entirely.
+    const extraNote = (a && a.faceFrac != null && a.faceFrac > QC.MAX_FACE_FRAC)
+      ? ' Face fills most of the frame -- step back slightly for best oblique accuracy.'
+      : '';
+    sl.status = 'ready';
+    sl.qcMsg = gate.ok
+      ? ('✓ ' + gate.msg + extraNote)
+      : ('Note: ' + gate.msg + extraNote);
   } catch(err){
     console.warn('[Visualize] Photo QC failed; accepting the photo (mask fail-safes still apply).', err);
     sl.status = 'ready'; sl.qcMsg = 'Pose check unavailable; photo accepted.';
@@ -2835,8 +2840,8 @@ function setComparePos(pos){
 }
 function showCompare(){
   const sl = activeSlot();
-  cmpBefore.src = sl.beforeDataUrl || sl.originalDataUrl;
-  cmpAfter.src = sl.resultDataUrl;
+  cmpBefore.src = sl.cropBeforeCache || sl.beforeDataUrl || sl.originalDataUrl;
+  cmpAfter.src = sl.cropResultCache || sl.resultDataUrl;
   setComparePos(50);
   resultGrid.style.display = 'none';
   compareWrap.style.display = 'block';
@@ -2921,11 +2926,20 @@ async function prepAndStartSlot(angleId, auth, isRegen, fillerIntensity){
   if(state.blackBg){
     if(!sl.blackBgCache){
       try { sl.blackBgCache = await toBlackBackground(sl.originalDataUrl); }
-      catch(err){ console.error('[Visualize] ' + angleId + ': background isolation failed; using the original.', err); sl.blackBgCache = null; }
+      catch(err){
+        console.warn('[Visualize] ' + angleId + ': bg removal failed, retrying...', err);
+        try { sl.blackBgCache = await toBlackBackground(sl.originalDataUrl); }
+        catch(err2){ console.error('[Visualize] ' + angleId + ': bg removal failed both attempts; using original.', err2); sl.blackBgCache = null; }
+      }
     }
     if(sl.blackBgCache) beforeDataUrl = sl.blackBgCache;
+    else setStatus('Note: background removal unavailable for this photo. Generating from original.', 'idle');
   }
   sl.beforeDataUrl = beforeDataUrl;
+  // M14: pre-compute cropped before image for display and export (cosmetic only; generation uses full-frame above).
+  if(sl.faceBbox){
+    try { sl.cropBeforeCache = await cropToFace(sl.beforeDataUrl, sl.faceBbox); } catch(e){}
+  }
 
   const blob = await resizeToUpload(beforeDataUrl);
   const form = new FormData();
@@ -3001,6 +3015,10 @@ async function finishSlot(angleId, auth, fillerIntensity){
   const sl = state.slots[angleId];
   const polled = await pollForResult(sl.jobId, auth);
   sl.resultDataUrl = polled.image;
+  // M14: pre-compute cropped result for display and export.
+  if(sl.faceBbox){
+    try { sl.cropResultCache = await cropToFace(sl.resultDataUrl, sl.faceBbox); } catch(e){}
+  }
   sl.modelUsed = polled.model; // real model name reported by the backend, or null
   // M9.7: pre-composite frame for ?debug=layers. For filler per-level cache,
   // store rawAiDataUrl per level so the debug panel shows the correct Raw AI.
@@ -3214,7 +3232,7 @@ async function cropToFace(dataUrl, bbox){
 function renderActiveSlot(){
   const sl = activeSlot();
   const multi = state.selectedAngles.length > 1;
-  document.getElementById('originalResult').src = sl.beforeDataUrl || sl.originalDataUrl || '';
+  document.getElementById('originalResult').src = sl.cropBeforeCache || sl.beforeDataUrl || sl.originalDataUrl || '';
   // Route through applyActiveView so enhanced mode shows sl.strongDataUrl correctly.
   // Do not set aiResult.src directly here; applyActiveView() at line 2285 handles it.
   let tag = 'Simulated · ' + treatmentName();
@@ -3252,7 +3270,7 @@ function renderActiveSlot(){
     // 3-up: Original | Expected | Optimistic
     if(grid) grid.classList.add('three-up');
     if(optCard) optCard.style.display = '';
-    if(optImg) optImg.src = sl.strongDataUrl;
+    if(optImg) optImg.src = sl.cropStrongCache || sl.strongDataUrl;
     // middle card is always the Expected result in Both mode
     state.courseMode = 'standard';
     let mid = 'Simulated · ' + treatmentName();
@@ -3404,6 +3422,10 @@ async function startEnhancedSlot(angleId, auth){
         // output is the final Optimistic result. No mask, no safety clamp needed.
         if(usesResponseModes()){
           sl.strongDataUrl = data.image;
+          // M14: pre-compute cropped strong result for display and export.
+          if(sl.faceBbox){
+            try { sl.cropStrongCache = await cropToFace(sl.strongDataUrl, sl.faceBbox); } catch(e){}
+          }
           sl.strongApply = () => data.image; // passthrough for slider
           sl.strongStatus = 'done';
           // M13: in parallel Both mode, default the view to Expected. Do NOT
@@ -3533,8 +3555,8 @@ function applyActiveView(){
   // identical to Standard -- sl.strongDataUrl was never being displayed.
   const isEnhancedView = state.courseMode === 'enhanced' && sl.strongStatus === 'done' && sl.strongDataUrl;
   const displayUrl = isEnhancedView
-    ? sl.strongDataUrl
-    : (sl.resultDataUrl || sl.beforeDataUrl || sl.originalDataUrl || '');
+    ? (sl.cropStrongCache || sl.strongDataUrl)
+    : (sl.cropResultCache || sl.resultDataUrl || sl.cropBeforeCache || sl.beforeDataUrl || sl.originalDataUrl || '');
   document.getElementById('aiResult').src = displayUrl;
 }
 
@@ -3765,7 +3787,7 @@ function simKicker(angleId){
 // single-angle export and the multi-angle case sheet (one row per angle).
 async function drawPair(ctx, angleId, yOff, panelW, panelH, gap, includeText){
   const sl = state.slots[angleId];
-  const before = await loadImage(sl.beforeDataUrl || sl.originalDataUrl);
+  const before = await loadImage(sl.cropBeforeCache || sl.beforeDataUrl || sl.originalDataUrl);
   // M9.9: exports render at the hi-res grid; the live 1024 frame is the fallback.
   // Enhanced course: if the case is in enhanced mode and the active slot has a
   // composited strong result, export that instead of the standard result.
@@ -3773,11 +3795,11 @@ async function drawPair(ctx, angleId, yOff, panelW, panelH, gap, includeText){
   const isViewingStrong = state.courseMode === 'enhanced' && sl.strongStatus === 'done' && sl.strongDataUrl;
   let afterUrl;
   if(isViewingStrong){
-    afterUrl = sl.strongDataUrl;
+    afterUrl = sl.cropStrongCache || sl.strongDataUrl;
   } else {
     let hiRes = null;
     try { hiRes = await hiResResultFor(angleId); } catch(e){ console.warn('[Visualize] hi-res export render failed; using live frame.', e); }
-    afterUrl = hiRes || sl.resultDataUrl;
+    afterUrl = hiRes || sl.cropResultCache || sl.resultDataUrl;
   }
   const after = await loadImage(afterUrl);
 
@@ -3840,11 +3862,11 @@ async function drawPair(ctx, angleId, yOff, panelW, panelH, gap, includeText){
 // Mirrors drawPair's editorial labels but with three columns.
 async function drawTriple(ctx, angleId, panelW, panelH, gap, includeText){
   const sl = state.slots[angleId];
-  const before = await loadImage(sl.beforeDataUrl || sl.originalDataUrl);
-  let expectedUrl = sl.resultDataUrl;
+  const before = await loadImage(sl.cropBeforeCache || sl.beforeDataUrl || sl.originalDataUrl);
+  let expectedUrl = sl.cropResultCache || sl.resultDataUrl;
   try { const hi = await hiResResultFor(angleId); if(hi) expectedUrl = hi; } catch(e){}
   const expected = await loadImage(expectedUrl);
-  const optimistic = await loadImage(sl.strongDataUrl);
+  const optimistic = await loadImage(sl.cropStrongCache || sl.strongDataUrl);
 
   function cover(img, x, w, h){
     const scale = Math.max(w/img.width, h/img.height);
@@ -3954,15 +3976,15 @@ async function drawExport(includeText, angleIds){
     const id = cols[ci];
     const sl = state.slots[id];
     const x = ci * (panelW + gap);
-    const before = await loadImage(sl.beforeDataUrl || sl.originalDataUrl);
+    const before = await loadImage(sl.cropBeforeCache || sl.beforeDataUrl || sl.originalDataUrl);
     const isSheetStrong = state.courseMode === 'enhanced' && sl.strongStatus === 'done' && sl.strongDataUrl;
     let sheetAfterUrl;
     if(isSheetStrong){
-      sheetAfterUrl = sl.strongDataUrl;
+      sheetAfterUrl = sl.cropStrongCache || sl.strongDataUrl;
     } else {
       let hiRes = null;
       try { hiRes = await hiResResultFor(id); } catch(e){}
-      sheetAfterUrl = hiRes || sl.resultDataUrl;
+      sheetAfterUrl = hiRes || sl.cropResultCache || sl.resultDataUrl;
     }
     const after = await loadImage(sheetAfterUrl);
 
@@ -4474,7 +4496,7 @@ function renderScenarioResult(scenarioKey){
     // Three-panel layout: original photo | Sculptra 6-month baseline | scenario result.
     // This lets the patient see the full journey: where they started, what Sculptra
     // achieves, and what the add-on scenario adds on top.
-    const originalUrl = sl ? (sl.beforeDataUrl || sl.originalDataUrl || '') : '';
+    const originalUrl = sl ? (sl.cropBeforeCache || sl.beforeDataUrl || sl.originalDataUrl || '') : '';
     const baselineDisplayUrl = (state.type === 'biostim' && sl && sl.apply)
       ? sl.apply(1.0)
       : (sl ? (sl.resultDataUrl || '') : '');
