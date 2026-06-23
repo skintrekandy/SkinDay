@@ -66,7 +66,8 @@ function creditCost(fields) {
   // M12.2: scenario exploration pass cost (env-driven; default 1).
   // Server verifies baseline ownership below before this price applies.
   if (fields && fields.scenarioMode === 'true') return COST_SCENARIO;
-  return (fields && fields.type === 'biostim') ? COST_BIOSTIM : COST_FILLER;
+  // Laser is priced like biostim (same Expected/Optimistic/Both model).
+  return (fields && (fields.type === 'biostim' || fields.type === 'laser')) ? COST_BIOSTIM : COST_FILLER;
 }
 
 async function verifyUser(event) {
@@ -125,9 +126,9 @@ function parseMultipart(event) {
 const FIELD_KEYS = [
   'type', 'areas', 'goal', 'intensity', 'product', 'projection',
   'timeline', 'note', 'prompt', 'isStrongPass',
-  'angle', 'sex', 'view', 'phenotype', 'sculptraPhenotype', 'patientAge',
+  'angle', 'sex', 'view', 'phenotype', 'sculptraPhenotype', 'patientAge', 'laserType',
   'sourceJobId',
-  'scenarioMode', 'scenarioKey', 'rawScenarioMode'  // M12.2: scenario exploration pass
+  'scenarioMode', 'scenarioKey', 'rawScenarioMode', 'baselineType'  // M12.2 scenario; M14 baselineType
 ];
 
 exports.handler = async (event) => {
@@ -170,8 +171,21 @@ exports.handler = async (event) => {
     // credit instead of the 2-credit biostim baseline.
     // Beta-key users are exempt from ownership verification (internal use).
     if (fields.scenarioMode === 'true') {
-      const VALID_SCENARIO_KEYS = ['stronger_sculptra', 'add_chin_jaw_filler', 'add_temple_support', 'add_tear_trough', 'add_nose_filler', 'add_lips_filler', 'combination_plan'];
-      if (!VALID_SCENARIO_KEYS.includes(fields.scenarioKey)) {
+      // M14: each scenario key declares which baseline treatment types it may
+      // build on. Filler-area add-ons work on any baseline; stronger_sculptra and
+      // combination_plan are Sculptra-only; add_biostim_lift is for laser baselines.
+      const SCENARIO_SOURCE_TYPES = {
+        stronger_sculptra:   ['biostim'],
+        combination_plan:    ['biostim'],
+        add_chin_jaw_filler: ['biostim', 'filler', 'laser'],
+        add_cheek_filler:    ['filler', 'laser'],
+        add_temple_support:  ['biostim', 'filler', 'laser'],
+        add_tear_trough:     ['biostim', 'filler', 'laser'],
+        add_nose_filler:     ['biostim', 'filler', 'laser'],
+        add_lips_filler:     ['biostim', 'filler', 'laser'],
+        add_biostim_lift:    ['laser']
+      };
+      if (!SCENARIO_SOURCE_TYPES[fields.scenarioKey]) {
         return { statusCode: 400, headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ error: 'Invalid scenario key.', code: 'BAD_SCENARIO_KEY' }) };
       }
@@ -182,8 +196,8 @@ exports.handler = async (event) => {
           return { statusCode: 400, headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ error: 'Scenario requires a valid source job.', code: 'MISSING_SOURCE_JOB' }) };
         }
-        // Verify source job: must belong to this user, be done, and be a
-        // real Sculptra baseline (not itself a scenario or a different treatment).
+        // Verify source job: must belong to this user, be done, be a real baseline
+        // (not itself a scenario), and be a treatment type this scenario can build on.
         try {
           const srcBilling = await store.get(srcId + ':billing', { type: 'json' });
           const srcStatus  = await store.get(srcId + ':status',  { type: 'json' });
@@ -195,13 +209,24 @@ exports.handler = async (event) => {
             return { statusCode: 400, headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ error: 'Source job has not completed successfully.', code: 'SOURCE_JOB_NOT_DONE' }) };
           }
-          // Require source job to be a Sculptra biostim baseline, not a scenario.
-          if (srcBilling.type !== 'biostim' || srcBilling.product !== 'sculptra' || srcBilling.scenarioMode === true) {
+          if (srcBilling.scenarioMode === true) {
             return { statusCode: 400, headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ error: 'Source job must be a completed Sculptra baseline generation.', code: 'SOURCE_JOB_NOT_SCULPTRA' }) };
+              body: JSON.stringify({ error: 'Cannot build a scenario on top of another scenario.', code: 'SOURCE_JOB_IS_SCENARIO' }) };
+          }
+          // stronger_sculptra additionally requires a Sculptra (not HDR) biostim baseline.
+          if (fields.scenarioKey === 'stronger_sculptra' || fields.scenarioKey === 'combination_plan') {
+            if (srcBilling.type !== 'biostim' || srcBilling.product !== 'sculptra') {
+              return { statusCode: 400, headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ error: 'This scenario requires a completed Sculptra baseline.', code: 'SOURCE_JOB_NOT_SCULPTRA' }) };
+            }
+          }
+          const allowed = SCENARIO_SOURCE_TYPES[fields.scenarioKey];
+          if (!allowed.includes(srcBilling.type)) {
+            return { statusCode: 400, headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ error: 'This scenario cannot be applied to that baseline treatment type.', code: 'SOURCE_JOB_TYPE_MISMATCH' }) };
           }
         } catch (e) {
-          console.error('[M12.2] scenario source job lookup failed:', (e && e.message) || e);
+          console.error('[M14] scenario source job lookup failed:', (e && e.message) || e);
           return { statusCode: 500, headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ error: 'Could not verify source job. Please try again.', code: 'SOURCE_JOB_LOOKUP_ERROR' }) };
         }
@@ -244,7 +269,7 @@ exports.handler = async (event) => {
           // Requiring 'done' here would overcharge parallel Both. Ownership + a
           // valid pending/done biostim source job is sufficient proof of payment intent.
           const validSource = sourceBilling && sourceBilling.userId === user.id &&
-            sourceBilling.type === 'biostim' &&
+            (sourceBilling.type === 'biostim' || sourceBilling.type === 'laser') &&
             sourceStatus && (sourceStatus.state === 'done' || sourceStatus.state === 'pending');
           if (validSource) {
             cost = COST_ENHANCED; // Enhanced pass cost per angle (env-driven; default 1)

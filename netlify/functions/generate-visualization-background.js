@@ -577,7 +577,7 @@ exports.handler = async (event) => {
 
       let staticPrompt;
       try {
-        staticPrompt = buildScenarioPrompt(scenarioKey, f.view || 'frontal');
+        staticPrompt = buildScenarioPrompt(scenarioKey, f.view || 'frontal', f.baselineType);
       } catch (e) {
         await fail('Invalid scenario key: ' + scenarioKey, 'bad_request');
         await refundIfBilled(store, jobId, 'invalid scenarioKey');
@@ -626,7 +626,12 @@ exports.handler = async (event) => {
       let scenarioPrompt = staticPrompt;
       let plannerUsed = false;
 
-      if (plannerEnabled && PLANNER_SCENARIOS.includes(scenarioKey) && sourceImageB64) {
+      // M14: planner is Sculptra-locked (its templates describe the baseline as a
+      // Sculptra response), so it runs ONLY for Sculptra baselines. Cross-type
+      // baselines (filler / laser) skip the planner and use the static add-on prompt,
+      // which edits the already-treated baseline image directly.
+      const isSculptraBaseline = (f.baselineType === 'biostim' || !f.baselineType);
+      if (plannerEnabled && isSculptraBaseline && PLANNER_SCENARIOS.includes(scenarioKey) && sourceImageB64) {
         try {
           scenarioPrompt = await runScenarioPlanner({
             client,
@@ -666,16 +671,18 @@ exports.handler = async (event) => {
       //   SCENARIO_IMAGE_MODEL          -- model for all other scenarios
       // IMPORTANT: gpt-image-2 always processes inputs at high fidelity and rejects input_fidelity.
       // So input_fidelity is omitted for any model other than gpt-image-1.
-      // M13: the new HA-filler scenarios (lips, nose) run on gpt-image-2 -- the
-      // same model validated for the main filler path. gpt-image-1 at high
-      // input_fidelity suppressed these localized changes into invisibility.
-      // SCENARIO_FILLER_IMAGE_MODEL lets this be reverted without a redeploy.
+      // M14: cross-type scenario baselines (filler / laser) generate on gpt-image-2,
+      // the validated direct-edit model. Sculptra-baseline scenarios keep their
+      // existing per-scenario model routing.
+      const isCrossTypeScenario = (f.baselineType === 'filler' || f.baselineType === 'laser');
       const FILLER_SCENARIOS = ['add_lips_filler', 'add_nose_filler'];
-      const imageModel = (scenarioKey === 'stronger_sculptra')
-        ? (process.env.SCENARIO_SCULPTRA_IMAGE_MODEL || 'gpt-image-1')
-        : FILLER_SCENARIOS.includes(scenarioKey)
-          ? (process.env.SCENARIO_FILLER_IMAGE_MODEL || 'gpt-image-2')
-          : (process.env.SCENARIO_IMAGE_MODEL || 'gpt-image-1');
+      const imageModel = isCrossTypeScenario
+        ? (process.env.SCENARIO_FILLER_IMAGE_MODEL || 'gpt-image-2')
+        : (scenarioKey === 'stronger_sculptra')
+          ? (process.env.SCENARIO_SCULPTRA_IMAGE_MODEL || 'gpt-image-1')
+          : FILLER_SCENARIOS.includes(scenarioKey)
+            ? (process.env.SCENARIO_FILLER_IMAGE_MODEL || 'gpt-image-2')
+            : (process.env.SCENARIO_IMAGE_MODEL || 'gpt-image-1');
 
       // M12.6: image = original photo only. Single image, one clean pass.
       const scenarioParams = {
@@ -779,6 +786,7 @@ exports.handler = async (event) => {
         view:             f.view,
         phenotype:        f.phenotype,
         sculptraPhenotype: f.sculptraPhenotype,
+        laserType:        f.laserType,
         patientAge:       f.patientAge ? parseInt(f.patientAge, 10) : null,
       });
     } else {
@@ -791,6 +799,7 @@ exports.handler = async (event) => {
     let tail;
     if (forceServerSafety) tail = SERVER_SAFETY;
     else if (isSculptra) tail = '';
+    else if (f.type === 'laser') tail = ''; // laser prompt carries its own complete guardrail
     else if (isChinJaw) tail = CHIN_JAW_SAFETY;
     else tail = SERVER_SAFETY;
     const prompt = core + tail;
@@ -819,6 +828,8 @@ exports.handler = async (event) => {
       modelName = process.env.BIOSTIM_IMAGE_MODEL || 'gpt-image-2';
     } else if (f.type === 'filler') {
       modelName = process.env.FILLER_IMAGE_MODEL || 'gpt-image-2';
+    } else if (f.type === 'laser') {
+      modelName = process.env.LASER_IMAGE_MODEL || 'gpt-image-2';
     } else {
       modelName = 'gpt-image-1';
     }

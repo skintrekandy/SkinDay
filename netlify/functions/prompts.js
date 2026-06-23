@@ -49,6 +49,27 @@ const SCULPTRA_FRONTAL_HARD_LOCK =
 
 // ---- Filler: per-area modules (v1) ----------------------------------------
 // expected: the real change this area produces.  avoid: the drift to block.
+// M14.1: lips and nose are delicate areas whose default `expected` text is
+// deliberately conservative ("at most a small amount", "one small dorsal bump").
+// That cap suppressed the moderate/enhanced tiers into near-invisibility on the
+// main filler path. These per-intensity overrides let the tier actually scale the
+// magnitude; the per-area `avoid` lists (unchanged) keep the result tasteful.
+const FILLER_AREA_INTENSITY = {
+  lips: {
+    moderate: 'a visibly fuller lip: clearly more body in both the upper and lower lip and a more defined vermilion border, a natural and balanced enhancement, keeping the natural upper-to-lower balance, the cupid\'s bow position, and the mouth width',
+    enhanced: 'a clearly and noticeably fuller lip: substantially more body in both the upper and lower lip with a well-defined vermilion border and a soft natural pout, an obvious but still tasteful enhancement, keeping the natural upper-to-lower balance, the cupid\'s bow position, and the mouth width'
+  },
+  nose: {
+    moderate: 'a refined nasal profile (liquid rhinoplasty): smooth the dorsal bump so the side profile reads clearly straighter, with a subtly refined tip, a visible profile improvement',
+    enhanced: 'a clearly refined nasal profile (liquid rhinoplasty): noticeably smooth the dorsal bump so the side profile reads distinctly straighter and cleaner, with a subtly refined tip, an obvious profile improvement that still looks natural'
+  }
+};
+function fillerAreaExpected(a, intensity){
+  const tier = FILLER_AREA_INTENSITY[a];
+  if (tier && tier[intensity]) return tier[intensity];
+  return FILLER_AREAS[a] ? FILLER_AREAS[a].expected : '';
+}
+
 const FILLER_AREAS = {
   chin: {
     expected: 'slightly more chin projection and a better-balanced lower-face profile',
@@ -466,10 +487,54 @@ function buildSculptraPrompt(sel, m, timelineText) {
   return `${NO_TEXT_RULE} ${SCULPTRA_NLF_CONSTRAINT} ${framing} ${SCULPTRA_FEATURE_LOCK} ${SCULPTRA_VIEW_LOCKS[view] || SCULPTRA_VIEW_LOCKS.frontal} ${allowedZones} ${clinicalLogicBlock}Make ONLY this change: ${magnitude} ${outputRules} ${timelineText}${cleanNote}${BIOSTIM_NEGATIVE_GUARDRAIL}`;
 }
 
+// M14: Skin & Laser (energy-based skin tightening / lifting).
+// RF (e.g. Thermage, XERF) and HIFU (e.g. Ultherapy, Sofwave). gpt-image-2 direct,
+// no compositor. Unlike biostim, skin smoothing/firming IS an expected effect here,
+// so this guardrail permits tightening/smoothing while still locking identity,
+// age, features, and forbidding added volume (the change is tightening, not filler).
+const LASER_NEGATIVE_GUARDRAIL =
+  ' CRITICAL GUARDRAIL: This is an energy-based skin-tightening result, not a beauty filter. ' +
+  'Firmer, smoother, more lifted skin is the intended change, but do NOT de-age the patient, do NOT erase identity, and do NOT airbrush the skin into a flawless plastic texture. ' +
+  'Preserve exactly: identity, apparent age, skin tone, ethnicity and all ethnic features, pigmentation, freckles, pores (they may read slightly refined but must remain visible), facial asymmetry, eye shape and size, brows, lips, nose, ears, hair, headband, neck, clothing, background, lighting, and camera angle. ' +
+  'Do NOT add facial volume or filler-like fullness anywhere -- the change comes from tightening and lifting existing tissue, never from adding volume. ' +
+  'Do not enlarge eyes, change makeup, whiten teeth, or add gloss. ' +
+  'The result must look like the same person after a real tightening treatment, not a younger or retouched person. ' +
+  'Do not add text, labels, watermarks, or annotations.';
+
+const LASER_TX = {
+  rf: {
+    expected:   'Magnitude: a subtle but visible non-surgical skin-tightening result from radiofrequency (such as Thermage). The skin looks firmer and more toned, fine crepey texture is gently reduced, and the lower face and jawline contour reads slightly tighter as lax skin retracts, with mild softening of early jowl and submental laxity. The effect is gradual and natural -- firmer, healthier, better-supported skin, not a facelift, not filler volume, not a sharply carved jaw.',
+    optimistic: 'Magnitude: an upper-range radiofrequency tightening result for a strong responder over a full course. Clearly firmer, more lifted skin with a visibly tighter jawline, reduced lower-face and submental laxity, smoother skin texture, and a more defined mandibular contour. Still natural and unmistakably the same person -- firmer and lifted, never surgical, never filler-volumized, never carved or angular.'
+  },
+  hifu: {
+    expected:   'Magnitude: a subtle but visible non-surgical lifting result from focused ultrasound (such as Ultherapy or Sofwave). The lower face and jawline look gently lifted and tightened, early jowl and submental laxity is softened, the jaw contour reads cleaner, and the skin looks firmer overall, with possibly a slight lift to the brow and midface. Gradual and natural -- a lift from tissue tightening, not a facelift, not filler volume.',
+    optimistic: 'Magnitude: an upper-range focused-ultrasound lift for a strong responder over a full course. A clearly lifted and tightened lower face with a defined jawline, noticeably reduced jowl and submental laxity, a cleaner neck-to-jaw transition, firmer midface, and a subtle brow lift. Still natural and unmistakably the same person -- lifted and firm, never surgical, never filler-volumized.'
+  }
+};
+
+function buildLaserPrompt(sel) {
+  const view = normalizeView(sel);
+  const tx = LASER_TX[sel.laserType] || LASER_TX.rf;
+  const isStrong = sel.isStrongPass === 'true' || sel.isStrongPass === true;
+  const projection = (sel.projection === 'optimistic' || isStrong) ? 'optimistic' : 'expected';
+  const magnitude = tx[projection];
+  const isOblique = view !== 'frontal';
+  const framing = isOblique
+    ? 'Produce a clinically realistic photograph of the same person after an energy-based skin-tightening treatment, keeping the same oblique pose, identity, apparent age, skin character, lighting, and camera setup.'
+    : 'Produce a clinically realistic photograph of the same person after an energy-based skin-tightening treatment, keeping the same frontal pose, identity, apparent age, skin character, lighting, and camera setup.';
+  const viewLock = SCULPTRA_VIEW_LOCKS[view] || SCULPTRA_VIEW_LOCKS.frontal;
+  const cleanNote = sanitizeNote(sel.note);
+  return `${NO_TEXT_RULE} ${framing} ${viewLock} Make ONLY this change: ${magnitude}${cleanNote}${LASER_NEGATIVE_GUARDRAIL}`;
+}
+
 // Assemble the CORE prompt from selections. The safety base is appended elsewhere.
 function buildCorePrompt(sel) {
   const sel_ = sel || {};
   const note = sanitizeNote(sel_.note);
+
+  if (sel_.type === 'laser') {
+    return buildLaserPrompt(sel_);
+  }
 
   if (sel_.type === 'biostim') {
     const product = BIOSTIM[sel_.product] ? sel_.product : 'sculptra';
@@ -513,6 +578,7 @@ function buildCorePrompt(sel) {
   // Chin + jawline are treated as a single lower-face unit when both selected.
   // M11.1: branched on sex -- male and female have different aesthetic targets.
   // Any other selected areas still append as their own clauses (full-face cases).
+  const intensityKey = sel_.intensity || 'natural';
   let expected, avoid;
   if (areas.includes('chin') && areas.includes('jawline')) {
     const isMale = sel_.sex === 'male';
@@ -521,11 +587,11 @@ function buildCorePrompt(sel) {
     avoid = cjPrompt.avoid;
     const extra = areas.filter(a => a !== 'chin' && a !== 'jawline');
     if (extra.length) {
-      expected += '; ' + extra.map(a => FILLER_AREAS[a].expected).join('; ');
+      expected += '; ' + extra.map(a => fillerAreaExpected(a, intensityKey)).join('; ');
       avoid += '; ' + extra.map(a => FILLER_AREAS[a].avoid).join('; ');
     }
   } else {
-    expected = areas.map(a => FILLER_AREAS[a].expected).join('; ');
+    expected = areas.map(a => fillerAreaExpected(a, intensityKey)).join('; ');
     avoid = areas.map(a => FILLER_AREAS[a].avoid).join('; ');
   }
 
@@ -764,7 +830,64 @@ const SCENARIO_PROMPTS = {
 // Build a complete scenario prompt for a given scenario key and view.
 // Used as the static fallback when the planner is disabled or fails.
 // NO_TEXT_RULE is prepended first (same pattern as buildSculptraPrompt).
-function buildScenarioPrompt(scenarioKey, view) {
+// M14: CROSS-TYPE ADD-ON SCENARIOS.
+// Used when the baseline is a HA filler or RF/HIFU result (not Sculptra). Unlike
+// the Sculptra scenarios -- which edit the ORIGINAL photo and re-describe the whole
+// plan via the (Sculptra-locked) planner -- these edit the BASELINE image directly,
+// adding ONE area on top of what is already shown so add-ons stack correctly.
+// No planner, gpt-image-2 direct.
+function addonSafety(changeArea){
+  return ' ABSOLUTE PROHIBITIONS: The ONLY permitted change is ' + changeArea + '. ' +
+    'Keep the existing treatment result already visible in this photo fully intact. ' +
+    'Preserve identity, apparent age, skin tone, ethnicity and all ethnic features, pores, pigmentation, freckles, facial asymmetry, hair, headband, neck, clothing, background, lighting, and camera angle exactly. ' +
+    'Do not smooth or retouch skin, do not brighten, do not de-age, do not enlarge or alter the eyes, do not reshape the brows, do not add makeup, do not whiten teeth. ' +
+    'The result must be unmistakably the same person with the prior result intact plus only this one added change, never a dramatic or surgical transformation. ' +
+    'Do not add text, labels, watermarks, or annotations.';
+}
+const CROSS_ADDON_BASE =
+  'This photograph already shows the result of a prior aesthetic treatment on this patient. ' +
+  'Keep that existing result and the identity exactly, and ADD ONLY the single change described below, as one natural-looking combined result. ';
+
+const CROSS_ADDON_PROMPTS = {
+  add_chin_jaw_filler: CROSS_ADDON_BASE +
+    'Add hyaluronic acid filler to the chin and jawline: more chin projection and vertical chin height, a clean continuous mandibular border, and prejowl support, so the lower third reads more defined and refined. Keep it conservative and natural.' +
+    addonSafety('hyaluronic acid filler to the chin and jawline'),
+  add_cheek_filler: CROSS_ADDON_BASE +
+    'Add hyaluronic acid filler to the cheeks (midface): restore soft midface and lateral cheek volume so the cheek reads fuller and better supported, with a smooth continuous transition from the cheekbone into the midface. Subtle and natural, never overfilled, shelf-like, or pillowed.' +
+    addonSafety('hyaluronic acid filler to the cheeks and midface'),
+  add_temple_support: CROSS_ADDON_BASE +
+    'Add focused volume to the temples: fill the temporal hollow so the forehead-to-cheek transition reads as a more continuous convex surface and the upper lateral face reads as a smooth connected arc. Strictly the temporal hollow and immediately adjacent tissue.' +
+    addonSafety('temple (temporal hollow) volume'),
+  add_tear_trough: CROSS_ADDON_BASE +
+    'Add hyaluronic acid correction of the under-eye (tear trough) hollow: soften the groove so the lid-cheek junction reads as a smooth, well-supported transition and the hollow shadow is reduced because the depression is filled from beneath, never because the skin is brightened. Subtle and natural, never puffy or over-filled. Do not change eye shape, eye size, eyelid, lashes, or iris.' +
+    addonSafety('the under-eye tear trough hollow'),
+  add_nose_filler: CROSS_ADDON_BASE +
+    'Add hyaluronic acid filler to the nose (liquid rhinoplasty): a subtle, natural refinement consistent with a skilled injector -- smooth a dorsal hump so the profile reads straighter, or gently refine and lift the tip, doing only what this nose needs. Subtle, never a dramatic reshape. Do not narrow the nostrils, do not shorten or lengthen the nose, do not change the nose width from the front.' +
+    addonSafety('hyaluronic acid refinement of the nose'),
+  add_lips_filler: CROSS_ADDON_BASE +
+    'Add hyaluronic acid lip filler: the lips end up clearly fuller than now while staying natural and tasteful, both upper and lower lip fuller and better defined with a more defined vermilion border, keeping a natural upper-to-lower proportion, the cupid\'s bow shape and position, and the same mouth width. Never duck-shaped, shelf-like, everted, or over-filled.' +
+    LIP_SAFETY,
+  add_biostim_lift: CROSS_ADDON_BASE +
+    'Add a biostimulator collagen response for more lateral lift: broader, softer support across the lateral cheek and temple so the midface reads lifted and the jawline cleaner, as a diffuse soft-tissue improvement returning under the skin. This is collagen-based volume and lift, not filler fullness and not shadow sculpting. Keep it soft, gradual, and three-dimensional, and do not deepen or darken any facial shadow.' +
+    addonSafety('a diffuse biostimulator lateral-lift response across the cheeks and temples')
+};
+
+function buildScenarioPrompt(scenarioKey, view, baselineType) {
+  // M14: cross-type baselines (filler / laser) use the generic add-on prompts,
+  // which edit the already-treated baseline image directly. Sculptra baselines
+  // (biostim, or unspecified for backward compatibility) use the original set.
+  const isCrossType = baselineType === 'filler' || baselineType === 'laser';
+  if (isCrossType) {
+    const cp = CROSS_ADDON_PROMPTS[scenarioKey];
+    if (!cp) throw new Error('Unknown cross-type scenario key: ' + scenarioKey);
+    const isOblique = (view === 'oblique_left' || view === 'oblique_right' || view === 'oblique' ||
+                       view === 'l45' || view === 'r45');
+    const viewLead = isOblique
+      ? 'IMPORTANT: this is a three-quarter (oblique) photograph. Preserve the exact head angle, crop, perspective, and facial orientation. Do not rotate the face toward frontal. '
+      : '';
+    return NO_TEXT_RULE + ' ' + viewLead + cp;
+  }
+
   const s = SCENARIO_PROMPTS[scenarioKey];
   if (!s) throw new Error('Unknown scenario key: ' + scenarioKey);
 
