@@ -650,8 +650,13 @@
         </div>
 
         <div class="field">
-          <label>Response</label>
-          <div class="privacy-note"><span>ℹ️</span><span>Your preview is generated at a strong, realistic anchor, then you set the displayed response with a slider on the result. No need to regenerate.</span></div>
+          <label>What to generate</label>
+          <div class="pill-grid" id="responseModeToggle">
+            <button class="pill active" data-response-mode="expected" type="button">Expected</button>
+            <button class="pill" data-response-mode="optimistic" type="button">Optimistic</button>
+            <button class="pill" data-response-mode="both" type="button">Both</button>
+          </div>
+          <div class="small" id="responseModeHelp" style="margin-top:6px;color:var(--muted);font-style:italic;">Expected: realistic outcome for most patients.</div>
         </div>
       </div>
     </div>
@@ -754,18 +759,14 @@
           <button type="button" data-filler-level="58" class="active" style="display:none;">Balanced</button>
         </div>
       </div>
-      <!-- Timeline slider (biostim only) -->
-      <div id="biostimSliderWrap">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-          <label for="intensitySlider" id="intensityLabel" style="font-size:13px;letter-spacing:.04em;text-transform:uppercase;opacity:.75;">Response timeline</label>
-          <span id="intensityValue" style="font-family:'Cormorant Garamond',serif;font-size:22px;">Expected</span>
+      <!-- Biostim result view toggle (shown post-gen when both were generated) -->
+      <div id="biostimResultToggle" style="display:none;margin-bottom:14px;">
+        <div style="font-size:13px;letter-spacing:.04em;text-transform:uppercase;opacity:.75;margin-bottom:8px;">Viewing</div>
+        <div class="view-toggle" id="biostimViewToggle">
+          <button type="button" id="biostimViewExpected" class="active">Expected</button>
+          <button type="button" id="biostimViewOptimistic">Optimistic</button>
         </div>
-        <input type="range" id="intensitySlider" min="0" max="100" step="1" value="70" style="width:100%;margin-top:8px;accent-color:#C8725A;" />
-        <div style="display:flex;justify-content:space-between;font-size:.68rem;letter-spacing:.04em;text-transform:uppercase;opacity:.6;margin-top:4px;">
-          <span id="intensityMin">Early</span><span id="intensityMax">6 months</span>
-        </div>
-        <div class="small" id="intensityHelp" style="margin-top:6px;">Slide to preview an earlier or more complete treatment response. The simulation updates instantly.</div>
-        <div class="small" id="overfillNote" style="display:none;margin-top:4px;color:#A33524;font-weight:600;">Shown for education: deliberately overfilled, not a treatment goal.</div>
+        <div class="small" style="margin-top:6px;color:var(--muted);" id="biostimViewHelp">Expected: realistic outcome for most patients.</div>
       </div>
     </div>
     <div class="compare-wrap" id="compareWrap" style="display:none;">
@@ -1157,6 +1158,7 @@ const state = {
   type:'biostim', areas:['chin_jawline'], intensity:'enhanced', sex:'female',
   product:'sculptra', projection:'optimistic', timeline:'6',
   blackBg:true, lastGenAt:0, intensityPct:58, courseMode:'standard', // 'standard' | 'enhanced' -- global across all angles
+  responseMode:'expected', // 'expected' | 'optimistic' | 'both' -- biostim only pre-gen selector
   enhancedStartedAt: 0, enhancedTimerInterval: null,
   selectedAngles:['frontal'], activeAngle:'frontal',
   slots:{ frontal:makeSlot(), r45:makeSlot(), l45:makeSlot() }
@@ -1189,7 +1191,10 @@ let SD_CFG = { authDisabled:true };
 
 function creditCostFor(type){
   const c = (SD_CFG && SD_CFG.costs) || {};
-  return (type === 'biostim') ? (c.biostim || 2) : (c.filler || 1);
+  const base = (type === 'biostim') ? (c.biostim || 2) : (c.filler || 1);
+  // 'both' fires two generations per angle
+  if(type === 'biostim' && state.responseMode === 'both') return base * 2;
+  return base;
 }
 
 function fillCreditCopy(){
@@ -2259,6 +2264,24 @@ function wirePills(containerId, key){
 }
 wirePills('biostimProduct', 'product');
 wirePills('fillerSex', 'sex');
+
+// Wire the Expected/Optimistic/Both selector
+const RESPONSE_MODE_HELP = {
+  expected:   'Expected: realistic outcome for most patients. 100 credits per angle.',
+  optimistic: 'Optimistic: upper-range result for strong responders. 100 credits per angle.',
+  both:       'Both: generates Expected and Optimistic together. 200 credits per angle.'
+};
+document.getElementById('responseModeToggle').addEventListener('click', e => {
+  const btn = e.target.closest('[data-response-mode]');
+  if(!btn) return;
+  document.querySelectorAll('#responseModeToggle .pill').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  state.responseMode = btn.dataset.responseMode;
+  const help = document.getElementById('responseModeHelp');
+  if(help) help.textContent = RESPONSE_MODE_HELP[state.responseMode] || '';
+  syncGenerateBtn(); // refresh cost note
+});
+
 updatePhotoGuide();
 
 // Map the 0..100 preview value to a clinic-facing RESPONSE name. The slider is
@@ -2316,34 +2339,30 @@ function levelInfo(pct){
 function updateIntensityUI(){
   const isFiller = state.type === 'filler';
   const slider = document.getElementById('intensitySlider');
-  if(isFiller){
-    slider.max = FILLER_BETA_MAX;
-    if(state.intensityPct > FILLER_BETA_MAX){
-      state.intensityPct = FILLER_BETA_MAX;
-      slider.value = FILLER_BETA_MAX;
+  if(slider){
+    if(isFiller){
+      slider.max = FILLER_BETA_MAX;
+      if(state.intensityPct > FILLER_BETA_MAX){
+        state.intensityPct = FILLER_BETA_MAX;
+        slider.value = FILLER_BETA_MAX;
+      }
+    } else {
+      slider.max = 100;
     }
-  } else {
-    slider.max = 100;
+    const accentEl = document.getElementById('intensitySlider');
+    if(accentEl) accentEl.style.accentColor = '';
   }
   const li = levelInfo(state.intensityPct);
-  document.getElementById('intensityLabel').textContent = 'Response timeline';
-  document.getElementById('intensityMin').textContent = 'Early';
-  document.getElementById('intensityMax').textContent = '6 months';
-  document.getElementById('intensityHelp').textContent = 'Slide to preview an earlier or more complete treatment response. The simulation updates instantly.';
   // Filler: show three-button selector, hide slider
-  // Biostim: hide three-button selector, show slider
-  const fillerWrap  = document.getElementById('fillerCorrectionWrap');
-  const biostimWrap = document.getElementById('biostimSliderWrap');
-  if(fillerWrap)  fillerWrap.style.display  = isFiller ? '' : 'none';
-  if(biostimWrap) biostimWrap.style.display = isFiller ? 'none' : '';
-  // courseControl stays hidden (Ceiling removed)
+  const fillerWrap = document.getElementById('fillerCorrectionWrap');
+  if(fillerWrap) fillerWrap.style.display = isFiller ? '' : 'none';
+  // courseControl stays hidden
   const courseCtrl = document.getElementById('courseControl');
   if(courseCtrl) courseCtrl.style.display = 'none';
   const valEl = document.getElementById('intensityValue');
-  valEl.textContent = li.name;
-  valEl.style.color = li.over ? OVERFILL_COLOR : '';
-  document.getElementById('intensitySlider').style.accentColor = li.over ? OVERFILL_COLOR : '';
-  document.getElementById('overfillNote').style.display = li.over ? '' : 'none';
+  if(valEl){ valEl.textContent = li.name; valEl.style.color = li.over ? OVERFILL_COLOR : ''; }
+  const overfillNote = document.getElementById('overfillNote');
+  if(overfillNote) overfillNote.style.display = li.over ? '' : 'none';
 }
 
 // Live response slider: re-blend the cached per-angle apply() with no
@@ -3105,6 +3124,11 @@ async function runGeneration(isRegen){
     document.getElementById('outputSection').scrollIntoView({ behavior:'smooth', block:'start' });
     updateRegenNote();
     syncScenariosVisibility(); // M12.2: show Explore Scenarios panel for Sculptra
+
+    // M13: auto-fire optimistic pass when responseMode is 'both' or 'optimistic'
+    if(state.type === 'biostim' && (state.responseMode === 'both' || state.responseMode === 'optimistic')){
+      setTimeout(() => runStrongPass(), 400);
+    }
   }
   if(!failIds.length){
     setStatus(doneIds.length > 1 ? 'All ' + doneIds.length + ' previews generated.' : 'Preview generated.', 'ok');
@@ -3189,22 +3213,42 @@ function renderActiveSlot(){
   // Do not set aiResult.src directly here; applyActiveView() at line 2285 handles it.
   let tag = 'Simulated · ' + treatmentName();
   if(multi) tag += ' · ' + ANGLE_DEF[state.activeAngle].short;
-  if(state.type === 'biostim') tag += ' · ' + strengthLabel(state.intensityPct);
+  if(state.type === 'biostim'){
+    // M13: show which result is being viewed instead of slider value
+    tag += ' · ' + (state.courseMode === 'enhanced' ? 'Optimistic' : 'Expected');
+  }
   if(sl.status === 'error') tag = 'Generation failed for this angle · Re-generate to retry';
   document.getElementById('simTag').textContent = tag;
   // Update strong badge visibility
   const strongBadge = document.getElementById('simTagStrong');
   if(strongBadge) strongBadge.style.display = (state.courseMode === 'enhanced' && sl.strongStatus === 'done') ? 'inline' : 'none';
-  const showSlider = !!sl.apply;
+
+  // M13: biostim never shows the slider. Filler shows it if apply() exists.
+  const isBiostim = state.type === 'biostim';
+  const showSlider = !isBiostim && !!sl.apply;
   document.getElementById('intensityWrap').style.display = showSlider ? 'block' : 'none';
   if(showSlider){
     const sliderEl = document.getElementById('intensitySlider');
-    sliderEl.disabled = false;
-    sliderEl.style.opacity = '';
-    sliderEl.style.pointerEvents = '';
-    sliderEl.value = state.intensityPct;
-    updateIntensityUI();
+    if(sliderEl){
+      sliderEl.disabled = false;
+      sliderEl.style.opacity = '';
+      sliderEl.style.pointerEvents = '';
+      sliderEl.value = state.intensityPct;
+      updateIntensityUI();
+    }
   }
+
+  // M13: show Expected/Optimistic toggle only when both are generated
+  const biostimToggle = document.getElementById('biostimResultToggle');
+  if(biostimToggle){
+    const bothReady = isBiostim && sl.status === 'done' && sl.strongStatus === 'done';
+    biostimToggle.style.display = bothReady ? 'block' : 'none';
+    if(bothReady){
+      document.getElementById('biostimViewExpected').classList.toggle('active', state.courseMode !== 'enhanced');
+      document.getElementById('biostimViewOptimistic').classList.toggle('active', state.courseMode === 'enhanced');
+    }
+  }
+
   const doneCount = state.selectedAngles.filter(id => state.slots[id].status === 'done').length;
   document.getElementById('sheetBtn').style.display = doneCount > 1 ? '' : 'none';
   // M11.1: show Discard button when this angle is done and there are multiple angles
@@ -3355,7 +3399,8 @@ async function startEnhancedSlot(angleId, auth){
           const allDone = state.selectedAngles.every(id => state.slots[id].strongStatus === 'done' || state.slots[id].status !== 'done');
           if(allDone) state.courseMode = 'enhanced';
           updateStrongBtn();
-          if(angleId === state.activeAngle) applyActiveView();
+          // M13: re-render so the Expected/Optimistic toggle appears and switches to Optimistic view
+          if(angleId === state.activeAngle) renderActiveSlot();
           return;
         }
 
@@ -3547,25 +3592,50 @@ function applyActiveView(){
     if(state.courseMode === 'enhanced'){
       state.courseMode = 'standard';
       state.selectedAngles.forEach(id => { state.slots[id].viewMode = 'standard'; });
-      // Show baseline help text
       const helpExp = document.getElementById('courseHelpExpected');
       const helpEnh = document.getElementById('courseHelpEnhanced');
       if(helpExp) helpExp.style.display = '';
       if(helpEnh) helpEnh.style.display = 'none';
-      // renderActiveSlot re-enables the slider (unlock logic lives there),
-      // then calls applyActiveView internally.
       renderActiveSlot(); updateStrongBtn();
     }
   });
   if(enhBtn) enhBtn.addEventListener('click', () => {
     const sl = activeSlot();
     if(!sl || sl.strongStatus === 'generating') return;
-    // Show ceiling help text
     const helpExp = document.getElementById('courseHelpExpected');
     const helpEnh = document.getElementById('courseHelpEnhanced');
     if(helpExp) helpExp.style.display = 'none';
     if(helpEnh) helpEnh.style.display = '';
     runStrongPass();
+  });
+})();
+
+// M13: Expected/Optimistic result toggle (biostim post-gen, shown when both ready)
+(function(){
+  const expBtn = document.getElementById('biostimViewExpected');
+  const optBtn = document.getElementById('biostimViewOptimistic');
+  const helpEl = document.getElementById('biostimViewHelp');
+  if(expBtn) expBtn.addEventListener('click', () => {
+    const sl = activeSlot();
+    if(!sl || sl.strongStatus === 'generating') return;
+    state.courseMode = 'standard';
+    if(expBtn) expBtn.classList.add('active');
+    if(optBtn) optBtn.classList.remove('active');
+    if(helpEl) helpEl.textContent = 'Expected: realistic outcome for most patients.';
+    applyActiveView();
+    document.getElementById('simTag').textContent = 'Simulated · ' + treatmentName() +
+      (state.selectedAngles.length > 1 ? ' · ' + ANGLE_DEF[state.activeAngle].short : '') + ' · Expected';
+  });
+  if(optBtn) optBtn.addEventListener('click', () => {
+    const sl = activeSlot();
+    if(!sl || sl.strongStatus !== 'done') return;
+    state.courseMode = 'enhanced';
+    if(expBtn) expBtn.classList.remove('active');
+    if(optBtn) optBtn.classList.add('active');
+    if(helpEl) helpEl.textContent = 'Optimistic: upper-range result for strong responders.';
+    applyActiveView();
+    document.getElementById('simTag').textContent = 'Simulated · ' + treatmentName() +
+      (state.selectedAngles.length > 1 ? ' · ' + ANGLE_DEF[state.activeAngle].short : '') + ' · Optimistic';
   });
 })();
 
