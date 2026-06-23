@@ -580,7 +580,7 @@
       <div class="step-num">Step 1 · What do you want to visualize?</div>
       <div class="type-toggle quad" id="typeToggle">
         <button class="type-btn active" data-type="biostim" type="button"><strong>Biostimulation</strong></button>
-        <button class="type-btn soon" data-type="filler" type="button" disabled><strong>HA Fillers</strong><em class="soon-tag">Coming soon</em></button>
+        <button class="type-btn" data-type="filler" type="button"><strong>HA Fillers</strong></button>
         <button class="type-btn soon" data-type="neurotoxin" type="button" disabled><strong>Neurotoxin</strong><em class="soon-tag">Coming soon</em></button>
         <button class="type-btn soon" data-type="laser" type="button" disabled><strong>Skin &amp; Laser</strong><em class="soon-tag">Coming soon</em></button>
       </div>
@@ -593,14 +593,14 @@
       <!-- FILLER controls -->
       <div id="fillerControls" class="hidden">
         <div class="field">
-          <label>Areas (select one or more)</label>
+          <label>Treatment area</label>
           <div class="area-grid" id="areaGrid">
             <div class="area-chip active" data-area="chin_jawline"><span class="tick">✓</span>Chin + Jawline</div>
-            <div class="area-chip soon" data-area="nose"><span class="tick">✓</span>Nose<em class="soon-tag">Soon</em></div>
-            <div class="area-chip soon" data-area="lips"><span class="tick">✓</span>Lips<em class="soon-tag">Soon</em></div>
-            <div class="area-chip soon" data-area="cheeks"><span class="tick">✓</span>Cheeks<em class="soon-tag">Soon</em></div>
-            <div class="area-chip soon" data-area="tear_trough"><span class="tick">✓</span>Tear trough<em class="soon-tag">Soon</em></div>
-            <div class="area-chip soon" data-area="nasolabial_folds"><span class="tick">✓</span>Nasolabial folds<em class="soon-tag">Soon</em></div>
+            <div class="area-chip" data-area="cheeks"><span class="tick">✓</span>Cheeks</div>
+            <div class="area-chip" data-area="temple"><span class="tick">✓</span>Temple</div>
+            <div class="area-chip" data-area="nose"><span class="tick">✓</span>Nose</div>
+            <div class="area-chip" data-area="tear_trough"><span class="tick">✓</span>Tear trough</div>
+            <div class="area-chip" data-area="lips"><span class="tick">✓</span>Lips</div>
           </div>
         </div>
         <div class="field">
@@ -611,8 +611,13 @@
           </div>
         </div>
         <div class="field">
-          <label>Degree of correction</label>
-          <div class="privacy-note"><span>ℹ️</span><span>One preview is generated at a strong anchor, then you dial the displayed degree of correction with a slider on the result, from subtle to balanced. No need to regenerate or compare separate versions.</span></div>
+          <label>Volume</label>
+          <div class="pill-grid" id="fillerVolumeToggle">
+            <button class="pill active" data-volume="conservative" type="button"><strong>Conservative</strong></button>
+            <button class="pill" data-volume="moderate" type="button"><strong>Moderate</strong></button>
+            <button class="pill" data-volume="enhanced" type="button"><strong>Enhanced</strong></button>
+          </div>
+          <div class="small" id="fillerVolumeHelp" style="margin-top:6px;color:var(--muted);font-style:italic;">Conservative: 1 syringe.</div>
         </div>
       </div>
 
@@ -1156,9 +1161,10 @@ function makeSlot(){
 
 const state = {
   type:'biostim', areas:['chin_jawline'], intensity:'enhanced', sex:'female',
-  product:'sculptra', projection:'optimistic', timeline:'6',
+  product:'sculptra', projection:'expected', timeline:'6',
   blackBg:true, lastGenAt:0, intensityPct:58, courseMode:'standard', // 'standard' | 'enhanced' -- global across all angles
   responseMode:'expected', // 'expected' | 'optimistic' | 'both' -- biostim only pre-gen selector
+  fillerVolume:'conservative', // 'conservative' | 'moderate' | 'enhanced' -- filler volume tier
   enhancedStartedAt: 0, enhancedTimerInterval: null,
   selectedAngles:['frontal'], activeAngle:'frontal',
   slots:{ frontal:makeSlot(), r45:makeSlot(), l45:makeSlot() }
@@ -2217,6 +2223,11 @@ document.querySelectorAll('#typeToggle .type-btn').forEach(btn => {
     state.type = btn.dataset.type;
     document.getElementById('fillerControls').classList.toggle('hidden', state.type !== 'filler');
     document.getElementById('biostimControls').classList.toggle('hidden', state.type !== 'biostim');
+    if(state.type === 'filler'){
+      // ensure a single area is selected and the volume help reflects it
+      if(!state.areas || state.areas.length !== 1) state.areas = ['chin_jawline'];
+      updateFillerVolumeHelp();
+    }
     updatePhotoGuide();
     updateLibIndicator(); // M12: show/hide library indicator when switching treatment type
     syncScenariosVisibility(); // M12.2: hide scenarios when not Sculptra
@@ -2242,14 +2253,47 @@ function updatePhotoGuide(){
   el.innerHTML = '<strong>Best photos:</strong> ' + base + ' ' + tip;
 }
 
-/* ───────── Filler: areas (multi) ───────── */
+/* ───────── Filler: single-area selection ───────── */
+// Per-area volume tier labels. Large-volume areas scale 1 -> 4+ syringes;
+// delicate areas (nose, tear trough, lips) top out around 1-2 syringes.
+const FILLER_VOLUME_LABELS = {
+  chin_jawline: { conservative: '1 syringe', moderate: '2-3 syringes', enhanced: '4+ syringes' },
+  cheeks:       { conservative: '1 syringe', moderate: '2-3 syringes', enhanced: '4+ syringes' },
+  temple:       { conservative: '1 syringe', moderate: '2-3 syringes', enhanced: '4+ syringes' },
+  nose:         { conservative: 'Light (under 1 syringe)', moderate: '1 syringe', enhanced: 'Full (1-2 syringes)' },
+  tear_trough:  { conservative: 'Light (under 1 syringe)', moderate: '1 syringe', enhanced: 'Full (1-2 syringes)' },
+  lips:         { conservative: 'Light (under 1 syringe)', moderate: '1 syringe', enhanced: 'Full (1-2 syringes)' }
+};
+function fillerVolumeLabel(area, tier){
+  const a = FILLER_VOLUME_LABELS[area] || FILLER_VOLUME_LABELS.chin_jawline;
+  return a[tier] || a.conservative;
+}
+function updateFillerVolumeHelp(){
+  const help = document.getElementById('fillerVolumeHelp');
+  const area = (state.areas && state.areas[0]) || 'chin_jawline';
+  const tierName = state.fillerVolume === 'conservative' ? 'Conservative'
+                 : state.fillerVolume === 'moderate' ? 'Moderate' : 'Enhanced';
+  if(help) help.textContent = tierName + ': ' + fillerVolumeLabel(area, state.fillerVolume) + '.';
+}
 document.querySelectorAll('#areaGrid .area-chip').forEach(chip => {
   chip.addEventListener('click', () => {
-    if(chip.classList.contains('soon')) return; // coming soon area: not selectable
-    chip.classList.toggle('active');
-    state.areas = [...document.querySelectorAll('#areaGrid .area-chip.active')].map(c => c.dataset.area);
+    if(chip.classList.contains('soon')) return;
+    // Single-select: clear others, activate this one
+    document.querySelectorAll('#areaGrid .area-chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    state.areas = [chip.dataset.area];
+    updateFillerVolumeHelp();
     updatePhotoGuide();
   });
+});
+// Volume tier selector
+document.getElementById('fillerVolumeToggle').addEventListener('click', e => {
+  const btn = e.target.closest('[data-volume]');
+  if(!btn) return;
+  document.querySelectorAll('#fillerVolumeToggle .pill').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  state.fillerVolume = btn.dataset.volume;
+  updateFillerVolumeHelp();
 });
 
 /* ───────── Pill selectors ───────── */
@@ -2454,18 +2498,15 @@ function updateIntensityUI(){
   }
 
   // ── Sync mobile slider display from state (called from updateIntensityUI)
+  // M13: biostim and filler are both gpt-image-2 direct with no slider, so the
+  // mobile slider row and its "Response timeline" / "Degree of correction"
+  // labels are never shown. This function is now a no-op kept for the patched
+  // updateIntensityUI call contract; the slider DOM is hidden in updateBarState.
   function syncMobileDisplay(){
+    if(!mslider || !canonical) return;
     mslider.min = canonical.min;
     mslider.max = canonical.max;
     mslider.value = state.intensityPct;
-    const li = levelInfo(state.intensityPct);
-    msbValue.textContent = li.name;
-    msbValue.style.color = li.over ? OVERFILL_COLOR : 'var(--cream)';
-    mslider.style.accentColor = li.over ? OVERFILL_COLOR : 'var(--rose)';
-    const isFiller = state.type === 'filler';
-    msbLabel.textContent = isFiller ? 'Degree of correction' : 'Response timeline';
-    msbMin.textContent   = isFiller ? 'Subtle' : 'Early';
-    msbMax.textContent   = isFiller ? 'Enhanced' : '6 months';
   }
   // Patch updateIntensityUI to also sync the mobile bar
   const _origUpdateUI = updateIntensityUI;
@@ -2511,22 +2552,16 @@ function updateIntensityUI(){
   function updateBarState(){
     if(!isMobile()){ bar.classList.add('bar-hidden'); document.body.classList.remove('slider-bar-active'); return; }
     const outputVisible = document.getElementById('outputSection').classList.contains('visible');
-    const sliderVisible = document.getElementById('intensityWrap').style.display !== 'none';
 
     if(outputVisible){
       bar.classList.remove('bar-hidden');
       document.body.classList.add('slider-bar-active');
-      syncMobileDisplay();
-      // For filler, slider is replaced by three buttons -- hide the mobile slider
-      const biostimWrap = document.getElementById('biostimSliderWrap');
-      const sliderActuallyVisible = sliderVisible && (!biostimWrap || biostimWrap.style.display !== 'none');
-      if(sliderActuallyVisible){
-        mslider.style.display = '';
-        msbMin.parentElement.style.display = '';
-      } else {
-        mslider.style.display = 'none';
-        msbMin.parentElement.style.display = 'none';
-      }
+      // M13: no slider for any treatment. Hide the slider row and the
+      // "Response timeline" / "Degree of correction" label + value entirely.
+      mslider.style.display = 'none';
+      msbMin.parentElement.style.display = 'none';
+      msbLabel.style.display = 'none';
+      msbValue.style.display = 'none';
       // Post-output: Download is primary, Re-generate is secondary text link
       msbBtn.classList.add('bar-hidden');
       msbBtn.style.display = 'none';
@@ -2571,10 +2606,9 @@ function updateIntensityUI(){
   }
 
   // Restore label/value visibility when switching back to output view
-  function restoreBarLabels(){
-    msbLabel.style.display = '';
-    msbValue.style.display = '';
-  }
+  // M13: no-op. There is no slider/timeline label or value to restore -- both
+  // treatments are gpt-image-2 direct. updateBarState keeps these hidden.
+  function restoreBarLabels(){ /* intentionally empty in M13 */ }
 
   // Observe output section visibility changes
   const outputSection = document.getElementById('outputSection');
@@ -2859,10 +2893,10 @@ async function prepAndStartSlot(angleId, auth, isRegen, fillerIntensity){
   form.append('image', blob, 'patient-' + angleId + '.jpg');
   form.append('type', state.type);
 
-  // M13: biostim (Sculptra) goes to gpt-image-2 as a direct full-frame edit.
-  // No mask is sent -- gpt-image-2 works best unmasked, and the negative-list
-  // guardrail in the prompt controls what doesn't change. Mask only sent for filler.
-  const maskScope = (state.type === 'filler') ? 'chin_jaw' : null;
+  // M13: both biostim and filler now run gpt-image-2 as a direct full-frame edit.
+  // No mask is sent for either -- gpt-image-2 works best unmasked, and the
+  // negative-list guardrail in the prompt controls what does not change.
+  const maskScope = null;
   if(maskScope){
     try {
       const beforeImg = await loadImage(beforeDataUrl);
@@ -2880,18 +2914,27 @@ async function prepAndStartSlot(angleId, auth, isRegen, fillerIntensity){
   }
 
   if(state.type === 'filler'){
-    const postAreas = (state.areas.length ? state.areas : ['chin_jawline'])
-      .flatMap(a => a === 'chin_jawline' ? ['chin','jawline'] : [a]);
+    const area = (state.areas && state.areas[0]) || 'chin_jawline';
+    const postAreas = (area === 'chin_jawline') ? ['chin','jawline'] : [area];
     form.append('areas', postAreas.join(','));
-    // M12.1: send the actual correction level as the prompt intensity so the
-    // Raw AI output differs between Subtle/Balanced/Enhanced generations.
-    // fillerIntensity defaults to 'moderate' (Balanced) when not specified.
-    const promptIntensity = fillerIntensity || 'moderate';
-    form.append('intensity', promptIntensity);
+    // M13: volume tier maps to prompt magnitude.
+    //   conservative -> natural, moderate -> moderate, enhanced -> enhanced
+    const volumeToIntensity = { conservative: 'natural', moderate: 'moderate', enhanced: 'enhanced' };
+    form.append('intensity', volumeToIntensity[state.fillerVolume] || 'natural');
   } else {
     form.append('product', state.product);
     form.append('timeline', state.timeline);
-    form.append('projection', state.projection);
+    // M13: projection derived from responseMode.
+    //   expected -> expected projection, single standard pass
+    //   optimistic -> optimistic projection + isStrongPass, single direct pass
+    //   both -> expected projection now; strong pass auto-fires after
+    if(state.responseMode === 'optimistic'){
+      form.append('projection', 'optimistic');
+      form.append('intensity', 'enhanced');
+      form.append('isStrongPass', 'true');
+    } else {
+      form.append('projection', 'expected');
+    }
   }
 
   const jobId = (window.crypto && crypto.randomUUID && crypto.randomUUID()) ||
@@ -2944,17 +2987,17 @@ async function finishSlot(angleId, auth, fillerIntensity){
   // M13: biostim bypasses the compositor entirely. gpt-image-2 direct output
   // is the final result. A passthrough apply() is set so the intensity slider
   // path doesn't break (it simply returns the raw AI at any slider position).
-  // Compositor + mask only run for filler.
-  const compScope = (state.type === 'filler') ? 'chin_jaw' : null;
-  if(state.type === 'biostim'){
-    // Passthrough: slider has no effect but the function contract is preserved
+  // M13: BOTH biostim and filler now run gpt-image-2 direct, no compositor.
+  const compScope = null;
+  if(state.type === 'biostim' || state.type === 'filler'){
+    // Passthrough: no slider blend; raw gpt-image-2 output is the final result
     sl.apply = () => sl.resultDataUrl;
     sl.status = 'done';
-    if(cacheKey && sl.fillerCache && sl.fillerCache[cacheKey]){
-      sl.fillerCache[cacheKey].apply = sl.apply;
-      sl.fillerCache[cacheKey].resultDataUrl = sl.resultDataUrl;
+    if(cacheKey){
+      if(!sl.fillerCache) sl.fillerCache = {};
+      sl.fillerCache[cacheKey] = { rawAiDataUrl: sl.resultDataUrl, apply: sl.apply, resultDataUrl: sl.resultDataUrl };
     }
-    console.log('%c[Visualize] ' + angleId + ': biostim M13 -- raw gpt-image-2 output, no compositor.', 'color:#1b5e20;font-weight:bold');
+    console.log('%c[Visualize] ' + angleId + ': ' + state.type + ' M13 -- raw gpt-image-2 output, no compositor.', 'color:#1b5e20;font-weight:bold');
     return;
   }
   if(compScope){
@@ -3089,15 +3132,39 @@ async function runGeneration(isRegen){
     // Prep and start sequentially: background isolation and the mask each run a
     // local model, and three at once would thrash memory. The slow generations
     // themselves then run in parallel server-side and are polled concurrently.
-    // M12.1: fillerIntensity passed through so each correction level gets its own prompt.
-    const fillerIntensity = (state.type === 'filler') ? fillerLevelToIntensity(state.intensityPct) : null;
+    // M13: filler cache key is the volume tier (no slider any more).
+    const fillerIntensity = (state.type === 'filler') ? state.fillerVolume : null;
+    // M13: in 'both' mode, Expected and Optimistic generate IN PARALLEL, each
+    // directly from the original photo. The optimistic pass is fired right after
+    // the expected pass is started for the same angle -- not after it finishes.
+    const isBoth = (state.type === 'biostim' && state.responseMode === 'both' && !isRegen);
     const started = [];
     for(const id of angles){
-      try { await prepAndStartSlot(id, auth, isRegen, fillerIntensity); started.push(id); }
+      try {
+        await prepAndStartSlot(id, auth, isRegen, fillerIntensity);
+        started.push(id);
+        if(isBoth){
+          // Mark and fire the optimistic pass immediately, in parallel.
+          state.slots[id].strongStatus = 'generating';
+          state.slots[id].viewMode = 'standard';
+          startEnhancedSlot(id, auth).catch(e => {
+            const msg = (e && e.message) || String(e);
+            console.error('[Visualize Optimistic] ' + id + ': failed to start  -  ' + msg);
+            state.slots[id].strongStatus = 'error';
+            state.slots[id].error = msg;
+          });
+        }
+      }
       catch(err){
         console.error('[Visualize] ' + id + ' failed to start:', err);
         const sl = state.slots[id]; sl.status = 'error'; sl.error = (err && err.message) || 'Could not start generation.';
       }
+    }
+    if(isBoth){
+      state.enhancedStartedAt = Date.now();
+      if(state.enhancedTimerInterval) clearInterval(state.enhancedTimerInterval);
+      state.enhancedTimerInterval = setInterval(() => updateStrongBtn(), 1000);
+      updateStrongBtn();
     }
     if(started.length){
       await Promise.allSettled(started.map(id =>
@@ -3124,11 +3191,7 @@ async function runGeneration(isRegen){
     document.getElementById('outputSection').scrollIntoView({ behavior:'smooth', block:'start' });
     updateRegenNote();
     syncScenariosVisibility(); // M12.2: show Explore Scenarios panel for Sculptra
-
-    // M13: auto-fire optimistic pass when responseMode is 'both' or 'optimistic'
-    if(state.type === 'biostim' && (state.responseMode === 'both' || state.responseMode === 'optimistic')){
-      setTimeout(() => runStrongPass(), 400);
-    }
+    // M13: Both mode already fired Optimistic in parallel above. Nothing to do here.
   }
   if(!failIds.length){
     setStatus(doneIds.length > 1 ? 'All ' + doneIds.length + ' previews generated.' : 'Preview generated.', 'ok');
@@ -3214,8 +3277,12 @@ function renderActiveSlot(){
   let tag = 'Simulated · ' + treatmentName();
   if(multi) tag += ' · ' + ANGLE_DEF[state.activeAngle].short;
   if(state.type === 'biostim'){
-    // M13: show which result is being viewed instead of slider value
-    tag += ' · ' + (state.courseMode === 'enhanced' ? 'Optimistic' : 'Expected');
+    // M13: label reflects what was generated
+    let respLabel;
+    if(state.responseMode === 'optimistic') respLabel = 'Optimistic';
+    else if(state.courseMode === 'enhanced') respLabel = 'Optimistic';
+    else respLabel = 'Expected';
+    tag += ' · ' + respLabel;
   }
   if(sl.status === 'error') tag = 'Generation failed for this angle · Re-generate to retry';
   document.getElementById('simTag').textContent = tag;
@@ -3225,7 +3292,8 @@ function renderActiveSlot(){
 
   // M13: biostim never shows the slider. Filler shows it if apply() exists.
   const isBiostim = state.type === 'biostim';
-  const showSlider = !isBiostim && !!sl.apply;
+  // M13: neither biostim nor filler shows the slider any more (both gpt-image-2 direct)
+  const showSlider = false;
   document.getElementById('intensityWrap').style.display = showSlider ? 'block' : 'none';
   if(showSlider){
     const sliderEl = document.getElementById('intensitySlider');
@@ -3241,7 +3309,7 @@ function renderActiveSlot(){
   // M13: show Expected/Optimistic toggle only when both are generated
   const biostimToggle = document.getElementById('biostimResultToggle');
   if(biostimToggle){
-    const bothReady = isBiostim && sl.status === 'done' && sl.strongStatus === 'done';
+    const bothReady = isBiostim && state.responseMode === 'both' && sl.status === 'done' && sl.strongStatus === 'done';
     biostimToggle.style.display = bothReady ? 'block' : 'none';
     if(bothReady){
       document.getElementById('biostimViewExpected').classList.toggle('active', state.courseMode !== 'enhanced');
@@ -3305,19 +3373,16 @@ const STRONG_PROMPT_SUFFIX = 'Enhanced course: upper-range biostimulator respons
 // output must already look correct before compositing touches it.
 async function startEnhancedSlot(angleId, auth){
   const sl = state.slots[angleId];
-  if(!sl || sl.status !== 'done' || !sl.jobId) return;
+  if(!sl || !sl.originalDataUrl) return;
   // strongStatus already 'generating' (set by runStrongPass) -- no guard needed here
 
-  // Enhanced takes the Standard result as its input image, not the original photo.
-  // This is the key architectural fix: Ceiling builds on Standard, pushing it further,
-  // rather than trying to produce a dramatic result from the original in one shot.
-  // The compositor below still uses beforeDataUrl (original) as the identity anchor.
+  // M13: Optimistic generates DIRECTLY from the original photo, in parallel with
+  // Expected. It does NOT build on the Expected result -- that was serial and
+  // compounded drift. Both passes are independent gpt-image-2 generations from
+  // the same source image, differing only by prompt magnitude (isStrongPass).
   const beforeDataUrl = sl.beforeDataUrl || sl.originalDataUrl;
-  const standardResultUrl = sl.resultDataUrl;
-  if(!standardResultUrl){ console.error('[Visualize Enhanced] ' + angleId + ': no Standard result to build from'); return; }
-  console.log('[Visualize Enhanced] ' + angleId + ': starting from Standard result, length=' + standardResultUrl.length);
-  const blob = await resizeToUpload(standardResultUrl);
-  console.log('[Visualize Enhanced] ' + angleId + ': blob ready, size=' + (blob ? blob.size : 'null'));
+  const blob = await resizeToUpload(beforeDataUrl);
+  console.log('[Visualize Optimistic] ' + angleId + ': generating directly from original, blob size=' + (blob ? blob.size : 'null'));
 
   const formData = new FormData();
   formData.append('image', blob, 'patient-' + angleId + '.jpg');
@@ -3332,7 +3397,7 @@ async function startEnhancedSlot(angleId, auth){
   formData.append('view', enhPromptView);
   formData.append('note', STRONG_PROMPT_SUFFIX);
   formData.append('isStrongPass', 'true');
-  formData.append('sourceJobId', sl.jobId);
+  if(sl.jobId) formData.append('sourceJobId', sl.jobId);
   if(state.sculptraPhenotype) formData.append('sculptraPhenotype', state.sculptraPhenotype);
   if(state.sex) formData.append('sex', state.sex);
   if(state.patientAge) formData.append('patientAge', String(state.patientAge));
@@ -3396,10 +3461,12 @@ async function startEnhancedSlot(angleId, auth){
           sl.strongDataUrl = data.image;
           sl.strongApply = () => data.image; // passthrough for slider
           sl.strongStatus = 'done';
-          const allDone = state.selectedAngles.every(id => state.slots[id].strongStatus === 'done' || state.slots[id].status !== 'done');
-          if(allDone) state.courseMode = 'enhanced';
+          // M13: in parallel Both mode, default the view to Expected. Do NOT
+          // auto-flip to Optimistic just because the optimistic pass finished --
+          // the user chooses via the Expected/Optimistic toggle. Only keep the
+          // legacy auto-switch behavior for the manual (serial) strong button.
           updateStrongBtn();
-          // M13: re-render so the Expected/Optimistic toggle appears and switches to Optimistic view
+          // M13: re-render so the Expected/Optimistic toggle appears
           if(angleId === state.activeAngle) renderActiveSlot();
           return;
         }
@@ -3961,8 +4028,9 @@ window.debugEnhanced = buildEnhancedDebugSheet;
 // angle and slider value; falls back to the live 1024 result on any error.
 const EXPORT_MAXDIM = 2048;
 function exportCompScope(){
-  // M13: biostim has no compositor (gpt-image-2 direct). Only filler uses compositor.
-  return (state.type === 'filler') ? 'chin_jaw' : null;
+  // M13: neither biostim nor filler uses a compositor (both gpt-image-2 direct).
+  // Export falls back to the raw result image for both.
+  return null;
 }
 async function hiResResultFor(angleId){
   const sl = state.slots[angleId];
@@ -4010,17 +4078,15 @@ function simKicker(angleId){
   const sl = state.slots[angleId];
   const parts = [treatmentName()];
   if(multiDone) parts.push(ANGLE_DEF[angleId].label);
-  // Use current slider position for months label, not the generation-time timeline.
-  // This keeps the watermark in sync when the slider is moved after generation.
-  if(state.type === 'biostim') parts.push(strengthLabel(state.intensityPct));
-  if(state.type === 'biostim' || (state.type === 'filler' && sl.apply)){
-    if(state.type === 'filler'){
-      const li = levelInfo(state.intensityPct || 70);
-      parts.push(li.over ? 'Overfilled · shown for education' : li.name);
-    }
+  // M13: biostim labels Expected / Optimistic (slider removed).
+  if(state.type === 'biostim'){
+    const isOpt = (state.responseMode === 'optimistic') || (state.courseMode === 'enhanced');
+    parts.push(isOpt ? 'Optimistic' : 'Expected');
   }
-  // Strong Response: append label when exporting the strong view
-  if(state.courseMode === 'enhanced' && sl && sl.strongStatus === 'done') parts.push('Ceiling · 6-8+ vials');
+  if(state.type === 'filler' && sl.apply){
+    const li = levelInfo(state.intensityPct || 70);
+    parts.push(li.over ? 'Overfilled · shown for education' : li.name);
+  }
   return parts.join(' · ');
 }
 
