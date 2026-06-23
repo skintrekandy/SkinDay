@@ -1217,10 +1217,11 @@ let SD_CFG = { authDisabled:true };
 
 function creditCostFor(type){
   const c = (SD_CFG && SD_CFG.costs) || {};
-  // M14.2: Optimistic/Both removed, so no doubling. Laser is 100/angle.
-  if(type === 'laser')   return c.laser   || 1;
-  if(type === 'biostim') return c.biostim || 2;
-  return c.filler || 1;
+  // Costs here are in credit units (100 = one angle), matching SD_CFG.costs.
+  // M14.2: Optimistic/Both removed, so no doubling. Laser is 100/angle like filler.
+  if(type === 'laser')   return c.laser   || 100;
+  if(type === 'biostim') return c.biostim || 100;
+  return c.filler || 100;
 }
 
 function fillCreditCopy(){
@@ -3707,10 +3708,24 @@ async function hiResResultFor(angleId){
 // machinery (gpt-image-2 direct, no compositor, 3-up Both grid, parallel passes).
 function usesResponseModes(){ return state.type === 'biostim' || state.type === 'laser'; }
 
+// Clinic-facing area labels for filler, used in result tags and exports.
+const FILLER_AREA_LABELS = {
+  chin_jawline: 'Chin + Jawline',
+  cheeks:       'Cheeks',
+  temple:       'Temple',
+  nose:         'Nose',
+  tear_trough:  'Tear Trough',
+  lips:         'Lips'
+};
 function treatmentName(){
   if(state.type === 'biostim') return state.product === 'hdr' ? 'Hyperdilute Radiesse' : 'Biostimulator';
   if(state.type === 'laser') return state.laserType === 'hifu' ? 'HIFU' : 'RF';
-  if(state.type === 'filler') return 'HA Filler';
+  if(state.type === 'filler'){
+    // Always name the area treated, e.g. "HA Filler · Nose".
+    const area = (state.areas && state.areas[0]) || 'chin_jawline';
+    const label = FILLER_AREA_LABELS[area];
+    return label ? ('HA Filler · ' + label) : 'HA Filler';
+  }
   return 'AI Visualization';
 }
 
