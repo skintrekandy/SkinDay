@@ -61,6 +61,7 @@ const REGEN_WINDOW_MS = 90 * 1000; // server window; the client advertises 60s
 const COST_FILLER   = parseInt(process.env.VISUALIZE_COST_FILLER   || '1', 10) || 1;
 const COST_BIOSTIM  = parseInt(process.env.VISUALIZE_COST_BIOSTIM  || '2', 10) || 2;
 const COST_LASER    = parseInt(process.env.VISUALIZE_COST_LASER    || '1', 10) || 1;
+const COST_TOX      = parseInt(process.env.VISUALIZE_COST_TOX      || '1', 10) || 1;
 const COST_SCENARIO = parseInt(process.env.VISUALIZE_COST_SCENARIO || '1', 10) || 1;
 const COST_ENHANCED = parseInt(process.env.VISUALIZE_COST_ENHANCED || '1', 10) || 1;
 function creditCost(fields) {
@@ -69,6 +70,8 @@ function creditCost(fields) {
   if (fields && fields.scenarioMode === 'true') return COST_SCENARIO;
   // Energy-Based Devices (RF/HIFU) are a single Expected pass, priced at 100/angle.
   if (fields && fields.type === 'laser') return COST_LASER;
+  // Neurotoxin (lower-face contouring) is also a single pass at 100/angle.
+  if (fields && fields.type === 'tox') return COST_TOX;
   return (fields && fields.type === 'biostim') ? COST_BIOSTIM : COST_FILLER;
 }
 
