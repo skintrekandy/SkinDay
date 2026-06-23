@@ -4523,7 +4523,7 @@ function renderScenarioResult(scenarioKey){
     // Three-panel layout: original photo | Sculptra 6-month baseline | scenario result.
     // This lets the patient see the full journey: where they started, what Sculptra
     // achieves, and what the add-on scenario adds on top.
-    const originalUrl = sl ? (sl.cropBeforeCache || sl.beforeDataUrl || sl.originalDataUrl || '') : '';
+    const originalUrl = sl ? (sl.beforeDataUrl || sl.originalDataUrl || '') : '';
     const baselineDisplayUrl = (state.type === 'biostim' && sl && sl.apply)
       ? sl.apply(1.0)
       : (sl ? (sl.resultDataUrl || '') : '');
@@ -4577,32 +4577,81 @@ function renderScenarioResult(scenarioKey){
 // drag-to-pan when zoomed in. Listeners bind to the persistent grid element, so
 // they survive innerHTML swaps; reset() is called whenever an overlay opens.
 let scnFsZoom = null, prvFsZoom = null;
-function makeFsZoom(grid, label){
+// makeFsZoom: zoom + pan controller for fullscreen overlay grids.
+// opts.coverMode (previewFsGrid): images use object-fit:cover so content overflows the
+// cell at scale=1. At scale=1 we pan via CSS object-position so no black gaps appear.
+// Standard mode (scenarioFsGrid): object-fit:contain -- pan only when scale>1.
+function makeFsZoom(grid, label, opts){
+  const coverMode = !!(opts && opts.coverMode);
   const MIN = 1, MAX = 4, STEP = 0.25;
   let scale = 1, tx = 0, ty = 0;
   let dragging = false, startX = 0, startY = 0, origX = 0, origY = 0;
+
+  function getCoverOverflow(){
+    // How far (px) the object-fit:cover content overflows the cell at scale=1.
+    const img = grid.querySelector('img');
+    const cell = grid.querySelector('.scenario-fs-cell');
+    if(!img || !cell) return { mx:0, my:0 };
+    const cw = cell.clientWidth, ch = cell.clientHeight;
+    const nw = img.naturalWidth, nh = img.naturalHeight;
+    if(!nw || !nh) return { mx:0, my:0 };
+    const s = Math.max(cw / nw, ch / nh); // cover scale
+    return { mx: Math.max(0, (nw*s - cw)/2), my: Math.max(0, (nh*s - ch)/2) };
+  }
+
   function clampPan(){
     const cell = grid.querySelector('.scenario-fs-cell');
     if(!cell){ tx = 0; ty = 0; return; }
-    const r = cell.getBoundingClientRect();
-    const mx = Math.max(0, (r.width  * (scale - 1)) / 2);
-    const my = Math.max(0, (r.height * (scale - 1)) / 2);
+    const ov = (coverMode && scale === 1) ? getCoverOverflow() : { mx:0, my:0 };
+    const mx = Math.max(ov.mx, (cell.clientWidth  * (scale-1)) / 2);
+    const my = Math.max(ov.my, (cell.clientHeight * (scale-1)) / 2);
     tx = Math.max(-mx, Math.min(mx, tx));
     ty = Math.max(-my, Math.min(my, ty));
   }
+
+  function canPan(){
+    if(scale > 1) return true;
+    if(coverMode){ const ov = getCoverOverflow(); return ov.mx > 0.5 || ov.my > 0.5; }
+    return false;
+  }
+
   function apply(){
     clampPan();
+    const p = canPan();
     grid.querySelectorAll('img').forEach(img => {
       img.style.transformOrigin = 'center center';
-      img.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + scale + ')';
-      img.style.cursor = scale > 1 ? (dragging ? 'grabbing' : 'grab') : 'default';
+      if(coverMode && scale === 1){
+        // Pan via object-position -- image stays pixel-perfect in its cell, no black edges.
+        img.style.transform = '';
+        const cell = img.closest('.scenario-fs-cell');
+        const cw = cell ? cell.clientWidth  : img.clientWidth;
+        const ch = cell ? cell.clientHeight : img.clientHeight;
+        const nw = img.naturalWidth  || cw;
+        const nh = img.naturalHeight || ch;
+        const s  = Math.max(cw/nw, ch/nh);
+        const ox = Math.max(0, (nw*s - cw) / 2);
+        const oy = Math.max(0, (nh*s - ch) / 2);
+        // tx>0 = image dragged right = see left content = lower x%.
+        img.style.objectPosition = (ox > 0 ? (50 - tx/ox*50) : 50) + '% '
+                                 + (oy > 0 ? (50 - ty/oy*50) : 50) + '%';
+      } else {
+        img.style.objectPosition = '';
+        img.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + scale + ')';
+      }
+      img.style.cursor = p ? (dragging ? 'grabbing' : 'grab') : 'default';
     });
     if(label) label.textContent = Math.round(scale * 100) + '%';
   }
-  function setScale(s){ scale = Math.max(MIN, Math.min(MAX, s)); if(scale === 1){ tx = 0; ty = 0; } apply(); }
+
+  function setScale(s){
+    scale = Math.max(MIN, Math.min(MAX, s));
+    if(scale === 1 && !coverMode){ tx = 0; ty = 0; }
+    apply();
+  }
+
   grid.addEventListener('wheel', (e) => { e.preventDefault(); setScale(scale + (e.deltaY < 0 ? STEP : -STEP)); }, { passive:false });
   grid.addEventListener('pointerdown', (e) => {
-    if(scale <= 1) return;
+    if(!canPan()) return;
     dragging = true; startX = e.clientX; startY = e.clientY; origX = tx; origY = ty;
     try { grid.setPointerCapture(e.pointerId); } catch(_){}
     apply();
@@ -4612,11 +4661,12 @@ function makeFsZoom(grid, label){
     tx = origX + (e.clientX - startX); ty = origY + (e.clientY - startY); apply();
   });
   const endDrag = () => { if(dragging){ dragging = false; apply(); } };
-  grid.addEventListener('pointerup', endDrag);
+  grid.addEventListener('pointerup',     endDrag);
   grid.addEventListener('pointercancel', endDrag);
+
   return {
     reset: () => { scale = 1; tx = 0; ty = 0; apply(); },
-    zoomIn: () => setScale(scale + STEP),
+    zoomIn:  () => setScale(scale + STEP),
     zoomOut: () => setScale(scale - STEP)
   };
 }
@@ -4630,7 +4680,7 @@ function makeFsZoom(grid, label){
   }
   const prvGrid = document.getElementById('previewFsGrid');
   if(prvGrid){
-    prvFsZoom = makeFsZoom(prvGrid, document.getElementById('prvZoomLabel'));
+    prvFsZoom = makeFsZoom(prvGrid, document.getElementById('prvZoomLabel'), { coverMode: true });
     const i = document.getElementById('prvZoomIn'), o = document.getElementById('prvZoomOut');
     if(i) i.addEventListener('click', prvFsZoom.zoomIn);
     if(o) o.addEventListener('click', prvFsZoom.zoomOut);
