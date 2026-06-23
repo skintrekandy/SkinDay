@@ -228,6 +228,10 @@
     .slot-status { font-size:.7rem; line-height:1.4; color:var(--muted); min-height:2.1em; }
     .slot-status.ok { color:#3D7A55; }
     .slot-status.bad { color:var(--rose); }
+    .photo-grade { font-size:.67rem; margin-top:3px; letter-spacing:.01em; }
+    .grade-ex  { color:#3D7A55; }
+    .grade-ok  { color:var(--gold); }
+    .grade-lim { color:var(--rose); }
     .guide-link { border:none; background:transparent; color:var(--rose); font-size:.78rem; cursor:pointer; text-decoration:underline; padding:0; margin-top:10px; font-family:'DM Sans',sans-serif; }
     .angle-tabs { display:flex; gap:8px; justify-content:center; margin:0 0 14px; flex-wrap:wrap; }
     .guide-modal { position:fixed; inset:0; z-index:300; background:rgba(28,23,20,.55); display:flex; align-items:center; justify-content:center; padding:20px; }
@@ -1206,6 +1210,7 @@ function makeSlot(){
            status:'empty', qcMsg:'',
            faceBbox:null, cropCache:null,
            cropBeforeCache:null, cropResultCache:null, cropStrongCache:null, // M14: face/neck crop caches
+           photoGrade:null, // M14: photo quality grade { stars:1-3, grade, note }
            // Strong Response second pass (biostim only)
            strongDataUrl:null, strongJobId:null, strongStatus:'idle',
            viewMode:'standard' }; // 'standard' | 'strong'
@@ -1987,6 +1992,7 @@ window.addEventListener('message', (ev) => {
                 }
                 sl.status = 'ready';
                 sl.qcMsg = gate.ok ? ('✓ ' + gate.msg) : ('Note: ' + gate.msg);
+                sl.photoGrade = gradePhoto(a);
               } catch(qcErr){
                 sl.status = 'ready'; sl.qcMsg = 'Photo restored. Ready to generate.';
               }
@@ -2171,6 +2177,37 @@ function poseMatches(angleId, a){
   return { ok:true, msg:(want === 'right' ? 'Right' : 'Left') + ' 45° confirmed (yaw ~' + Math.round(a.yawDeg) + '°).' };
 }
 
+// Photo quality grade: uses analyzePhoto metrics to produce a 1-3 star score
+// that guides the clinician without blocking generation. Shown under the slot
+// thumbnail after upload.
+function gradePhoto(a){
+  if(!a || (a.faceFrac == null && a.meanLuma == null && a.sharpness == null)) return null;
+  let score = 100;
+  const issues = [];
+  // Sharpness -- highest impact on generation quality
+  if(a.sharpness != null){
+    if(a.sharpness < 16)       { score -= 42; issues.push('blurry'); }
+    else if(a.sharpness < 35)  { score -= 18; issues.push('slightly soft'); }
+  }
+  // Exposure
+  if(a.meanLuma != null){
+    if(a.meanLuma < 50)        { score -= 35; issues.push('very dark'); }
+    else if(a.meanLuma < 70)   { score -= 15; issues.push('somewhat dark'); }
+    else if(a.meanLuma > 205)  { score -= 30; issues.push('overexposed'); }
+    else if(a.meanLuma > 185)  { score -= 12; issues.push('quite bright'); }
+  }
+  // Face size in frame
+  if(a.faceFrac != null){
+    if(a.faceFrac < 0.08)      { score -= 35; issues.push('face too small'); }
+    else if(a.faceFrac < 0.14) { score -= 15; issues.push('face small in frame'); }
+    else if(a.faceFrac > 0.80) { score -= 12; issues.push('frame very tight'); }
+  }
+  const note = issues.length > 0 ? issues[0] : null;
+  if(score >= 80) return { stars:3, grade:'Excellent', note:null };
+  if(score >= 50) return { stars:2, grade:'OK',        note };
+  return           { stars:1, grade:'Limited',  note };
+}
+
 function readySummary(){
   const ids = state.selectedAngles;
   const ready = ids.filter(id => state.slots[id].status === 'ready' || state.slots[id].status === 'done').length;
@@ -2197,6 +2234,13 @@ function renderSlots(){
     const st = document.createElement('div');
     st.className = 'slot-status' + (sl.status === 'ready' || sl.status === 'done' ? ' ok' : sl.status === 'bad' ? ' bad' : '');
     st.textContent = sl.qcMsg || A.help;
+    if(sl.photoGrade){
+      const g = sl.photoGrade;
+      const gradeEl = document.createElement('div');
+      gradeEl.className = 'photo-grade ' + (g.stars === 3 ? 'grade-ex' : g.stars === 2 ? 'grade-ok' : 'grade-lim');
+      gradeEl.textContent = '★'.repeat(g.stars) + '☆'.repeat(3 - g.stars) + ' ' + g.grade + (g.note ? ' · ' + g.note : '');
+      st.appendChild(gradeEl);
+    }
     cell.appendChild(st);
     wrap.appendChild(cell);
   }
@@ -2215,6 +2259,7 @@ async function onSlotFile(angleId, file){
   sl.originalDataUrl = await fileToDataUrl(file);
   sl.blackBgCache = null; sl.beforeDataUrl = null; sl.resultDataUrl = null; sl.apply = null; sl.error = null; sl.hiRes = null; sl.rawAiDataUrl = null; sl.cropCache = null;
   sl.cropBeforeCache = null; sl.cropResultCache = null; sl.cropStrongCache = null;
+  sl.photoGrade = null;
   sl.status = 'checking'; sl.qcMsg = 'Checking pose and photo quality…';
   renderSlots(); syncGenerateBtn();
   try {
@@ -2236,6 +2281,7 @@ async function onSlotFile(angleId, file){
     sl.qcMsg = gate.ok
       ? ('✓ ' + gate.msg + extraNote)
       : ('Note: ' + gate.msg + extraNote);
+    sl.photoGrade = gradePhoto(a);
   } catch(err){
     console.warn('[Visualize] Photo QC failed; accepting the photo (mask fail-safes still apply).', err);
     sl.status = 'ready'; sl.qcMsg = 'Pose check unavailable; photo accepted.';
@@ -3320,9 +3366,9 @@ function renderTabs(){
    side, vert adds W*MARGIN_TOP above and W*MARGIN_BOT below (extra for neck).
    Returns a JPEG dataUrl at the original pixel density, or the original dataUrl
    if the bbox is unavailable or the crop fails. */
-const FACE_CROP_MARGIN_H   = 0.22;  // horizontal margin each side, fraction of face width
-const FACE_CROP_MARGIN_TOP = 0.55;  // above face top (hair/forehead room)
-const FACE_CROP_MARGIN_BOT = 0.65;  // below face bottom (neck room)
+const FACE_CROP_MARGIN_H   = 0.65;  // horizontal margin each side, fraction of face width -- generous to capture ears and back of head on oblique views
+const FACE_CROP_MARGIN_TOP = 0.90;  // above face top -- enough for full scalp on selfies and obliques
+const FACE_CROP_MARGIN_BOT = 0.70;  // below face bottom (neck room)
 
 async function cropToFace(dataUrl, bbox){
   if(!bbox) return dataUrl;
@@ -4388,12 +4434,19 @@ const SCENARIO_LABELS = {
 // M14: which scenarios are offered per baseline treatment type.
 // Sculptra biostim: full set. HA filler: add other filler areas. RF/HIFU: all
 // filler areas plus a biostimulation lateral-lift add-on.
+// HDR and tox: filler volume add-ons + biostim lift (common combination plans).
 const SCENARIOS_BY_TYPE = {
   biostim: ['stronger_sculptra','add_chin_jaw_filler','add_temple_support','add_tear_trough','add_nose_filler','add_lips_filler'],
+  hdr:     ['add_chin_jaw_filler','add_cheek_filler','add_temple_support','add_biostim_lift'],
   filler:  ['add_chin_jaw_filler','add_cheek_filler','add_temple_support','add_tear_trough','add_nose_filler','add_lips_filler'],
-  laser:   ['stronger_laser','add_chin_jaw_filler','add_cheek_filler','add_temple_support','add_tear_trough','add_nose_filler','add_lips_filler','add_biostim_lift']
+  laser:   ['stronger_laser','add_chin_jaw_filler','add_cheek_filler','add_temple_support','add_tear_trough','add_nose_filler','add_lips_filler','add_biostim_lift'],
+  tox:     ['add_chin_jaw_filler','add_cheek_filler','add_temple_support','add_biostim_lift']
 };
 function scenariosForBaseline(){
+  // HDR uses its own scenario set (different from Sculptra biostim).
+  if(state.type === 'biostim'){
+    return SCENARIOS_BY_TYPE[state.product === 'hdr' ? 'hdr' : 'biostim'] || [];
+  }
   return SCENARIOS_BY_TYPE[state.type] || [];
 }
 
@@ -4452,19 +4505,15 @@ function hideScenariosPanel(){
 }
 
 // Show the panel when a baseline is done for the active angle and the current
-// treatment type offers scenarios (Sculptra biostim, HA filler, or RF/HIFU).
+// treatment type offers scenarios. Uses scenariosForBaseline() so HDR, tox,
+// filler, laser, and Sculptra all work without separate type checks here.
 function syncScenariosVisibility(){
   const sl = activeSlot();
-  const isSculptra = state.type === 'biostim' && (state.product === 'sculptra' || !state.product);
-  const offersScenarios = (isSculptra || state.type === 'filler' || state.type === 'laser')
-                          && scenariosForBaseline().length > 0;
+  const offersScenarios = scenariosForBaseline().length > 0;
   if(offersScenarios && sl && sl.status === 'done' && sl.resultDataUrl){
     showScenariosPanel();
   } else {
     hideScenariosPanel();
-    // Rebuild the scenario results panel for the (now-hidden) state --
-    // results are preserved per-angle in scenarioState so switching tabs
-    // back restores them. Only the display is cleared here.
     const results = document.getElementById('scenarioResults');
     if(results) results.innerHTML = '';
   }
@@ -4524,9 +4573,11 @@ async function runScenario(scenarioKey){
 
     const form = new FormData();
     // M14: Sculptra baselines edit the ORIGINAL photo (planner re-describes the
-    // plan). Cross-type baselines (filler / laser) edit the BASELINE image itself,
-    // so the add-on stacks on top of the already-treated face.
-    const isCrossType = (state.type === 'filler' || state.type === 'laser');
+    // plan). Cross-type baselines (filler / laser / tox / HDR) edit the BASELINE
+    // image itself, so the add-on stacks on top of the already-treated face.
+    const isCrossType = state.type === 'filler' || state.type === 'laser' ||
+                        state.type === 'tox' ||
+                        (state.type === 'biostim' && state.product === 'hdr');
     if(isCrossType){
       form.append('image',         baselineBlob, 'baseline-' + angleId + '.jpg'); // edit target = baseline
       form.append('originalImage', baselineBlob, 'baseline-' + angleId + '.jpg'); // planner unused for cross-type
@@ -4711,8 +4762,7 @@ function makeFsZoom(grid, label, opts){
 
   function canPan(){
     if(scale > 1) return true;
-    if(coverMode){ const ov = getCoverOverflow(); return ov.mx > 0.5 || ov.my > 0.5; }
-    return false;
+    return coverMode; // cover images may have hidden content; clamp handles actual bounds
   }
 
   function apply(){
