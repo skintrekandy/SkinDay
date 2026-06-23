@@ -583,7 +583,7 @@
         <button class="type-btn active" data-type="biostim" type="button"><strong>Biostimulation</strong></button>
         <button class="type-btn" data-type="filler" type="button"><strong>HA Fillers</strong></button>
         <button class="type-btn soon" data-type="neurotoxin" type="button" disabled><strong>Neurotoxin</strong><em class="soon-tag">Coming soon</em></button>
-        <button class="type-btn soon" data-type="laser" type="button" disabled><strong>Skin &amp; Laser</strong><em class="soon-tag">Coming soon</em></button>
+        <button class="type-btn" data-type="laser" type="button"><strong>Energy-Based Devices</strong></button>
       </div>
     </div>
 
@@ -654,16 +654,29 @@
             <button class="pill" data-concern="mixed" type="button">Mixed</button>
           </div>
         </div>
+      </div>
 
+      <!-- ENERGY-BASED DEVICES controls (RF / HIFU) -->
+      <div id="laserControls" class="hidden">
         <div class="field">
-          <label>What to generate</label>
-          <div class="pill-grid" id="responseModeToggle">
-            <button class="pill active" data-response-mode="expected" type="button">Expected</button>
-            <button class="pill" data-response-mode="optimistic" type="button">Optimistic</button>
-            <button class="pill" data-response-mode="both" type="button">Both</button>
+          <label>Energy type</label>
+          <div class="pill-grid" id="laserTypeToggle">
+            <button class="pill active" data-laser-type="rf" type="button"><strong>RF</strong></button>
+            <button class="pill" data-laser-type="hifu" type="button"><strong>HIFU</strong></button>
           </div>
-          <div class="small" id="responseModeHelp" style="margin-top:6px;color:var(--muted);font-style:italic;">Expected: realistic outcome after 3-4 vials for most patients.</div>
+          <div class="small" id="laserTypeHelp" style="margin-top:6px;color:var(--muted);font-style:italic;">RF: radiofrequency skin tightening (e.g. Thermage, XERF).</div>
         </div>
+      </div>
+
+      <!-- Shared: What to generate (Expected / Optimistic / Both) -- biostim + laser -->
+      <div id="responseModeBlock" class="field">
+        <label>What to generate</label>
+        <div class="pill-grid" id="responseModeToggle">
+          <button class="pill active" data-response-mode="expected" type="button">Expected</button>
+          <button class="pill" data-response-mode="optimistic" type="button">Optimistic</button>
+          <button class="pill" data-response-mode="both" type="button">Both</button>
+        </div>
+        <div class="small" id="responseModeHelp" style="margin-top:6px;color:var(--muted);font-style:italic;">Expected: realistic outcome after 3-4 vials for most patients.</div>
       </div>
     </div>
 
@@ -826,6 +839,11 @@
         <span>Hyaluronic acid filler added to the chin and jawline</span>
         <em class="credit-tag">1 credit</em>
       </button>
+      <button class="scenario-btn" type="button" data-scenario="add_cheek_filler" id="scenBtn_add_cheek_filler">
+        <strong>Add cheek filler</strong>
+        <span>Hyaluronic acid midface volume on the baseline</span>
+        <em class="credit-tag">1 credit</em>
+      </button>
       <button class="scenario-btn" type="button" data-scenario="add_temple_support" id="scenBtn_add_temple_support">
         <strong>Add temple support</strong>
         <span>Focused upper lateral face volume on the baseline</span>
@@ -844,6 +862,11 @@
       <button class="scenario-btn" type="button" data-scenario="add_lips_filler" id="scenBtn_add_lips_filler">
         <strong>Add lip filler</strong>
         <span>Natural lip volume enhancement on the baseline</span>
+        <em class="credit-tag">1 credit</em>
+      </button>
+      <button class="scenario-btn" type="button" data-scenario="add_biostim_lift" id="scenBtn_add_biostim_lift">
+        <strong>Add biostimulation lift</strong>
+        <span>Collagen-based lateral lift on the baseline</span>
         <em class="credit-tag">1 credit</em>
       </button>
     </div>
@@ -1167,6 +1190,7 @@ const state = {
   blackBg:true, lastGenAt:0, intensityPct:58, courseMode:'standard', // 'standard' | 'enhanced' -- global across all angles
   responseMode:'expected', // 'expected' | 'optimistic' | 'both' -- biostim only pre-gen selector
   fillerVolume:'conservative', // 'conservative' | 'moderate' | 'enhanced' -- filler volume tier
+  laserType:'rf', // 'rf' or 'hifu' -- Energy-Based Devices type
   enhancedStartedAt: 0, enhancedTimerInterval: null,
   selectedAngles:['frontal'], activeAngle:'frontal',
   slots:{ frontal:makeSlot(), r45:makeSlot(), l45:makeSlot() }
@@ -1199,9 +1223,9 @@ let SD_CFG = { authDisabled:true };
 
 function creditCostFor(type){
   const c = (SD_CFG && SD_CFG.costs) || {};
-  const base = (type === 'biostim') ? (c.biostim || 2) : (c.filler || 1);
+  const base = (type === 'biostim' || type === 'laser') ? (c.biostim || 2) : (c.filler || 1);
   // 'both' fires two generations per angle
-  if(type === 'biostim' && state.responseMode === 'both') return base * 2;
+  if((type === 'biostim' || type === 'laser') && state.responseMode === 'both') return base * 2;
   return base;
 }
 
@@ -2225,6 +2249,9 @@ document.querySelectorAll('#typeToggle .type-btn').forEach(btn => {
     state.type = btn.dataset.type;
     document.getElementById('fillerControls').classList.toggle('hidden', state.type !== 'filler');
     document.getElementById('biostimControls').classList.toggle('hidden', state.type !== 'biostim');
+    document.getElementById('laserControls').classList.toggle('hidden', state.type !== 'laser');
+    // Shared response-mode block shows for biostim and laser (both use Expected/Optimistic/Both)
+    document.getElementById('responseModeBlock').classList.toggle('hidden', !usesResponseModes());
     if(state.type === 'filler'){
       // ensure a single area is selected and the volume help reflects it
       if(!state.areas || state.areas.length !== 1) state.areas = ['chin_jawline'];
@@ -2244,6 +2271,8 @@ function updatePhotoGuide(){
   let tip;
   if(state.type === 'biostim'){
     tip = 'Frontal plus both 45° angles shows the full biostimulator effect (temple and cheek read best on the obliques). Same angles every visit.';
+  } else if(state.type === 'laser'){
+    tip = 'Frontal plus both 45° angles shows the tightening and lifting effect best (the jawline and lower face read clearly on the obliques). Same angles every visit.';
   } else {
     const a = state.areas || [];
     if(a.includes('nose') || a.includes('chin_jawline') || a.includes('jawline') || a.includes('chin')){
@@ -2296,6 +2325,20 @@ document.getElementById('fillerVolumeToggle').addEventListener('click', e => {
   btn.classList.add('active');
   state.fillerVolume = btn.dataset.volume;
   updateFillerVolumeHelp();
+});
+// M14: RF / HIFU energy-type selector
+const LASER_TYPE_HELP = {
+  rf:   'RF: radiofrequency skin tightening (e.g. Thermage, XERF).',
+  hifu: 'HIFU: focused-ultrasound lifting (e.g. Ultherapy, Sofwave).'
+};
+document.getElementById('laserTypeToggle').addEventListener('click', e => {
+  const btn = e.target.closest('[data-laser-type]');
+  if(!btn) return;
+  document.querySelectorAll('#laserTypeToggle .pill').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  state.laserType = btn.dataset.laserType;
+  const help = document.getElementById('laserTypeHelp');
+  if(help) help.textContent = LASER_TYPE_HELP[state.laserType] || LASER_TYPE_HELP.rf;
 });
 
 /* ───────── Pill selectors ───────── */
@@ -2926,6 +2969,7 @@ async function prepAndStartSlot(angleId, auth, isRegen, fillerIntensity){
   } else {
     form.append('product', state.product);
     form.append('timeline', state.timeline);
+    if(state.type === 'laser') form.append('laserType', state.laserType);
     // M13: projection derived from responseMode.
     //   expected -> expected projection, single standard pass
     //   optimistic -> optimistic projection + isStrongPass, single direct pass
@@ -2993,7 +3037,7 @@ async function finishSlot(angleId, auth, fillerIntensity){
   // path doesn't break (it simply returns the raw AI at any slider position).
   // M13: BOTH biostim and filler now run gpt-image-2 direct, no compositor.
   const compScope = null;
-  if(state.type === 'biostim' || state.type === 'filler'){
+  if(state.type === 'biostim' || state.type === 'filler' || state.type === 'laser'){
     // Passthrough: no slider blend; raw gpt-image-2 output is the final result
     sl.apply = () => sl.resultDataUrl;
     sl.status = 'done';
@@ -3143,7 +3187,7 @@ async function runGeneration(isRegen){
     // M13: in 'both' mode, Expected and Optimistic generate IN PARALLEL, each
     // directly from the original photo. The optimistic pass is fired right after
     // the expected pass is started for the same angle -- not after it finishes.
-    const isBoth = (state.type === 'biostim' && state.responseMode === 'both' && !isRegen);
+    const isBoth = (usesResponseModes() && state.responseMode === 'both' && !isRegen);
     const started = [];
     for(const id of angles){
       try {
@@ -3282,7 +3326,7 @@ function renderActiveSlot(){
   // Do not set aiResult.src directly here; applyActiveView() at line 2285 handles it.
   let tag = 'Simulated · ' + treatmentName();
   if(multi) tag += ' · ' + ANGLE_DEF[state.activeAngle].short;
-  if(state.type === 'biostim'){
+  if(usesResponseModes()){
     // M13: label reflects what was generated
     let respLabel;
     if(state.responseMode === 'optimistic') respLabel = 'Optimistic';
@@ -3302,7 +3346,7 @@ function renderActiveSlot(){
   // M13: Both mode shows a 3-up grid (Original | Expected | Optimistic) at once.
   // When the optimistic pass is not yet done (still generating, or errored), the
   // view falls back to the standard 2-up Expected result until it arrives.
-  const isBiostim = state.type === 'biostim';
+  const isBiostim = usesResponseModes();
   const grid = document.getElementById('resultGrid');
   const optCard = document.getElementById('optimisticCard');
   const optImg = document.getElementById('optimisticResult');
@@ -3402,6 +3446,7 @@ async function startEnhancedSlot(angleId, auth){
   formData.append('image', blob, 'patient-' + angleId + '.jpg');
   formData.append('type', state.type);
   formData.append('product', state.product || 'sculptra');
+  if(state.type === 'laser') formData.append('laserType', state.laserType);
   formData.append('timeline', state.timeline || '6');
   formData.append('projection', 'optimistic');
   formData.append('intensity', 'enhanced');
@@ -3469,9 +3514,9 @@ async function startEnhancedSlot(angleId, auth){
       if(data.state === 'done'){
         sl.rawStrongAiDataUrl = data.image; // debug only; never shown directly
 
-        // M13: biostim bypasses the compositor. The raw gpt-image-2 output is
-        // the final Enhanced result. No mask, no safety clamp needed.
-        if(state.type === 'biostim'){
+        // M13/M14: biostim and laser bypass the compositor. The raw gpt-image-2
+        // output is the final Optimistic result. No mask, no safety clamp needed.
+        if(usesResponseModes()){
           sl.strongDataUrl = data.image;
           sl.strongApply = () => data.image; // passthrough for slider
           sl.strongStatus = 'done';
@@ -3611,7 +3656,7 @@ async function runStrongPass(){
 
 function updateStrongBtn(){
   const sl = activeSlot();
-  const isBiostim = state.type === 'biostim';
+  const isBiostim = usesResponseModes();
   const isDone = sl && sl.status === 'done';
   const expBtn = document.getElementById('courseExpected');
   const enhBtn = document.getElementById('courseEnhanced');
@@ -4081,8 +4126,13 @@ async function hiResResultFor(angleId){
 // Clinic-facing treatment name for tags and export kickers. The footer line
 // still carries the AI-generated disclosure, so the kicker can lead with the
 // treatment the patient is actually considering.
+// M14: biostim and laser both use the Expected/Optimistic/Both response-mode
+// machinery (gpt-image-2 direct, no compositor, 3-up Both grid, parallel passes).
+function usesResponseModes(){ return state.type === 'biostim' || state.type === 'laser'; }
+
 function treatmentName(){
   if(state.type === 'biostim') return state.product === 'hdr' ? 'Hyperdilute Radiesse' : 'Biostimulator';
+  if(state.type === 'laser') return state.laserType === 'hifu' ? 'HIFU' : 'RF';
   if(state.type === 'filler') return 'HA Filler';
   return 'AI Visualization';
 }
@@ -4092,14 +4142,16 @@ function simKicker(angleId){
   const sl = state.slots[angleId];
   const parts = [treatmentName()];
   if(multiDone) parts.push(ANGLE_DEF[angleId].label);
-  // M13: biostim labels Expected / Optimistic (slider removed).
-  if(state.type === 'biostim'){
+  // M13/M14: biostim and laser label Expected / Optimistic (slider removed).
+  if(usesResponseModes()){
     const isOpt = (state.responseMode === 'optimistic') || (state.courseMode === 'enhanced');
     parts.push(isOpt ? 'Optimistic' : 'Expected');
   }
   if(state.type === 'filler' && sl.apply){
-    const li = levelInfo(state.intensityPct || 70);
-    parts.push(li.over ? 'Overfilled · shown for education' : li.name);
+    // M14.1: label from the selected volume tier (conservative/moderate/enhanced),
+    // not the stale slider intensityPct which always read "Balanced".
+    const VOLUME_LABEL = { conservative:'Conservative correction', moderate:'Balanced correction', enhanced:'Enhanced correction' };
+    parts.push(VOLUME_LABEL[state.fillerVolume] || 'Balanced correction');
   }
   return parts.join(' · ');
 }
@@ -4261,7 +4313,7 @@ async function drawExport(includeText, angleIds){
   if(ids.length === 1){
     const aId = ids[0];
     const aSl = state.slots[aId];
-    const bothReady = state.type === 'biostim' && state.responseMode === 'both' &&
+    const bothReady = usesResponseModes() && state.responseMode === 'both' &&
                       aSl.strongStatus === 'done' && aSl.strongDataUrl;
     if(bothReady){
       const panelW = 820, panelH = 1025, gap = 6;
@@ -4425,7 +4477,7 @@ document.getElementById('plainBtn').addEventListener('click', async () => {
   };
 
   // M13: Both mode -- export Expected and Optimistic as two separate files.
-  const bothReady = state.type === 'biostim' && state.responseMode === 'both' &&
+  const bothReady = usesResponseModes() && state.responseMode === 'both' &&
                     sl.strongStatus === 'done' && sl.strongDataUrl;
   if(bothReady){
     let expectedUrl = sl.resultDataUrl;
@@ -4569,12 +4621,26 @@ function scenarioBucket() {
 const SCENARIO_LABELS = {
   stronger_sculptra:  'Stronger biostimulation response',
   add_chin_jaw_filler: 'Add chin + jawline filler',
+  add_cheek_filler:   'Add cheek filler',
   add_temple_support: 'Add temple support',
   add_tear_trough:    'Add under-eye (tear trough) support',
   add_nose_filler:    'Add nose filler',
   add_lips_filler:    'Add lip filler',
+  add_biostim_lift:   'Add biostimulation lift',
   combination_plan:   'Full combination plan'
 };
+
+// M14: which scenarios are offered per baseline treatment type.
+// Sculptra biostim: full set. HA filler: add other filler areas. RF/HIFU: all
+// filler areas plus a biostimulation lateral-lift add-on.
+const SCENARIOS_BY_TYPE = {
+  biostim: ['stronger_sculptra','add_chin_jaw_filler','add_temple_support','add_tear_trough','add_nose_filler','add_lips_filler'],
+  filler:  ['add_chin_jaw_filler','add_cheek_filler','add_temple_support','add_tear_trough','add_nose_filler','add_lips_filler'],
+  laser:   ['add_chin_jaw_filler','add_cheek_filler','add_temple_support','add_tear_trough','add_nose_filler','add_lips_filler','add_biostim_lift']
+};
+function scenariosForBaseline(){
+  return SCENARIOS_BY_TYPE[state.type] || [];
+}
 
 // Export label: every scenario builds on the biostimulation baseline, so the
 // downloaded grid header and the third-panel tag both lead with
@@ -4582,23 +4648,34 @@ const SCENARIO_LABELS = {
 // gets a hand-written form to avoid doubling up the word "biostimulation".
 function scenarioExportLabel(scenarioKey, baseLabel){
   const lbl = baseLabel || SCENARIO_LABELS[scenarioKey] || scenarioKey;
-  if(scenarioKey === 'stronger_sculptra') return 'Biostimulator + stronger response';
-  return 'Biostimulator + ' + lbl.replace(/^Add\s+/i, '');
+  // M14: prefix reflects the baseline treatment the scenario builds on.
+  const prefix = treatmentName();
+  if(scenarioKey === 'stronger_sculptra') return prefix + ' + stronger response';
+  return prefix + ' + ' + lbl.replace(/^Add\s+/i, '');
 }
 
 const SCENARIO_DESCRIPTIONS = {
   stronger_sculptra:   'Higher-dose scenario (6-8+ vials/syringes). Upper-range result, not guaranteed.',
   add_chin_jaw_filler: 'Combination-treatment scenario. Not a guaranteed outcome.',
+  add_cheek_filler:    'Add-on scenario. Not a guaranteed outcome.',
   add_temple_support:  'Add-on scenario. Upper-range outcome, not guaranteed.',
   add_tear_trough:     'Add-on scenario. Not a guaranteed outcome.',
   add_nose_filler:     'Add-on scenario. Not a guaranteed outcome.',
   add_lips_filler:     'Add-on scenario. Not a guaranteed outcome.',
+  add_biostim_lift:    'Add-on scenario. Upper-range outcome, not guaranteed.',
   combination_plan:    'Full multi-modality combination scenario. Possible upper-range outcome.'
 };
 
 function showScenariosPanel(){
   const panel = document.getElementById('scenariosPanel');
   if(panel) panel.classList.remove('hidden');
+
+  // M14: show only the scenario buttons relevant to the current baseline type.
+  const allowed = scenariosForBaseline();
+  Object.keys(SCENARIO_LABELS).forEach(key => {
+    const btn = document.getElementById('scenBtn_' + key);
+    if(btn) btn.style.display = allowed.includes(key) ? '' : 'none';
+  });
 
   // Clear all existing scenario cards before re-rendering the active angle's
   // results. Without this, switching from an angle that has scenario results
@@ -4608,7 +4685,7 @@ function showScenariosPanel(){
 
   const bucket = scenarioBucket();
   Object.keys(SCENARIO_LABELS).forEach(key => {
-    if(bucket[key]) renderScenarioResult(key);
+    if(bucket[key] && allowed.includes(key)) renderScenarioResult(key);
   });
   syncScenarioBtns();
 }
@@ -4618,11 +4695,14 @@ function hideScenariosPanel(){
   if(panel) panel.classList.add('hidden');
 }
 
-// Show the panel only when a Sculptra baseline is done for the active angle.
+// Show the panel when a baseline is done for the active angle and the current
+// treatment type offers scenarios (Sculptra biostim, HA filler, or RF/HIFU).
 function syncScenariosVisibility(){
   const sl = activeSlot();
   const isSculptra = state.type === 'biostim' && (state.product === 'sculptra' || !state.product);
-  if(isSculptra && sl && sl.status === 'done' && sl.resultDataUrl){
+  const offersScenarios = (isSculptra || state.type === 'filler' || state.type === 'laser')
+                          && scenariosForBaseline().length > 0;
+  if(offersScenarios && sl && sl.status === 'done' && sl.resultDataUrl){
     showScenariosPanel();
   } else {
     hideScenariosPanel();
@@ -4687,13 +4767,21 @@ async function runScenario(scenarioKey){
     bucket[scenarioKey].jobId = jobId;
 
     const form = new FormData();
-    // image = original photo (primary edit target for the image model)
-    // originalImage = baseline (planner context: what Sculptra already achieved)
-    form.append('image',         originalBlob,  'original-' + angleId + '.jpg');
-    form.append('originalImage', baselineBlob,  'baseline-' + angleId + '.jpg');
+    // M14: Sculptra baselines edit the ORIGINAL photo (planner re-describes the
+    // plan). Cross-type baselines (filler / laser) edit the BASELINE image itself,
+    // so the add-on stacks on top of the already-treated face.
+    const isCrossType = (state.type === 'filler' || state.type === 'laser');
+    if(isCrossType){
+      form.append('image',         baselineBlob, 'baseline-' + angleId + '.jpg'); // edit target = baseline
+      form.append('originalImage', baselineBlob, 'baseline-' + angleId + '.jpg'); // planner unused for cross-type
+    } else {
+      form.append('image',         originalBlob,  'original-' + angleId + '.jpg'); // edit target = original
+      form.append('originalImage', baselineBlob,  'baseline-' + angleId + '.jpg'); // planner context
+    }
     form.append('jobId',         jobId);
     form.append('type',          'biostim');
     form.append('product',       'sculptra');
+    form.append('baselineType',  state.type); // M14: tells backend which baseline this builds on
     form.append('scenarioMode',  'true');
     form.append('scenarioKey',   scenarioKey);
     form.append('rawScenarioMode', 'false');
@@ -5110,7 +5198,7 @@ function openPreviewFullscreen(){
   if(!overlay || !grid) return;
 
   // M13: 3-up in Both mode -- Original | Expected | Optimistic.
-  const bothReady = state.type === 'biostim' && state.responseMode === 'both' &&
+  const bothReady = usesResponseModes() && state.responseMode === 'both' &&
                     sl && sl.status === 'done' && sl.strongStatus === 'done' && sl.strongDataUrl;
 
   const simTagEl = document.getElementById('simTag');
