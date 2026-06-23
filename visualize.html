@@ -828,6 +828,16 @@
         <span>Softens the under-eye hollow on the baseline</span>
         <em class="credit-tag">1 credit</em>
       </button>
+      <button class="scenario-btn" type="button" data-scenario="add_nose_filler" id="scenBtn_add_nose_filler">
+        <strong>Add nose filler</strong>
+        <span>Liquid rhinoplasty on the baseline</span>
+        <em class="credit-tag">1 credit</em>
+      </button>
+      <button class="scenario-btn" type="button" data-scenario="add_lips_filler" id="scenBtn_add_lips_filler">
+        <strong>Add lip filler</strong>
+        <span>Natural lip volume enhancement on the baseline</span>
+        <em class="credit-tag">1 credit</em>
+      </button>
     </div>
     <div class="scenario-results" id="scenarioResults"></div>
   </section>
@@ -2830,11 +2840,10 @@ async function prepAndStartSlot(angleId, auth, isRegen, fillerIntensity){
   form.append('image', blob, 'patient-' + angleId + '.jpg');
   form.append('type', state.type);
 
-  // Hybrid mask per photo (each angle has its own landmarks). Fail-safe: any
-  // error posts no mask, falling back to a full-image edit.
-  const maskScope = (state.type === 'biostim' && state.product === 'sculptra') ? 'full'
-                  : (state.type === 'filler') ? 'chin_jaw'
-                  : null;
+  // M13: biostim (Sculptra) goes to gpt-image-2 as a direct full-frame edit.
+  // No mask is sent -- gpt-image-2 works best unmasked, and the negative-list
+  // guardrail in the prompt controls what doesn't change. Mask only sent for filler.
+  const maskScope = (state.type === 'filler') ? 'chin_jaw' : null;
   if(maskScope){
     try {
       const beforeImg = await loadImage(beforeDataUrl);
@@ -2913,12 +2922,22 @@ async function finishSlot(angleId, auth, fillerIntensity){
   }
   sl.rawAiDataUrl = sl.resultDataUrl;
 
-  // Masked compositor per angle: AI inside the treatment mask, the original
-  // photo everywhere else, exposing apply(0..1) -> jpegDataURL for the shared
-  // response slider. Fail-safe: on any error keep the raw AI for this angle.
-  const compScope = (state.type === 'biostim' && state.product === 'sculptra') ? 'full'
-                  : (state.type === 'filler') ? 'chin_jaw'
-                  : null;
+  // M13: biostim bypasses the compositor entirely. gpt-image-2 direct output
+  // is the final result. A passthrough apply() is set so the intensity slider
+  // path doesn't break (it simply returns the raw AI at any slider position).
+  // Compositor + mask only run for filler.
+  const compScope = (state.type === 'filler') ? 'chin_jaw' : null;
+  if(state.type === 'biostim'){
+    // Passthrough: slider has no effect but the function contract is preserved
+    sl.apply = () => sl.resultDataUrl;
+    sl.status = 'done';
+    if(cacheKey && sl.fillerCache && sl.fillerCache[cacheKey]){
+      sl.fillerCache[cacheKey].apply = sl.apply;
+      sl.fillerCache[cacheKey].resultDataUrl = sl.resultDataUrl;
+    }
+    console.log('%c[Visualize] ' + angleId + ': biostim M13 -- raw gpt-image-2 output, no compositor.', 'color:#1b5e20;font-weight:bold');
+    return;
+  }
   if(compScope){
     // M9.1 diagnostic hook: ?composite=raw shows the AI's UNTOUCHED output for
     // every angle (no mask composite, no texture restore, no warp; the slider
@@ -3278,10 +3297,9 @@ async function startEnhancedSlot(angleId, auth){
   // patchy anatomically incoherent results. The compositor below handles
   // safety clamping after a correct full-frame result is generated.
 
-  // maskScope is still needed for the post-generation compositor safety clamp.
-  const maskScope = (state.type === 'biostim' && state.product === 'sculptra') ? 'full'
-                  : (state.type === 'filler') ? 'chin_jaw'
-                  : null;
+  // maskScope: biostim has no compositor in M13, so maskScope is only needed
+  // for filler's post-generation compositor safety clamp.
+  const maskScope = (state.type === 'filler') ? 'chin_jaw' : null;
 
   console.log('[Visualize Enhanced] ' + angleId + ': sending to start-visualization…');
   let startRes;
@@ -3328,7 +3346,20 @@ async function startEnhancedSlot(angleId, auth){
       if(data.state === 'done'){
         sl.rawStrongAiDataUrl = data.image; // debug only; never shown directly
 
-        // Run compositor -- same path as finishSlot.
+        // M13: biostim bypasses the compositor. The raw gpt-image-2 output is
+        // the final Enhanced result. No mask, no safety clamp needed.
+        if(state.type === 'biostim'){
+          sl.strongDataUrl = data.image;
+          sl.strongApply = () => data.image; // passthrough for slider
+          sl.strongStatus = 'done';
+          const allDone = state.selectedAngles.every(id => state.slots[id].strongStatus === 'done' || state.slots[id].status !== 'done');
+          if(allDone) state.courseMode = 'enhanced';
+          updateStrongBtn();
+          if(angleId === state.activeAngle) applyActiveView();
+          return;
+        }
+
+        // Run compositor for filler -- same path as finishSlot.
         // On any failure, suppress enhanced rather than show raw AI.
         let composited = null;
         if(maskScope){
@@ -3649,9 +3680,8 @@ window.addEventListener('touchend', e => {
 async function buildLayerDebugSheet(angleId){
   try {
     const sl = state.slots[angleId];
-    const compScope = (state.type === 'biostim' && state.product === 'sculptra') ? 'full'
-                    : (state.type === 'filler') ? 'chin_jaw'
-                    : null;
+    // M13: biostim has no compositor -- debug sheet shows raw AI only
+    const compScope = (state.type === 'filler') ? 'chin_jaw' : null;
     if(!sl || !compScope || !sl.rawAiDataUrl) return;
     const t = (state.intensityPct || 70) / 100;
     const beforeImg = await loadImage(sl.beforeDataUrl || sl.originalDataUrl);
@@ -3730,10 +3760,10 @@ async function buildLayerDebugSheet(angleId){
 async function buildEnhancedDebugSheet(angleId){
   try {
     const sl = state.slots[angleId];
-    const compScope = (state.type === 'biostim' && state.product === 'sculptra') ? 'full'
-                    : (state.type === 'filler') ? 'chin_jaw' : null;
+    // M13: biostim has no compositor -- debug sheet not applicable
+    const compScope = (state.type === 'filler') ? 'chin_jaw' : null;
     if(!sl || !compScope){
-      console.warn('[EnhancedDebug] slot not ready or wrong treatment type');
+      console.warn('[EnhancedDebug] slot not ready or wrong treatment type (biostim has no compositor in M13)');
       return;
     }
     if(!sl.rawStrongAiDataUrl){
@@ -3861,9 +3891,8 @@ window.debugEnhanced = buildEnhancedDebugSheet;
 // angle and slider value; falls back to the live 1024 result on any error.
 const EXPORT_MAXDIM = 2048;
 function exportCompScope(){
-  return (state.type === 'biostim' && state.product === 'sculptra') ? 'full'
-       : (state.type === 'filler') ? 'chin_jaw'
-       : null;
+  // M13: biostim has no compositor (gpt-image-2 direct). Only filler uses compositor.
+  return (state.type === 'filler') ? 'chin_jaw' : null;
 }
 async function hiResResultFor(angleId){
   const sl = state.slots[angleId];
@@ -4297,6 +4326,8 @@ const SCENARIO_LABELS = {
   add_chin_jaw_filler: 'Add chin + jawline filler',
   add_temple_support: 'Add temple support',
   add_tear_trough:    'Add under-eye (tear trough) support',
+  add_nose_filler:    'Add nose filler',
+  add_lips_filler:    'Add lip filler',
   combination_plan:   'Full combination plan'
 };
 
@@ -4314,6 +4345,9 @@ const SCENARIO_DESCRIPTIONS = {
   stronger_sculptra:   'Higher-responder scenario. Upper-range result, not guaranteed.',
   add_chin_jaw_filler: 'Combination-treatment scenario. Not a guaranteed outcome.',
   add_temple_support:  'Add-on scenario. Upper-range outcome, not guaranteed.',
+  add_tear_trough:     'Add-on scenario. Not a guaranteed outcome.',
+  add_nose_filler:     'Add-on scenario. Not a guaranteed outcome.',
+  add_lips_filler:     'Add-on scenario. Not a guaranteed outcome.',
   combination_plan:    'Full multi-modality combination scenario. Possible upper-range outcome.'
 };
 
