@@ -787,6 +787,7 @@ exports.handler = async (event) => {
         phenotype:        f.phenotype,
         sculptraPhenotype: f.sculptraPhenotype,
         laserType:        f.laserType,
+        toxMode:          f.toxMode,
         patientAge:       f.patientAge ? parseInt(f.patientAge, 10) : null,
       });
     } else {
@@ -799,7 +800,8 @@ exports.handler = async (event) => {
     let tail;
     if (forceServerSafety) tail = SERVER_SAFETY;
     else if (isSculptra) tail = '';
-    else if (f.type === 'laser' || f.type === 'tox') tail = ''; // these prompts carry their own complete guardrail
+    else if (f.type === 'laser') tail = ''; // laser prompt carries its own complete guardrail
+    else if (f.type === 'tox')   tail = ''; // tox prompt carries its own complete guardrail
     else if (isChinJaw) tail = CHIN_JAW_SAFETY;
     else tail = SERVER_SAFETY;
     const prompt = core + tail;
@@ -830,8 +832,6 @@ exports.handler = async (event) => {
       modelName = process.env.FILLER_IMAGE_MODEL || 'gpt-image-2';
     } else if (f.type === 'laser') {
       modelName = process.env.LASER_IMAGE_MODEL || 'gpt-image-2';
-    } else if (f.type === 'tox') {
-      modelName = process.env.TOX_IMAGE_MODEL || 'gpt-image-2';
     } else {
       modelName = 'gpt-image-1';
     }

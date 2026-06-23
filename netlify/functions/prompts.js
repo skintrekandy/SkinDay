@@ -574,38 +574,67 @@ function buildHdrPrompt(sel, tp) {
   return `${NO_TEXT_RULE} ${framing} ${viewLock} Make ONLY this change: ${HDR_EXPECTED}${HDR_AREA_FOCUS}${HDR_MAGNITUDE}${timeline}${cleanNote}${HDR_GUARDRAIL}`;
 }
 
-// ---- Neurotoxin: lower-face contouring (masseter + Nefertiti) ---------------
-// Design intent: NOT anti-wrinkle. Contour-only neurotoxin -- masseter slimming
-// (narrower lower face, cleaner jaw angle) plus a platysma / Nefertiti lift
-// (cleaner jawline, mild prejowl and upper-neck improvement). Single Expected
-// pass, routed to gpt-image-2 because the change is a contour edit.
+// ---- Neurotoxin: lower-face contouring (masseter / nefertiti / combined) ------
+// Design intent: NOT anti-wrinkle. Contour-only neurotoxin in three modes:
+//   masseter   -- lateral lower-face narrowing only; no neck, submental, or
+//                 jawline-lift change whatsoever
+//   nefertiti  -- mild mandibular-border cleanup from platysma relaxation;
+//                 at most minimal submental change; no energy-device tightening
+//   combined   -- sum of both modest effects; submental fullness largely preserved;
+//                 explicitly not a neck-lift or Botox + Ultherapy result
+// Single Expected pass, routed to gpt-image-2.
+
 const TOX_GUARDRAIL =
-  ' CRITICAL TREATMENT CEILING: this is a contour-only neurotoxin result from masseter slimming and a platysma / Nefertiti lift -- NOT an anti-wrinkle treatment, NOT filler, NOT threads, NOT surgery, and NOT a beauty filter. ' +
+  ' CRITICAL TREATMENT CEILING: this is a contour-only neurotoxin result -- NOT an anti-wrinkle treatment, NOT filler, NOT threads, NOT surgery, and NOT a beauty filter. ' +
   'PRESERVE THE PATIENT\'S AGE and skin: do NOT erase or soften wrinkles or fine lines, do NOT smooth, retouch, brighten, or resurface the skin, do NOT reduce pigmentation or under-eye shadows, and do NOT make the face look younger or prettier overall. Skin texture, pores, lines, and apparent age must REMAIN exactly as photographed. ' +
   'Do NOT create a dramatic V-line, a sharply pointed chin, hollow cheeks, a filler-like sculpted jaw, or a surgical neck lift. ' +
   'Do not enlarge the eyes, lift the brows, add chin projection, or alter the lips, nose, cheeks, or any untreated feature. ' +
-  'Preserve identity, ethnicity and all ethnic features, facial asymmetry, expression, hair, headband, neck, clothing, background, lighting, and camera angle exactly. Do not add text, labels, watermarks, or annotations.';
-
-const TOX_EXPECTED =
-  'Make ONLY a lower-face contour change from masseter slimming plus a platysma / Nefertiti lift. ' +
-  'Masseter component: slightly narrow the lower face by reducing the lateral muscle bulk at the jaw angles (the gonial angle), so the lower face looks a little slimmer and less square -- from reduced muscle prominence, never from cheek hollowing or skeletal sharpening. ' +
-  'Platysma / Nefertiti component: produce a mild cleaning effect along the jawline by easing downward pull at the upper platysma, giving a slightly cleaner mandibular border, softened early jowl descent, and a modest improvement in the upper-neck and submental transition. Do not create a surgical neck lift.';
-
-const TOX_AREA_FOCUS =
-  ' The visible effect must stay in the lower third of the face: the masseter region at the jaw angles, the mandibular border, the early jowl / prejowl area, and the upper platysma / jawline transition. Do not change the forehead, glabella, crow\'s feet, cheeks, lips, nose, or eye area.';
+  'Preserve identity, ethnicity and all ethnic features, facial asymmetry, expression, hair, clothing, background, lighting, and camera angle exactly. Do not add text, labels, watermarks, or annotations.';
 
 const TOX_MAGNITUDE =
   ' Magnitude anchor: subtle but visible, roughly a 10 to 20 percent contour improvement -- noticeable in a side-by-side comparison but conservative and believable for neurotoxin. If uncertain, do less rather than more.';
 
+// Applied only for oblique views: prevents the model from over-promising
+// in the submental/cervicomental region where oblique perspective exaggerates contour.
+const TOX_OBLIQUE_SUBMENTAL_GUARD =
+  ' In this oblique view, preserve the existing submental fullness and neck contour. Do not over-tighten the submental area or create a sharper cervicomental angle than would be realistic for neurotoxin alone. The submental region should remain close to the original.';
+
+const TOX_MODES = {
+  masseter: {
+    framing: (isOblique) => isOblique
+      ? 'Produce a clinically realistic photograph of the same person after neurotoxin treatment to the masseter muscles for lower-face slimming, shown about 6 to 8 weeks later, keeping the same oblique pose, identity, apparent age, skin character, lighting, and camera setup.'
+      : 'Produce a clinically realistic photograph of the same person after neurotoxin treatment to the masseter muscles for lower-face slimming, shown about 6 to 8 weeks later, keeping the same frontal pose, identity, apparent age, skin character, lighting, and camera setup.',
+    expected:
+      'Make ONLY a masseter-slimming change: slightly narrow the lower face by reducing lateral muscle bulk at the jaw angles (the gonial angle region), so the lower face looks a little slimmer and less square. The effect comes from reduced muscle prominence only, never from cheek hollowing, skeletal sharpening, or tissue lifting. ' +
+      'Do not change the neck, submental fullness, cervicomental angle, or jawline contour beyond the gonial angle region. Do not create platysmal tightening, jawline lifting, or any double-chin reduction.'
+  },
+  nefertiti: {
+    framing: (isOblique) => isOblique
+      ? 'Produce a clinically realistic photograph of the same person after neurotoxin treatment to the platysma for a Nefertiti lift, shown about 6 to 8 weeks later, keeping the same oblique pose, identity, apparent age, skin character, lighting, and camera setup.'
+      : 'Produce a clinically realistic photograph of the same person after neurotoxin treatment to the platysma for a Nefertiti lift, shown about 6 to 8 weeks later, keeping the same frontal pose, identity, apparent age, skin character, lighting, and camera setup.',
+    expected:
+      'Make ONLY a Nefertiti-lift change from platysma relaxation: show mild improvement in jawline continuity and a slightly cleaner mandibular border, with subtle softening of downward pull along the upper platysma. Mild softening of early prejowl or jawline blunting is acceptable. ' +
+      'Any submental or upper-neck change must be minimal -- do not significantly reduce double chin fullness, do not create a strong cervicomental angle, and do not produce major submental tightening. Do not simulate energy-device tightening, a surgical neck lift, or liposuction. The submental region should look essentially the same as in the original.'
+  },
+  combined: {
+    framing: (isOblique) => isOblique
+      ? 'Produce a clinically realistic photograph of the same person after combined neurotoxin treatment for masseter slimming and Nefertiti lift, shown about 6 to 8 weeks later, keeping the same oblique pose, identity, apparent age, skin character, lighting, and camera setup.'
+      : 'Produce a clinically realistic photograph of the same person after combined neurotoxin treatment for masseter slimming and Nefertiti lift, shown about 6 to 8 weeks later, keeping the same frontal pose, identity, apparent age, skin character, lighting, and camera setup.',
+    expected:
+      'Make ONLY a combined lower-face contour change: slightly narrow the lower face by reducing lateral masseter bulk at the jaw angles, plus mild improvement in jawline definition and slight softening of downward platysmal pull along the mandibular border. This is the sum of two modest neurotoxin effects only -- not a neck lift, not energy-device tightening, not liposuction. ' +
+      'Preserve most submental fullness. Do not produce a major reduction in double chin or a strong cervicomental angle improvement. If uncertain about the submental area, err toward less change rather than more.'
+  }
+};
+
 function buildToxPrompt(sel) {
   const view = normalizeView(sel);
   const isOblique = view !== 'frontal';
-  const framing = isOblique
-    ? 'Produce a clinically realistic photograph of the same person after a contour-focused neurotoxin treatment (masseter slimming and Nefertiti lift), shown about 6 to 8 weeks later, keeping the same oblique pose, identity, apparent age, skin character, lighting, and camera setup.'
-    : 'Produce a clinically realistic photograph of the same person after a contour-focused neurotoxin treatment (masseter slimming and Nefertiti lift), shown about 6 to 8 weeks later, keeping the same frontal pose, identity, apparent age, skin character, lighting, and camera setup.';
+  const mode = TOX_MODES[sel.toxMode] || TOX_MODES.combined;
+  const framing = mode.framing(isOblique);
   const viewLock = SCULPTRA_VIEW_LOCKS[view] || SCULPTRA_VIEW_LOCKS.frontal;
+  const obliqueGuard = isOblique ? TOX_OBLIQUE_SUBMENTAL_GUARD : '';
   const cleanNote = sanitizeNote(sel.note);
-  return `${NO_TEXT_RULE} ${framing} ${viewLock} ${TOX_EXPECTED}${TOX_AREA_FOCUS}${TOX_MAGNITUDE}${cleanNote}${TOX_GUARDRAIL}`;
+  return `${NO_TEXT_RULE} ${framing} ${viewLock} ${mode.expected}${TOX_MAGNITUDE}${obliqueGuard}${cleanNote}${TOX_GUARDRAIL}`;
 }
 
 // Assemble the CORE prompt from selections. The safety base is appended elsewhere.
