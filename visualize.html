@@ -497,6 +497,8 @@
     @media(max-width:700px){ .scenario-fs-grid { grid-template-columns:1fr; overflow-y:auto; } }
     .scenario-fs-cell { position:relative; min-height:0; background:#000; border-radius:6px; overflow:hidden; display:flex; align-items:center; justify-content:center; }
     .scenario-fs-cell img { max-width:100%; max-height:100%; width:auto; height:auto; object-fit:contain; will-change:transform; }
+    /* Preview fullscreen (before/after): always fill the cell regardless of pixel size */
+    #previewFsGrid .scenario-fs-cell img { object-fit:cover; width:100%; height:100%; }
     .scenario-fs-cell .scenario-cell-tag { position:absolute; }
     /* fullscreen zoom controls */
     .fs-zoom { display:inline-flex; align-items:center; gap:6px; }
@@ -672,7 +674,12 @@
       <div id="toxControls" class="hidden">
         <div class="field">
           <label>Indication</label>
-          <div class="small" style="margin-top:6px;color:var(--muted);font-style:italic;">Lower-face contouring: masseter slimming and platysma / Nefertiti lift for a slimmer lower face and a cleaner jawline. This is not an anti-wrinkle simulation. Results develop over about 6 to 8 weeks.</div>
+          <div class="pill-grid" id="toxModeToggle">
+            <button class="pill" data-tox-mode="masseter" type="button"><strong>Masseter Slimming</strong></button>
+            <button class="pill" data-tox-mode="nefertiti" type="button"><strong>Nefertiti Lift</strong></button>
+            <button class="pill active" data-tox-mode="combined" type="button"><strong>Combined</strong></button>
+          </div>
+          <div class="small" id="toxModeHelp" style="margin-top:6px;color:var(--muted);font-style:italic;">Combined: masseter slimming and Nefertiti lift for a slimmer lower face and cleaner jawline. Submental area largely preserved. This is not an anti-wrinkle simulation. Results develop over about 6 to 8 weeks.</div>
         </div>
       </div>
     </div>
@@ -1193,6 +1200,7 @@ const state = {
   responseMode:'expected', // M14.2: always 'expected'. Optimistic/Both selector removed (overpromising). Stronger effect is a post-baseline scenario.
   fillerVolume:'conservative', // 'conservative' | 'moderate' | 'enhanced' -- filler volume tier
   laserType:'rf', // 'rf' or 'hifu' -- Energy-Based Devices type
+  toxMode:'combined', // 'masseter' | 'nefertiti' | 'combined' -- Neurotoxin mode
   enhancedStartedAt: 0, enhancedTimerInterval: null,
   selectedAngles:['frontal'], activeAngle:'frontal',
   slots:{ frontal:makeSlot(), r45:makeSlot(), l45:makeSlot() }
@@ -1960,7 +1968,6 @@ window.addEventListener('message', (ev) => {
                   sl.faceBbox = a.faceBbox;
                   try { sl.cropCache = await cropToFace(dataUrl, sl.faceBbox); } catch(e){}
                 }
-                // M14: advisory only, mirrors onSlotFile.
                 sl.status = 'ready';
                 sl.qcMsg = gate.ok ? ('✓ ' + gate.msg) : ('Note: ' + gate.msg);
               } catch(qcErr){
@@ -2205,7 +2212,6 @@ async function onSlotFile(angleId, file){
       try { sl.cropCache = await cropToFace(sl.originalDataUrl, sl.faceBbox); } catch(e){}
     }
     // M14: all gates are advisory only -- no photo is ever rejected.
-    // Pose mismatch and no-face-detected become notes; luma/sharpness checks removed entirely.
     const extraNote = (a && a.faceFrac != null && a.faceFrac > QC.MAX_FACE_FRAC)
       ? ' Face fills most of the frame -- step back slightly for best oblique accuracy.'
       : '';
@@ -2349,6 +2355,21 @@ document.getElementById('laserTypeToggle').addEventListener('click', e => {
   state.laserType = btn.dataset.laserType;
   const help = document.getElementById('laserTypeHelp');
   if(help) help.textContent = LASER_TYPE_HELP[state.laserType] || LASER_TYPE_HELP.rf;
+});
+
+const TOX_MODE_HELP = {
+  masseter:  'Masseter slimming only: narrows the lower face by reducing masseter bulk. Does not affect the neck, submental area, or double chin. Results develop over about 6 to 8 weeks.',
+  nefertiti: 'Nefertiti lift only: mild jawline cleanup from platysma relaxation. May slightly improve jawline contour. Minimal effect on submental fullness. Results develop over about 6 to 8 weeks.',
+  combined:  'Combined: masseter slimming and Nefertiti lift for a slimmer lower face and cleaner jawline. Submental area largely preserved. This is not an anti-wrinkle simulation. Results develop over about 6 to 8 weeks.'
+};
+document.getElementById('toxModeToggle').addEventListener('click', e => {
+  const btn = e.target.closest('[data-tox-mode]');
+  if(!btn) return;
+  document.querySelectorAll('#toxModeToggle .pill').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  state.toxMode = btn.dataset.toxMode;
+  const help = document.getElementById('toxModeHelp');
+  if(help) help.textContent = TOX_MODE_HELP[state.toxMode] || TOX_MODE_HELP.combined;
 });
 
 /* ───────── Pill selectors ───────── */
@@ -2963,6 +2984,7 @@ async function prepAndStartSlot(angleId, auth, isRegen, fillerIntensity){
     form.append('product', state.product);
     form.append('timeline', state.timeline);
     if(state.type === 'laser') form.append('laserType', state.laserType);
+    if(state.type === 'tox')   form.append('toxMode',   state.toxMode);
     // M13: projection derived from responseMode.
     //   expected -> expected projection, single standard pass
     //   optimistic -> optimistic projection + isStrongPass, single direct pass
@@ -3352,6 +3374,7 @@ async function startEnhancedSlot(angleId, auth){
   formData.append('type', state.type);
   formData.append('product', state.product || 'sculptra');
   if(state.type === 'laser') formData.append('laserType', state.laserType);
+  if(state.type === 'tox')   formData.append('toxMode',   state.toxMode);
   formData.append('timeline', state.timeline || '6');
   formData.append('projection', 'optimistic');
   formData.append('intensity', 'enhanced');
@@ -3754,7 +3777,11 @@ const FILLER_AREA_LABELS = {
 function treatmentName(){
   if(state.type === 'biostim') return state.product === 'hdr' ? 'Hyperdilute Radiesse' : 'Biostimulator';
   if(state.type === 'laser') return state.laserType === 'hifu' ? 'HIFU' : 'RF';
-  if(state.type === 'tox') return 'Neurotoxin';
+  if(state.type === 'tox'){
+    if(state.toxMode === 'masseter')  return 'Neurotoxin · Masseter';
+    if(state.toxMode === 'nefertiti') return 'Neurotoxin · Nefertiti';
+    return 'Neurotoxin';
+  }
   if(state.type === 'filler'){
     // Always name the area treated, e.g. "HA Filler · Nose".
     const area = (state.areas && state.areas[0]) || 'chin_jawline';
