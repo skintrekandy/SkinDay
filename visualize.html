@@ -662,7 +662,7 @@
             <button class="pill" data-response-mode="optimistic" type="button">Optimistic</button>
             <button class="pill" data-response-mode="both" type="button">Both</button>
           </div>
-          <div class="small" id="responseModeHelp" style="margin-top:6px;color:var(--muted);font-style:italic;">Expected: realistic outcome for most patients.</div>
+          <div class="small" id="responseModeHelp" style="margin-top:6px;color:var(--muted);font-style:italic;">Expected: realistic outcome after 3-4 vials for most patients.</div>
         </div>
       </div>
     </div>
@@ -773,7 +773,7 @@
           <button type="button" id="biostimViewExpected" class="active">Expected</button>
           <button type="button" id="biostimViewOptimistic">Optimistic</button>
         </div>
-        <div class="small" style="margin-top:6px;color:var(--muted);" id="biostimViewHelp">Expected: realistic outcome for most patients.</div>
+        <div class="small" style="margin-top:6px;color:var(--muted);" id="biostimViewHelp">Expected: realistic outcome after 3-4 vials for most patients.</div>
       </div>
     </div>
     <div class="compare-wrap" id="compareWrap" style="display:none;">
@@ -818,7 +818,7 @@
     <div class="scenarios-grid">
       <button class="scenario-btn" type="button" data-scenario="stronger_sculptra" id="scenBtn_stronger_sculptra">
         <strong>Stronger biostimulation response</strong>
-        <span>A more complete collagen response with more lateral lift</span>
+        <span>A fuller response after 6-8+ vials/syringes, with more lateral lift</span>
         <em class="credit-tag">1 credit</em>
       </button>
       <button class="scenario-btn" type="button" data-scenario="add_chin_jaw_filler" id="scenBtn_add_chin_jaw_filler">
@@ -2313,8 +2313,8 @@ wirePills('fillerSex', 'sex');
 
 // Wire the Expected/Optimistic/Both selector
 const RESPONSE_MODE_HELP = {
-  expected:   'Expected: realistic outcome for most patients. 100 credits per angle.',
-  optimistic: 'Optimistic: upper-range result for strong responders. 100 credits per angle.',
+  expected:   'Expected: realistic outcome after 3-4 vials for most patients. 100 credits per angle.',
+  optimistic: 'Optimistic: upper-range result after 3-4 vials for strong responders. 100 credits per angle.',
   both:       'Both: generates Expected and Optimistic together. 200 credits per angle.'
 };
 document.getElementById('responseModeToggle').addEventListener('click', e => {
@@ -3702,7 +3702,7 @@ function applyActiveView(){
     state.courseMode = 'standard';
     if(expBtn) expBtn.classList.add('active');
     if(optBtn) optBtn.classList.remove('active');
-    if(helpEl) helpEl.textContent = 'Expected: realistic outcome for most patients.';
+    if(helpEl) helpEl.textContent = 'Expected: realistic outcome after 3-4 vials for most patients.';
     applyActiveView();
     document.getElementById('simTag').textContent = 'Simulated · ' + treatmentName() +
       (state.selectedAngles.length > 1 ? ' · ' + ANGLE_DEF[state.activeAngle].short : '') + ' · Expected';
@@ -3713,7 +3713,7 @@ function applyActiveView(){
     state.courseMode = 'enhanced';
     if(expBtn) expBtn.classList.remove('active');
     if(optBtn) optBtn.classList.add('active');
-    if(helpEl) helpEl.textContent = 'Optimistic: upper-range result for strong responders.';
+    if(helpEl) helpEl.textContent = 'Optimistic: upper-range result after 3-4 vials for strong responders.';
     applyActiveView();
     document.getElementById('simTag').textContent = 'Simulated · ' + treatmentName() +
       (state.selectedAngles.length > 1 ? ' · ' + ANGLE_DEF[state.activeAngle].short : '') + ' · Optimistic';
@@ -4179,6 +4179,70 @@ async function drawPair(ctx, angleId, yOff, panelW, panelH, gap, includeText){
   }
 }
 
+// M13: 3-panel export for Both mode -- Original | Expected | Optimistic.
+// Mirrors drawPair's editorial labels but with three columns.
+async function drawTriple(ctx, angleId, panelW, panelH, gap, includeText){
+  const sl = state.slots[angleId];
+  const before = await loadImage(sl.beforeDataUrl || sl.originalDataUrl);
+  let expectedUrl = sl.resultDataUrl;
+  try { const hi = await hiResResultFor(angleId); if(hi) expectedUrl = hi; } catch(e){}
+  const expected = await loadImage(expectedUrl);
+  const optimistic = await loadImage(sl.strongDataUrl);
+
+  function cover(img, x, w, h){
+    const scale = Math.max(w/img.width, h/img.height);
+    const sw = w/scale, sh = h/scale;
+    const sx = (img.width - sw)/2, sy = (img.height - sh)/2;
+    ctx.drawImage(img, sx, sy, sw, sh, x, 0, w, h);
+  }
+  const x0 = 0, x1 = panelW + gap, x2 = 2 * (panelW + gap);
+  cover(before, x0, panelW, panelH);
+  cover(expected, x1, panelW, panelH);
+  cover(optimistic, x2, panelW, panelH);
+  if(!includeText) return;
+
+  const multiDone = state.selectedAngles.filter(id => state.slots[id].status === 'done').length > 1;
+  const angleSuffix = multiDone ? (' · ' + ANGLE_DEF[angleId].label) : '';
+  const kickerBase = (treatmentName() + angleSuffix).toUpperCase();
+
+  function label(x, kicker, headline, sim){
+    const yB = panelH;
+    const grad = ctx.createLinearGradient(x, yB-250, x, yB);
+    grad.addColorStop(0, 'rgba(28,23,20,0)');
+    grad.addColorStop(.55, 'rgba(28,23,20,.42)');
+    grad.addColorStop(1, 'rgba(28,23,20,.88)');
+    ctx.fillStyle = grad; ctx.fillRect(x, yB-250, panelW, 250);
+    ctx.textAlign = 'left';
+    ctx.font = '500 17px "DM Sans", sans-serif';
+    ctx.letterSpacing = '3px';
+    ctx.fillStyle = sim ? 'rgba(201,169,110,.96)' : 'rgba(181,168,159,.82)';
+    ctx.fillText(kicker, x + 36, yB - 80);
+    ctx.letterSpacing = '0px';
+    ctx.font = '400 52px "Cormorant Garamond", serif';
+    ctx.fillStyle = 'rgba(250,247,242,.97)';
+    ctx.fillText(headline, x + 34, yB - 34);
+  }
+  label(x0, 'AS PHOTOGRAPHED', 'Original', false);
+  label(x1, kickerBase + ' · EXPECTED', 'Expected', true);
+  label(x2, kickerBase + ' · OPTIMISTIC', 'Optimistic', true);
+
+  // Logo centered across the full 3-panel image
+  if(clinicLogoDataUrl){
+    const logoImg = await new Promise(resolve => {
+      const img = new Image(); img.onload = () => resolve(img); img.onerror = () => resolve(null);
+      img.src = clinicLogoDataUrl;
+    });
+    if(logoImg){
+      const logoH = 56;
+      const logoW = Math.round(logoImg.naturalWidth * (logoH / logoImg.naturalHeight));
+      const totalW = panelW * 3 + gap * 2;
+      ctx.globalAlpha = 0.82;
+      ctx.drawImage(logoImg, (totalW - logoW) / 2, (panelH - logoH) / 2, logoW, logoH);
+      ctx.globalAlpha = 1.0;
+    }
+  }
+}
+
 // angleIds: one id = the classic side-by-side; several = the new horizontal
 // 2-row × 3-col case sheet (top row = originals, bottom row = simulated).
 // Column order: Right 45 | Frontal | Left 45 (matching natural left-to-right
@@ -4193,8 +4257,21 @@ async function drawExport(includeText, angleIds){
   const clinic = includeText ? document.getElementById('clinicName').value.trim() : '';
   const footerH = includeText ? (clinic ? 132 : 104) : 0;
 
-  // Single angle: classic side-by-side (unchanged)
+  // Single angle: classic side-by-side, or 3-panel in Both mode
   if(ids.length === 1){
+    const aId = ids[0];
+    const aSl = state.slots[aId];
+    const bothReady = state.type === 'biostim' && state.responseMode === 'both' &&
+                      aSl.strongStatus === 'done' && aSl.strongDataUrl;
+    if(bothReady){
+      const panelW = 820, panelH = 1025, gap = 6;
+      canvas.width = panelW * 3 + gap * 2;
+      canvas.height = panelH + footerH;
+      ctx.fillStyle = '#1C1714'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+      await drawTriple(ctx, aId, panelW, panelH, gap, includeText);
+      if(includeText) await drawExportFooter(ctx, canvas.width, canvas.height - footerH, footerH, clinic);
+      return canvas;
+    }
     const panelW = 900, panelH = 1125, gap = 6;
     canvas.width = panelW * 2 + gap;
     canvas.height = panelH + footerH;
@@ -4338,15 +4415,33 @@ document.getElementById('sheetBtn').addEventListener('click', () => downloadExpo
 document.getElementById('plainBtn').addEventListener('click', async () => {
   const sl = state.slots[state.activeAngle];
   if(!sl || sl.status !== 'done') return;
+
+  const triggerDl = (url, suffix) => {
+    if(!url) return;
+    const link = document.createElement('a');
+    link.download = 'skinday-visualize-simulated-' + state.activeAngle + (suffix ? '-' + suffix : '') + '.jpg';
+    link.href = url;
+    link.click();
+  };
+
+  // M13: Both mode -- export Expected and Optimistic as two separate files.
+  const bothReady = state.type === 'biostim' && state.responseMode === 'both' &&
+                    sl.strongStatus === 'done' && sl.strongDataUrl;
+  if(bothReady){
+    let expectedUrl = sl.resultDataUrl;
+    try { const hi = await hiResResultFor(state.activeAngle); if(hi) expectedUrl = hi; } catch(e){}
+    triggerDl(expectedUrl, 'expected');
+    // small delay so the browser fires both downloads instead of collapsing them
+    await new Promise(r => setTimeout(r, 400));
+    triggerDl(sl.strongDataUrl, 'optimistic');
+    return;
+  }
+
   let url = sl.resultDataUrl;
   // Use hi-res or strong result if available
   if(state.courseMode === 'enhanced' && sl.strongStatus === 'done' && sl.strongDataUrl) url = sl.strongDataUrl;
   else { try { const hi = await hiResResultFor(state.activeAngle); if(hi) url = hi; } catch(e){} }
-  if(!url) return;
-  const link = document.createElement('a');
-  link.download = 'skinday-visualize-simulated-' + state.activeAngle + '.jpg';
-  link.href = url;
-  link.click();
+  triggerDl(url);
 });
 
 // Clinic logo for export
@@ -4492,7 +4587,7 @@ function scenarioExportLabel(scenarioKey, baseLabel){
 }
 
 const SCENARIO_DESCRIPTIONS = {
-  stronger_sculptra:   'Higher-responder scenario. Upper-range result, not guaranteed.',
+  stronger_sculptra:   'Higher-dose scenario (6-8+ vials/syringes). Upper-range result, not guaranteed.',
   add_chin_jaw_filler: 'Combination-treatment scenario. Not a guaranteed outcome.',
   add_temple_support:  'Add-on scenario. Upper-range outcome, not guaranteed.',
   add_tear_trough:     'Add-on scenario. Not a guaranteed outcome.',
@@ -5005,6 +5100,7 @@ async function downloadScenarioGrid(scenarioKey){
 // Mirrors the scenario fullscreen, but shows the two live panels (the current
 // angle + timeline position exactly as displayed). Reuses the scenario-fs CSS.
 function openPreviewFullscreen(){
+  const sl = activeSlot();
   const origUrl = (document.getElementById('originalResult') || {}).src || '';
   const simUrl  = (document.getElementById('aiResult') || {}).src || '';
   if(!simUrl) return; // nothing generated yet
@@ -5012,14 +5108,29 @@ function openPreviewFullscreen(){
   const grid    = document.getElementById('previewFsGrid');
   const title   = document.getElementById('previewFsTitle');
   if(!overlay || !grid) return;
+
+  // M13: 3-up in Both mode -- Original | Expected | Optimistic.
+  const bothReady = state.type === 'biostim' && state.responseMode === 'both' &&
+                    sl && sl.status === 'done' && sl.strongStatus === 'done' && sl.strongDataUrl;
+
   const simTagEl = document.getElementById('simTag');
   const simLabel = (simTagEl && simTagEl.textContent ? simTagEl.textContent : 'Simulated').trim();
-  // Title shows the descriptive part (treatment / angle / timeline) without the
-  // leading "Simulated ·" so it reads as a heading.
   if(title) title.textContent = simLabel.replace(/^simulated\s*[·\-]\s*/i, '') || 'Consultation preview';
-  grid.innerHTML =
-    '<div class="scenario-fs-cell"><img src="' + origUrl + '" alt="Original" /><div class="scenario-cell-tag">Original</div></div>' +
-    '<div class="scenario-fs-cell"><img src="' + simUrl + '" alt="Simulated" /><div class="scenario-cell-tag sim">' + escapeHtml(simLabel) + '</div></div>';
+
+  if(bothReady){
+    const optTagEl = document.getElementById('optimisticTag');
+    const optLabel = (optTagEl && optTagEl.textContent ? optTagEl.textContent : 'Simulated · Optimistic').trim();
+    grid.classList.remove('two'); // use the 3-column base layout
+    grid.innerHTML =
+      '<div class="scenario-fs-cell"><img src="' + origUrl + '" alt="Original" /><div class="scenario-cell-tag">Original</div></div>' +
+      '<div class="scenario-fs-cell"><img src="' + simUrl + '" alt="Expected" /><div class="scenario-cell-tag sim">' + escapeHtml(simLabel) + '</div></div>' +
+      '<div class="scenario-fs-cell"><img src="' + sl.strongDataUrl + '" alt="Optimistic" /><div class="scenario-cell-tag sim">' + escapeHtml(optLabel) + '</div></div>';
+  } else {
+    grid.classList.add('two');
+    grid.innerHTML =
+      '<div class="scenario-fs-cell"><img src="' + origUrl + '" alt="Original" /><div class="scenario-cell-tag">Original</div></div>' +
+      '<div class="scenario-fs-cell"><img src="' + simUrl + '" alt="Simulated" /><div class="scenario-cell-tag sim">' + escapeHtml(simLabel) + '</div></div>';
+  }
   const dlBtn = document.getElementById('previewFsDownload');
   if(dlBtn) dlBtn.onclick = () => { const d = document.getElementById('downloadBtn'); if(d) d.click(); };
   overlay.classList.add('open');
