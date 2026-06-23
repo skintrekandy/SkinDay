@@ -493,21 +493,32 @@ function buildSculptraPrompt(sel, m, timelineText) {
 // so this guardrail permits tightening/smoothing while still locking identity,
 // age, features, and forbidding added volume (the change is tightening, not filler).
 const LASER_NEGATIVE_GUARDRAIL =
-  ' CRITICAL GUARDRAIL: This is an energy-based skin-tightening result, not a beauty filter. ' +
-  'Firmer, smoother, more lifted skin is the intended change, but do NOT de-age the patient, do NOT erase identity, and do NOT airbrush the skin into a flawless plastic texture. ' +
-  'Preserve exactly: identity, apparent age, skin tone, ethnicity and all ethnic features, pigmentation, freckles, pores (they may read slightly refined but must remain visible), facial asymmetry, eye shape and size, brows, lips, nose, ears, hair, headband, neck, clothing, background, lighting, and camera angle. ' +
-  'Do NOT add facial volume or filler-like fullness anywhere -- the change comes from tightening and lifting existing tissue, never from adding volume. ' +
-  'CRITICAL: do NOT add cheek or midface fullness, do NOT re-inflate, plump, or round out the face, and do NOT restore lost volume. That is a Sculptra or filler effect that energy-based devices physically cannot produce. The only permitted change is mild tightening and firming of existing skin. ' +
-  'Do not enlarge eyes, change makeup, whiten teeth, or add gloss. ' +
-  'The result must look like the same person after a real tightening treatment, not a younger or retouched person. ' +
+  ' CRITICAL TREATMENT CEILING: this is a subtle, single-course energy-based skin-tightening result -- NOT a facelift, NOT filler, NOT laser resurfacing, NOT general de-aging, and NOT a beauty filter. The change is mild tightening and firming of EXISTING skin only. ' +
+  'PRESERVE THE PATIENT\'S AGE: the person must still clearly look their age afterward. Deep static wrinkles, perioral and nasolabial lines, crow\'s feet, forehead lines, under-eye laxity and hollowing, skin texture, pores, freckles, pigmentation, and age-related volume loss must REMAIN substantially present and visible. ' +
+  'Do NOT erase or soften wrinkles, do NOT smooth, retouch, or airbrush the skin, do NOT brighten the complexion or reduce pigmentation, do NOT add glow or raise contrast, and do NOT make the face look younger, healthier, or more attractive overall. ' +
+  'Do NOT add facial volume or filler-like fullness, do NOT re-inflate, plump, or round out the cheeks or midface, and do NOT restore lost volume -- that is a filler or Sculptra effect that energy devices physically cannot produce. ' +
+  'Do NOT create a facelift, a sharp sculpted jawline, or a V-line. Do not enlarge the eyes, change makeup, whiten teeth, or alter the lips or nose. ' +
+  'Preserve identity, ethnicity and all ethnic features, facial asymmetry, hair, headband, neck, clothing, background, lighting, and camera angle exactly. ' +
+  'For an older face with marked laxity or deep etched lines, be especially conservative: the primary visible change is only mild lower-face tightening and a subtle jawline cleanup. ' +
   'Do not add text, labels, watermarks, or annotations.';
+
+// Lower-face-dominant zone restriction and a magnitude anchor, appended to every
+// laser prompt. These keep the change clinically plausible for a single course.
+const LASER_AREA_FOCUS = {
+  rf: ' The visible change should be concentrated in the LOWER FACE: the lower cheek, jawline, prejowl area, and submental region, with at most a hint of upper-neck tightening. Do not change the upper face, forehead, brows, eye area, midface volume, lips, or nose.',
+  hifu: ' The visible change should be concentrated in the LOWER-FACE LIFT VECTOR -- the lower cheek, jawline, prejowl area, submental region, and mild upper-neck tightening -- PLUS a modest lateral brow lift, where the brow tails may sit slightly higher and more open. Keep the brow lift subtle and elegant, never a surprised or over-elevated look. Do not change midface volume, eye size, lips, or nose, and do not erase the forehead lines.'
+};
+const LASER_MAGNITUDE = {
+  rf: ' Magnitude anchor: roughly a 10 to 15 percent tightening effect -- noticeable in a side-by-side comparison but never dramatic. If uncertain, do LESS, not more.',
+  hifu: ' Magnitude anchor: roughly a 15 to 25 percent lifting and tightening effect -- visibly more than radiofrequency but still clearly non-surgical, noticeable in a side-by-side comparison and never a facelift. If uncertain, do less rather than more.'
+};
 
 const LASER_TX = {
   rf: {
-    expected: 'Magnitude: a SUBTLE radiofrequency skin-tightening result, shown as the gradual outcome at roughly 6 months after a treatment course. The skin looks a little firmer and more toned and fine crepey texture is mildly reduced, with at most a very slight tightening along the jawline as lax skin retracts marginally. Keep this understated -- it is a skin-quality and mild-firmness change only. Do NOT add any fullness or volume to the cheeks or midface, do NOT re-inflate or plump the face, do NOT carve or sharpen the jaw, do NOT produce a facelift. Energy devices tighten existing skin slightly; they cannot restore lost volume.'
+    expected: 'Magnitude: a SUBTLE single-course radiofrequency tightening result (e.g. Thermage) shown at roughly 6 months. The only clear change is mild firming and tightening of the LOWER FACE -- a slightly cleaner jawline, a small reduction in jowl heaviness, and modest prejowl and submental tightening, with a slight improvement in how the lower-face tissue drapes. The upper face, midface, skin texture, and wrinkles stay essentially unchanged. Keep it understated and clearly non-surgical.'
   },
   hifu: {
-    expected: 'Magnitude: a SUBTLE focused-ultrasound tightening result, shown as the gradual outcome at roughly 6 months after a treatment course. The lower face and jawline look slightly tightened and a touch cleaner, and early submental and jowl laxity is mildly softened, with the skin looking a little firmer. Keep this understated and realistic. Do NOT add any fullness or volume to the cheeks or midface, do NOT re-inflate, plump, or round out the face, do NOT produce a facelift or a dramatic lift. Focused ultrasound gives a modest tightening of existing tissue; it cannot restore lost volume.'
+    expected: 'Magnitude: a believable single-course focused-ultrasound lifting and tightening result (e.g. Ultherapy) shown at roughly 6 months -- noticeably more lift than radiofrequency, but still clearly non-surgical. The lower face and jawline are lifted and tightened with clearer mandibular border definition, a modest reduction in jowl heaviness, improved prejowl continuity, and mild-to-moderate submental tightening. A modest lateral brow lift is appropriate: the brow tails sit slightly higher and more open. The face looks more supported and better defined, while skin texture, wrinkles, and midface volume stay essentially unchanged.'
   }
 };
 
@@ -523,7 +534,9 @@ function buildLaserPrompt(sel) {
     : 'Produce a clinically realistic photograph of the same person after an energy-based skin-tightening treatment, keeping the same frontal pose, identity, apparent age, skin character, lighting, and camera setup.';
   const viewLock = SCULPTRA_VIEW_LOCKS[view] || SCULPTRA_VIEW_LOCKS.frontal;
   const cleanNote = sanitizeNote(sel.note);
-  return `${NO_TEXT_RULE} ${framing} ${viewLock} Make ONLY this change: ${magnitude}${cleanNote}${LASER_NEGATIVE_GUARDRAIL}`;
+  const areaFocus = LASER_AREA_FOCUS[sel.laserType] || LASER_AREA_FOCUS.rf;
+  const magnitudeAnchor = LASER_MAGNITUDE[sel.laserType] || LASER_MAGNITUDE.rf;
+  return `${NO_TEXT_RULE} ${framing} ${viewLock} Make ONLY this change: ${magnitude}${areaFocus}${magnitudeAnchor}${cleanNote}${LASER_NEGATIVE_GUARDRAIL}`;
 }
 
 // Assemble the CORE prompt from selections. The safety base is appended elsewhere.
@@ -870,9 +883,10 @@ const CROSS_ADDON_PROMPTS = {
     'Add a biostimulator collagen response for more lateral lift: broader, softer support across the lateral cheek and temple so the midface reads lifted and the jawline cleaner, as a diffuse soft-tissue improvement returning under the skin. This is collagen-based volume and lift, not filler fullness and not shadow sculpting. Keep it soft, gradual, and three-dimensional, and do not deepen or darken any facial shadow.' +
     addonSafety('a diffuse biostimulator lateral-lift response across the cheeks and temples'),
   stronger_laser:
-    'This photograph already shows a subtle energy-based skin-tightening result. Intensify it MODESTLY to represent a strong responder over a full course of multiple sessions (results developing over several months): a bit more skin firmness and tightening, and a slightly cleaner, more defined jawline and lower face. ' +
+    'This photograph already shows a subtle energy-based skin-tightening result. Intensify it MODESTLY to represent a strong responder over a full course of multiple sessions (results developing over several months): a bit more firmness and tightening in the LOWER FACE, and a slightly cleaner, more defined jawline. ' +
     'This is still an energy-device result and must stay clearly below what filler or Sculptra can do. Do NOT add any cheek or midface fullness, do NOT re-inflate, plump, or round out the face, do NOT restore lost volume, and do NOT produce a facelift -- energy devices tighten existing skin, they cannot add volume. ' +
-    'Preserve identity, apparent age, skin tone, ethnicity and all ethnic features, pores, pigmentation, freckles, facial asymmetry, eyes, brows, lips, nose, ears, hair, headband, neck, clothing, background, lighting, and camera angle exactly. The result must be understated, natural, and unmistakably the same person. Do not add text, labels, watermarks, or annotations.'
+    'Do NOT de-age the patient: the person must still clearly look their age. Deep static wrinkles, perioral lines, crow\'s feet, forehead lines, under-eye laxity, skin texture, and pigmentation must REMAIN substantially present. Do NOT erase wrinkles, smooth, retouch, or brighten the skin, and do NOT create a beauty-filter or resurfacing effect. ' +
+    'Preserve identity, apparent age, skin tone, ethnicity and all ethnic features, facial asymmetry, eyes, brows, lips, nose, ears, hair, headband, neck, clothing, background, lighting, and camera angle exactly. The result must be understated, natural, and unmistakably the same person. Do not add text, labels, watermarks, or annotations.'
 };
 
 function buildScenarioPrompt(scenarioKey, view, baselineType) {
