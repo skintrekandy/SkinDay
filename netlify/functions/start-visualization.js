@@ -182,13 +182,13 @@ exports.handler = async (event) => {
       const SCENARIO_SOURCE_TYPES = {
         stronger_sculptra:   ['biostim'],
         combination_plan:    ['biostim'],
-        add_chin_jaw_filler: ['biostim', 'filler', 'laser'],
-        add_cheek_filler:    ['filler', 'laser'],
-        add_temple_support:  ['biostim', 'filler', 'laser'],
-        add_tear_trough:     ['biostim', 'filler', 'laser'],
-        add_nose_filler:     ['biostim', 'filler', 'laser'],
-        add_lips_filler:     ['biostim', 'filler', 'laser'],
-        add_biostim_lift:    ['laser'],
+        add_chin_jaw_filler: ['biostim', 'filler', 'laser', 'tox'],
+        add_cheek_filler:    ['filler', 'laser', 'tox'],
+        add_temple_support:  ['biostim', 'filler', 'laser', 'tox'],
+        add_tear_trough:     ['biostim', 'filler', 'laser', 'tox'],
+        add_nose_filler:     ['biostim', 'filler', 'laser', 'tox'],
+        add_lips_filler:     ['biostim', 'filler', 'laser', 'tox'],
+        add_biostim_lift:    ['laser', 'tox'],
         stronger_laser:      ['laser']
       };
       if (!SCENARIO_SOURCE_TYPES[fields.scenarioKey]) {

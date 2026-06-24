@@ -56,12 +56,20 @@ const SCULPTRA_FRONTAL_HARD_LOCK =
 // magnitude; the per-area `avoid` lists (unchanged) keep the result tasteful.
 const FILLER_AREA_INTENSITY = {
   lips: {
-    moderate: 'a visibly fuller lip: clearly more body in both the upper and lower lip and a more defined vermilion border, a natural and balanced enhancement, keeping the natural upper-to-lower balance, the cupid\'s bow position, and the mouth width',
-    enhanced: 'a clearly and noticeably fuller lip: substantially more body in both the upper and lower lip with a well-defined vermilion border and a soft natural pout, an obvious but still tasteful enhancement, keeping the natural upper-to-lower balance, the cupid\'s bow position, and the mouth width'
+    // Conservative: subtle but real — about 0.5 cc or less.
+    conservative: 'a gentle, natural-looking increase in lip body: a touch more volume in both lips, a slightly more defined vermilion border, and a hint more shape -- subtle but real, consistent with a conservative 0.5 cc correction. Keep the natural upper-to-lower balance, cupid\'s bow, and mouth width.',
+    // Moderate: clearly visible — about 0.5-1 cc, noticeable in comparison.
+    moderate: 'a visibly fuller lip consistent with approximately 0.5 to 1 cc of HA filler: clearly more body in both the upper and lower lip, a more defined vermilion border, and a natural balanced enhancement that is noticeable in side-by-side comparison. Keep the natural upper-to-lower balance, the cupid\'s bow position, and the mouth width.',
+    // Enhanced: clearly noticeable — 1-2 cc, definite with anatomy specifics.
+    enhanced: 'a clearly and noticeably fuller lip consistent with approximately 1 to 2 cc of HA filler: substantially more body in both the upper and lower lip, clear vermilion show, a well-defined Cupid\'s bow, mild eversion of the lip body, and modest anterior projection. The result should be obviously fuller in side-by-side comparison -- a natural but definite correction. Keep the natural upper-to-lower balance and the mouth width. If uncertain, prefer a slightly more visible result rather than an overly subtle one.'
   },
   nose: {
-    moderate: 'a refined nasal profile (liquid rhinoplasty): smooth the dorsal bump so the side profile reads clearly straighter, with a subtly refined tip, a visible profile improvement',
-    enhanced: 'a clearly refined nasal profile (liquid rhinoplasty): noticeably smooth the dorsal bump so the side profile reads distinctly straighter and cleaner, with a subtly refined tip, an obvious profile improvement that still looks natural'
+    // Conservative: minimal refinement, barely-there change.
+    conservative: 'very subtle non-surgical nasal refinement: gently soften a small dorsal bump or add a hint of radix or tip support so the profile reads barely smoother -- minimal but perceptible in comparison, consistent with a conservative liquid rhinoplasty.',
+    // Moderate: clearly visible profile improvement.
+    moderate: 'a visible non-surgical nasal refinement (liquid rhinoplasty): smooth the dorsal bump so the side profile reads clearly straighter, add modest bridge definition and gentle radix or tip support where this nose needs it -- a visible improvement that looks like a skilled non-surgical correction.',
+    // Enhanced: clearly noticeable structural refinement with anatomy.
+    enhanced: 'a clearly visible non-surgical nasal refinement: noticeably smooth the dorsal line so it reads distinctly straighter and more refined, with clear bridge definition, modest radix support, and subtle tip refinement where appropriate. The change should be obviously noticeable in side-by-side comparison -- clearly improved but still believable for HA filler, never surgical. If uncertain, prefer a slightly more visible result rather than an overly subtle one.'
   }
 };
 function fillerAreaExpected(a, intensity){
@@ -199,8 +207,8 @@ const GOALS = {
 // ---- Filler: intensity = magnitude anchor (v1) ----------------------------
 const INTENSITY = {
   natural:  'Magnitude: barely perceptible, the most conservative result a cautious injector would show. When in doubt, do less.',
-  moderate: 'Magnitude: clearly visible but still conservative, the typical outcome most patients see.',
-  enhanced: 'Magnitude: the upper end of a realistic single-session result for a strong response, still clinically plausible and never exaggerated.'
+  moderate: 'Magnitude: clearly visible but still conservative -- the typical outcome most patients see, equivalent to an expected single-session result.',
+  enhanced: 'Magnitude: the upper end of a realistic single-session result -- clearly noticeable in side-by-side comparison, clinically plausible and natural-looking. If uncertain about magnitude, prefer a more visible result over an overly subtle one.'
 };
 
 // ---- Biostimulation: per-product modules ----------------------------------
@@ -587,10 +595,19 @@ const NEUROTOXIN_GLOBAL_LOCK =
   'Do NOT smooth skin, brighten skin, reduce redness, reduce acne, improve complexion, add glow, increase contrast, or make the patient look younger. ' +
   'Do NOT change eyes, brows, nose, lips, cheeks, hair, clothing, lighting, background, or expression.';
 
-// Chin lock -- the model consistently adds chin projection; block it explicitly.
+// Chin + geometry lock. Specific anatomical landmarks give the model harder
+// reference points than adjectives alone.
 const NEUROTOXIN_CHIN_LOCK =
   'The chin is completely untreated -- do NOT advance, lengthen, sharpen, narrow, reshape, or define the chin. ' +
-  'Do not create the appearance of chin filler. Chin point and lower lip-to-chin relationship must remain identical to the original.';
+  'Do not create the appearance of chin filler. ' +
+  'These must match the original photograph exactly: chin point (pogonion) position, lower lip-to-chin distance, cervicomental angle, and submental fullness.';
+
+// "Underwhelming is correct" -- the single most important counter to the
+// model's beauty prior. Appended to every tox prompt so the model internalises
+// that conservative-to-boring is success, not failure.
+const TOX_UNDERWHELM =
+  ' This output is allowed to look almost unchanged. A conservative or even underwhelming result is correct for neurotoxin. ' +
+  'A prettier, smoother, cleaner, slimmer, or more youthful-looking face is a failure, not a success.';
 
 // Catch-all that comes last.
 const TOX_GUARDRAIL =
@@ -623,11 +640,15 @@ const TOX_MODES = {
       'Simulate a 4 to 6 week result after platysma neurotoxin (Nefertiti lift) only. ' +
       'Keep the same pose, lighting, background, and camera setup.',
     expected:
-      'The ONLY visible change: very mild cleanup of the mandibular border from reduced downward platysmal pull. A slight improvement in jawline continuity is acceptable. ' +
-      'Do NOT slim the face, reduce masseter width, reduce double chin, project the chin, or create energy-device-like tightening. ' +
-      'Preserve most original submental fullness. Do not simulate Ultherapy, Thermage, liposuction, filler, threads, or surgery.',
+      // "Jawline continuity" and "mandibular border cleanup" are removed --
+      // both triggered lower-face reshaping. The target is barely perceptible.
+      'The ONLY visible change: a very subtle reduction in the shadow directly under the mandibular border, caused by slightly less downward platysmal pull. ' +
+      'The outer face shape, jaw width, lower-face silhouette, and neck contour must look essentially unchanged from the original. ' +
+      'Do NOT slim the face, narrow the jaw, reduce masseter width, reduce double chin, project the chin, or create any visible tightening or lifting. ' +
+      'Do not simulate Ultherapy, Thermage, liposuction, filler, threads, or surgery. ' +
+      'This result should be subtle enough that someone could mistake it for no change at all.',
     magnitude:
-      ' Magnitude: subtle -- visible in comparison but conservative. If uncertain, do less.'
+      ' Magnitude: minimal -- barely perceptible in side-by-side comparison. Err toward less, not more.'
     // uses shared TOX_OBLIQUE_SUBMENTAL_GUARD
   },
   combined: {
@@ -635,11 +656,12 @@ const TOX_MODES = {
       'Simulate a 4 to 6 week result after combined masseter + platysma (Nefertiti) neurotoxin. ' +
       'Keep the same pose, lighting, background, and camera setup.',
     expected:
-      'The result is only the sum of two modest mechanisms: mild posterior jaw-angle narrowing from masseter reduction, plus subtle mandibular-border cleanup from platysmal relaxation. ' +
-      'Do NOT add chin projection, filler-like contour, skin improvement, neck tightening, or any effect beyond those two. ' +
-      'Preserve most submental fullness. Do not create major double-chin reduction or a sharp cervicomental angle.',
+      'The result is only the sum of two narrow mechanisms: mild reduction of lateral jaw-angle bulk from masseter relaxation, plus very subtle softening of platysmal pull -- nothing more. ' +
+      'Do NOT add chin projection, jawline lifting, skin improvement, neck tightening, or any effect beyond those two. ' +
+      'Preserve the original submental fullness and cervicomental angle exactly. ' +
+      'A mildly underwhelming result is correct.',
     magnitude:
-      ' Magnitude: 10 to 15 percent -- conservative and believable for neurotoxin.'
+      ' Magnitude: 10 to 15 percent for masseter; barely perceptible for platysma. Conservative overall.'
     // uses shared TOX_OBLIQUE_SUBMENTAL_GUARD
   }
 };
@@ -653,7 +675,8 @@ function buildToxPrompt(sel) {
   const obliqueGuard = isOblique ? (mode.obliqueGuard || TOX_OBLIQUE_SUBMENTAL_GUARD) : '';
   const cleanNote    = sanitizeNote(sel.note);
   // GLOBAL_LOCK and CHIN_LOCK lead -- constraints before treatment description.
-  return `${NO_TEXT_RULE} ${NEUROTOXIN_GLOBAL_LOCK} ${NEUROTOXIN_CHIN_LOCK} ${mode.framing(isOblique)} ${viewLock} ${mode.expected}${magnitude}${obliqueGuard}${cleanNote}${TOX_GUARDRAIL}`;
+  // TOX_UNDERWHELM appended last before the catch-all guardrail.
+  return `${NO_TEXT_RULE} ${NEUROTOXIN_GLOBAL_LOCK} ${NEUROTOXIN_CHIN_LOCK} ${mode.framing(isOblique)} ${viewLock} ${mode.expected}${magnitude}${obliqueGuard}${cleanNote}${TOX_UNDERWHELM}${TOX_GUARDRAIL}`;
 }
 
 // Assemble the CORE prompt from selections. The safety base is appended elsewhere.
@@ -1001,7 +1024,7 @@ const CROSS_ADDON_PROMPTS = {
     'Add hyaluronic acid correction of the under-eye (tear trough) hollow: soften the groove so the lid-cheek junction reads as a smooth, well-supported transition and the hollow shadow is reduced because the depression is filled from beneath, never because the skin is brightened. Subtle and natural, never puffy or over-filled. Do not change eye shape, eye size, eyelid, lashes, or iris.' +
     addonSafety('the under-eye tear trough hollow'),
   add_nose_filler: CROSS_ADDON_BASE +
-    'Add hyaluronic acid filler to the nose (liquid rhinoplasty): a subtle, natural refinement consistent with a skilled injector -- smooth a dorsal hump so the profile reads straighter, or gently refine and lift the tip, doing only what this nose needs. Subtle, never a dramatic reshape. Do not narrow the nostrils, do not shorten or lengthen the nose, do not change the nose width from the front.' +
+    'Add hyaluronic acid filler to the nose (liquid rhinoplasty): a visible but believable structural refinement consistent with a skilled injector -- smooth the dorsal line so the profile reads clearly straighter, add bridge definition and gentle radix or tip support where this nose needs it. The change should be clearly noticeable in side-by-side comparison while still looking non-surgical, never like a rhinoplasty. Do not narrow the nostrils, do not shorten or lengthen the nose, do not change the nose width from the front.' +
     addonSafety('hyaluronic acid refinement of the nose'),
   add_lips_filler: CROSS_ADDON_BASE +
     'Add hyaluronic acid lip filler: the lips end up clearly fuller than now while staying natural and tasteful, both upper and lower lip fuller and better defined with a more defined vermilion border, keeping a natural upper-to-lower proportion, the cupid\'s bow shape and position, and the same mouth width. Never duck-shaped, shelf-like, everted, or over-filled.' +
@@ -1020,7 +1043,7 @@ function buildScenarioPrompt(scenarioKey, view, baselineType) {
   // M14: cross-type baselines (filler / laser) use the generic add-on prompts,
   // which edit the already-treated baseline image directly. Sculptra baselines
   // (biostim, or unspecified for backward compatibility) use the original set.
-  const isCrossType = baselineType === 'filler' || baselineType === 'laser';
+  const isCrossType = baselineType === 'filler' || baselineType === 'laser' || baselineType === 'tox';
   if (isCrossType) {
     const cp = CROSS_ADDON_PROMPTS[scenarioKey];
     if (!cp) throw new Error('Unknown cross-type scenario key: ' + scenarioKey);

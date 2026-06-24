@@ -674,7 +674,7 @@ exports.handler = async (event) => {
       // M14: cross-type scenario baselines (filler / laser) generate on gpt-image-2,
       // the validated direct-edit model. Sculptra-baseline scenarios keep their
       // existing per-scenario model routing.
-      const isCrossTypeScenario = (f.baselineType === 'filler' || f.baselineType === 'laser');
+      const isCrossTypeScenario = (f.baselineType === 'filler' || f.baselineType === 'laser' || f.baselineType === 'tox');
       const FILLER_SCENARIOS = ['add_lips_filler', 'add_nose_filler'];
       const imageModel = isCrossTypeScenario
         ? (process.env.SCENARIO_FILLER_IMAGE_MODEL || 'gpt-image-2')
@@ -832,6 +832,8 @@ exports.handler = async (event) => {
       modelName = process.env.FILLER_IMAGE_MODEL || 'gpt-image-2';
     } else if (f.type === 'laser') {
       modelName = process.env.LASER_IMAGE_MODEL || 'gpt-image-2';
+    } else if (f.type === 'tox') {
+      modelName = process.env.TOX_IMAGE_MODEL || 'gpt-image-2';
     } else {
       modelName = 'gpt-image-1';
     }
