@@ -4122,8 +4122,10 @@ async function drawExport(includeText, angleIds){
 
   const canvas = document.getElementById('exportCanvas');
   const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
   const clinic = includeText ? document.getElementById('clinicName').value.trim() : '';
-  const footerH = includeText ? (clinic ? 132 : 104) : 0;
+  const footerH = includeText ? (clinic ? 84 : 60) : 0;
 
   // Single angle: classic side-by-side, or 3-panel in Both mode
   if(ids.length === 1){
@@ -4132,7 +4134,7 @@ async function drawExport(includeText, angleIds){
     const bothReady = usesResponseModes() && state.responseMode === 'both' &&
                       aSl.strongStatus === 'done' && aSl.strongDataUrl;
     if(bothReady){
-      const panelW = 820, panelH = 1025, gap = 6;
+      const panelW = 1100, panelH = 1375, gap = 6;
       canvas.width = panelW * 3 + gap * 2;
       canvas.height = panelH + footerH;
       ctx.fillStyle = '#1C1714'; ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -4140,7 +4142,7 @@ async function drawExport(includeText, angleIds){
       if(includeText) await drawExportFooter(ctx, canvas.width, canvas.height - footerH, footerH, clinic);
       return canvas;
     }
-    const panelW = 900, panelH = 1125, gap = 6;
+    const panelW = 1100, panelH = 1375, gap = 6;
     canvas.width = panelW * 2 + gap;
     canvas.height = panelH + footerH;
     ctx.fillStyle = '#1C1714'; ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -4156,7 +4158,7 @@ async function drawExport(includeText, angleIds){
   // Any ids not in COL_ORDER (edge case) appended at end
   for(const id of ids){ if(!cols.includes(id)) cols.push(id); }
 
-  const panelW = 720, panelH = 900, gap = 5;
+  const panelW = 960, panelH = 1200, gap = 5;
   canvas.width  = cols.length * panelW + (cols.length - 1) * gap;
   canvas.height = 2 * panelH + gap + footerH;
   ctx.fillStyle = '#1C1714'; ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -4244,26 +4246,39 @@ async function drawExport(includeText, angleIds){
   return canvas;
 }
 
-// Shared footer renderer used by both single and multi-angle exports
+// Shared footer renderer used by both single and multi-angle exports.
+// Two-column layout: disclaimer left, "Powered by SkinDay Visualize" right.
+// If clinic name is provided a centered name row sits above the two-column row.
 async function drawExportFooter(ctx, totalW, yF, footerH, clinic){
   ctx.fillStyle = '#1C1714'; ctx.fillRect(0, yF, totalW, footerH);
-  ctx.textAlign = 'center';
-  ctx.font = '300 22px "DM Sans", sans-serif'; ctx.fillStyle = 'rgba(250,247,242,.80)';
-  ctx.fillText('AI-generated visualization for consultation purposes only. Not a prediction of actual results.', totalW/2, yF + 36);
-  let brandY = yF + 74;
+  const pad = 24;
+  let rowY = yF + footerH / 2;
+
   if(clinic){
-    ctx.font = '500 23px "DM Sans", sans-serif'; ctx.fillStyle = 'rgba(250,247,242,.92)';
-    ctx.fillText(clinic, totalW/2, yF + 72);
-    brandY = yF + 108;
+    // Clinic name row (top half)
+    const nameY = yF + Math.round(footerH * 0.32);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = '500 18px "DM Sans", sans-serif';
+    ctx.fillStyle = 'rgba(250,247,242,0.90)';
+    ctx.fillText(clinic, totalW / 2, nameY);
+    // Brand row in lower half
+    rowY = yF + Math.round(footerH * 0.72);
   }
+
+  // Left: disclaimer
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.font = '300 13px "DM Sans", sans-serif';
+  ctx.fillStyle = 'rgba(250,247,242,0.52)';
+  ctx.fillText('AI-generated visualization for consultation only. Not a prediction of actual results.', pad, rowY);
+
+  // Right: "Powered by SkinDay Visualize"
   const pre = 'Powered by ', brand = 'SkinDay Visualize';
-  ctx.font = '500 19px "DM Sans", sans-serif';
+  ctx.font = '400 13px "DM Sans", sans-serif';
   const preW = ctx.measureText(pre).width, brandW = ctx.measureText(brand).width;
-  const startX = (totalW - (preW + brandW)) / 2;
+  const rx = totalW - pad - preW - brandW;
+  ctx.fillStyle = 'rgba(181,168,159,0.75)'; ctx.fillText(pre,  rx,         rowY);
+  ctx.fillStyle = '#C9A96E';               ctx.fillText(brand, rx + preW,  rowY);
   ctx.textAlign = 'left';
-  ctx.fillStyle = 'rgba(181,168,159,.85)'; ctx.fillText(pre, startX, brandY);
-  ctx.fillStyle = '#C9A96E'; ctx.fillText(brand, startX + preW, brandY);
-  ctx.textAlign = 'center';
 }
 
 async function downloadExport(includeText, allAngles){
@@ -4910,8 +4925,8 @@ async function downloadScenarioGrid(scenarioKey){
     ]);
 
     // Each panel rendered at a fixed cell size, 4:5 aspect, cover-cropped.
-    const cellW = 768, cellH = 960, gap = 0;
-    const headerH = 64;
+    const cellW = 1024, cellH = 1280, gap = 0;
+    const headerH = 80;
 
     // Make sure web fonts are ready so DM Sans renders into the canvas.
     await (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve());
@@ -4930,32 +4945,55 @@ async function downloadScenarioGrid(scenarioKey){
         im.src = clinicLogoDataUrl;
       });
     }
-    const footerPad = 22;
-    const discH  = 26;                   // disclaimer line
-    const nameH  = clinicName ? 34 : 0;  // clinic name line
-    const logoH  = logoImg ? 60 : 0;     // logo row height
-    const brandH = 26;                   // "Powered by SkinDay Visualize"
-    const footerH = footerPad * 2 + discH + nameH + Math.max(logoH, brandH);
+    // Footer: one brand row; add a clinic-name row above if provided.
+    const footerH = clinicName ? 88 : 62;
 
     const canvas = document.createElement('canvas');
     canvas.width = cellW * 3 + gap * 2;
     canvas.height = cellH + headerH + footerH;
     const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
 
     // Background
     ctx.fillStyle = '#1C1714';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Header: scenario label (left) + disclaimer (right)
-    ctx.fillStyle = '#FAF7F2';
-    ctx.font = '600 26px "DM Sans", system-ui, sans-serif';
+    // ── Header ────────────────────────────────────────────────────────────────
+    // Left: clinic logo (if uploaded) OR clinic name; Center: treatment label;
+    // Right: quiet disclaimer. Clinic is the hero; SkinDay is infrastructure.
     ctx.textBaseline = 'middle';
-    ctx.fillText(scenarioExportLabel(scenarioKey, panels.label), 28, headerH / 2);
-    ctx.fillStyle = '#C8725A';
-    ctx.font = '600 16px "DM Sans", system-ui, sans-serif';
+    const hMid = headerH / 2;
+    const hPad = 28;
+
+    // Left: clinic logo or name
+    let leftEdge = hPad;
+    if(logoImg){
+      const lh = 44, lw = Math.round(logoImg.naturalWidth * (lh / logoImg.naturalHeight));
+      ctx.globalAlpha = 0.92;
+      ctx.drawImage(logoImg, hPad, (headerH - lh) / 2, lw, lh);
+      ctx.globalAlpha = 1.0;
+      leftEdge = hPad + lw + 14;
+    }
+    if(clinicName && !logoImg){
+      ctx.textAlign = 'left';
+      ctx.font = '500 20px "DM Sans", system-ui, sans-serif';
+      ctx.fillStyle = 'rgba(250,247,242,0.88)';
+      ctx.fillText(clinicName, hPad, hMid);
+      leftEdge = hPad + ctx.measureText(clinicName).width + 14;
+    }
+
+    // Right: "Consultation simulation only"
     ctx.textAlign = 'right';
-    ctx.fillText('SCENARIO SIMULATION — NOT A GUARANTEED OUTCOME', canvas.width - 28, headerH / 2);
-    ctx.textAlign = 'left';
+    ctx.font = '400 13px "DM Sans", system-ui, sans-serif';
+    ctx.fillStyle = 'rgba(200,114,90,0.80)';
+    ctx.fillText('Consultation simulation only', canvas.width - hPad, hMid);
+
+    // Center: treatment label
+    ctx.textAlign = 'center';
+    ctx.font = '600 24px "DM Sans", system-ui, sans-serif';
+    ctx.fillStyle = 'rgba(250,247,242,0.96)';
+    ctx.fillText(scenarioExportLabel(scenarioKey, panels.label), canvas.width / 2, hMid);
 
     // cover-crop draw helper
     const drawCover = (img, dx, dy, dw, dh) => {
@@ -4988,49 +5026,36 @@ async function downloadScenarioGrid(scenarioKey){
       ctx.fillText(c.tag, dx + 24, dy + cellH - 30);
     });
 
-    // Footer: disclaimer, optional clinic name, optional logo + brand line.
-    const fy = headerH + cellH;          // footer top
-    let cy = fy + footerPad;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    // disclaimer
-    ctx.fillStyle = 'rgba(250,247,242,0.62)';
-    ctx.font = '400 15px "DM Sans", system-ui, sans-serif';
-    ctx.fillText('AI-generated visualization for consultation purposes only. Not a prediction of actual results.', canvas.width / 2, cy);
-    cy += discH;
-    // clinic name
-    if(clinicName){
-      ctx.fillStyle = 'rgba(250,247,242,0.92)';
-      ctx.font = '500 20px "DM Sans", system-ui, sans-serif';
-      ctx.fillText(clinicName, canvas.width / 2, cy + 4);
-      cy += nameH;
-    }
-    // logo + "Powered by SkinDay Visualize", centered as one group
+    // ── Footer ────────────────────────────────────────────────────────────────
+    // Clinic name (if provided) on its own row; then two-column brand row.
+    const fy = headerH + cellH;
+    const fPad = 24;
+    let brandRowY = fy + footerH / 2;
     ctx.textBaseline = 'middle';
-    const rowY = cy + Math.max(logoH, brandH) / 2;
-    const pre = 'Powered by ', brand = 'SkinDay Visualize';
-    ctx.font = '500 16px "DM Sans", system-ui, sans-serif';
-    const preW = ctx.measureText(pre).width;
-    const brandW = ctx.measureText(brand).width;
-    let drawLogoW = 0;
-    if(logoImg) drawLogoW = Math.round(logoImg.naturalWidth * (logoH / logoImg.naturalHeight));
-    const logoGap = logoImg ? 16 : 0;
-    const groupW = drawLogoW + logoGap + preW + brandW;
-    let gx = (canvas.width - groupW) / 2;
-    if(logoImg){
-      ctx.globalAlpha = 0.9;
-      ctx.drawImage(logoImg, gx, rowY - logoH / 2, drawLogoW, logoH);
-      ctx.globalAlpha = 1.0;
-      gx += drawLogoW + logoGap;
-    }
-    ctx.textAlign = 'left';
-    ctx.fillStyle = 'rgba(181,168,159,0.85)';
-    ctx.fillText(pre, gx, rowY);
-    ctx.fillStyle = '#C9A96E';
-    ctx.fillText(brand, gx + preW, rowY);
-    ctx.textBaseline = 'alphabetic';
 
-    const url = canvas.toDataURL('image/jpeg', 0.92);
+    if(clinicName){
+      const nameRowY = fy + Math.round(footerH * 0.30);
+      ctx.textAlign = 'center';
+      ctx.font = '500 17px "DM Sans", system-ui, sans-serif';
+      ctx.fillStyle = 'rgba(250,247,242,0.88)';
+      ctx.fillText(clinicName, canvas.width / 2, nameRowY);
+      brandRowY = fy + Math.round(footerH * 0.72);
+    }
+
+    // Left: disclaimer
+    ctx.textAlign = 'left';
+    ctx.font = '400 13px "DM Sans", system-ui, sans-serif';
+    ctx.fillStyle = 'rgba(250,247,242,0.48)';
+    ctx.fillText('AI-generated visualization for consultation only. Not a prediction of actual results.', fPad, brandRowY);
+
+    // Right: "Powered by SkinDay Visualize"
+    const fpre = 'Powered by ', fbrand = 'SkinDay Visualize';
+    const fpreW = ctx.measureText(fpre).width, fbrandW = ctx.measureText(fbrand).width;
+    const frx = canvas.width - fPad - fpreW - fbrandW;
+    ctx.fillStyle = 'rgba(181,168,159,0.75)'; ctx.fillText(fpre,   frx,         brandRowY);
+    ctx.fillStyle = '#C9A96E';               ctx.fillText(fbrand, frx + fpreW, brandRowY);
+    ctx.textBaseline = 'alphabetic';
+    const url = canvas.toDataURL('image/jpeg', 0.95);
     const a = document.createElement('a');
     const safeName = (scenarioKey || 'scenario').replace(/[^a-z0-9_-]/gi, '_');
     a.href = url;
