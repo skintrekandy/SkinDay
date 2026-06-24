@@ -679,6 +679,41 @@ function buildToxPrompt(sel) {
   return `${NO_TEXT_RULE} ${NEUROTOXIN_GLOBAL_LOCK} ${NEUROTOXIN_CHIN_LOCK} ${mode.framing(isOblique)} ${viewLock} ${mode.expected}${magnitude}${obliqueGuard}${cleanNote}${TOX_UNDERWHELM}${TOX_GUARDRAIL}`;
 }
 
+// ---- HA Filler: universal allowlist framework (M14.2) ----------------------
+// Replaces the one-at-a-time blacklist pattern. Two layers:
+//   HA_FILLER_FAMILY_RULE: shared across ALL filler areas -- only the selected
+//     zone changes; everything else is locked by default.
+//   HA_FILLER_AREA_ALLOWLISTS: per-area explicit allowlist -- names allowed
+//     zones, allowed effects, and hard-locked zones. New filler area = new
+//     entry here; no new one-off rules needed anywhere else.
+// Both are prepended to the prompt so the model reads constraints FIRST.
+const HA_FILLER_FAMILY_RULE =
+  'LOCALIZED HA FILLER SIMULATION: Only the selected treatment area may change materially. ' +
+  'All other facial areas must remain visually unchanged -- same contour, projection, shape, volume, and silhouette as the original. ' +
+  'Do not improve the face globally, do not rebalance the facial profile, and do not create corrections in untreated areas. ' +
+  'Preserve the original skin texture, redness, acne, pores, lighting, and photo quality everywhere.';
+
+const HA_FILLER_AREA_ALLOWLISTS = {
+  nose:
+    'NOSE FILLER ONLY. Allowed zones: radix, nasal bridge, dorsum, nasal tip. ' +
+    'Allowed effects: smoother dorsal line, bridge definition, radix support, tip refinement. ' +
+    'HARD LOCK -- must not change: chin (projection, length, shape, definition, pogonion position), ' +
+    'lips, jawline, cheeks, submental area, and overall facial profile balance. ' +
+    'This is nose filler only -- not profile harmonization, not chin filler, not a surgical rhinoplasty.',
+  lips:
+    'LIP FILLER ONLY. Allowed zones: upper lip, lower lip, vermilion border, Cupid\'s bow, lip body. ' +
+    'Allowed effects: fuller lip volume, more vermilion show, Cupid\'s bow definition, mild eversion, modest projection. ' +
+    'HARD LOCK -- must not change: nose, chin, jawline, cheeks, eyes, brows, and facial silhouette.',
+  cheeks:
+    'CHEEK FILLER ONLY. Allowed zones: lateral cheek, midface, cheek apex and cheekbone region. ' +
+    'Allowed effects: fuller lateral cheek and midface, improved ogee curve, gentle cheekbone support. ' +
+    'HARD LOCK -- must not change: jawline, chin, lips, nose, lower face width, skin texture.',
+  tear_trough:
+    'TEAR TROUGH FILLER ONLY. Allowed zones: under-eye hollow and immediately adjacent upper medial cheek. ' +
+    'Allowed effects: softer under-eye hollow, smoother lid-cheek junction, reduced shadow from depression being filled. ' +
+    'HARD LOCK -- must not change: eye shape, eyelid, iris, midface volume, lips, nose, chin.',
+};
+
 // Assemble the CORE prompt from selections. The safety base is appended elsewhere.
 function buildCorePrompt(sel) {
   const sel_ = sel || {};
@@ -764,7 +799,7 @@ function buildCorePrompt(sel) {
   const isOblique = (sel_.view === 'oblique_left' || sel_.view === 'oblique_right' || sel_.view === 'oblique');
   const chinJawFraming = isOblique ? CHIN_JAW_OBLIQUE_FRAMING : BASE_FRAMING;
 
-  // M12.1: magnitude placed BEFORE the area description so it is not buried
+  // M14: magnitude placed BEFORE the area description so it is not buried
   // under conservation framing. The oblique anti-rebuild framing ("stay as close
   // to the original as possible") was coming first and the model weights opening
   // lines most heavily -- so Balanced and Enhanced were indistinguishable because
@@ -772,7 +807,12 @@ function buildCorePrompt(sel) {
   // Moving mag to immediately follow the framing establishes the response level
   // before the scope constraints, allowing the model to read: "minimal change,
   // BUT at this specific magnitude." The anti-rebuild protection stays intact.
-  return `${chinJawFraming} ${mag} Make ONLY this change: add hyaluronic acid filler to achieve ${expected}. ` +
+  // M14.2: universal family rule + per-area allowlist prepended so the model
+  // reads "only this zone may change" BEFORE any positive aesthetic instruction.
+  const areaAllowlist = (areas.length === 1 && HA_FILLER_AREA_ALLOWLISTS[areas[0]])
+    ? HA_FILLER_AREA_ALLOWLISTS[areas[0]] + ' '
+    : '';
+  return `${HA_FILLER_FAMILY_RULE} ${areaAllowlist}${chinJawFraming} ${mag} Make ONLY this change: add hyaluronic acid filler to achieve ${expected}. ` +
          `Avoid: ${avoid}. ${goal} ` +
          `Judge the result by facial contour alone: the added projection and support must be visible in the silhouette, while skin appearance stays exactly as photographed.${note}`;
 }
