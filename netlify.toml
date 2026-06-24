@@ -20,6 +20,39 @@
   force  = true
 
 
+# ── STUDIO + VISUALIZE MOVED TO SKINDAY.COM (M3 migration) ───────
+# Studio and Visualize now live on the global site. These forward any old
+# skinday.ca links/bookmarks to the new home.
+# force = true is REQUIRED: the old studio.html / visualize.html files still
+# exist in this repo, and without force Netlify serves the static file
+# instead of redirecting.
+# Using 302 (temporary) for the first 48-72h to verify everything works on
+# skinday.com. Switch all four to 301 (permanent) once confirmed stable.
+[[redirects]]
+  from   = "/studio"
+  to     = "https://skinday.com/studio.html"
+  status = 302
+  force  = true
+
+[[redirects]]
+  from   = "/studio.html"
+  to     = "https://skinday.com/studio.html"
+  status = 302
+  force  = true
+
+[[redirects]]
+  from   = "/visualize"
+  to     = "https://skinday.com/visualize.html"
+  status = 302
+  force  = true
+
+[[redirects]]
+  from   = "/visualize.html"
+  to     = "https://skinday.com/visualize.html"
+  status = 302
+  force  = true
+
+
 # ── API FUNCTIONS ────────────────────────────────────────────────
 [[redirects]]
   from   = "/api/get-clinics"
