@@ -4158,15 +4158,52 @@ async function drawExport(includeText, angleIds){
   // Any ids not in COL_ORDER (edge case) appended at end
   for(const id of ids){ if(!cols.includes(id)) cols.push(id); }
 
-  const panelW = 960, panelH = 1200, gap = 5;
+  const panelW = 960, panelH = 1200, gap = 12;
+  const headerH = includeText ? 88 : 0;
   canvas.width  = cols.length * panelW + (cols.length - 1) * gap;
-  canvas.height = 2 * panelH + gap + footerH;
+  canvas.height = headerH + 2 * panelH + gap + footerH;
   ctx.fillStyle = '#1C1714'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Header: clinic logo + name left, treatment label right
+  if(includeText && headerH > 0){
+    const hPad = 28, hMid = headerH / 2;
+    ctx.textBaseline = 'middle';
+    // Left: clinic logo or name
+    let leftEdge = hPad;
+    if(clinicLogoDataUrl){
+      const logoImgH = await new Promise(resolve => {
+        const im = new Image(); im.onload = () => resolve(im); im.onerror = () => resolve(null); im.src = clinicLogoDataUrl;
+      });
+      if(logoImgH){
+        const lh = 48, lw = Math.round(logoImgH.naturalWidth * (lh / logoImgH.naturalHeight));
+        ctx.globalAlpha = 0.92;
+        ctx.drawImage(logoImgH, hPad, (headerH - lh) / 2, lw, lh);
+        ctx.globalAlpha = 1.0;
+        leftEdge = hPad + lw + 14;
+      }
+    }
+    if(clinic && !clinicLogoDataUrl){
+      ctx.textAlign = 'left'; ctx.font = '500 22px "DM Sans", sans-serif';
+      ctx.fillStyle = 'rgba(250,247,242,0.90)';
+      ctx.fillText(clinic, hPad, hMid);
+    } else if(clinic && clinicLogoDataUrl){
+      // clinic name alongside logo
+      ctx.textAlign = 'left'; ctx.font = '500 18px "DM Sans", sans-serif';
+      ctx.fillStyle = 'rgba(250,247,242,0.80)';
+      ctx.fillText(clinic, leftEdge, hMid);
+    }
+    // Right: treatment name
+    ctx.textAlign = 'right'; ctx.font = '600 22px "DM Sans", sans-serif';
+    ctx.fillStyle = 'rgba(250,247,242,0.92)';
+    ctx.fillText(treatmentName(), canvas.width - hPad, hMid);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  }
 
   for(let ci = 0; ci < cols.length; ci++){
     const id = cols[ci];
     const sl = state.slots[id];
     const x = ci * (panelW + gap);
+    const yTop = headerH;
     const before = await loadImage(sl.cropBeforeCache || sl.beforeDataUrl || sl.originalDataUrl);
     const isSheetStrong = state.courseMode === 'enhanced' && sl.strongStatus === 'done' && sl.strongDataUrl;
     let sheetAfterUrl;
@@ -4187,58 +4224,36 @@ async function drawExport(includeText, angleIds){
     }
 
     // Top row: originals
-    ctx.save(); ctx.beginPath(); ctx.rect(x, 0, panelW, panelH); ctx.clip();
-    cover(before, x, 0, panelW, panelH);
+    ctx.save(); ctx.beginPath(); ctx.rect(x, yTop, panelW, panelH); ctx.clip();
+    cover(before, x, yTop, panelW, panelH);
     ctx.restore();
 
     // Bottom row: simulated
-    const yBot = panelH + gap;
+    const yBot = yTop + panelH + gap;
     ctx.save(); ctx.beginPath(); ctx.rect(x, yBot, panelW, panelH); ctx.clip();
     cover(after, x, yBot, panelW, panelH);
     ctx.restore();
 
-    // Labels -- only on the bottom (simulated) panel to keep top row clean
+    // Labels -- compact, bottom-left of each panel. Treatment name lives in
+    // the header, so panels only need Original / Simulated.
     if(includeText){
-      const kicker = simKicker(id);
       ctx.save();
-      // Original label (top panel)
-      ctx.font = '300 15px "DM Sans", sans-serif';
-      ctx.fillStyle = 'rgba(250,247,242,.65)';
-      ctx.textAlign = 'left';
-      ctx.fillText('AS PHOTOGRAPHED', x + 22, panelH - 56);
-      ctx.font = '400 38px "Cormorant Garamond", serif';
-      ctx.fillStyle = 'rgba(250,247,242,.95)';
-      ctx.fillText('Original', x + 22, panelH - 26);
-      // Simulated label (bottom panel)
-      ctx.font = '300 13px "DM Sans", sans-serif';
-      ctx.fillStyle = '#C9A96E';
-      ctx.textAlign = 'left';
-      ctx.letterSpacing = '0.06em';
-      ctx.fillText(kicker.toUpperCase(), x + 22, yBot + panelH - 56);
-      ctx.letterSpacing = '0px';
-      ctx.font = '400 38px "Cormorant Garamond", serif';
-      ctx.fillStyle = 'rgba(250,247,242,.95)';
-      ctx.fillText('Simulated', x + 22, yBot + panelH - 26);
+      // Gradient fade for readability
+      const fadeTop = (dy, dh) => {
+        const g = ctx.createLinearGradient(0, dy + dh - 90, 0, dy + dh);
+        g.addColorStop(0, 'rgba(28,23,20,0)'); g.addColorStop(1, 'rgba(28,23,20,0.72)');
+        return g;
+      };
+      ctx.fillStyle = fadeTop(yTop, panelH); ctx.fillRect(x, yTop, panelW, panelH);
+      ctx.fillStyle = fadeTop(yBot, panelH); ctx.fillRect(x, yBot, panelW, panelH);
+      // "Original"
+      ctx.font = '400 34px "Cormorant Garamond", serif';
+      ctx.fillStyle = 'rgba(250,247,242,0.92)'; ctx.textAlign = 'left';
+      ctx.fillText('Original',  x + 22, yTop + panelH - 22);
+      // "Simulated"
+      ctx.fillStyle = 'rgba(201,169,110,0.95)';
+      ctx.fillText('Simulated', x + 22, yBot + panelH - 22);
       ctx.restore();
-    }
-  }
-
-  // Logo: centered on the full multi-angle image, vertically centered across both rows
-  if(clinicLogoDataUrl && includeText){
-    const logoImg = await new Promise(resolve => {
-      const img = new Image();
-      img.onload = () => resolve(img);
-      img.onerror = () => resolve(null);
-      img.src = clinicLogoDataUrl;
-    });
-    if(logoImg){
-      const logoH = 64;
-      const logoW = Math.round(logoImg.naturalWidth * (logoH / logoImg.naturalHeight));
-      const logoX = (canvas.width - logoW) / 2;
-      const logoY = (panelH * 2 + gap - logoH) / 2; // center vertically across both rows
-      ctx.globalAlpha = 0.82;
-      ctx.drawImage(logoImg, logoX, logoY, logoW, logoH);
-      ctx.globalAlpha = 1.0;
     }
   }
 
