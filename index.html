@@ -3258,8 +3258,8 @@
       <h4>For Clinics</h4>
       <ul>
         <li><a href="/claim.html">Claim Your Listing</a></li>
-        <li><a href="https://skinday.com/studio.html" style="color:var(--gold);">Studio</a></li>
-        <li><a href="https://skinday.com/visualize.html" style="color:var(--gold);">Visualize</a></li>
+        <li><a href="https://skinday.com/studio.html" style="color:var(--gold);">Studio - Free Photo Tool</a></li>
+        <li><a href="https://skinday.com/visualize.html" style="color:var(--gold);">Visualize - Now in Beta</a></li>
       </ul>
     </div>
     <div class="footer-links">
@@ -4424,7 +4424,100 @@ function toggleAuthMode() {
   document.getElementById('authError').textContent = '';
 }
 
+// ── In-app browser (webview) detection ──────────────────────────────────────
+// Google OAuth returns 403 disallowed_useragent inside embedded browsers
+// (WeChat, Instagram, Facebook, Line, etc.). Detect those user agents and show
+// an "open in your browser" prompt instead of firing an OAuth flow that Google
+// will reject. Real Safari/Chrome/Firefox/Edge pass through untouched.
+function isInAppBrowser() {
+  const ua = (navigator.userAgent || navigator.vendor || '').toLowerCase();
+  // Known in-app browser signatures.
+  const inApp = [
+    'micromessenger', // WeChat
+    'wechat',
+    'weibo',
+    'instagram',
+    'fban', 'fbav', 'fb_iab', 'fbios', // Facebook
+    'line/',          // Line
+    'twitter',
+    'tiktok', 'musical_ly', 'bytedance',
+    'snapchat',
+    'pinterest',
+    'linkedinapp',
+    'gsa/',           // Google App in-app browser (also blocked)
+    'kakaotalk'
+  ];
+  if (inApp.some(sig => ua.includes(sig))) return true;
+  // iOS webview heuristic: Safari engine present but no real Safari/CriOS/FxiOS,
+  // which indicates an embedded WKWebView rather than Safari proper.
+  const isIOS = /iphone|ipod|ipad/.test(ua);
+  if (isIOS) {
+    const isRealBrowser = /safari/.test(ua) && !/crios|fxios|edgios/.test(ua);
+    const looksLikeWebView = !/safari/.test(ua); // Safari token missing = webview
+    if (looksLikeWebView && !isRealBrowser) return true;
+  }
+  return false;
+}
+
+// Shows a lightweight overlay telling the user to open the page in a real
+// browser, with a tap-to-copy link. Returns true if it intercepted (caller
+// should NOT proceed with OAuth). Built inline so it needs no markup changes.
+function showBrowserPrompt() {
+  if (document.getElementById('sdBrowserPrompt')) return true;
+  const url = window.location.href;
+  const ua = (navigator.userAgent || '').toLowerCase();
+  const isWeChat = ua.includes('micromessenger') || ua.includes('wechat');
+  const isIOS = /iphone|ipod|ipad/.test(ua);
+  const hint = isWeChat
+    ? 'Tap the \u22EF menu in the top corner, then choose \u201COpen in Safari\u201D or \u201COpen in Browser.\u201D'
+    : isIOS
+      ? 'Tap the \u22EF or share icon, then choose \u201COpen in Safari.\u201D'
+      : 'Tap the menu in the top corner, then choose \u201COpen in Chrome\u201D or \u201COpen in browser.\u201D';
+
+  const ov = document.createElement('div');
+  ov.id = 'sdBrowserPrompt';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(28,23,20,0.78);display:flex;align-items:center;justify-content:center;padding:24px;';
+  ov.innerHTML =
+    '<div style="background:var(--cream,#FAF7F2);color:var(--deep,#1C1714);max-width:340px;width:100%;border-radius:14px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,0.35);font-family:inherit;">' +
+      '<div style="font-family:\'Cormorant Garamond\',serif;font-size:1.5rem;margin-bottom:10px;">Open in your browser to vote</div>' +
+      '<div style="font-size:0.9rem;line-height:1.5;color:var(--muted,#6b625c);margin-bottom:16px;">' +
+        'Voting uses a secure Google sign-in, which does not work inside this app\u2019s built-in browser. ' + hint +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:8px;background:rgba(0,0,0,0.05);border-radius:8px;padding:9px 12px;margin-bottom:16px;">' +
+        '<span style="font-size:0.78rem;color:var(--muted,#6b625c);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">' + url + '</span>' +
+        '<button id="sdCopyLink" style="background:var(--rose,#C8725A);color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:0.78rem;cursor:pointer;white-space:nowrap;">Copy link</button>' +
+      '</div>' +
+      '<button id="sdBrowserPromptClose" style="width:100%;background:none;border:1px solid rgba(0,0,0,0.15);border-radius:8px;padding:10px;font-size:0.85rem;cursor:pointer;color:var(--deep,#1C1714);">Close</button>' +
+    '</div>';
+  document.body.appendChild(ov);
+
+  const copyBtn = document.getElementById('sdCopyLink');
+  copyBtn?.addEventListener('click', () => {
+    const done = () => { copyBtn.textContent = 'Copied'; setTimeout(() => { copyBtn.textContent = 'Copy link'; }, 1800); };
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(url).then(done).catch(() => {
+        const t = document.createElement('textarea'); t.value = url; document.body.appendChild(t); t.select();
+        try { document.execCommand('copy'); done(); } catch {} document.body.removeChild(t);
+      });
+    } else {
+      const t = document.createElement('textarea'); t.value = url; document.body.appendChild(t); t.select();
+      try { document.execCommand('copy'); done(); } catch {} document.body.removeChild(t);
+    }
+  });
+  const close = () => ov.remove();
+  document.getElementById('sdBrowserPromptClose')?.addEventListener('click', close);
+  ov.addEventListener('click', e => { if (e.target === ov) close(); });
+  return true;
+}
+
+// Single gate for every OAuth entry point. Returns true if blocked.
+function oauthBlockedByWebview() {
+  if (isInAppBrowser()) { showBrowserPrompt(); return true; }
+  return false;
+}
+
 async function handleGoogleSignIn() {
+  if (oauthBlockedByWebview()) return;
   const { error } = await _sb.auth.signInWithOAuth({
     provider: 'google',
     options: {
@@ -4437,6 +4530,7 @@ async function handleGoogleSignIn() {
 
 // Vote-triggered Google sign-in — redirects to / so pending vote is processed on return
 window.handleGoogleSignInPopup = async function() {
+  if (oauthBlockedByWebview()) return;
   const { error } = await _sb.auth.signInWithOAuth({
     provider: 'google',
     options: { redirectTo: window.location.origin, queryParams: { prompt: 'select_account' } }
@@ -5022,6 +5116,8 @@ window.cardVote = async function(clinicId, val, btnEl) {
     if (session?.user) {
       setUser(session.user);
     } else {
+      // In-app browser? Show the open-in-browser prompt instead of a doomed OAuth.
+      if (oauthBlockedByWebview()) return;
       localStorage.setItem('sd_pending_vote', JSON.stringify({ clinic_id: id, vote: val }));
       sessionStorage.setItem('sd_oauth_return', '1');
       _flashVotePrompt(row, 'Signing you in to vote\u2026');
@@ -5493,6 +5589,7 @@ window.castModalVote = async function castModalVote(val) {
     if (session?.user) {
       setUser(session.user);
     } else {
+      if (oauthBlockedByWebview()) return;
       localStorage.setItem('sd_pending_vote', JSON.stringify({
         clinic_id: clinicId,
         vote: val
