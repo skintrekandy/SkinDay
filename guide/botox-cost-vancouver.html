@@ -221,92 +221,51 @@
     .mid-cta-btn { flex-shrink:0;background:var(--rose);color:white;padding:0.65rem 1.4rem;border-radius:6px;font-size:0.85rem;font-weight:500;text-decoration:none; }
     .mid-cta-btn:hover { background:var(--rose-m); }
 
-    /* ── MOBILE — consolidated at end so base styles don't override ── */
+    /* ── MOBILE ── */
     @media (max-width: 640px) {
-      .guide-hero { padding: 88px 5% 32px; }
-      .guide-hero h1 { font-size:2.15rem;margin-bottom:0.9rem; }
-      .guide-hero .lead { font-size:0.9rem;line-height:1.55;margin-bottom:1.25rem; }
-      .stat-strip { display:grid;grid-template-columns:repeat(3,1fr);gap:0.5rem;padding-top:1rem; }
-      .stat-item { border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.7rem 0.4rem; }
-      .stat-item + .stat-item { border-left:none;border-top:none;padding-top:0.7rem; }
-      .stat-num { font-size:1.45rem; }
-      .stat-num span { font-size:0.9rem; }
-      .stat-desc { font-size:0.62rem;line-height:1.25; }
-      .quick-answer-card { margin:-28px auto 2rem;padding:1.1rem; }
-      .guide-wrap { padding:0 5% 60px;overflow-x:hidden; }
+      .guide-hero { padding: 88px 4% 28px; }
+      .guide-hero h1 { font-size:1.95rem;margin-bottom:0.8rem;line-height:1.15; }
+      .guide-hero .lead { font-size:0.88rem;line-height:1.55;margin-bottom:1.1rem; }
+      .stat-strip { display:grid;grid-template-columns:repeat(3,1fr);gap:0.4rem;padding-top:1rem; }
+      .stat-item { border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.65rem 0.3rem; }
+      .stat-item + .stat-item { border-left:none; }
+      .stat-num { font-size:1.35rem; }
+      .stat-num span { font-size:0.85rem; }
+      .stat-desc { font-size:0.58rem;line-height:1.3; }
+      .guide-wrap { padding:0 4% 60px;overflow-x:hidden; }
       body { overflow-x:hidden; }
-      .chart-grid { grid-template-columns:1fr !important;gap:1.5rem !important; }
+      .quick-answer-card { margin:-24px auto 1.75rem;padding:1rem; }
+      .quick-answer-table { font-size:0.83rem; }
+      .quick-answer-table td { padding:0.45rem 0; }
+      .jump-chips { flex-wrap:nowrap;overflow-x:auto;padding-bottom:0.5rem;-webkit-overflow-scrolling:touch;scrollbar-width:none; }
+      .jump-chips::-webkit-scrollbar { display:none; }
+      .jump-chip { white-space:nowrap;flex-shrink:0; }
+      .guide-table { display:none; }
+      .mobile-table-cards { display:block !important; }
+      .data-grid { grid-template-columns:repeat(2,1fr);gap:0.75rem; }
+      .data-card { padding:1rem; }
+      .data-card-num { font-size:1.6rem; }
+      .data-card-sub { display:none; }
+      .chart-grid { grid-template-columns:1fr !important;gap:1.25rem !important; }
       #chart-legend { flex-direction:row !important;flex-wrap:wrap;gap:0.35rem !important; }
-      .tier-grid { grid-template-columns:1fr; }
-      .guide-table { font-size:0.8rem; }
-      .guide-table th, .guide-table td { padding:0.6rem 0.75rem; }
-      .calc-inputs { grid-template-columns:1fr 1fr; }
-      .mid-cta { flex-direction:column; }
+      .tier-grid { grid-template-columns:1fr;gap:0.75rem; }
+      .tier-card { padding:1.1rem; }
+      .bar-row { grid-template-columns:80px 1fr 44px;gap:0.5rem; }
+      .bar-label { font-size:0.75rem; }
+      .calc-inputs { grid-template-columns:1fr 1fr;gap:0.75rem; }
+      .calc-preset { font-size:0.74rem;padding:0.3rem 0.7rem; }
+      .mid-cta { flex-direction:column;padding:1.25rem; }
+      .cta-band { padding:1.75rem 1.25rem; }
+      .cta-band h3 { font-size:1.5rem; }
       .density-callout { flex-direction:column;gap:0.75rem; }
+      .price-checker { padding:1.1rem; }
+      .price-checker-input-row { flex-direction:column;gap:0.75rem; }
+      .price-checker-input-row input, .price-checker-input-row button { width:100%; }
+      .guide-section h2 { font-size:1.65rem; }
+      .guide-section { margin-bottom:3rem; }
     }
-  </style>
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "mainEntity": [
-      {
-        "@type": "Question",
-        "name": "How much does Botox cost in Vancouver?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Botox in Metro Vancouver averages about $11.09 per unit as of May 2026, based on SkinDay's verified pricing data across Vancouver, Richmond, Burnaby, and Surrey. Most clinics charge between $9 and $12. That is roughly $1.50 more per unit than the GTA, reflecting Metro Vancouver's higher operating costs."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Why is Botox more expensive in Vancouver than other Canadian cities?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Metro Vancouver's average sits above Toronto's mainly because of higher commercial rents and a premium-positioned market. The product and procedure are the same; what differs is the cost of operating a clinic in the region, passed through in per-unit pricing."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Can naturopathic doctors inject Botox in BC?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Yes. British Columbia is the most established province for ND injectors, where naturopathic doctors with additional prescribing and injectable certification can administer Botox. As with any injector, ask about their specific injectable training and volume."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "How much does Botox cost for the forehead in Vancouver?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Forehead lines typically take 10 to 20 units, roughly $110 to $220 in Metro Vancouver at the regional average. Treating the frown lines and crow's feet at the same visit brings the total to about 35 to 60 units, or $390 to $665."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Why do Botox prices vary between Vancouver clinics?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Three main factors: who is injecting (physicians and NPs charge more than RNs and NDs), location within Metro Vancouver, and the brand used. The product matters less than the injector's experience. A very low price can mean fewer units are being used."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "How long does Botox last?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Most people see results last three to four months. First-time patients sometimes find it wears off faster; with regular treatment, results often last longer over time. The brand does not meaningfully change this at a reputable clinic."
-        }
-      }
-    ]
-  }
-  </script>
-  <!-- Privacy-friendly analytics by Plausible -->
-  <script async src="https://plausible.io/js/pa-s9ic7e_4fbKlTLHHXTR_P.js"></script>
-  <script>
-    window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
-    plausible.init()
-  </script>
+  
+</style>
 </head>
 <body>
 
@@ -317,16 +276,16 @@
 
 <div class="guide-hero">
   <div class="hero-inner">
-    <div class="hero-eyebrow">2026 Price Guide · Metro Vancouver</div>
+    <div class="hero-eyebrow">2026 Price Guide &middot; Metro Vancouver</div>
     <h1>How Much Does Botox Cost in <em>Vancouver?</em></h1>
-    <p class="lead">Metro Vancouver — Vancouver, Richmond, Burnaby, and Surrey — has the most distinctive injectable market in Canada. Competitive pricing, extraordinary clinic density in Richmond, and a notably mature naturopathic injector community. Here's what the real data shows.</p>
+    <p class="lead">Metro Vancouver &mdash; Vancouver, Richmond, Burnaby, and Surrey &mdash; has the most distinctive injectable market in Canada. Competitive pricing, extraordinary clinic density in Richmond, and a notably mature naturopathic injector community. Here&rsquo;s what the real data shows.</p>
     <div class="stat-strip">
       <div class="stat-item">
-        <div class="stat-num"><span>$</span>11.09</div>
-        <div class="stat-desc">Average per unit · Metro Vancouver</div>
+        <div class="stat-num" id="van-stat-avg"><span>$</span><span id="van-avg-val">11.09</span></div>
+        <div class="stat-desc">Average per unit &middot; Metro Vancouver</div>
       </div>
       <div class="stat-item">
-        <div class="stat-num"><span>$</span>9–12</div>
+        <div class="stat-num"><span>$</span>9&ndash;12</div>
         <div class="stat-desc">Most common range</div>
       </div>
       <div class="stat-item">
@@ -339,23 +298,34 @@
 
 <div class="guide-wrap">
 
-  
-
   <!-- QUICK ANSWER CARD -->
   <div class="quick-answer-card">
     <div class="quick-answer-label">Quick answer: Botox cost in Vancouver</div>
     <table class="quick-answer-table">
       <tbody>
-        <tr><td>Average price per unit</td><td>$11.09</td></tr>
+        <tr><td>Average price per unit</td><td id="van-qa-avg">$11.09</td></tr>
         <tr><td>Common range</td><td>$9–$12 / unit</td></tr>
         <tr><td>Forehead (single area)</td><td>$110–$220</td></tr>
         <tr><td>Full upper face</td><td>$385–$665</td></tr>
         <tr><td>Premium clinics</td><td>$12–$15 / unit</td></tr>
       </tbody>
     </table>
-    <p class="quick-answer-note">Updated May 2026 · based on verified SkinDay pricing</p>
+    <p class="quick-answer-note">Updated June 2026 · based on verified SkinDay pricing</p>
     <a href="/" class="quick-answer-cta">Compare Vancouver Botox clinics →</a>
   </div>
+
+
+  <!-- PRICE CHECKER -->
+  <div class="price-checker">
+    <div class="price-checker-label">Quick check</div>
+    <div class="price-checker-heading">Were you quoted a good price?</div>
+    <div class="price-checker-input-row">
+      <input type="number" id="pcInput" placeholder="Enter price per unit e.g. 11" min="1" max="30" step="0.5" />
+      <button onclick="checkPrice()">Check it</button>
+    </div>
+    <div class="price-checker-result" id="pcResult"></div>
+  </div>
+
 
   <!-- JUMP CHIPS -->
   <div class="jump-chips">
@@ -371,7 +341,7 @@
 
   <div class="guide-section" id="by-treatment-area">
     <h2>Botox cost by <em>treatment area</em></h2>
-    <p>Most patients want a specific area treated, not "Botox" in the abstract. Since pricing is per unit, the cost of any given area comes down to how many units it typically takes. Below are standard unit ranges for the most common areas, with estimated Metro Vancouver cost based on the regional average of $11.09/unit. Actual units vary with muscle strength, anatomy, and the result you want, so treat these as planning ranges, not quotes.</p>
+    <p>Most patients want a specific area treated, not "Botox" in the abstract. Since pricing is per unit, the cost of any given area comes down to how many units it typically takes. Below are standard unit ranges for the most common areas, with estimated Metro Vancouver cost based on the regional average of $<span id="van-prose-1">11.09</span>/unit. Actual units vary with muscle strength, anatomy, and the result you want, so treat these as planning ranges, not quotes.</p>
 
     <table class="guide-table">
       <thead>
@@ -414,7 +384,40 @@
         </tr>
       </tbody>
     </table>
-    <p style="font-size:0.75rem;color:var(--dim);">Unit ranges reflect standard clinical dosing. Cost estimates use the May 2026 Metro Vancouver average of $11.09/unit and are for planning only — your injector determines actual units. The upper-face trio (forehead, frown lines, crow's feet) most people start with typically runs 35–60 units, or roughly $390–$665 in Metro Vancouver.</p>
+
+    <div class="mobile-table-cards">
+      <div class="mobile-table-card">
+        <div class="mobile-table-card-title">Forehead lines</div>
+        <div class="mobile-table-card-row"><span>Typical units</span><span>10–20 units</span></div>
+        <div class="mobile-table-card-row"><span>Estimated Metro Van cost</span><span>$110–$220</span></div>
+      </div>
+      <div class="mobile-table-card">
+        <div class="mobile-table-card-title">Frown lines</div>
+        <div class="mobile-table-card-row"><span>Typical units</span><span>15–25 units</span></div>
+        <div class="mobile-table-card-row"><span>Estimated Metro Van cost</span><span>$165–$275</span></div>
+      </div>
+      <div class="mobile-table-card">
+        <div class="mobile-table-card-title">Crow's feet</div>
+        <div class="mobile-table-card-row"><span>Typical units</span><span>10–24 units</span></div>
+        <div class="mobile-table-card-row"><span>Estimated Metro Van cost</span><span>$110–$265</span></div>
+      </div>
+      <div class="mobile-table-card">
+        <div class="mobile-table-card-title">Lip flip</div>
+        <div class="mobile-table-card-row"><span>Typical units</span><span>4–8 units</span></div>
+        <div class="mobile-table-card-row"><span>Estimated Metro Van cost</span><span>$45–$90</span></div>
+      </div>
+      <div class="mobile-table-card">
+        <div class="mobile-table-card-title">Jawline slimming</div>
+        <div class="mobile-table-card-row"><span>Typical units</span><span>30–60 units</span></div>
+        <div class="mobile-table-card-row"><span>Estimated Metro Van cost</span><span>$335–$665</span></div>
+      </div>
+      <div class="mobile-table-card">
+        <div class="mobile-table-card-title">Underarm sweating</div>
+        <div class="mobile-table-card-row"><span>Typical units</span><span>50–100 units</span></div>
+        <div class="mobile-table-card-row"><span>Estimated Metro Van cost</span><span>$555–$1,110</span></div>
+      </div>
+    </div>
+    <p style="font-size:0.75rem;color:var(--dim);">Unit ranges reflect standard clinical dosing. Cost estimates use the June 2026 Metro Vancouver average of $<span id="van-prose-2">11.09</span>/unit and are for planning only — your injector determines actual units. The upper-face trio (forehead, frown lines, crow's feet) most people start with typically runs 35–60 units, or roughly $390–$665 in Metro Vancouver.</p>
   </div>
 
   <!-- SECTION: WHO IS THIS FOR -->
@@ -477,7 +480,7 @@
 
     <div class="data-grid">
       <div class="data-card">
-        <div class="data-card-num">$11.09</div>
+        <div class="data-card-num" id="van-dc-avg">$11.09</div>
         <div class="data-card-label">Average per unit</div>
         <div class="data-card-sub">Across all brands and injector types</div>
       </div>
@@ -498,7 +501,7 @@
       </div>
     </div>
 
-    <p>The vast majority of the Metro Vancouver market sits between $9 and $12, with $12 emerging as the dominant price point. At $11.09/unit average, Metro Vancouver prices roughly $1.57 more per unit than the GTA average of $9.52 — reflecting Metro Vancouver's higher operating costs, a premium-positioned market, and a patient base that has come to expect a higher standard of practice.</p>
+    <p>The vast majority of the Metro Vancouver market sits between $9 and $12, with $12 emerging as the dominant price point. At $<span id="van-prose-3">11.09</span>/unit average, Metro Vancouver prices roughly $1.57 more per unit than the GTA average of $9.52 — reflecting Metro Vancouver's higher operating costs, a premium-positioned market, and a patient base that has come to expect a higher standard of practice.</p>
 
     <div class="highlight">"Metro Vancouver has Canada's most mature naturopathic injectable market — and its most diverse credential mix. More injector types means more variety. More variety means fit matters more than ever."</div>
 
@@ -718,6 +721,33 @@
       </tbody>
     </table>
 
+    <div class="mobile-table-cards">
+      <div class="mobile-table-card">
+        <div class="mobile-table-card-title">RN / LPN</div>
+        <div class="mobile-table-card-row"><span>Avg price / unit</span><span>$10.58</span></div>
+        <div class="mobile-table-card-row"><span>Typical range</span><span>$8 – $13
+          Most common injector type</span></div>
+      </div>
+      <div class="mobile-table-card">
+        <div class="mobile-table-card-title">ND</div>
+        <div class="mobile-table-card-row"><span>Avg price / unit</span><span>$11.33</span></div>
+        <div class="mobile-table-card-row"><span>Typical range</span><span>$9.99 – $12
+          More established in Metro Vancouver than other provinces</span></div>
+      </div>
+      <div class="mobile-table-card">
+        <div class="mobile-table-card-title">MD / Physician</div>
+        <div class="mobile-table-card-row"><span>Avg price / unit</span><span>$11.57</span></div>
+        <div class="mobile-table-card-row"><span>Typical range</span><span>$8 – $14
+          Widest price range across the four credential types</span></div>
+      </div>
+      <div class="mobile-table-card">
+        <div class="mobile-table-card-title">NP</div>
+        <div class="mobile-table-card-row"><span>Avg price / unit</span><span>$11.78</span></div>
+        <div class="mobile-table-card-row"><span>Typical range</span><span>$11 – $12
+          Highest average in Metro Vancouver</span></div>
+      </div>
+    </div>
+
     <p>The Metro Vancouver pricing hierarchy is notably different from Ontario. NPs command the highest average at $11.78, followed by MDs at $11.57. NDs at $11.33 sit just below — still firmly in the premium tier, and well above the RN average of $10.58. The ND price point is particularly interesting: these are not discount operators. Metro Vancouver's ND-led practices price firmly in the premium range, sitting alongside physician-led clinics rather than below them.</p>
 
     <h3>Should you see an ND for Botox in Metro Vancouver?</h3>
@@ -782,6 +812,29 @@
         <tr><td><strong>Burnaby</strong></td><td>$10.63 avg</td><td><span class="price-pill mid">Mid-range</span></td></tr>
       </tbody>
     </table>
+
+    <div class="mobile-table-cards">
+      <div class="mobile-table-card">
+        <div class="mobile-table-card-title">Richmond</div>
+        <div class="mobile-table-card-row"><span>Avg price</span><span>$11.31 avg</span></div>
+        <div class="mobile-table-card-row"><span>Level</span><span>Premium</span></div>
+      </div>
+      <div class="mobile-table-card">
+        <div class="mobile-table-card-title">Vancouver</div>
+        <div class="mobile-table-card-row"><span>Avg price</span><span>$11.17 avg</span></div>
+        <div class="mobile-table-card-row"><span>Level</span><span>Premium</span></div>
+      </div>
+      <div class="mobile-table-card">
+        <div class="mobile-table-card-title">Surrey</div>
+        <div class="mobile-table-card-row"><span>Avg price</span><span>$10.86 avg</span></div>
+        <div class="mobile-table-card-row"><span>Level</span><span>Mid-range</span></div>
+      </div>
+      <div class="mobile-table-card">
+        <div class="mobile-table-card-title">Burnaby</div>
+        <div class="mobile-table-card-row"><span>Avg price</span><span>$10.63 avg</span></div>
+        <div class="mobile-table-card-row"><span>Level</span><span>Mid-range</span></div>
+      </div>
+    </div>
     <p style="font-size:0.75rem;color:var(--dim);">Averages based on verified pricing from Metro Vancouver clinics in the SkinDay directory as of May 2026. Always confirm directly with the clinic.</p>
   </div>
 
@@ -914,7 +967,7 @@
     <div class="faq-list">
       <div class="faq-item">
         <h3 class="faq-q">How much does Botox cost in Vancouver?</h3>
-        <p class="faq-a">Botox in Metro Vancouver averages about $11.09 per unit as of May 2026, based on SkinDay's verified pricing data across Vancouver, Richmond, Burnaby, and Surrey. Most clinics charge between $9 and $12, with $12 emerging as the most common price point. That's roughly $1.50 more per unit than the GTA, reflecting Metro Vancouver's higher operating costs.</p>
+        <p class="faq-a">Botox in Metro Vancouver averages about $<span id="van-prose-4">11.09</span> per unit as of June 2026, based on SkinDay's verified pricing data across Vancouver, Richmond, Burnaby, and Surrey. Most clinics charge between $9 and $12, with $12 emerging as the most common price point. That's roughly $1.50 more per unit than the GTA, reflecting Metro Vancouver's higher operating costs.</p>
       </div>
       <div class="faq-item">
         <h3 class="faq-q">Why is Botox more expensive in Vancouver than other Canadian cities?</h3>
@@ -957,9 +1010,34 @@
 .sticky-cta-label strong {color:#FAF7F2;}
 .sticky-cta-btn {flex-shrink:0;background:var(--rose);color:white;padding:0.5rem 1.1rem;border-radius:5px;font-size:0.82rem;font-weight:500;text-decoration:none;white-space:nowrap;}
 /* sticky shown by JS only */
+
+    /* ── MOBILE TABLE CARDS ── */
+    .mobile-table-cards { display:none; margin:1.5rem 0; }
+    .mobile-table-card { background:white;border:1px solid var(--border);border-radius:10px;padding:1rem 1.1rem;margin-bottom:0.6rem; }
+    .mobile-table-card-title { font-weight:600;font-size:0.9rem;color:var(--deep);margin-bottom:0.5rem; }
+    .mobile-table-card-row { display:flex;justify-content:space-between;align-items:center;font-size:0.82rem;padding:0.25rem 0;border-bottom:1px solid var(--border); }
+    .mobile-table-card-row:last-child { border-bottom:none; }
+    .mobile-table-card-row span:first-child { color:var(--muted); }
+    .mobile-table-card-row span:last-child { font-weight:500;color:var(--deep); }
+
+    /* ── PRICE CHECKER ── */
+    .price-checker { background:var(--warm);border:1px solid var(--border);border-radius:12px;padding:1.4rem 1.5rem;margin:2rem 0; }
+    .price-checker-label { font-size:0.68rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--rose);margin-bottom:0.6rem; }
+    .price-checker-heading { font-family:'Cormorant Garamond',serif;font-size:1.3rem;font-weight:400;color:var(--deep);margin-bottom:1rem;line-height:1.3; }
+    .price-checker-input-row { display:flex;gap:0.75rem;align-items:stretch;margin-bottom:1rem; }
+    .price-checker-input-row input { flex:1;padding:0.65rem 0.9rem;border:1px solid var(--border);border-radius:8px;font-size:1rem;font-family:inherit;background:white;color:var(--deep);outline:none; }
+    .price-checker-input-row input:focus { border-color:var(--rose); }
+    .price-checker-input-row button { background:var(--rose);color:white;border:none;border-radius:8px;padding:0.65rem 1.25rem;font-size:0.88rem;font-weight:600;font-family:inherit;cursor:pointer;white-space:nowrap;transition:background 0.2s; }
+    .price-checker-input-row button:hover { background:var(--rose-m); }
+    .price-checker-result { display:none;padding:1rem 1.1rem;border-radius:8px;font-size:0.9rem;line-height:1.55; }
+    .price-checker-result.below { background:#f0f7f3;border:1px solid rgba(61,122,85,0.2);color:#2d5a3d; }
+    .price-checker-result.mid   { background:white;border:1px solid rgba(201,169,110,0.3);color:#5a4a1e; }
+    .price-checker-result.above { background:#fdf5f0;border:1px solid rgba(200,114,90,0.25);color:#5a2a1e; }
+    .price-checker-result strong { display:block;font-size:1rem;margin-bottom:0.3rem; }
+    .price-checker-cta { display:inline-block;margin-top:0.75rem;font-size:0.82rem;color:var(--rose);font-weight:500;text-decoration:none; }
 </style>
 <div class="sticky-cta" id="stickyCta">
-  <div class="sticky-cta-label">Vancouver avg: <strong>$11.09/unit</strong></div>
+  <div class="sticky-cta-label">Vancouver avg: <strong id="van-sticky-avg">$11.09/unit</strong></div>
   <a href="/" class="sticky-cta-btn">Compare clinics →</a>
 </div>
 <script>
@@ -998,6 +1076,83 @@
     if (prose) prose.textContent = formatted + '+';
   } catch(e) {}
 })();
+</script>
+
+
+<script>
+(async function fetchVancouverLiveData() {
+  const SB = 'https://vefldlqtyxdywbzdjuia.supabase.co';
+  const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlZmxkbHF0eXhkeXdiemRqdWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNDAwMjgsImV4cCI6MjA4NzkxNjAyOH0.o582sXiUkB3j4FiHEA5rE3ABy_pdTeeK1PnNpNirHZA';
+
+  try {
+    const res = await fetch(
+      `${SB}/rest/v1/clinics?select=price&province=eq.BC&neighbourhood=in.(Vancouver,Richmond,Burnaby,Surrey)&approved=eq.true&price=gte.3&price=lte.20`,
+      { headers: { 'apikey': KEY } }
+    );
+    if (!res.ok) return;
+    const rows = await res.json();
+    if (!rows.length) return;
+
+    const prices = rows.map(r => parseFloat(r.price)).filter(v => !isNaN(v));
+    if (!prices.length) return;
+    const avg = (prices.reduce((a, b) => a + b, 0) / prices.length).toFixed(2);
+
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    set('van-avg-val', avg);
+    set('van-qa-avg', '$' + avg);
+    set('van-dc-avg', '$' + avg);
+    set('van-sticky-avg', '$' + avg + '/unit');
+    set('van-prose-1', avg);
+    set('van-prose-2', avg);
+    set('van-prose-3', avg);
+    set('van-prose-4', avg);
+
+    // Update calc input and presets
+    const calcPrice = document.getElementById('calc-price');
+    if (calcPrice) {
+      calcPrice.value = avg;
+      updateCalc();
+    }
+    document.querySelectorAll('.calc-preset').forEach(btn => {
+      const match = btn.getAttribute('onclick').match(/setCalc\((\d+),/);
+      if (match) btn.setAttribute('onclick', `setCalc(${match[1]},${avg},this)`);
+    });
+
+  } catch(e) {}
+})();
+</script>
+
+
+<script>
+function checkPrice() {
+  const input = document.getElementById('pcInput');
+  const result = document.getElementById('pcResult');
+  const val = parseFloat(input.value);
+  if (isNaN(val) || val < 1 || val > 30) { result.style.display='none'; return; }
+  const avgEl = document.getElementById('van-avg-val');
+  const avg = avgEl ? parseFloat(avgEl.textContent) : 11.09;
+  let cls, heading, body, cta;
+  if (val <= avg * 0.85) {
+    cls = 'below';
+    heading = 'Below average for Metro Vancouver — good deal.';
+    body = `$${val.toFixed(2)}/unit is below the Metro Vancouver average of $${avg.toFixed(2)}. Verify the injector is credentialed. A low price from a qualified RN or physician is a great find.`;
+    cta = 'Compare credentialed clinics near you';
+  } else if (val <= avg * 1.18) {
+    cls = 'mid';
+    heading = 'Right in the Metro Vancouver range.';
+    body = `$${val.toFixed(2)}/unit is close to the Metro Vancouver average of $${avg.toFixed(2)}. Standard for experienced RN- or NP-led clinics. Check the brand and whether a follow-up is included.`;
+    cta = 'See who else is at this price range';
+  } else {
+    cls = 'above';
+    heading = 'Above average for Metro Vancouver.';
+    body = `$${val.toFixed(2)}/unit is above the Metro Vancouver average of $${avg.toFixed(2)}. Premium pricing is common at physician-led or concierge clinics. Make sure the credential matches the price.`;
+    cta = 'Compare physician-led clinics in Vancouver';
+  }
+  result.className = 'price-checker-result ' + cls;
+  result.innerHTML = `<strong>${heading}</strong>${body}<br><a class="price-checker-cta" href="/?province=bc">${cta} →</a>`;
+  result.style.display = 'block';
+}
+document.getElementById('pcInput').addEventListener('keydown', function(e) { if (e.key === 'Enter') checkPrice(); });
 </script>
 
 </body>

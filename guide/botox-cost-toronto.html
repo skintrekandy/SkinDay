@@ -449,28 +449,108 @@
     .mid-cta-btn:hover { background:var(--rose-m); }
 
     /* ── MOBILE — consolidated at end so base styles don't override ── */
+    /* ── MOBILE ── */
     @media (max-width: 640px) {
-      .guide-hero { padding: 88px 5% 32px; }
-      .guide-hero h1 { font-size:2.15rem;margin-bottom:0.9rem; }
-      .guide-hero .lead { font-size:0.9rem;line-height:1.55;margin-bottom:1.25rem; }
-      .stat-strip { display:grid;grid-template-columns:repeat(3,1fr);gap:0.5rem;padding-top:1rem; }
-      .stat-item { border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.7rem 0.4rem; }
-      .stat-item + .stat-item { border-left:none;border-top:none;padding-top:0.7rem; }
-      .stat-num { font-size:1.45rem; }
-      .stat-num span { font-size:0.9rem; }
-      .stat-desc { font-size:0.62rem;line-height:1.25; }
-      .quick-answer-card { margin:-28px auto 2rem;padding:1.1rem; }
-      .guide-wrap { padding:0 5% 60px;overflow-x:hidden; }
+      .guide-hero { padding: 88px 4% 28px; }
+      .guide-hero h1 { font-size:1.95rem;margin-bottom:0.8rem;line-height:1.15; }
+      .guide-hero .lead { font-size:0.88rem;line-height:1.55;margin-bottom:1.1rem; }
+      .stat-strip { display:grid;grid-template-columns:repeat(3,1fr);gap:0.4rem;padding-top:1rem; }
+      .stat-item { border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.65rem 0.3rem; }
+      .stat-item + .stat-item { border-left:none; }
+      .stat-num { font-size:1.35rem; }
+      .stat-num span { font-size:0.85rem; }
+      .stat-desc { font-size:0.58rem;line-height:1.3; }
+      .guide-wrap { padding:0 4% 60px;overflow-x:hidden; }
       body { overflow-x:hidden; }
-      .chart-grid { grid-template-columns:1fr !important;gap:1.5rem !important; }
+      .quick-answer-card { margin:-24px auto 1.75rem;padding:1rem; }
+      .quick-answer-table { font-size:0.83rem; }
+      .quick-answer-table td { padding:0.45rem 0; }
+      .jump-chips { flex-wrap:nowrap;overflow-x:auto;padding-bottom:0.5rem;-webkit-overflow-scrolling:touch;scrollbar-width:none; }
+      .jump-chips::-webkit-scrollbar { display:none; }
+      .jump-chip { white-space:nowrap;flex-shrink:0; }
+      .guide-table { display:none; }
+      .mobile-table-cards { display:block !important; }
+      .data-grid { grid-template-columns:repeat(2,1fr);gap:0.75rem; }
+      .data-card { padding:1rem; }
+      .data-card-num { font-size:1.6rem; }
+      .data-card-sub { display:none; }
+      .chart-grid { grid-template-columns:1fr !important;gap:1.25rem !important; }
       #chart-legend { flex-direction:row !important;flex-wrap:wrap;gap:0.35rem !important; }
-      .tier-grid { grid-template-columns:1fr; }
-      .guide-table { font-size:0.8rem; }
-      .guide-table th, .guide-table td { padding:0.6rem 0.75rem; }
-      .calc-inputs { grid-template-columns:1fr 1fr; }
-      .mid-cta { flex-direction:column; }
+      .tier-grid { grid-template-columns:1fr;gap:0.75rem; }
+      .tier-card { padding:1.1rem; }
+      .bar-row { grid-template-columns:80px 1fr 44px;gap:0.5rem; }
+      .bar-label { font-size:0.75rem; }
+      .bar-pct { font-size:0.72rem; }
+      .calc-inputs { grid-template-columns:1fr 1fr;gap:0.75rem; }
+      .calc-preset { font-size:0.74rem;padding:0.3rem 0.7rem; }
+      .mid-cta { flex-direction:column;padding:1.25rem; }
+      .cta-band { padding:1.75rem 1.25rem; }
+      .cta-band h3 { font-size:1.5rem; }
+      .profile-grid { grid-template-columns:1fr; }
+      .price-checker { padding:1.1rem; }
+      .price-checker-input-row { flex-direction:column;gap:0.75rem; }
+      .price-checker-input-row input, .price-checker-input-row button { width:100%; }
+      .guide-section h2 { font-size:1.65rem; }
+      .guide-section { margin-bottom:3rem; }
     }
-  </style>
+  
+    /* ── MOBILE TABLE CARDS (replaces guide-table on mobile) ── */
+    .mobile-table-cards { display:none; margin:1.5rem 0; }
+    .mobile-table-card {
+      background:white; border:1px solid var(--border); border-radius:10px;
+      padding:1rem 1.1rem; margin-bottom:0.6rem;
+    }
+    .mobile-table-card-title {
+      font-weight:600; font-size:0.9rem; color:var(--deep); margin-bottom:0.5rem;
+    }
+    .mobile-table-card-row {
+      display:flex; justify-content:space-between; align-items:center;
+      font-size:0.82rem; padding:0.25rem 0;
+      border-bottom:1px solid var(--border);
+    }
+    .mobile-table-card-row:last-child { border-bottom:none; }
+    .mobile-table-card-row span:first-child { color:var(--muted); }
+    .mobile-table-card-row span:last-child { font-weight:500; color:var(--deep); }
+
+    /* ── PRICE CHECKER ── */
+    .price-checker {
+      background:var(--warm); border:1px solid var(--border); border-radius:12px;
+      padding:1.4rem 1.5rem; margin:2rem 0;
+    }
+    .price-checker-label {
+      font-size:0.68rem; font-weight:700; letter-spacing:0.12em;
+      text-transform:uppercase; color:var(--rose); margin-bottom:0.6rem;
+    }
+    .price-checker-heading {
+      font-family:'Cormorant Garamond',serif; font-size:1.3rem;
+      font-weight:400; color:var(--deep); margin-bottom:1rem; line-height:1.3;
+    }
+    .price-checker-input-row {
+      display:flex; gap:0.75rem; align-items:stretch; margin-bottom:1rem;
+    }
+    .price-checker-input-row input {
+      flex:1; padding:0.65rem 0.9rem; border:1px solid var(--border);
+      border-radius:8px; font-size:1rem; font-family:inherit;
+      background:white; color:var(--deep); outline:none;
+    }
+    .price-checker-input-row input:focus { border-color:var(--rose); }
+    .price-checker-input-row button {
+      background:var(--rose); color:white; border:none; border-radius:8px;
+      padding:0.65rem 1.25rem; font-size:0.88rem; font-weight:600;
+      font-family:inherit; cursor:pointer; white-space:nowrap;
+      transition:background 0.2s;
+    }
+    .price-checker-input-row button:hover { background:var(--rose-m); }
+    .price-checker-result {
+      display:none; padding:1rem 1.1rem; border-radius:8px;
+      font-size:0.9rem; line-height:1.55;
+    }
+    .price-checker-result.below { background:#f0f7f3; border:1px solid rgba(61,122,85,0.2); color:#2d5a3d; }
+    .price-checker-result.mid   { background:white; border:1px solid rgba(201,169,110,0.3); color:#5a4a1e; }
+    .price-checker-result.above { background:#fdf5f0; border:1px solid rgba(200,114,90,0.25); color:#5a2a1e; }
+    .price-checker-result strong { display:block; font-size:1rem; margin-bottom:0.3rem; }
+    .price-checker-cta { display:inline-block;margin-top:0.75rem;font-size:0.82rem;color:var(--rose);font-weight:500;text-decoration:none; }
+</style>
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -481,7 +561,7 @@
         "name": "How much is Botox?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Most clinics price Botox per unit rather than per injection. In Toronto the per-unit average is about $9.52 as of May 2026. A single treatment area runs roughly $95 to $190, and a full upper-face treatment about $330 to $570, depending on how many units you need."
+          "text": "Most clinics price Botox per unit rather than per injection. In Toronto the per-unit average is about $9.52 as of June 2026. A single treatment area runs roughly $95 to $190, and a full upper-face treatment about $330 to $570, depending on how many units you need."
         }
       },
       {
@@ -497,7 +577,7 @@
         "name": "How much does Botox cost in Toronto?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Botox in Toronto averages about $9.52 per unit as of May 2026, based on SkinDay's verified pricing data across the GTA. Most clinics charge between $9 and $11 per unit, with the largest share around $10. A typical first treatment of the upper face runs roughly 35 to 60 units, or about $330 to $570."
+          "text": "Botox in Toronto averages about $9.52 per unit as of June 2026, based on SkinDay's verified pricing data across the GTA. Most clinics charge between $9 and $11 per unit, with the largest share around $10. A typical first treatment of the upper face runs roughly 35 to 60 units, or about $330 to $570."
         }
       },
       {
@@ -573,7 +653,7 @@
 
     <div class="stat-strip">
       <div class="stat-item">
-        <div class="stat-num"><span>$</span>9.52</div>
+        <div class="stat-num" id="tor-stat-avg"><span>$</span><span id="tor-avg-val">9.52</span></div>
         <div class="stat-desc">Average per unit · GTA</div>
       </div>
       <div class="stat-item">
@@ -596,16 +676,29 @@
     <div class="quick-answer-label">Quick answer: Botox cost in Toronto</div>
     <table class="quick-answer-table">
       <tbody>
-        <tr><td>Average price per unit</td><td>$9.52</td></tr>
+        <tr><td>Average price per unit</td><td id="tor-qa-avg">$9.52</td></tr>
         <tr><td>Common range</td><td>$7–$11 / unit</td></tr>
         <tr><td>Forehead (single area)</td><td>$95–$190</td></tr>
         <tr><td>Full upper face</td><td>$330–$570</td></tr>
         <tr><td>Premium clinics</td><td>$11–$15 / unit</td></tr>
       </tbody>
     </table>
-    <p class="quick-answer-note">Updated May 2026 · based on verified SkinDay pricing</p>
+    <p class="quick-answer-note">Updated June 2026 · based on verified SkinDay pricing</p>
     <a href="/" class="quick-answer-cta">Compare Toronto Botox clinics →</a>
   </div>
+
+  <!-- PRICE CHECKER -->
+  <div class="price-checker">
+    <div class="price-checker-label">Quick check</div>
+    <div class="price-checker-heading">Were you quoted a good price?</div>
+    <div class="price-checker-input-row">
+      <input type="number" id="pcInput" placeholder="Enter price per unit e.g. 9" min="1" max="30" step="0.5" />
+      <button onclick="checkPrice()">Check it</button>
+    </div>
+    <div class="price-checker-result" id="pcResult"></div>
+  </div>
+
+
 
   <!-- JUMP CHIPS -->
   <div class="jump-chips">
@@ -619,7 +712,7 @@
 
 <div class="guide-section" id="by-treatment-area">
     <h2>Botox cost by <em>treatment area</em></h2>
-    <p>Botox cost depends mostly on how many units the area needs. Below are typical unit ranges and estimated Toronto costs using the GTA average of $9.52/unit. Treat these as planning ranges, not quotes.</p>
+    <p>Botox cost depends mostly on how many units the area needs. Below are typical unit ranges and estimated Toronto costs using the GTA average of $<span id="tor-prose-1">9.52</span>/unit. Treat these as planning ranges, not quotes.</p>
 
     <table class="guide-table">
       <thead>
@@ -672,7 +765,50 @@
         </tr>
       </tbody>
     </table>
-    <p style="font-size:0.75rem;color:var(--dim);">Unit ranges reflect standard clinical dosing. Cost estimates use the May 2026 GTA average of $9.52/unit and are for planning only — your injector determines actual units. Larger areas like the masseter and underarms use the most product and cost the most accordingly.</p>
+
+    <div class="mobile-table-cards">
+      <div class="mobile-table-card">
+        <div class="mobile-table-card-title">Forehead lines</div>
+        <div class="mobile-table-card-row"><span>Typical units</span><span>10–20 units</span></div>
+        <div class="mobile-table-card-row"><span>Est. GTA cost</span><span>$95–$190</span></div>
+      </div>
+      <div class="mobile-table-card">
+        <div class="mobile-table-card-title">Frown lines</div>
+        <div class="mobile-table-card-row"><span>Typical units</span><span>15–25 units</span></div>
+        <div class="mobile-table-card-row"><span>Est. GTA cost</span><span>$145–$240</span></div>
+      </div>
+      <div class="mobile-table-card">
+        <div class="mobile-table-card-title">Crow's feet</div>
+        <div class="mobile-table-card-row"><span>Typical units</span><span>10–24 units</span></div>
+        <div class="mobile-table-card-row"><span>Est. GTA cost</span><span>$95–$230</span></div>
+      </div>
+      <div class="mobile-table-card">
+        <div class="mobile-table-card-title">Bunny lines</div>
+        <div class="mobile-table-card-row"><span>Typical units</span><span>5–10 units</span></div>
+        <div class="mobile-table-card-row"><span>Est. GTA cost</span><span>$50–$95</span></div>
+      </div>
+      <div class="mobile-table-card">
+        <div class="mobile-table-card-title">Lip flip</div>
+        <div class="mobile-table-card-row"><span>Typical units</span><span>4–8 units</span></div>
+        <div class="mobile-table-card-row"><span>Est. GTA cost</span><span>$40–$75</span></div>
+      </div>
+      <div class="mobile-table-card">
+        <div class="mobile-table-card-title">Jawline slimming</div>
+        <div class="mobile-table-card-row"><span>Typical units</span><span>30–60 units</span></div>
+        <div class="mobile-table-card-row"><span>Est. GTA cost</span><span>$285–$570</span></div>
+      </div>
+      <div class="mobile-table-card">
+        <div class="mobile-table-card-title">Chin dimpling</div>
+        <div class="mobile-table-card-row"><span>Typical units</span><span>4–10 units</span></div>
+        <div class="mobile-table-card-row"><span>Est. GTA cost</span><span>$40–$95</span></div>
+      </div>
+      <div class="mobile-table-card">
+        <div class="mobile-table-card-title">Underarm sweating</div>
+        <div class="mobile-table-card-row"><span>Typical units</span><span>50–100 units</span></div>
+        <div class="mobile-table-card-row"><span>Est. GTA cost</span><span>$475–$950</span></div>
+      </div>
+    </div>
+    <p style="font-size:0.75rem;color:var(--dim);">Unit ranges reflect standard clinical dosing. Cost estimates use the June 2026 GTA average of $<span id="tor-prose-2">9.52</span>/unit and are for planning only — your injector determines actual units. Larger areas like the masseter and underarms use the most product and cost the most accordingly.</p>
 
     <p>A few takeaways: the "upper face" trio most people start with — forehead, frown lines, and crow's feet together — typically runs 35–60 units, or roughly <strong>$330–$570</strong> in Toronto. Functional treatments like jaw slimming and excessive sweating cost more simply because they require far more product, not because the price per unit is higher. And a lip flip is one of the cheapest entry points to Botox at well under $100.</p>
   </div>
@@ -818,6 +954,79 @@
         </tr>
 </tbody>
     </table>
+
+    <div class="mobile-table-cards">
+      <div class="mobile-table-card">
+        <div class="mobile-table-card-title">Woodbridge</div>
+        <div class="mobile-table-card-row"><span>Avg price</span><span>$10.27 avg</span></div>
+        <div class="mobile-table-card-row"><span>Level</span><span>Premium</span></div>
+      </div>
+      <div class="mobile-table-card">
+        <div class="mobile-table-card-title">Toronto</div>
+        <div class="mobile-table-card-row"><span>Avg price</span><span>$10.06 avg</span></div>
+        <div class="mobile-table-card-row"><span>Level</span><span>Premium</span></div>
+      </div>
+      <div class="mobile-table-card">
+        <div class="mobile-table-card-title">North York</div>
+        <div class="mobile-table-card-row"><span>Avg price</span><span>$10.02 avg</span></div>
+        <div class="mobile-table-card-row"><span>Level</span><span>Premium</span></div>
+      </div>
+      <div class="mobile-table-card">
+        <div class="mobile-table-card-title">Milton</div>
+        <div class="mobile-table-card-row"><span>Avg price</span><span>$9.83 avg</span></div>
+        <div class="mobile-table-card-row"><span>Level</span><span>Mid-range</span></div>
+      </div>
+      <div class="mobile-table-card">
+        <div class="mobile-table-card-title">Etobicoke</div>
+        <div class="mobile-table-card-row"><span>Avg price</span><span>$9.77 avg</span></div>
+        <div class="mobile-table-card-row"><span>Level</span><span>Mid-range</span></div>
+      </div>
+      <div class="mobile-table-card">
+        <div class="mobile-table-card-title">Richmond Hill</div>
+        <div class="mobile-table-card-row"><span>Avg price</span><span>$9.56 avg</span></div>
+        <div class="mobile-table-card-row"><span>Level</span><span>Mid-range</span></div>
+      </div>
+      <div class="mobile-table-card">
+        <div class="mobile-table-card-title">Burlington</div>
+        <div class="mobile-table-card-row"><span>Avg price</span><span>$9.55 avg</span></div>
+        <div class="mobile-table-card-row"><span>Level</span><span>Mid-range</span></div>
+      </div>
+      <div class="mobile-table-card">
+        <div class="mobile-table-card-title">Aurora</div>
+        <div class="mobile-table-card-row"><span>Avg price</span><span>$9.19 avg</span></div>
+        <div class="mobile-table-card-row"><span>Level</span><span>Mid-range</span></div>
+      </div>
+      <div class="mobile-table-card">
+        <div class="mobile-table-card-title">Oakville</div>
+        <div class="mobile-table-card-row"><span>Avg price</span><span>$9.10 avg</span></div>
+        <div class="mobile-table-card-row"><span>Level</span><span>Mid-range</span></div>
+      </div>
+      <div class="mobile-table-card">
+        <div class="mobile-table-card-title">Markham</div>
+        <div class="mobile-table-card-row"><span>Avg price</span><span>$9.03 avg</span></div>
+        <div class="mobile-table-card-row"><span>Level</span><span>Mid-range</span></div>
+      </div>
+      <div class="mobile-table-card">
+        <div class="mobile-table-card-title">Vaughan</div>
+        <div class="mobile-table-card-row"><span>Avg price</span><span>$8.90 avg</span></div>
+        <div class="mobile-table-card-row"><span>Level</span><span>Mid-range</span></div>
+      </div>
+      <div class="mobile-table-card">
+        <div class="mobile-table-card-title">Thornhill</div>
+        <div class="mobile-table-card-row"><span>Avg price</span><span>$8.41 avg</span></div>
+        <div class="mobile-table-card-row"><span>Level</span><span>Competitive</span></div>
+      </div>
+      <div class="mobile-table-card">
+        <div class="mobile-table-card-title">Mississauga</div>
+        <div class="mobile-table-card-row"><span>Avg price</span><span>$8.04 avg</span></div>
+        <div class="mobile-table-card-row"><span>Level</span><span>Competitive</span></div>
+      </div>
+      <div class="mobile-table-card">
+        <div class="mobile-table-card-title">Brampton</div>
+        <div class="mobile-table-card-row"><span>Avg price</span><span>$7.90 avg</span></div>
+        <div class="mobile-table-card-row"><span>Level</span><span>Competitive</span></div>
+      </div>
+    </div>
     <p style="font-size:0.75rem;color:var(--dim);">Averages based on verified pricing from GTA clinics in the SkinDay directory as of May 2026. Always confirm directly with the clinic.</p>
   </div>
 
@@ -830,7 +1039,7 @@
 
     <div class="data-grid">
       <div class="data-card">
-        <div class="data-card-num">$9.52</div>
+        <div class="data-card-num" id="tor-dc-avg">$9.52</div>
         <div class="data-card-label">Average per unit</div>
         <div class="data-card-sub">Across all brands and injector types</div>
       </div>
@@ -878,7 +1087,7 @@
 
     let bins = FALLBACK;
     try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/clinic_prices?select=price&price=gte.3&price=lte.15`, {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/clinic_prices?select=price,clinics!inner(province)&clinics.province=eq.ON&price=gte.3&price=lte.15`, {
         headers: { 'apikey': SUPABASE_KEY }
       });
       if (res.ok) {
@@ -1159,7 +1368,7 @@
       <div class="tier-card mid">
         <div class="tier-name">Mid-range ✦ Most common</div>
         <div class="tier-range">$7–$11<small style="font-size:1rem">/unit</small></div>
-        <div class="tier-desc">Where the GTA average sits ($9.52). Mix of experienced RNs, NPs, and physicians. Generally the best balance of quality and value for most patients.</div>
+        <div class="tier-desc">Where the GTA average sits ($<span id="tor-prose-3">9.52</span>). Mix of experienced RNs, NPs, and physicians. Generally the best balance of quality and value for most patients.</div>
       </div>
       <div class="tier-card premium">
         <div class="tier-name">Premium</div>
@@ -1286,19 +1495,19 @@
     <div class="faq-list">
       <div class="faq-item">
         <h3 class="faq-q">How much is Botox?</h3>
-        <p class="faq-a">Most clinics price Botox per unit rather than per injection or per visit, though some charge a flat fee by treatment area. In Toronto the per-unit average is about $9.52 as of May 2026. Because everyone needs a different number of units, the real cost depends on how many areas you treat — a single area runs roughly $95–$190, and a full upper-face treatment about $330–$570. Per-unit pricing makes it easiest to compare clinics on a like-for-like basis.</p>
+        <p class="faq-a">Most clinics price Botox per unit rather than per injection or per visit, though some charge a flat fee by treatment area. In Toronto the per-unit average is about $<span id="tor-prose-4">9.52</span> as of June 2026. Because everyone needs a different number of units, the real cost depends on how many areas you treat — a single area runs roughly $95–$190, and a full upper-face treatment about $330–$570. Per-unit pricing makes it easiest to compare clinics on a like-for-like basis.</p>
       </div>
       <div class="faq-item">
         <h3 class="faq-q">How much does a Botox injection cost in Toronto?</h3>
-        <p class="faq-a">Most Toronto clinics charge per unit rather than per injection, and one treatment area uses several units. At the GTA average of $9.52 per unit, a Botox injection session for one area costs about $95–$190, and a full upper-face treatment about $330–$570. A clinic that prices per area instead will quote a flat fee — ask how many units it includes so you can compare the real cost of Botox injections between clinics.</p>
+        <p class="faq-a">Most Toronto clinics charge per unit rather than per injection, and one treatment area uses several units. At the GTA average of $<span id="tor-prose-5">9.52</span> per unit, a Botox injection session for one area costs about $95–$190, and a full upper-face treatment about $330–$570. A clinic that prices per area instead will quote a flat fee — ask how many units it includes so you can compare the real cost of Botox injections between clinics.</p>
       </div>
       <div class="faq-item">
         <h3 class="faq-q">How much does Botox cost in Toronto?</h3>
-        <p class="faq-a">Botox in Toronto averages about $9.52 per unit as of May 2026, based on SkinDay's verified pricing data across the GTA. Most clinics charge between $9 and $11 per unit, with the largest share clustering around $10. A typical first treatment of the upper face (forehead, frown lines, and crow's feet) runs roughly 35–60 units, or about $330–$570.</p>
+        <p class="faq-a">Botox in Toronto averages about $<span id="tor-prose-6">9.52</span> per unit as of June 2026, based on SkinDay's verified pricing data across the GTA. Most clinics charge between $9 and $11 per unit, with the largest share clustering around $10. A typical first treatment of the upper face (forehead, frown lines, and crow's feet) runs roughly 35–60 units, or about $330–$570.</p>
       </div>
       <div class="faq-item">
         <h3 class="faq-q">How much is Botox per unit in Toronto?</h3>
-        <p class="faq-a">The GTA average is $9.52 per unit. Price varies by injector credential and location: RN-led clinics average around $9.56, nurse practitioners about $9.97, and physician-led clinics about $11.04. Neighbourhood matters too — Brampton and Mississauga average under $8.10, while Woodbridge, downtown Toronto, and North York sit above $10.</p>
+        <p class="faq-a">The GTA average is $<span id="tor-prose-7">9.52</span> per unit. Price varies by injector credential and location: RN-led clinics average around $9.56, nurse practitioners about $9.97, and physician-led clinics about $11.04. Neighbourhood matters too — Brampton and Mississauga average under $8.10, while Woodbridge, downtown Toronto, and North York sit above $10.</p>
       </div>
       <div class="faq-item">
         <h3 class="faq-q">How much does Botox cost for the forehead?</h3>
@@ -1484,7 +1693,7 @@
 @media (max-width:640px) { .sticky-cta { display:flex; } }
 </style>
 <div class="sticky-cta" id="stickyCta">
-  <div class="sticky-cta-label">Toronto avg: <strong>$9.52/unit</strong></div>
+  <div class="sticky-cta-label">Toronto avg: <strong id="tor-sticky-avg">$9.52/unit</strong></div>
   <a href="/" class="sticky-cta-btn">Compare clinics →</a>
 </div>
 <script>
@@ -1505,6 +1714,95 @@
   <p style="margin-top:0.5rem;">Prices based on SkinDay's market analysis as of May 2026. Always confirm directly with the clinic before booking. "Botox" is used as a general term — clinics may use Botox®, Dysport®, Xeomin®, Nuceiva®, or Letybo®.</p>
 </div>
 
+
+
+<script>
+(async function fetchGTALiveData() {
+  const SB = 'https://vefldlqtyxdywbzdjuia.supabase.co';
+  const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlZmxkbHF0eXhkeXdiemRqdWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNDAwMjgsImV4cCI6MjA4NzkxNjAyOH0.o582sXiUkB3j4FiHEA5rE3ABy_pdTeeK1PnNpNirHZA';
+
+  try {
+    const res = await fetch(
+      `${SB}/rest/v1/clinics?select=price&province=eq.ON&approved=eq.true&price=gte.3&price=lte.20`,
+      { headers: { 'apikey': KEY } }
+    );
+    if (!res.ok) return;
+    const rows = await res.json();
+    if (!rows.length) return;
+
+    const prices = rows.map(r => parseFloat(r.price)).filter(v => !isNaN(v));
+    if (!prices.length) return;
+    const avg = (prices.reduce((a, b) => a + b, 0) / prices.length).toFixed(2);
+
+    // Update all DOM targets
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    set('tor-avg-val', avg);
+    set('tor-qa-avg', '$' + avg);
+    set('tor-dc-avg', '$' + avg);
+    set('tor-sticky-avg', '$' + avg + '/unit');
+    set('tor-prose-1', avg);
+    set('tor-prose-2', avg);
+    set('tor-prose-3', avg);
+    set('tor-prose-4', avg);
+    set('tor-prose-5', avg);
+    set('tor-prose-6', avg);
+    set('tor-prose-7', avg);
+
+    // Update calc input default and presets
+    const calcPrice = document.getElementById('calc-price');
+    if (calcPrice) {
+      calcPrice.value = avg;
+      updateCalc();
+    }
+    // Update calc preset onclick attributes
+    document.querySelectorAll('.calc-preset').forEach(btn => {
+      const match = btn.getAttribute('onclick').match(/setCalc\((\d+),/);
+      if (match) btn.setAttribute('onclick', `setCalc(${match[1]},${avg},this)`);
+    });
+
+  } catch(e) {}
+})();
+</script>
+
+
+<script>
+function checkPrice() {
+  const input = document.getElementById('pcInput');
+  const result = document.getElementById('pcResult');
+  const val = parseFloat(input.value);
+  if (isNaN(val) || val < 1 || val > 30) {
+    result.style.display = 'none';
+    return;
+  }
+  // Get live avg if available, else use fallback
+  const avgEl = document.getElementById('tor-avg-val');
+  const avg = avgEl ? parseFloat(avgEl.textContent) : 9.52;
+
+  let cls, heading, body, cta;
+  if (val <= avg * 0.85) {
+    cls = 'below';
+    heading = 'Below average for the GTA — good deal.';
+    body = `$${val.toFixed(2)}/unit is below the GTA average of $${avg.toFixed(2)}. Make sure the clinic is reputable and the injector is credentialed. A low price from a qualified RN or MD is a great find. A low price from an unknown is a risk.`;
+    cta = 'Compare credentialed clinics near you';
+  } else if (val <= avg * 1.18) {
+    cls = 'mid';
+    heading = 'Right in the GTA sweet spot.';
+    body = `$${val.toFixed(2)}/unit is close to the GTA average of $${avg.toFixed(2)}. This is typical for experienced RN- or NP-led clinics. Check what brand they use and whether a follow-up is included.`;
+    cta = 'See who else is at this price range';
+  } else {
+    cls = 'above';
+    heading = 'Above average — make sure you know why.';
+    body = `$${val.toFixed(2)}/unit is above the GTA average of $${avg.toFixed(2)}. Premium prices are common at physician-led or concierge clinics. If it is a physician injecting directly, it may be worth it. If not, compare before you book.`;
+    cta = 'Compare physician-led clinics';
+  }
+  result.className = 'price-checker-result ' + cls;
+  result.innerHTML = `<strong>${heading}</strong>${body}<br><a class="price-checker-cta" href="/">${cta} →</a>`;
+  result.style.display = 'block';
+}
+document.getElementById('pcInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') checkPrice();
+});
+</script>
 
 </body>
 
