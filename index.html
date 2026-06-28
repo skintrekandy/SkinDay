@@ -2476,7 +2476,7 @@
 
 <!-- NAV -->
 <nav>
-  <a href="/" class="nav-logo">Skin<span>Day</span></a>
+  <a href="https://skinday.com" class="nav-logo">Skin<span>Day</span></a>
   <ul class="nav-links"></ul>
   <div class="nav-ctas">
     <!-- Auth state: shown when logged out -->
@@ -3506,6 +3506,7 @@ function buildApiUrl(page) {
     params.set('injector', currentInjectorFilter);
   }
 
+  params.set('country', 'canada');
   return '/api/get-clinics?' + params.toString();
 }
 
@@ -4140,7 +4141,7 @@ function showToast(msg) {
 
   // Fetch index + first page in parallel
   const [indexRes, pageRes] = await Promise.allSettled([
-    fetch('/api/get-clinics?mode=index').then(r => r.ok ? r.json() : []),
+    fetch('/api/get-clinics?mode=index&country=canada').then(r => r.ok ? r.json() : []),
     fetch(buildApiUrl(0)).then(r => r.ok ? r.json() : { clinics: [], total: 0, hasMore: false }),
   ]);
 
@@ -6845,7 +6846,7 @@ function openMapClinicModal(id) { openMapModal(String(id)); }
     const SUPABASE_URL = 'https://vefldlqtyxdywbzdjuia.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlZmxkbHF0eXhkeXdiemRqdWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNDAwMjgsImV4cCI6MjA4NzkxNjAyOH0.o582sXiUkB3j4FiHEA5rE3ABy_pdTeeK1PnNpNirHZA';
 
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/clinics?select=id&approved=eq.true`, {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/clinics?select=id&approved=eq.true&country=eq.canada`, {
       method: 'GET',
       headers: {
         'apikey': SUPABASE_KEY,
