@@ -2476,7 +2476,7 @@
 
 <!-- NAV -->
 <nav>
-  <a href="https://skinday.com" class="nav-logo">Skin<span>Day</span></a>
+  <a href="/" class="nav-logo">Skin<span>Day</span></a>
   <ul class="nav-links"></ul>
   <div class="nav-ctas">
     <!-- Auth state: shown when logged out -->
@@ -3009,7 +3009,7 @@
       function fetchAll() {
         // Single query: get all approved clinics with the fields we need.
         // ~5,350 rows × ~80 bytes = ~430 KB. One-time on page load. Acceptable.
-        return fetch(SB_URL + '/rest/v1/clinics?select=province,neighbourhood,rating,reviews&approved=eq.true&limit=20000', {
+        return fetch(SB_URL + '/rest/v1/clinics?select=province,neighbourhood,rating,reviews&approved=eq.true&country=eq.canada&limit=20000', {
           headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }
         })
         .then(function(res) { return res.ok ? res.json() : Promise.reject(); })
@@ -3506,7 +3506,6 @@ function buildApiUrl(page) {
     params.set('injector', currentInjectorFilter);
   }
 
-  params.set('country', 'canada');
   return '/api/get-clinics?' + params.toString();
 }
 
@@ -4141,7 +4140,7 @@ function showToast(msg) {
 
   // Fetch index + first page in parallel
   const [indexRes, pageRes] = await Promise.allSettled([
-    fetch('/api/get-clinics?mode=index&country=canada').then(r => r.ok ? r.json() : []),
+    fetch('/api/get-clinics?mode=index').then(r => r.ok ? r.json() : []),
     fetch(buildApiUrl(0)).then(r => r.ok ? r.json() : { clinics: [], total: 0, hasMore: false }),
   ]);
 
@@ -6156,7 +6155,7 @@ function onCompactSearch() {
 
 // ─── FETCH ────────────────────────────────────────────────────
 async function fetchMapClinics() {
-  let url = `${SB_URL}/rest/v1/clinics?select=id,name,neighbourhood,province,lat,lng,rating,reviews,claimed,price,logo_url,injector_credentials,languages,maps_url,place_id,email,phone,website,booking_url,promo,promo_text&approved=eq.true&lat=not.is.null&order=rating.desc.nullslast&limit=10000`;
+  let url = `${SB_URL}/rest/v1/clinics?select=id,name,neighbourhood,province,lat,lng,rating,reviews,claimed,price,logo_url,injector_credentials,languages,maps_url,place_id,email,phone,website,booking_url,promo,promo_text&approved=eq.true&country=eq.canada&lat=not.is.null&order=rating.desc.nullslast&limit=10000`;
   if (PROVINCE_MAP[currentFilter]) {
     url += `&province=eq.${PROVINCE_MAP[currentFilter]}`;
   } else if (currentFilter && currentFilter !== 'all') {
@@ -6238,8 +6237,8 @@ function onMapIdle() {
       // Mobile: carousel reflects current viewport
       renderCarousel();
     } else {
-      // Desktop: list is stable — only update viewport count badge
-      updateViewportCount();
+      // Desktop: list filters to current viewport
+      renderDesktopList();
     }
     // Re-apply selection visuals after markers were recreated
     if (_activeCid) renderSelection();
@@ -6410,21 +6409,25 @@ function onMapSort(val) {
 // Called ONLY on filter/sort/city change — NOT on pan or zoom.
 // List is the stable comparison surface; map is the exploration layer.
 function renderDesktopList() {
-  const sorted = sortClinics([..._allClinics], _mapSort);
+  // Filter to current map viewport so the list reflects what's on screen.
+  // Falls back to full set if map bounds not ready yet (initial load).
+  let pool = _allClinics;
+  if (_map) {
+    const bounds = _map.getBounds();
+    if (bounds) pool = _allClinics.filter(c => c.lat && c.lng && bounds.contains({ lat: +c.lat, lng: +c.lng }));
+  }
+  const sorted = sortClinics(pool, _mapSort);
 
-  // Header count shows full dataset size
   const headerCount = document.getElementById('mapListCount');
   if (headerCount) headerCount.textContent = sorted.length.toLocaleString() + ' clinics';
 
   const cardsEl = document.getElementById('mapListCards');
   if (cardsEl) cardsEl.innerHTML = sorted.length === 0
-    ? '<div class="map-list-status">No clinics found.</div>'
+    ? '<div class="map-list-status">No clinics in this area. Zoom out to see more.</div>'
     : sorted.map(c => buildCard(c, false)).join('');
 
   // After DOM rebuild, re-apply selection highlight + scroll
   if (_activeCid) {
-    const exists = !!cardsEl?.querySelector(`[data-cid="${_activeCid}"]`);
-    console.log('renderDesktopList: activeCid', _activeCid, 'card in DOM:', exists);
     requestAnimationFrame(() => renderSelection());
   }
 
