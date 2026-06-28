@@ -180,6 +180,7 @@ exports.handler = async (event) => {
         .from('clinics')
         .select('id, name, neighbourhood, province, website')
         .eq('approved', true)
+        .eq('country', params.country || 'canada')
         .order('id', { ascending: true })
         .range(0, 29999);
 
@@ -198,6 +199,7 @@ exports.handler = async (event) => {
     // ── PARAMS ───────────────────────────────────────────────
     const page          = Math.max(0, parseInt(params.page || '0', 10));
     const sort          = params.sort || 'reviews';
+    const country       = params.country || 'canada';
     const province      = params.province || '';
     const neighbourhood = params.neighbourhood || '';
     const injector      = params.injector || '';
@@ -213,7 +215,8 @@ exports.handler = async (event) => {
       let q = supabase
         .from('clinics')
         .select(CARD_FIELDS, { count: 'exact' })
-        .eq('approved', true);
+        .eq('approved', true)
+        .eq('country', country);
 
       if (search)        q = q.ilike('name', `%${search}%`);
       if (province)      q = q.eq('province', province);
