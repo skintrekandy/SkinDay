@@ -763,6 +763,33 @@
       transform: translateY(-3px);
       box-shadow: 0 12px 40px rgba(28,23,20,0.1);
     }
+    /* Photo banner (Google photo or claimed cover; placeholder when none) */
+    .card-photo-banner {
+      position: relative; height: 140px; overflow: hidden;
+      background: var(--warm);
+    }
+    .card-photo-banner img.card-cover {
+      width: 100%; height: 100%; object-fit: cover;
+      transition: transform 0.4s ease;
+    }
+    .clinic-card:hover .card-cover { transform: scale(1.04); }
+    .card-photo-banner.no-photo {
+      display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(135deg, var(--warm) 0%, #EDE0D8 100%);
+    }
+    .card-photo-banner.no-photo::after {
+      content: 'SkinDay';
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.6rem; font-weight: 300; color: var(--border); letter-spacing: 0.08em;
+    }
+    .card-logo-badge {
+      position: absolute; bottom: 10px; left: 14px;
+      width: 36px; height: 36px; border-radius: 8px;
+      border: 2px solid var(--cream); background: #fff;
+      overflow: hidden; box-shadow: 0 2px 8px rgba(28,23,20,0.15);
+      flex-shrink: 0;
+    }
+    .card-logo-badge img { width: 100%; height: 100%; object-fit: contain; }
     .card-header {
       padding: 1.4rem 1.4rem 1rem;
       border-bottom: 1px solid var(--border);
@@ -3619,6 +3646,24 @@ function renderPageCards(clinicsData, append) {
       : '';
     return `
       <div class="clinic-card${hasPrice ? '' : ' no-price'}" data-id="${c.id}">
+        ${(() => {
+          // Photo precedence: claimed cover (photos[0]) -> Google photo -> placeholder.
+          // Logo precedence: claimed logo_url -> Google logo -> none.
+          // Claimed uploads always win; Google data never overwrites them.
+          let coverUrl = '';
+          if (Array.isArray(c.photos) && c.photos.length > 0 && c.photos[0]) coverUrl = c.photos[0];
+          else if (c.photo) coverUrl = c.photo;
+          const logoUrl = c.logo_url || c.logo || '';
+          const logoBadge = logoUrl
+            ? `<div class="card-logo-badge"><img src="${logoUrl}" alt="" loading="lazy" onerror="this.parentElement.style.display='none'"></div>`
+            : '';
+          return coverUrl
+            ? `<div class="card-photo-banner">
+                 <img class="card-cover" src="${coverUrl}" alt="${c.name}" loading="lazy" onerror="this.parentElement.classList.add('no-photo');this.remove()">
+                 ${logoBadge}
+               </div>`
+            : `<div class="card-photo-banner no-photo">${logoBadge}</div>`;
+        })()}
         <div class="card-corner-actions">
           <button class="btn-save-card" id="save-${c.id}" onclick="toggleSave('${c.id}', event)" title="Save to shortlist"><span class="heart-icon"></span></button>
         </div>
@@ -3626,7 +3671,7 @@ function renderPageCards(clinicsData, append) {
           <div class="card-badges"></div>
           <div class="clinic-name">
             ${c.claimed
-              ? `<span class="clinic-name-verified">${c.logo_url ? `<img src="${c.logo_url}" alt="${c.name}" style="width:24px;height:24px;border-radius:4px;object-fit:contain;border:1px solid var(--border);background:#fff;flex-shrink:0;margin-right:4px;vertical-align:middle;" onerror="this.style.display='none'">` : ''}${c.name}</span>`
+              ? `<span class="clinic-name-verified">${c.name}</span>`
               : c.name}
           </div>
           ${c.practitioners && c.practitioners.length > 0
@@ -5860,14 +5905,21 @@ window.openClinicModal = async function openClinicModal(clinicId) {
         headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ prefix: 'clinic-' + clinicIdStr + '/', limit: 20 })
       }).then(r => r.ok ? r.json() : []).then(files => {
-        if (!files || !files.length) return;
-        const urls = files
+        const urls = (files || [])
           .filter(f => f.name && !f.name.endsWith('/'))
           .map(f => `${SB_URL}/storage/v1/object/public/clinic-photos/clinic-${clinicIdStr}/${f.name}`);
-        renderModalPhotos(urls);
-      }).catch(() => {});
+        if (urls.length) { renderModalPhotos(urls); return; }
+        // Last fallback: the single Google place photo (unclaimed clinics).
+        // Claimed uploads always took precedence above; this only runs when a
+        // clinic has no uploaded photos of its own.
+        if (clinic.photo) renderModalPhotos([clinic.photo]);
+      }).catch(() => {
+        if (clinic.photo) renderModalPhotos([clinic.photo]);
+      });
     }
-  }).catch(() => {});
+  }).catch(() => {
+    if (clinic.photo) renderModalPhotos([clinic.photo]);
+  });
   document.getElementById('cm-photos-link-unclaimed').style.display = isClaimed ? 'none' : 'inline';
   document.getElementById('cm-photos-link-claimed').style.display   = isClaimed ? 'inline' : 'none';
 
