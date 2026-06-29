@@ -99,6 +99,7 @@ const CARD_FIELDS = `
   claimed, approved, promo, promo_text, consult_free,
   toxin_type, injector_credentials, languages, categories,
   price, price_source, price_date,
+  photo, logo, photos,
   practitioners (id, name, designation, display_order)
 `;
 
@@ -390,6 +391,7 @@ exports.handler = async (event) => {
       'claimed','approved','promo','promo_text',
       'toxin_type','injector_credentials','languages','categories','consult_free',
       'price','price_source','price_date',
+      'photo','logo','photos',
     ];
 
     const merged = pageSlice.map(clinic => {
