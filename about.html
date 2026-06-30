@@ -1,633 +1,362 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-  <title>About SkinDay, Canada's Cosmetic Clinic Comparison Platform</title>
-  <meta name="description" content="Compare Botox prices and cosmetic clinic details across 4,748+ Canadian clinics on SkinDay — pricing, injector credentials, reviews, and treatment focus in one place, so clinic research takes minutes instead of hours." />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light only">
+<title>About SkinDay · Closing the gap between expectation and reality</title>
+<meta name="description" content="SkinDay helps aesthetic clinics build lasting patient relationships by closing the gap between expectation and reality. Directory, Visualize, and Studio across the full patient journey.">
+<link rel="canonical" href="https://skinday.com/about">
+<link rel="icon" href="/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,600&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=Noto+Serif+TC:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root{color-scheme:light;
+    --deep:#1C1714;--deep-soft:#2A231E;--cream:#FAF7F2;--warm:#F4EDE4;
+    --rose:#C8725A;--rose-m:#D4896E;--gold:#C9A96E;
+    --border:#EAE2D8;--muted:#8A7F76;--dim:#B5A89F;
+    --line:rgba(28,23,20,.12);--line-light:rgba(250,247,242,.16);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{font-family:'DM Sans',system-ui,sans-serif;background:var(--cream);color:var(--deep);line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden;}
+  .serif{font-family:'Cormorant Garamond',Georgia,serif;}
+  body.zh{font-family:'Noto Serif TC','DM Sans',system-ui,sans-serif;}
+  body.zh .serif{font-family:'Noto Serif TC',Georgia,serif;}
+  a{color:inherit;text-decoration:none;}
 
-    :root {
-      --cream:   #FAF7F2;
-      --warm:    #F4EDE4;
-      --deep:    #1C1714;
-      --deep2:   #241E1A;
-      --rose:    #C8725A;
-      --rose-m:  #D4896E;
-      --gold:    #C9A96E;
-      --muted:   #8A7B72;
-      --dim:     #B5A89F;
-      --border:  #EAE2D8;
-      --hero-border: rgba(201,169,110,0.25);
-    }
+  .wrap{max-width:1080px;margin:0 auto;padding:0 32px;}
+  .wrap-narrow{max-width:720px;margin:0 auto;padding:0 32px;}
 
-    html { scroll-behavior: smooth; overflow-x: hidden; }
-    body {
-      font-family: 'DM Sans', sans-serif;
-      background: var(--cream);
-      color: var(--deep);
-      -webkit-font-smoothing: antialiased;
-      overflow-x: hidden;
-    }
+  /* ── NAV ── */
+  .site-nav{position:fixed;top:0;left:0;right:0;z-index:20;padding:30px 0;background:rgba(28,23,20,0.95);backdrop-filter:blur(12px);border-bottom:1px solid rgba(201,169,110,0.15);}
+  .nav-inner{max-width:1080px;margin:0 auto;padding:0 32px;display:flex;align-items:center;justify-content:space-between;}
+  .brand{font-family:'Cormorant Garamond',serif;font-size:1.55rem;font-weight:400;letter-spacing:.01em;color:var(--cream);text-decoration:none;}
+  .brand span{color:var(--gold);}
+  .nav-right{display:flex;align-items:center;gap:24px;}
+  .nav-links{display:flex;align-items:center;gap:24px;}
+  .nav-links a{text-decoration:none;font-size:.82rem;letter-spacing:.04em;color:var(--dim);transition:color .25s;}
+  .nav-links a:hover{color:var(--cream);}
+  .lang-toggle{display:flex;align-items:center;gap:8px;border:1px solid rgba(201,169,110,0.25);border-radius:999px;padding:5px 12px;}
+  .lang-btn{background:none;border:none;cursor:pointer;font-family:inherit;font-size:.72rem;letter-spacing:.06em;color:var(--dim);padding:0;transition:color .2s;}
+  .lang-btn.active{color:var(--cream);}
+  .lang-btn:hover:not(.active){color:var(--gold);}
+  .lang-sep{width:1px;height:11px;background:rgba(201,169,110,0.25);}
+  @media(max-width:640px){.nav-links{display:none;}}
 
-    /* ─── NAV ─── */
-    nav {
-      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 0 5%; height: 60px;
-      background: rgba(28,23,20,0.95);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid rgba(201,169,110,0.15);
-    }
-    .nav-logo {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 1.35rem; font-weight: 400; letter-spacing: 0.02em;
-      color: var(--cream); text-decoration: none;
-    }
-    .nav-logo span { color: var(--gold); }
-    .nav-ctas { display: flex; align-items: center; gap: 0.75rem; }
-    .nav-cta {
-      font-size: 0.78rem; font-weight: 500; letter-spacing: 0.04em;
-      padding: 0.45rem 1rem; border-radius: 6px;
-      background: var(--rose); color: #fff;
-      text-decoration: none; transition: background 0.2s;
-    }
-    .nav-cta:hover { background: var(--rose-m); }
-    .nav-text { font-size: 0.78rem; color: var(--dim); text-decoration: none; transition: color 0.2s; }
-    .nav-text:hover { color: var(--cream); }
+  /* ── HERO ── */
+  .hero{background:var(--deep);padding:160px 32px 100px;position:relative;overflow:hidden;}
+  .hero::before{content:'';position:absolute;inset:0;
+    background:radial-gradient(ellipse 70% 60% at 70% 40%,rgba(201,169,110,0.07) 0%,transparent 70%),
+               radial-gradient(ellipse 40% 50% at 20% 80%,rgba(200,114,90,0.05) 0%,transparent 60%);
+    pointer-events:none;}
+  .hero-inner{max-width:760px;position:relative;z-index:1;}
+  .eyebrow{font-size:.72rem;font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);margin-bottom:1.6rem;display:flex;align-items:center;gap:.75rem;}
+  .eyebrow::before{content:'';display:block;width:28px;height:1px;background:var(--gold);}
+  .hero h1{font-family:'Cormorant Garamond',serif;font-size:clamp(2.6rem,5.5vw,4.4rem);font-weight:300;line-height:1.1;color:var(--cream);margin-bottom:1.6rem;letter-spacing:-.01em;}
+  .hero h1 em{font-style:italic;color:var(--gold);}
+  .hero-sub{font-size:1.05rem;color:rgba(250,247,242,0.6);line-height:1.75;max-width:580px;font-weight:300;}
 
-    /* ─── HERO ─── */
-    .about-hero {
-      background: var(--deep);
-      padding: 140px 5% 90px;
-      position: relative;
-      overflow: hidden;
-    }
-    .about-hero::before {
-      content: '';
-      position: absolute; inset: 0;
-      background: radial-gradient(ellipse 60% 70% at 80% 50%, rgba(201,169,110,0.07) 0%, transparent 70%);
-      pointer-events: none;
-    }
-    .about-hero-inner {
-      max-width: 760px; margin: 0 auto; position: relative;
-    }
-    .about-eyebrow {
-      font-size: 0.72rem; font-weight: 500; letter-spacing: 0.18em;
-      text-transform: uppercase; color: var(--gold);
-      margin-bottom: 1.5rem;
-      display: flex; align-items: center; gap: 0.75rem;
-    }
-    .about-eyebrow::before {
-      content: ''; display: block;
-      width: 28px; height: 1px; background: var(--gold);
-    }
-    .about-hero h1 {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: clamp(2.4rem, 5vw, 4rem);
-      font-weight: 300; line-height: 1.15; color: var(--cream);
-      margin-bottom: 1.8rem;
-    }
-    .about-hero h1 em { font-style: italic; color: var(--gold); }
-    .about-hero-sub {
-      font-size: 1.05rem; line-height: 1.75;
-      color: rgba(250,247,242,0.65); font-weight: 300;
-      max-width: 600px;
-    }
+  /* ── SECTIONS ── */
+  .section{padding:96px 32px;}
+  .section.dark{background:var(--deep);}
+  .section.warm{background:var(--warm);}
+  .section-label{font-size:.7rem;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin-bottom:1.4rem;}
+  .section h2{font-family:'Cormorant Garamond',serif;font-size:clamp(1.9rem,3.5vw,2.9rem);font-weight:400;line-height:1.15;color:var(--deep);margin-bottom:1.6rem;}
+  .section h2 em{font-style:italic;color:var(--rose);}
+  .section.dark h2{color:var(--cream);}
+  .section.dark h2 em{color:var(--gold);}
+  .prose{font-size:.97rem;line-height:1.85;color:var(--muted);font-weight:300;margin-bottom:1.2rem;max-width:680px;}
+  .prose strong{color:var(--deep);font-weight:500;}
+  .section.dark .prose{color:rgba(250,247,242,0.6);}
+  .section.dark .prose strong{color:var(--cream);}
 
-    /* ─── SECTIONS ─── */
-    .about-section {
-      padding: 80px 5%;
-    }
-    .about-section.dark {
-      background: var(--deep);
-    }
-    .about-section.warm {
-      background: var(--warm);
-    }
-    .about-inner {
-      max-width: 820px; margin: 0 auto;
-    }
-    .section-label {
-      font-size: 0.7rem; font-weight: 600; letter-spacing: 0.18em;
-      text-transform: uppercase; color: var(--gold);
-      margin-bottom: 1.2rem;
-    }
-    .section-label.dark-label { color: var(--gold); }
+  /* ── PULL QUOTE ── */
+  .pull-quote{border-left:3px solid var(--gold);padding:1rem 0 1rem 1.8rem;margin:2.5rem 0;}
+  .pull-quote p{font-family:'Cormorant Garamond',serif;font-size:1.35rem;font-weight:400;line-height:1.5;color:var(--deep);font-style:italic;}
+  .section.dark .pull-quote p{color:rgba(250,247,242,0.75);}
 
-    /* ─── THESIS SECTION ─── */
-    .thesis-h2 {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: clamp(1.9rem, 3.5vw, 2.8rem);
-      font-weight: 400; line-height: 1.2;
-      color: var(--deep); margin-bottom: 1.5rem;
-    }
-    .thesis-h2 em { font-style: italic; color: var(--rose); }
-    .thesis-h2.light { color: var(--cream); }
-    .thesis-h2.light em { color: var(--gold); }
-    .prose {
-      font-size: 0.95rem; line-height: 1.85;
-      color: var(--muted); font-weight: 300;
-      margin-bottom: 1.2rem;
-    }
-    .prose.light { color: rgba(250,247,242,0.6); }
-    .prose strong { color: var(--deep); font-weight: 500; }
-    .prose.light strong { color: var(--cream); }
+  /* ── DATA GRID ── */
+  .data-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1px;border-radius:12px;overflow:hidden;margin:2.5rem 0;}
+  .data-grid.light-grid{background:var(--line);border:1px solid var(--line);}
+  .data-grid.dark-grid{background:rgba(201,169,110,0.15);border:1px solid rgba(201,169,110,0.15);}
+  .data-item{padding:1.6rem 1.8rem;text-align:center;}
+  .data-grid.light-grid .data-item{background:var(--cream);}
+  .data-grid.dark-grid .data-item{background:#241E1A;}
+  .data-num{font-family:'Cormorant Garamond',serif;font-size:2.8rem;font-weight:300;color:var(--gold);line-height:1;margin-bottom:.5rem;}
+  .data-desc{font-size:.78rem;line-height:1.55;max-width:160px;margin:0 auto;}
+  .data-grid.light-grid .data-desc{color:var(--muted);}
+  .data-grid.dark-grid .data-desc{color:rgba(250,247,242,0.4);}
 
-    /* ─── DATA CALLOUTS ─── */
-    .data-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 1px;
-      background: rgba(28,23,20,0.1);
-      border: 1px solid rgba(28,23,20,0.1);
-      border-radius: 12px;
-      overflow: hidden;
-      margin: 2.5rem 0;
-    }
-    .data-grid.dark-grid {
-      background: rgba(201,169,110,0.15);
-      border-color: rgba(201,169,110,0.15);
-    }
-    .data-item {
-      background: var(--cream);
-      padding: 1.6rem 1.8rem;
-      text-align: center;
-    }
-    .data-item.dark-item { background: var(--deep2); }
-    .data-num {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 2.6rem; font-weight: 300;
-      color: var(--gold); line-height: 1;
-      margin-bottom: 0.4rem;
-    }
-    .data-desc {
-      font-size: 0.78rem; color: var(--muted);
-      line-height: 1.5; max-width: 160px; margin: 0 auto;
-    }
-    .data-desc.light { color: rgba(250,247,242,0.5); }
+  /* ── FEATURE LIST ── */
+  .feature-list{display:flex;flex-direction:column;gap:2rem;margin-top:2.5rem;}
+  .feature-item{display:flex;gap:1.6rem;align-items:flex-start;}
+  .feature-icon{width:40px;height:40px;flex-shrink:0;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1rem;font-weight:600;color:var(--gold);border:1px solid rgba(201,169,110,0.3);background:rgba(201,169,110,0.07);}
+  .section.dark .feature-icon{background:rgba(201,169,110,0.08);border-color:rgba(201,169,110,0.2);}
+  .feature-text h4{font-family:'Cormorant Garamond',serif;font-size:1.2rem;font-weight:500;color:var(--deep);margin-bottom:.4rem;}
+  .section.dark .feature-text h4{color:var(--cream);}
+  .feature-text p{font-size:.9rem;line-height:1.75;color:var(--muted);font-weight:300;}
+  .section.dark .feature-text p{color:rgba(250,247,242,0.55);}
 
-    /* ─── DIVIDER QUOTE ─── */
-    .pull-quote {
-      border-left: 3px solid var(--gold);
-      padding: 1rem 0 1rem 1.8rem;
-      margin: 2.5rem 0;
-    }
-    .pull-quote p {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: clamp(1.2rem, 2.5vw, 1.6rem);
-      font-weight: 400; font-style: italic;
-      line-height: 1.5; color: var(--deep);
-    }
-    .pull-quote p.light { color: var(--cream); }
+  /* ── DIVIDER ── */
+  .divider{border:none;border-top:1px solid var(--border);margin:3rem 0;}
+  .section.dark .divider{border-color:rgba(201,169,110,0.15);}
 
-    /* ─── WHAT WE BUILT ─── */
-    .feature-list {
-      display: flex; flex-direction: column; gap: 1.2rem;
-      margin: 2rem 0;
-    }
-    .feature-item {
-      display: flex; gap: 1.2rem; align-items: flex-start;
-    }
-    .feature-icon {
-      width: 36px; height: 36px; border-radius: 8px;
-      background: rgba(201,169,110,0.12);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 0.9rem; flex-shrink: 0;
-      border: 1px solid rgba(201,169,110,0.2);
-    }
-    .feature-text h4 {
-      font-size: 0.88rem; font-weight: 600;
-      color: var(--deep); margin-bottom: 0.2rem;
-    }
-    .feature-text h4.light { color: var(--cream); }
-    .feature-text p {
-      font-size: 0.82rem; color: var(--muted);
-      line-height: 1.6; font-weight: 300;
-    }
-    .feature-text p.light { color: rgba(250,247,242,0.5); }
+  /* ── BUTTONS ── */
+  .btn-primary{display:inline-flex;align-items:center;gap:.5rem;background:var(--rose);color:#fff;border:none;padding:.85rem 2rem;font-family:'DM Sans',sans-serif;font-size:.9rem;font-weight:500;border-radius:4px;cursor:pointer;text-decoration:none;transition:background .2s,transform .15s;}
+  .btn-primary:hover{background:var(--rose-m);transform:translateY(-1px);}
+  .btn-ghost{display:inline-flex;align-items:center;gap:.5rem;color:var(--dim);background:transparent;border:1px solid rgba(181,168,159,0.3);padding:.85rem 2rem;font-family:'DM Sans',sans-serif;font-size:.9rem;font-weight:400;border-radius:4px;cursor:pointer;text-decoration:none;transition:all .2s;}
+  .btn-ghost:hover{border-color:var(--dim);color:var(--cream);}
+  .btn-row{display:flex;gap:1rem;flex-wrap:wrap;margin-top:2rem;}
 
-    /* ─── CTA BAND ─── */
-    .cta-band {
-      background: var(--deep);
-      padding: 72px 5%;
-      text-align: center;
-    }
-    .cta-band h2 {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: clamp(1.8rem, 3vw, 2.6rem);
-      font-weight: 300; color: var(--cream);
-      margin-bottom: 0.75rem;
-    }
-    .cta-band h2 em { font-style: italic; color: var(--gold); }
-    .cta-band p {
-      font-size: 0.9rem; color: var(--muted);
-      margin-bottom: 2rem; max-width: 500px;
-      margin-left: auto; margin-right: auto;
-      line-height: 1.7;
-    }
-    .cta-buttons { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
-    .btn-primary {
-      padding: 0.75rem 2rem; border-radius: 8px;
-      background: var(--rose); color: #fff;
-      font-size: 0.85rem; font-weight: 500;
-      text-decoration: none; transition: background 0.2s;
-    }
-    .btn-primary:hover { background: var(--rose-m); }
-    .btn-secondary {
-      padding: 0.75rem 2rem; border-radius: 8px;
-      border: 1px solid rgba(201,169,110,0.4); color: var(--gold);
-      font-size: 0.85rem; font-weight: 500;
-      text-decoration: none; transition: all 0.2s;
-      background: transparent;
-    }
-    .btn-secondary:hover { background: rgba(201,169,110,0.08); }
+  /* ── CTA BAND ── */
+  .cta-band{background:var(--deep);padding:80px 32px;text-align:center;border-top:1px solid rgba(201,169,110,0.15);}
+  .cta-band h2{font-family:'Cormorant Garamond',serif;font-size:clamp(2rem,4vw,3.2rem);font-weight:400;color:var(--cream);line-height:1.15;margin-bottom:1rem;}
+  .cta-band h2 em{font-style:italic;color:var(--gold);}
+  .cta-band p{font-size:.97rem;color:rgba(250,247,242,0.55);max-width:520px;margin:0 auto 2rem;line-height:1.7;font-weight:300;}
+  .cta-band .btn-row{justify-content:center;}
 
-    /* ─── FOOTER ─── */
-    footer {
-      background: var(--deep);
-      padding: 48px 5% 32px;
-      border-top: 1px solid rgba(201,169,110,0.12);
-    }
-    .footer-top {
-      max-width: 1280px; margin: 0 auto;
-      display: grid; grid-template-columns: 2fr 1fr 1fr 1fr;
-      gap: 3rem; padding-bottom: 2.5rem;
-      border-bottom: 1px solid rgba(181,168,159,0.1);
-    }
-    .footer-brand {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 1.25rem; font-weight: 400;
-      color: var(--cream); margin-bottom: 0.5rem;
-    }
-    .footer-brand span { color: var(--gold); }
-    .footer-tagline { font-size: 0.78rem; color: var(--muted); line-height: 1.6; }
-    .footer-links h4 {
-      font-size: 0.7rem; font-weight: 600; letter-spacing: 0.12em;
-      text-transform: uppercase; color: var(--dim);
-      margin-bottom: 0.9rem;
-    }
-    .footer-links ul { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; }
-    .footer-links a { font-size: 0.8rem; color: var(--muted); text-decoration: none; transition: color 0.2s; }
-    .footer-links a:hover { color: var(--cream); }
-    .footer-bottom {
-      max-width: 1280px; margin: 0 auto;
-      padding-top: 1.5rem;
-      display: flex; flex-direction: column; align-items: center;
-      gap: 0.5rem; text-align: center;
-    }
-    .footer-copy { font-size: 0.75rem; color: var(--muted); }
-    .footer-disclaimers { display: flex; flex-direction: column; gap: 0.3rem; align-items: center; }
-    .footer-disclaimer { font-size: 0.7rem; color: var(--muted); opacity: 0.7; line-height: 1.5; }
-    .footer-disclaimer span.disc-num { opacity: 0.5; margin-right: 0.3rem; }
+  /* ── FOOTER ── */
+  footer{background:var(--deep);padding:48px 32px 32px;border-top:1px solid rgba(201,169,110,0.15);}
+  .foot-top{max-width:1080px;margin:0 auto 3rem;display:flex;justify-content:space-between;gap:48px;flex-wrap:wrap;}
+  .foot-brand{font-family:'Cormorant Garamond',serif;font-size:1.4rem;font-weight:400;color:var(--cream);margin-bottom:.5rem;}
+  .foot-brand span{color:var(--gold);}
+  .foot-tagline{font-size:.85rem;color:rgba(250,247,242,0.4);font-weight:300;line-height:1.6;max-width:220px;}
+  .foot-cols{display:flex;gap:48px;flex-wrap:wrap;}
+  .foot-col h4{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:rgba(250,247,242,0.35);margin-bottom:14px;font-weight:500;}
+  .foot-col a{display:block;font-size:.88rem;color:rgba(250,247,242,0.55);margin-bottom:9px;transition:color .2s;}
+  .foot-col a:hover{color:var(--gold);}
+  .foot-bottom{max-width:1080px;margin:0 auto;border-top:1px solid rgba(250,247,242,0.07);padding-top:1.5rem;font-size:.78rem;color:rgba(250,247,242,0.3);text-align:center;}
 
-    @media (max-width: 768px) {
-      .footer-top { grid-template-columns: 1fr 1fr; }
-      .data-grid { grid-template-columns: 1fr 1fr; }
-    }
-    @media (max-width: 480px) {
-      .footer-top { grid-template-columns: 1fr; }
-      .about-hero { padding: 120px 5% 60px; }
-    }
+  /* ── FADE IN ── */
+  .fade-in{opacity:0;transform:translateY(20px);transition:opacity .7s ease,transform .7s ease;}
+  .fade-in.visible{opacity:1;transform:none;}
 
-    /* ─── FADE IN ─── */
-    .fade-in {
-      opacity: 0; transform: translateY(20px);
-      transition: opacity 0.7s ease, transform 0.7s ease;
-    }
-    .fade-in.visible { opacity: 1; transform: none; }
+  /* ── JOURNEY FLOW ── */
+  .journey{display:flex;flex-direction:column;gap:0;margin:2.5rem 0 0;}
+  .journey-step{display:flex;align-items:center;gap:1.2rem;padding:1.1rem 0;}
+  .journey-dot{width:10px;height:10px;border-radius:50%;background:var(--gold);flex-shrink:0;}
+  .journey-label{font-family:'Cormorant Garamond',serif;font-size:1.4rem;font-weight:400;color:var(--deep);}
+  .section.dark .journey-label{color:var(--cream);}
+  .journey-rule{width:1px;height:24px;background:var(--line);margin-left:4.5px;}
+  .section.dark .journey-rule{background:rgba(201,169,110,0.25);}
 
-    /* ─── MOBILE NAV OVERLAY ─── */
-    .hamburger {
-      display: none;
-      flex-direction: column; gap: 5px;
-      cursor: pointer; padding: 4px;
-      background: none; border: none;
-      z-index: 201;
-    }
-    .hamburger span {
-      display: block; width: 24px; height: 1.5px;
-      background: var(--gold);
-      transition: transform 0.35s ease, opacity 0.35s ease;
-      transform-origin: center;
-    }
-    .hamburger.open span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
-    .hamburger.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
-    .hamburger.open span:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); }
+  /* ── FOUNDER ── */
+  .founder{border-left:3px solid var(--gold);padding:.4rem 0 .4rem 1.8rem;margin:2rem 0;}
+  .founder-name{font-size:.8rem;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);margin-top:1.2rem;font-weight:500;}
 
-    .nav-overlay {
-      position: fixed; inset: 0; z-index: 200;
-      background: var(--deep);
-      display: flex; flex-direction: column;
-      justify-content: center; align-items: center;
-      gap: 0;
-      opacity: 0; pointer-events: none;
-      transition: opacity 0.4s ease;
-    }
-    .nav-overlay.open { opacity: 1; pointer-events: all; }
+  /* ── TRIO ── */
+  .trio{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden;margin:2.5rem 0;}
+  .trio-item{background:var(--cream);padding:2rem 1.6rem;}
+  .trio-name{font-family:'Cormorant Garamond',serif;font-size:1.45rem;font-weight:500;color:var(--rose);margin-bottom:.5rem;}
+  .trio-desc{font-size:.88rem;line-height:1.6;color:var(--muted);font-weight:300;}
 
-    .nav-overlay-logo {
-      position: absolute; top: 0; left: 0; right: 0;
-      height: 60px; display: flex; align-items: center;
-      padding: 0 5%;
-      border-bottom: 1px solid rgba(201,169,110,0.15);
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 1.35rem; color: var(--cream);
-      text-decoration: none;
-    }
-    .nav-overlay-logo span { color: var(--gold); }
-
-    .nav-overlay-links {
-      display: flex; flex-direction: column;
-      align-items: center; gap: 0;
-      width: 100%;
-    }
-    .nav-overlay-links a {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: clamp(2rem, 8vw, 3rem);
-      font-weight: 300; color: var(--cream);
-      text-decoration: none; letter-spacing: 0.02em;
-      padding: 0.6rem 0;
-      width: 100%; text-align: center;
-      border-bottom: 1px solid rgba(201,169,110,0.08);
-      transition: color 0.2s;
-      opacity: 0; transform: translateY(16px);
-      transition: opacity 0.4s ease, transform 0.4s ease, color 0.2s;
-    }
-    .nav-overlay.open .nav-overlay-links a { opacity: 1; transform: none; }
-    .nav-overlay.open .nav-overlay-links a:nth-child(1) { transition-delay: 0.05s; }
-    .nav-overlay.open .nav-overlay-links a:nth-child(2) { transition-delay: 0.1s; }
-    .nav-overlay.open .nav-overlay-links a:nth-child(3) { transition-delay: 0.15s; }
-    .nav-overlay.open .nav-overlay-links a:nth-child(4) { transition-delay: 0.2s; }
-    .nav-overlay.open .nav-overlay-links a:nth-child(5) { transition-delay: 0.25s; }
-    .nav-overlay-links a:hover { color: var(--gold); }
-    .nav-overlay-links a.cta-link { color: var(--rose); }
-    .nav-overlay-links a.cta-link:hover { color: var(--rose-m); }
-
-    .nav-overlay-bottom {
-      position: absolute; bottom: 2rem;
-      font-size: 0.72rem; color: var(--muted);
-      letter-spacing: 0.08em; text-transform: uppercase;
-    }
-
-    @media (max-width: 768px) {
-      .hamburger { display: flex; }
-      .nav-ctas { display: none; }
-      .nav-text { display: none; }
-    }
-  </style>
-  <!-- Privacy-friendly analytics by Plausible -->
-  <script async src="https://plausible.io/js/pa-s9ic7e_4fbKlTLHHXTR_P.js"></script>
-  <script>
-    window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
-    plausible.init()
-  </script>
+  @media(prefers-reduced-motion:reduce){.fade-in{opacity:1;transform:none;transition:none;}}
+  @media(max-width:640px){
+    .section{padding:64px 24px;}
+    .hero{padding:120px 24px 80px;}
+    .data-grid{grid-template-columns:1fr 1fr;}
+    .feature-item{flex-direction:column;gap:1rem;}
+    .foot-top{flex-direction:column;gap:32px;}
+    .trio{grid-template-columns:1fr;}
+    .journey-label{font-size:1.2rem;}
+  }
+</style>
 </head>
 <body>
 
-<!-- NAV -->
-<nav>
-  <a href="/" class="nav-logo">Skin<span>Day</span></a>
-  <div class="nav-ctas">
-    <a href="/guide/botox-cost-toronto" class="nav-text">Botox Guide Toronto</a>
-    <a href="/claim.html" class="nav-cta">Claim Your Clinic</a>
-    <a href="/editor.html" class="nav-cta">Clinic Portal</a>
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a href="/" class="brand">Skin<span>Day</span></a>
+    <div class="nav-right">
+      <div class="nav-links">
+        <a href="/studio" data-en="Studio" data-zh="Studio">Studio</a>
+        <a href="/visualize" data-en="Visualize" data-zh="Visualize">Visualize</a>
+        <a href="/taiwan" data-en="Directory" data-zh="診所目錄">Directory</a>
+        <a href="/contact" data-en="Contact" data-zh="聯絡我們">Contact</a>
+      </div>
+      <div class="lang-toggle">
+        <button class="lang-btn active" onclick="setLang('en')">EN</button>
+        <div class="lang-sep"></div>
+        <button class="lang-btn" onclick="setLang('zh')">繁中</button>
+      </div>
+    </div>
   </div>
-  <button class="hamburger" id="hamburger" aria-label="Menu">
-    <span></span><span></span><span></span>
-  </button>
 </nav>
 
-<!-- MOBILE NAV OVERLAY -->
-<div class="nav-overlay" id="navOverlay">
-  <a href="/" class="nav-overlay-logo">Skin<span>Day</span></a>
-  <div class="nav-overlay-links">
-    <a href="/">Browse Clinics</a>
-    <a href="/about.html">About</a>
-    <a href="/guide/botox-cost-toronto">Botox Guide Toronto</a>
-    <a href="/claim.html" class="cta-link">Claim Your Clinic</a>
-    <a href="/editor.html" class="cta-link">Clinic Portal</a>
-  </div>
-  <div class="nav-overlay-bottom">skinday.ca</div>
-</div>
-
-<script>
-  (function() {
-    var btn = document.getElementById('hamburger');
-    var overlay = document.getElementById('navOverlay');
-    btn.addEventListener('click', function() {
-      btn.classList.toggle('open');
-      overlay.classList.toggle('open');
-      document.body.style.overflow = overlay.classList.contains('open') ? 'hidden' : '';
-    });
-    overlay.querySelectorAll('a').forEach(function(a) {
-      a.addEventListener('click', function() {
-        btn.classList.remove('open');
-        overlay.classList.remove('open');
-        document.body.style.overflow = '';
-      });
-    });
-  })();
-</script>
-
-
 <!-- HERO -->
-<section class="about-hero">
-  <div class="about-hero-inner">
-    <div class="about-eyebrow">About SkinDay</div>
-    <h1>Researching clinics shouldn't<br><em>take all weekend.</em></h1>
-    <p class="about-hero-sub">Pricing, credentials, reviews, treatment focus, contact details — the things patients actually look for are usually scattered across a dozen tabs. SkinDay puts them in one place, so comparing cosmetic clinics, starting with Botox pricing, takes minutes instead of hours.</p>
+<header class="hero">
+  <div class="hero-inner">
+    <div class="eyebrow" data-en="About SkinDay" data-zh="關於 SkinDay">About SkinDay</div>
+    <h1 class="serif" data-en="Why does one patient<br>return for years,<br><em>while another never<br>comes back?</em>" data-zh="為什麼有些患者，<br>願意回診多年，<br><em>有些卻一去<br>不復返？</em>">Why does one patient<br>return for years,<br><em>while another never<br>comes back?</em></h1>
+    <p class="hero-sub" data-en="We don't think the answer is more advertising. We think it starts with the right expectations." data-zh="我們認為答案不在於更多廣告，而在於一開始就建立正確的期待。">We don't think the answer is more advertising. We think it starts with the right expectations.</p>
   </div>
-</section>
+</header>
 
-<!-- THE PROBLEM -->
-<section class="about-section">
-  <div class="about-inner fade-in">
-    <div class="section-label">The Problem</div>
-    <h2 class="thesis-h2">Every clinic looks the same<br><em>until you've done the work.</em></h2>
-    <p class="prose">Walk through any city's cosmetic clinics online and you'll find the same thing on every site: a friendly smile, a 4.9-star Google rating, and a polished Instagram feed. To tell them apart — what they charge, who's actually injecting, what they specialize in — you're opening a dozen tabs, cross-checking Google reviews, and piecing it together yourself. It takes hours, and at the end most clinics still look identical.</p>
-    <p class="prose">So a lot of people don't bother. They stay with the first injector they ever tried, often for years, without realizing how many strong options have opened up nearby. Switching feels risky when you can't easily see what else is out there — so patients settle, not because they're happy, but because comparing is too much work.</p>
-
-    <div class="data-grid">
-      <div class="data-item">
-        <div class="data-num">4,748+</div>
-        <div class="data-desc">cosmetic clinics listed coast-to-coast across all 13 provinces and territories</div>
-      </div>
-      <div class="data-item">
-        <div class="data-num">75%</div>
-        <div class="data-desc">of Canadian cosmetic clinics rated 4.8 stars or higher on Google</div>
-      </div>
-      <div class="data-item">
-        <div class="data-num">5×</div>
-        <div class="data-desc">price spread in published per-unit Botox pricing across GTA clinics</div>
-      </div>
-    </div>
-
-    <p class="prose">A 4.8–5.0 star rating means almost nothing when 75% of clinics share it. And with thousands of options and a wide spread on per-unit pricing, the patient who never compares may be missing a better fit — or paying more than they need to.</p>
-  </div>
-</section>
-
-<!-- THE THESIS, DARK -->
-<section class="about-section dark">
-  <div class="about-inner fade-in">
-    <div class="section-label dark-label">How SkinDay Helps</div>
-    <h2 class="thesis-h2 light">Everything you'd research,<br><em>already in one place.</em></h2>
-
-    <p class="prose light">SkinDay collapses the dozen-tab research marathon into a single view. For each clinic you see pricing where it's published, the credentials of who'd be treating you, treatment focus, contact details, and Google reviews — side by side, comparable, without bouncing between websites and review pages to assemble the picture yourself.</p>
-
+<!-- THE INSIGHT -->
+<section class="section fade-in">
+  <div class="wrap-narrow">
+    <div class="section-label" data-en="The Insight" data-zh="核心洞察">The Insight</div>
+    <h2 class="serif" data-en="Every treatment has<br><em>two outcomes.</em>" data-zh="每一次療程，<br><em>都有兩種結果。</em>">Every treatment has<br><em>two outcomes.</em></h2>
+    <p class="prose" data-en="The clinical outcome. And the patient's perception of it. The closer those two are, the more likely a patient is to trust, return, and recommend." data-zh="一是臨床上的結果，二是患者心中的感受。當這兩者越接近，患者就越可能信任、回診，並主動推薦。">The clinical outcome. And the patient's perception of it. The closer those two are, the more likely a patient is to trust, return, and recommend.</p>
     <div class="pull-quote">
-      <p class="light">The point isn't to crown a winner. It's to let you see your real options clearly enough that choosing — or switching — stops feeling like a gamble.</p>
+      <p data-en="Even an excellent treatment can become a disappointing experience when expectations don't match reality." data-zh="即使是出色的療程，一旦期待與現實落差過大，也會變成令人失望的體驗。">Even an excellent treatment can become a disappointing experience when expectations don't match reality.</p>
     </div>
+    <p class="prose" data-en="SkinDay exists to bring those two outcomes closer together." data-zh="SkinDay 的存在，就是為了拉近這兩種結果之間的距離。">SkinDay exists to bring those two outcomes closer together.</p>
+  </div>
+</section>
 
-    <p class="prose light">That clarity matters most for the patient who's been with the same injector for years and assumes the grass isn't greener. When you can scan what's actually available nearby — the pricing, the credentials, the focus — the fear of trying somewhere new gives way to an informed decision. Reviews are shown as one signal among many, never the whole story.</p>
+<!-- PHILOSOPHY -->
+<section class="section dark fade-in">
+  <div class="wrap-narrow">
+    <div class="section-label" data-en="What We Believe" data-zh="我們相信">What We Believe</div>
+    <h2 class="serif" data-en="Most platforms help clinics<br>get more patients.<br><em>We help them keep the<br>right ones.</em>" data-zh="多數平台幫診所<br>吸引更多患者。<br><em>我們幫診所<br>留住對的人。</em>">Most platforms help clinics<br>get more patients.<br><em>We help them keep the<br>right ones.</em></h2>
+    <p class="prose" data-en="A patient who understands their treatment, chooses the right clinic, and trusts the consultation is far more likely to return. That's why SkinDay isn't built around advertising. It's built around the chain that creates lasting patient relationships." data-zh="一位真正理解療程、選對診所、信任諮詢過程的患者，回診的機率遠遠更高。這就是為什麼 SkinDay 的核心不是廣告，而是這條打造長久患者關係的鏈條。">A patient who understands their treatment, chooses the right clinic, and trusts the consultation is far more likely to return. That's why SkinDay isn't built around advertising. It's built around the chain that creates lasting patient relationships.</p>
+    <div class="pull-quote">
+      <p data-en="Right expectations → better consultations → greater trust → higher retention → sustainable growth." data-zh="正確的期待 → 更好的諮詢 → 更深的信任 → 更高的回診率 → 永續的成長。">Right expectations → better consultations → greater trust → higher retention → sustainable growth.</p>
+    </div>
+  </div>
+</section>
 
-    <p class="prose light"><strong style="color:var(--cream);">Less digging, more clarity.</strong> That's the difference between research you'll actually do and research you'll keep putting off.</p>
-
-    <div class="data-grid dark-grid" style="margin-top:2.5rem;">
-      <div class="data-item dark-item">
-        <div class="data-num">54.0</div>
-        <div class="data-desc" style="color:rgba(250,247,242,0.45);">clinics per 100k in Kelowna, BC — highest density in Canada</div>
+<!-- THE THREE PRODUCTS -->
+<section class="section fade-in">
+  <div class="wrap-narrow">
+    <div class="section-label" data-en="Three Products, One Purpose" data-zh="三項產品，一個目的">Three Products, One Purpose</div>
+    <h2 class="serif" data-en="Each solves the gap<br><em>from a different angle.</em>" data-zh="從不同的角度，<br><em>解決同一個落差。</em>">Each solves the gap<br><em>from a different angle.</em></h2>
+    <div class="trio">
+      <div class="trio-item">
+        <div class="trio-name serif">Directory</div>
+        <div class="trio-desc" data-en="Helps patients find the right clinic, and helps clinics understand their market." data-zh="幫患者找到對的診所，也幫診所看懂自己的市場。">Helps patients find the right clinic, and helps clinics understand their market.</div>
       </div>
-      <div class="data-item dark-item">
-        <div class="data-num">319+</div>
-        <div class="data-desc" style="color:rgba(250,247,242,0.45);">clinics in Toronto — largest single-city concentration in Canada</div>
+      <div class="trio-item">
+        <div class="trio-name serif">Visualize</div>
+        <div class="trio-desc" data-en="Helps patients understand outcomes, so they begin treatment with realistic expectations." data-zh="幫患者理解可能的結果，帶著務實的期待開始療程。">Helps patients understand outcomes, so they begin treatment with realistic expectations.</div>
       </div>
-      <div class="data-item dark-item">
-        <div class="data-num">51%</div>
-        <div class="data-desc" style="color:rgba(250,247,242,0.45);">of all Canadian cosmetic clinics are in Ontario</div>
+      <div class="trio-item">
+        <div class="trio-name serif">Studio</div>
+        <div class="trio-desc" data-en="Helps patients understand treatment through clear, honest before-and-after proof." data-zh="以清晰真實的前後對比，幫患者理解療程本身。">Helps patients understand treatment through clear, honest before-and-after proof.</div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- WHAT WE BUILT -->
-<section class="about-section">
-  <div class="about-inner fade-in">
-    <div class="section-label">What We Track</div>
-    <h2 class="thesis-h2">The details that decide<br><em>where you book.</em></h2>
-    <p class="prose">SkinDay is Canada's Botox price comparison platform, structured around the things you'd otherwise spend hours chasing down clinic by clinic.</p>
-
-    <div class="feature-list">
-      <div class="feature-item">
-        <div class="feature-icon">$</div>
-        <div class="feature-text">
-          <h4>Botox Pricing, Per Unit</h4>
-          <p>Where a clinic publishes its pricing, it's standardized to price-per-unit so you're comparing like for like across clinics — instead of decoding a different "starting from" format on every website.</p>
-        </div>
-      </div>
-      <div class="feature-item">
-        <div class="feature-icon">✦</div>
-        <div class="feature-text">
-          <h4>Injector Credentials</h4>
-          <p>Filter by MD, NP, Cosmetic Nurse, IMG, or Naturopathic Doctor. Different patients prioritize different credentials — we surface the information and let you decide.</p>
-        </div>
-      </div>
-      <div class="feature-item">
-        <div class="feature-icon">◎</div>
-        <div class="feature-text">
-          <h4>Treatment Focus</h4>
-          <p>Two clinics can both do Botox and approach it completely differently — one known for subtle, natural results, another for a bolder, trendier look. Where available, listings surface a clinic's style and focus so you can find an injector whose approach matches what you actually want.</p>
-        </div>
-      </div>
-      <div class="feature-item">
-        <div class="feature-icon">↗</div>
-        <div class="feature-text">
-          <h4>Ratings as One Signal</h4>
-          <p>Google ratings are shown, but as one signal among many — never the whole story. Pricing, credentials, and treatment focus together give you a fuller picture than stars alone.</p>
-        </div>
-      </div>
+<!-- PATIENT JOURNEY -->
+<section class="section warm fade-in">
+  <div class="wrap-narrow">
+    <div class="section-label" data-en="The Patient Journey" data-zh="患者的就診旅程">The Patient Journey</div>
+    <h2 class="serif" data-en="One simple path,<br><em>start to return.</em>" data-zh="一條簡單的路，<br><em>從開始到回診。</em>">One simple path,<br><em>start to return.</em></h2>
+    <div class="journey">
+      <div class="journey-step"><span class="journey-dot"></span><span class="journey-label" data-en="Find the right clinic" data-zh="找到對的診所">Find the right clinic</span></div>
+      <div class="journey-rule"></div>
+      <div class="journey-step"><span class="journey-dot"></span><span class="journey-label" data-en="Understand the treatment" data-zh="理解療程">Understand the treatment</span></div>
+      <div class="journey-rule"></div>
+      <div class="journey-step"><span class="journey-dot"></span><span class="journey-label" data-en="Visualize realistic outcomes" data-zh="看見務實的結果">Visualize realistic outcomes</span></div>
+      <div class="journey-rule"></div>
+      <div class="journey-step"><span class="journey-dot"></span><span class="journey-label" data-en="Book with confidence" data-zh="安心預約">Book with confidence</span></div>
+      <div class="journey-rule"></div>
+      <div class="journey-step"><span class="journey-dot"></span><span class="journey-label" data-en="Come back again" data-zh="再次回診">Come back again</span></div>
     </div>
   </div>
 </section>
 
-<!-- VISION, WARM BG -->
-<section class="about-section warm">
-  <div class="about-inner fade-in">
-    <div class="section-label">Where Our Data Comes From</div>
-    <h2 class="thesis-h2">Honest about<br><em>what we know.</em></h2>
-    <p class="prose">SkinDay combines publicly available clinic information, details submitted directly by clinics, and pricing we research ourselves. Some profiles are claimed and kept up to date by the clinic. Others are built from public information and may be incomplete. We tell you which is which on every listing.</p>
-    <p class="prose">Pricing changes — promotions end, rates rise, new injectors join. We timestamp what we show and we always recommend confirming the current price directly with the clinic before you book. SkinDay is the best place to start your search, not the last word on it.</p>
-
-    <div class="pull-quote" style="margin: 2rem 0;">
-      <p>We'd rather show you a price labelled "confirm before booking" than leave a gap you have to chase down yourself. Transparency you can double-check beats a blank you have to fill in.</p>
+<!-- FOUNDER -->
+<section class="section fade-in">
+  <div class="wrap-narrow">
+    <div class="section-label" data-en="From the Founder" data-zh="創辦人的話">From the Founder</div>
+    <div class="founder">
+      <p class="prose" style="margin-bottom:0;" data-en="After more than sixteen years in aesthetic medicine, I realized the biggest determinant of long-term success wasn't attracting more patients. It was helping the right patients choose the right clinic, begin treatment with realistic expectations, and build enough trust to return for years. SkinDay was built around that one idea." data-zh="在醫美領域超過十六年後，我發現決定長期成功的關鍵，從來不是吸引更多患者，而是幫對的患者選對診所、帶著務實的期待開始療程，並建立足以回診多年的信任。SkinDay 就是圍繞這一個信念而生。">After more than sixteen years in aesthetic medicine, I realized the biggest determinant of long-term success wasn't attracting more patients. It was helping the right patients choose the right clinic, begin treatment with realistic expectations, and build enough trust to return for years. SkinDay was built around that one idea.</p>
+      <div class="founder-name" data-en="Dr. Andy · Founder, SkinDay" data-zh="Andy 醫師 · SkinDay 創辦人">Dr. Andy · Founder, SkinDay</div>
     </div>
-
-    <h2 class="thesis-h2" style="margin-top:3rem;">What SkinDay<br><em>is not.</em></h2>
-    <p class="prose">We don't tell you which clinic is "the best" — the right one depends on your goals, budget, and comfort level, and that's yours to decide. We don't rank clinics by who pays us. And we don't believe the cheapest clinic is automatically the right choice; price is one input, not the verdict.</p>
-    <p class="prose">SkinDay doesn't replace a consultation, and it isn't medical advice. What it does is gather the scattered details — price, credentials, focus, reviews, contact — into one view, so you arrive at that consultation already informed instead of exhausted. Over time, as more clinics share their details, that context becomes a way to match the right patient with the right clinic. For now, it does the simplest valuable thing: gives you a clearer starting point before you book.</p>
   </div>
 </section>
 
-<!-- FOR CLINICS, SHORT + SECONDARY -->
-<section class="about-section dark">
-  <div class="about-inner fade-in">
-    <div class="section-label dark-label">For Clinics</div>
-    <h2 class="thesis-h2 light">Own a clinic?<br><em>Claim your profile.</em></h2>
-    <p class="prose light">A claimed profile lets you publish your own Botox pricing, treatment focus, practitioner credentials, languages, photos, and booking link — so patients searching SkinDay see an accurate picture of what you offer instead of whatever Google scraped. Claiming is free.</p>
-    <div style="margin-top:1.75rem;">
-      <a href="/claim.html" class="btn-secondary">Claim Your Clinic</a>
+<!-- WHAT WE'VE BUILT -->
+<section class="section dark fade-in">
+  <div class="wrap-narrow">
+    <div class="section-label" data-en="What We've Built" data-zh="我們已經建立的">What We've Built</div>
+    <h2 class="serif" data-en="A foundation, <em>already live.</em>" data-zh="一個已經運作的<em>基礎。</em>">A foundation, <em>already live.</em></h2>
+    <div class="data-grid dark-grid">
+      <div class="data-item">
+        <div class="data-num">10,000+</div>
+        <div class="data-desc" data-en="clinics in the directory" data-zh="目錄中的診所">clinics in the directory</div>
+      </div>
+      <div class="data-item">
+        <div class="data-num">4</div>
+        <div class="data-desc" data-en="countries live" data-zh="已上線的國家">countries live</div>
+      </div>
+      <div class="data-item">
+        <div class="data-num">3</div>
+        <div class="data-desc" data-en="products across the patient journey" data-zh="貫穿患者旅程的產品">products across the patient journey</div>
+      </div>
     </div>
   </div>
 </section>
 
 <!-- CTA -->
-<div class="cta-band fade-in">
-  <h2>Compare Botox prices<br><em>across Canada.</em></h2>
-  <p>Pricing, credentials, reviews, and treatment focus in one place — so an afternoon of research takes a few minutes.</p>
-  <div class="cta-buttons">
-    <a href="/" class="btn-primary">Browse Clinics</a>
-    <a href="/claim.html" class="btn-secondary">Claim Your Clinic</a>
+<section class="cta-band fade-in">
+  <h2 class="serif" data-en="Close the gap between<br><em>expectation and reality.</em>" data-zh="拉近期待與現實<br><em>之間的距離。</em>">Close the gap between<br><em>expectation and reality.</em></h2>
+  <p data-en="Bring AI-powered treatment previews into your consultations, or see how your clinic appears to patients researching in your market." data-zh="將 AI 療程預覽帶入您的諮詢流程，或了解您的診所在患者搜尋時呈現的樣貌。">Bring AI-powered treatment previews into your consultations, or see how your clinic appears to patients researching in your market.</p>
+  <div class="btn-row">
+    <a href="/visualize" class="btn-primary" data-en="Try Visualize" data-zh="立即體驗 Visualize">Try Visualize</a>
+    <a href="/us" class="btn-ghost" data-en="Browse the Directory" data-zh="瀏覽診所目錄">Browse the Directory</a>
   </div>
-</div>
+</section>
 
 <!-- FOOTER -->
 <footer>
-  <div class="footer-top">
+  <div class="foot-top">
     <div>
-      <div class="footer-brand">Skin<span>Day</span></div>
-      <div class="footer-tagline">Find the right clinic. See real prices. Book with confidence.</div>
+      <div class="foot-brand">Skin<span>Day</span></div>
+      <div class="foot-tagline" data-en="Helping aesthetic clinics build lasting patient relationships." data-zh="協助醫美診所贏得顧客長久的信任。">Helping aesthetic clinics build lasting patient relationships.</div>
     </div>
-    <div class="footer-links">
-      <h4>Discover</h4>
-      <ul>
-        <li><a href="/guide/botox-cost-toronto">Botox Guide Toronto</a></li>
-        <li><a href="/">All Clinics</a></li>
-      </ul>
-    </div>
-    <div class="footer-links">
-      <h4>Clinics</h4>
-      <ul>
-        <li><a href="/claim.html">Claim Your Listing</a></li>
-      </ul>
-    </div>
-    <div class="footer-links">
-      <h4>Company</h4>
-      <ul>
-        <li><a href="/about.html">About SkinDay</a></li>
-        <li><a href="/contact.html">Contact</a></li>
-      </ul>
-    </div>
-  </div>
-  <div class="footer-bottom">
-    <div class="footer-copy">© 2026 SkinDay. All rights reserved. skinday.ca</div>
-    <div class="footer-disclaimers">
-      <div class="footer-disclaimer"><span class="disc-num">1.</span>Prices shown are user-reported or clinic-verified. Always confirm directly with the clinic before booking.</div>
-      <div class="footer-disclaimer"><span class="disc-num">2.</span>"Botox" is used as a general term for neurotoxin treatments. Clinics may use Botox®, Dysport®, Nuceiva®, or other Health Canada–approved neuromodulators.</div>
+    <div class="foot-cols">
+      <div class="foot-col">
+        <h4 data-en="Tools" data-zh="工具">Tools</h4>
+        <a href="/visualize" data-en="Visualize" data-zh="Visualize">Visualize</a>
+        <a href="/studio" data-en="Studio" data-zh="Studio">Studio</a>
+        <a href="/guide" data-en="Guide" data-zh="使用指南">Guide</a>
+      </div>
+      <div class="foot-col">
+        <h4 data-en="Directory" data-zh="診所目錄">Directory</h4>
+        <a href="/us" data-en="USA" data-zh="美國">USA</a>
+        <a href="/canada" data-en="Canada" data-zh="加拿大">Canada</a>
+        <a href="/taiwan" data-en="Taiwan" data-zh="台灣">Taiwan</a>
+        <a href="/hongkong" data-en="Hong Kong" data-zh="香港">Hong Kong</a>
+      </div>
+      <div class="foot-col">
+        <h4 data-en="Company" data-zh="公司">Company</h4>
+        <a href="/about" data-en="About" data-zh="關於我們">About</a>
+        <a href="/contact" data-en="Contact" data-zh="聯絡我們">Contact</a>
+        <a href="/privacy" data-en="Privacy" data-zh="隱私政策">Privacy</a>
+        <a href="/terms" data-en="Terms" data-zh="服務條款">Terms</a>
+      </div>
     </div>
   </div>
+  <div class="foot-bottom">© 2026 SkinDay. <span data-en="All rights reserved." data-zh="版權所有。">All rights reserved.</span></div>
 </footer>
 
 <script>
-  // Fade in on scroll
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); } });
-  }, { threshold: 0.1 });
-  document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
-</script>
+  function detectLang(){try{var s=localStorage.getItem('sd-lang');if(s==='zh'||s==='en')return s;}catch(e){}try{var n=(navigator.language||(navigator.languages&&navigator.languages[0])||'').toLowerCase();if(n.indexOf('zh')===0)return'zh';}catch(e){}return'en';}
+  var currentLang=detectLang();
+  function setLang(lang){currentLang=lang;try{localStorage.setItem('sd-lang',lang);}catch(e){}applyLang();}
+  function applyLang(){
+    var isZh=currentLang==='zh';
+    document.body.classList.toggle('zh',isZh);
+    document.documentElement.setAttribute('lang',isZh?'zh-TW':'en');
+    document.querySelectorAll('[data-en][data-zh]').forEach(function(el){
+      var val=isZh?el.getAttribute('data-zh'):el.getAttribute('data-en');
+      if(el.tagName==='INPUT'||el.tagName==='TEXTAREA'){el.placeholder=val;}else{el.innerHTML=val;}
+    });
+    document.querySelectorAll('.lang-btn').forEach(function(btn){
+      btn.classList.toggle('active',(btn.textContent.trim()==='EN'&&!isZh)||(btn.textContent.trim()==='繁中'&&isZh));
+    });
+    document.title=isZh?'關於 SkinDay · 拉近期待與現實之間的距離':'About SkinDay · Closing the gap between expectation and reality';
+  }
+  applyLang();
 
+  var observer=new IntersectionObserver(function(entries){entries.forEach(function(e){if(e.isIntersecting)e.target.classList.add('visible');});},{threshold:0.1});
+  document.querySelectorAll('.fade-in').forEach(function(el){observer.observe(el);});
+</script>
 </body>
 </html>
