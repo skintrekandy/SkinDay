@@ -3,7 +3,7 @@
 // Server-side render for /clinic/{slug} pages.
 //
 // Why this exists:
-//   The existing client-side clinic.html template ships an empty shell —
+//   The existing client-side clinic.html template ships an empty shell -
 //   every clinic URL serves the same generic HTML, populated by JS at runtime.
 //   Googlebot crawls the empty shell first and treats all 5,800 clinic URLs
 //   as duplicates, dropping them from the index.
@@ -12,7 +12,7 @@
 //   On request to /clinic/{slug}, fetch the clinic from Supabase, inject
 //   real <title>, <meta>, OpenGraph, canonical, and a baseline content
 //   block into the HTML before sending. The existing client-side JS then
-//   hydrates over it — user experience unchanged, crawler experience fixed.
+//   hydrates over it - user experience unchanged, crawler experience fixed.
 //
 // Routing (in netlify.toml):
 //   [[redirects]]
@@ -65,15 +65,15 @@ function escapeHtml(s) {
 
 // ── SEO STRING BUILDERS ───────────────────────────────────────────
 // These mirror what a well-crafted manual page would have for each clinic.
-// Keep them succinct — Google truncates titles at ~60 chars and descriptions
+// Keep them succinct - Google truncates titles at ~60 chars and descriptions
 // at ~155 chars on SERPs.
 
 function buildTitle(clinic) {
   const name = clinic.name || 'Cosmetic Clinic';
   const loc  = clinic.neighbourhood || clinic.area || clinic.province || '';
-  // "Lumiere Aesthetics — Botox Price & Reviews · Toronto · SkinDay"
+  // "Lumiere Aesthetics - Botox Price & Reviews · Toronto · SkinDay"
   // Keep under 60 chars when possible
-  const base = `${name} — Botox Price & Reviews`;
+  const base = `${name} - Botox Price & Reviews`;
   const suffix = loc ? ` · ${loc}` : '';
   return `${base}${suffix} · SkinDay`;
 }
@@ -154,7 +154,7 @@ function buildSchema(clinic) {
   return JSON.stringify(schema).replace(/</g, '\\u003c');
 }
 
-// Server-rendered content block — minimal, semantic, crawler-focused.
+// Server-rendered content block - minimal, semantic, crawler-focused.
 //
 // Goal: defeat Google's Soft 404 classification by giving the page real,
 // unique, body-level content before any JavaScript runs.
@@ -295,7 +295,7 @@ function patchTemplate(html, clinic) {
 // Hard timeout: return 503 (retry-able) instead of letting Netlify's 10s limit
 // fire a 500 (which Search Console logs as a server error and can hurt rankings).
 // 8 seconds gives the main logic 8s to complete; the remaining 2s is buffer for
-// Netlify's own response overhead. 503 tells Google "temporarily unavailable" —
+// Netlify's own response overhead. 503 tells Google "temporarily unavailable" -
 // it will retry and the page stays in good standing.
 function withTimeout(promise, ms) {
   return Promise.race([
@@ -360,15 +360,15 @@ async function _handler(event) {
     );
 
     // Mirror get-clinics.js slug-mode shape so SEO output matches what
-    // the client-side renderer ultimately shows. Keep this minimal —
+    // the client-side renderer ultimately shows. Keep this minimal -
     // we only need fields used in title/desc/body, not the full payload.
     //
     // NOTE: we deliberately do NOT filter by approved here. We need to
     // distinguish three cases:
     //   (a) approved clinic        → render the page
-    //   (b) exists but unapproved  → 301 to "/" (recovers any accrued SEO
-    //                                 signal; avoids a dead end for users
-    //                                 clicking an old Google result)
+    //   (b) exists but unapproved  -> 410 Gone (removed listing; body
+    //                                 carries noindex plus a link to the
+    //                                 directory so users are not stranded)
     //   (c) slug not in DB at all  → real 404 (genuine garbage URL)
     const { data: clinic, error } = await supabase
       .from('clinics')
@@ -391,14 +391,19 @@ async function _handler(event) {
     }
 
     // Case (b): clinic exists but is no longer approved (removed in cleanup,
-    // non-cosmetic, etc.) → permanent redirect to the directory. A 301 passes
-    // any accumulated ranking signal to the homepage and gives users who land
-    // here from an old search result somewhere useful to go.
+    // non-cosmetic, etc.). Return 410 Gone rather than 301 to "/". Mass
+    // redirects of removed pages to the bare homepage get reclassified by
+    // Google as Soft 404s and keep getting re-crawled, so they never leave
+    // the index cleanly. A 410 says the page is intentionally gone: it drops
+    // from the index quickly and crawling backs off. The body still carries
+    // noindex and a human-friendly link to the directory, so a user landing
+    // here from an old search result is not stranded. If the clinic is later
+    // re-approved this path returns 200 again and it re-indexes on its own.
     if (clinic.approved !== true) {
       return {
-        statusCode: 301,
-        headers: { 'Location': '/' },
-        body: '',
+        statusCode: 410,
+        headers: { 'Content-Type': 'text/html; charset=utf-8' },
+        body: '<!DOCTYPE html><html><head><title>Clinic no longer listed \u00b7 SkinDay</title><meta name="robots" content="noindex" /></head><body><h1>This clinic is no longer listed</h1><p>This listing has been removed from SkinDay. <a href="/">Browse current clinics</a>.</p></body></html>',
       };
     }
 
@@ -407,7 +412,7 @@ async function _handler(event) {
     // Run the two optional enrichment queries in parallel rather than sequentially.
     // Sequential adds ~200-400ms per request; under a Google crawl burst this was
     // the primary cause of Netlify function timeouts (5xx in Search Console).
-    // Both are non-fatal — if either fails the page still renders with base data.
+    // Both are non-fatal - if either fails the page still renders with base data.
     const [expertiseResult, priceResult] = await Promise.allSettled([
       supabase
         .from('clinic_expertise')
