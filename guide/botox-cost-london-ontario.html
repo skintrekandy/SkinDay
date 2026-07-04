@@ -928,16 +928,29 @@ function checkPrice() {
   
   const avg = 9.90;
 
-  let tier, dot, cta;
+  const SD_CHIPS = [5, 8, 11];
+  const sdSnap = v => { for (const c of SD_CHIPS) if (v <= c) return c; return SD_CHIPS[SD_CHIPS.length - 1]; };
+  const sdDir = max => {
+    const q = new URLSearchParams();
+    q.set('neighbourhood', 'london');
+    if (max != null) q.set('maxprice', String(max));
+    q.set('sort', 'price');
+    return '/?' + q.toString();
+  };
+
+  let tier, dot, cta, ctaHref;
   if (val < avg * 0.9) {
     tier = 'Competitive pricing'; dot = '🟢';
     cta = `See clinics around $${val.toFixed(0)} →`;
+    ctaHref = sdDir(sdSnap(val));
   } else if (val <= avg * 1.1) {
     tier = 'Typical pricing'; dot = '🟢';
     cta = `Compare clinics around the London average →`;
+    ctaHref = sdDir(sdSnap(avg));
   } else {
     tier = 'Premium pricing'; dot = '⭐';
     cta = `Browse premium clinics →`;
+    ctaHref = sdDir(null);
   }
 
   // Build the locate-on-scale visual: three rungs (premium/average/competitive)
@@ -967,10 +980,115 @@ function checkPrice() {
       ${rung('London average', avgP, 'typical')}
       ${rung('Competitive', compP, 'competitive')}
     </div>
-    <a class="pc-cta" href="/">${cta}</a>`;
+    <a class="pc-cta" href="${ctaHref}">${cta}</a>`;
   result.style.display = 'block';
 }
 document.getElementById('pcInput').addEventListener('keydown', function(e) { if (e.key === 'Enter') checkPrice(); });
+</script>
+
+<script>
+(function () {
+  const SCOPE = { param: 'neighbourhood', value: 'london' };
+  const BROWSE_SEL = '.nav-cta, .quick-answer-cta, .jump-chip.cta, .calc-followup, .mid-cta-btn, .cta-btn, .sticky-cta-btn';
+  const PRICED_SEL = '';
+  const CHIPS = [5, 8, 11];
+  const snap = v => { for (const c of CHIPS) if (v <= c) return c; return CHIPS[CHIPS.length - 1]; };
+  function dir(max) {
+    const q = new URLSearchParams();
+    if (SCOPE.value) q.set(SCOPE.param, SCOPE.value);
+    if (max != null) q.set('maxprice', String(max));
+    q.set('sort', 'price');
+    return '/?' + q.toString();
+  }
+  function wire() {
+    document.querySelectorAll(BROWSE_SEL).forEach(a => a.setAttribute('href', dir(null)));
+    if (PRICED_SEL) document.querySelectorAll(PRICED_SEL).forEach(a => a.setAttribute('href', dir(snap(11))));
+  }
+  window.sdRewireCtas = wire;
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire);
+  else wire();
+})();
+</script>
+<script>
+(function () {
+  const SCOPE = { param: 'neighbourhood', value: 'london' };
+  const CITY = 'London';
+  const LIMIT = 6;
+  const credMap = { physician: 'MD', np: 'NP', rn: 'RN', img: 'IMG', nd: 'ND' };
+
+  function scopedUrl(base, extra) {
+    const q = new URLSearchParams();
+    q.set(SCOPE.param, SCOPE.value);
+    Object.entries(extra || {}).forEach(([k, v]) => q.set(k, v));
+    return base + '?' + q.toString();
+  }
+  const browseHref = () => scopedUrl('/', { sort: 'price' });
+  const apiUrl = () => scopedUrl('/api/get-clinics', { sort: 'reviews', page: '0' });
+
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  function clinicHref(c) {
+    if (c.slug) return '/clinic/' + encodeURIComponent(c.slug);
+    if (c.id != null) return '/#clinic/' + encodeURIComponent(c.id);
+    return browseHref();
+  }
+  function card(c) {
+    const cred = (Array.isArray(c.injector_credentials) ? c.injector_credentials : []).map(v => credMap[v]).filter(Boolean)[0];
+    const meta = [c.neighbourhood, cred].filter(Boolean).map(esc).join(' \u00b7 ');
+    return '<a class="sd-live-card" href="' + clinicHref(c) + '">'
+      + '<div class="sd-live-name">' + esc(c.name) + '</div>'
+      + '<div class="sd-live-meta">' + meta + '</div>'
+      + '<div class="sd-live-price">$' + esc(c.price) + '<span> / unit</span></div>'
+      + '</a>';
+  }
+
+  async function run() {
+    let list = [];
+    try {
+      const res = await fetch(apiUrl());
+      if (!res.ok) return;
+      const data = await res.json();
+      list = (data.clinics || [])
+        .filter(c => { const p = parseFloat(c.price); return isFinite(p) && p > 0; })
+        .slice(0, LIMIT);
+    } catch (e) { return; }
+    if (list.length < 2) return;
+
+    const anchor = document.querySelector('.price-checker') || document.querySelector('.quick-answer-card');
+    if (!anchor || !anchor.parentNode) return;
+
+    const style = document.createElement('style');
+    style.textContent = [
+      '.sd-live { margin: 2.25rem 0; }',
+      '.sd-live-eyebrow { font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--rose); font-weight: 600; margin-bottom: 0.45rem; }',
+      ".sd-live-h { font-family: 'Cormorant Garamond', serif; font-size: 1.6rem; color: var(--deep); margin: 0 0 0.35rem; line-height: 1.15; }",
+      '.sd-live-sub { font-size: 0.88rem; color: var(--muted); margin: 0 0 1.2rem; line-height: 1.5; }',
+      '.sd-live-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)); gap: 0.7rem; }',
+      '.sd-live-card { display: block; padding: 0.95rem 1.05rem; border: 1px solid var(--border); border-radius: 14px; background: var(--cream); text-decoration: none; transition: border-color 0.2s, transform 0.2s; }',
+      '.sd-live-card:hover { border-color: var(--rose); transform: translateY(-2px); }',
+      '.sd-live-name { font-size: 0.95rem; font-weight: 600; color: var(--deep); margin-bottom: 0.28rem; line-height: 1.25; }',
+      '.sd-live-meta { font-size: 0.79rem; color: var(--muted); margin-bottom: 0.55rem; }',
+      ".sd-live-price { font-family: 'Cormorant Garamond', serif; font-size: 1.45rem; color: var(--rose); font-weight: 600; }",
+      ".sd-live-price span { font-family: 'DM Sans', sans-serif; font-size: 0.78rem; color: var(--muted); font-weight: 400; }",
+      '.sd-live-all { display: inline-block; margin-top: 1.05rem; font-size: 0.9rem; color: var(--rose); font-weight: 500; text-decoration: none; }',
+      '.sd-live-all:hover { text-decoration: underline; }'
+    ].join('\n');
+    document.head.appendChild(style);
+
+    const wrap = document.createElement('section');
+    wrap.className = 'sd-live';
+    wrap.innerHTML =
+      '<div class="sd-live-eyebrow">Live from the directory</div>'
+      + '<h2 class="sd-live-h">Real ' + esc(CITY) + ' clinics with published pricing</h2>'
+      + '<p class="sd-live-sub">Per-unit Botox prices from verified SkinDay listings \u2014 a snapshot, not a ranking. Tap a clinic for its full profile.</p>'
+      + '<div class="sd-live-grid">' + list.map(card).join('') + '</div>'
+      + '<a class="sd-live-all" href="' + browseHref() + '">See all ' + esc(CITY) + ' clinics with pricing \u2192</a>';
+
+    anchor.parentNode.insertBefore(wrap, anchor.nextSibling);
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run);
+  else run();
+})();
 </script>
 
 </body>
