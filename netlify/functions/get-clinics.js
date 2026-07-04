@@ -210,6 +210,16 @@ exports.handler = async (event) => {
     const from          = page * PAGE_SIZE;
     const needed        = from + PAGE_SIZE;
 
+    // ── PRICE CEILING / FLOOR (M36) ──────────────────────────
+    // maxprice is the primary control (guide CTAs deep-link ?maxprice=8).
+    // minprice is accepted too so a true band view is possible later with
+    // no rebuild. Both are matched against the clinic's lowest clinic_prices
+    // value — the same number the card displays — not the clinics.price
+    // snapshot, which can lag.
+    const maxprice = (params.maxprice != null && params.maxprice !== '') ? parseFloat(params.maxprice) : null;
+    const minprice = (params.minprice != null && params.minprice !== '') ? parseFloat(params.minprice) : null;
+    const hasPriceCeiling = Number.isFinite(maxprice) || Number.isFinite(minprice);
+
     // ── BUILD BASE QUERY ─────────────────────────────────────
     // All filters combine cleanly — no branching that drops a filter
     const buildBase = () => {
@@ -250,7 +260,7 @@ exports.handler = async (event) => {
 
     // ── SORT ─────────────────────────────────────────────────
     const applySort = (q) => {
-      if (sort === 'price-low')  return q.order('price',   { ascending: true,  nullsFirst: false }).order('id', { ascending: true });
+      if (sort === 'price-low' || sort === 'price')  return q.order('price',   { ascending: true,  nullsFirst: false }).order('id', { ascending: true });
       if (sort === 'price-high') return q.order('price',   { ascending: false, nullsFirst: false }).order('id', { ascending: true });
       if (sort === 'reviews')    return q.order('reviews', { ascending: false, nullsFirst: false }).order('id', { ascending: true });
       return q.order('rating', { ascending: false, nullsFirst: false }).order('id', { ascending: true });
@@ -273,16 +283,45 @@ exports.handler = async (event) => {
     // ids that have any clinic_prices row, and bucket on membership in it.
     const pricedIdsRes = await supabase
       .from('clinic_prices')
-      .select('clinic_id')
+      .select('clinic_id, price')
       .range(0, 29999);
 
     if (pricedIdsRes.error) {
       console.error('Supabase error (priced ids):', pricedIdsRes.error);
       return { statusCode: 500, body: JSON.stringify({ error: pricedIdsRes.error.message }) };
     }
-    const pricedIdSet  = new Set((pricedIdsRes.data || []).map(r => String(r.clinic_id)));
+
+    // pricedIdSet keeps the original meaning (any clinic with a price row) so
+    // the default, no-ceiling ranking is byte-for-byte unchanged.
+    // minPriceByClinic tracks the lowest finite price per clinic — the value
+    // the card shows — which is what the ceiling filters against.
+    const pricedIdSet     = new Set();
+    const minPriceByClinic = {};
+    (pricedIdsRes.data || []).forEach(r => {
+      const cid = String(r.clinic_id);
+      pricedIdSet.add(cid);
+      const val = parseFloat(r.price);
+      if (Number.isFinite(val) && (minPriceByClinic[cid] == null || val < minPriceByClinic[cid])) {
+        minPriceByClinic[cid] = val;
+      }
+    });
     const pricedIdList = [...pricedIdSet];
     const hasPricedIds = pricedIdList.length > 0;
+
+    // eligibleIdSet = clinics whose lowest price falls within the requested
+    // range. Only computed when a ceiling/floor is active; otherwise it is the
+    // full priced set. A clinic with only null-priced rows can't prove it's
+    // in range, so it is excluded under a ceiling.
+    const eligibleIdSet = hasPriceCeiling
+      ? new Set(Object.keys(minPriceByClinic).filter(cid => {
+          const v = minPriceByClinic[cid];
+          if (Number.isFinite(maxprice) && v > maxprice) return false;
+          if (Number.isFinite(minprice) && v < minprice) return false;
+          return true;
+        }))
+      : pricedIdSet;
+    const eligibleIdList = [...eligibleIdSet];
+    const hasEligibleIds = eligibleIdList.length > 0;
 
     // ── FOUR-BUCKET FETCH (price-first, claimed as tiebreaker) ─────
     // Price-first: any clinic with a price (in clinic_prices) surfaces above any without.
@@ -295,13 +334,25 @@ exports.handler = async (event) => {
     // Unpriced buckets fetch with headroom equal to the priced-set size, so that
     // filtering out priced members in JS can never leave the page slice short.
     const unpricedNeeded = needed + pricedIdList.length;
-    const emptyPriced = { data: [], error: null };
+    const emptyRes = { data: [], error: null, count: 0 };
+
+    // Which id set feeds the priced buckets: the in-range set under a ceiling,
+    // otherwise the full priced set.
+    const bucketIdList = hasPriceCeiling ? eligibleIdList : pricedIdList;
+    const hasBucketIds = hasPriceCeiling ? hasEligibleIds : hasPricedIds;
+
     const [pricedClaimedRes, pricedUnclaimedRes, claimedAllRes, unclaimedAllRes, countRes] = await Promise.all([
-      hasPricedIds ? applySort(buildBase().eq('claimed', true).in('id', pricedIdList)).range(0, needed - 1)  : Promise.resolve(emptyPriced),
-      hasPricedIds ? applySort(buildBase().eq('claimed', false).in('id', pricedIdList)).range(0, needed - 1) : Promise.resolve(emptyPriced),
-      applySort(buildBase().eq('claimed', true)).range(0, unpricedNeeded - 1),
-      applySort(buildBase().eq('claimed', false)).range(0, unpricedNeeded - 1),
-      buildBase().select('id', { count: 'exact', head: true }).range(0, 0),
+      hasBucketIds ? applySort(buildBase().eq('claimed', true).in('id', bucketIdList)).range(0, needed - 1)  : Promise.resolve(emptyRes),
+      hasBucketIds ? applySort(buildBase().eq('claimed', false).in('id', bucketIdList)).range(0, needed - 1) : Promise.resolve(emptyRes),
+      // Unpriced buckets are dropped entirely while a ceiling is active — a
+      // clinic with no in-range price can't satisfy "under $X".
+      hasPriceCeiling ? Promise.resolve(emptyRes) : applySort(buildBase().eq('claimed', true)).range(0, unpricedNeeded - 1),
+      hasPriceCeiling ? Promise.resolve(emptyRes) : applySort(buildBase().eq('claimed', false)).range(0, unpricedNeeded - 1),
+      // Count: under a ceiling, count only in-range priced clinics (still
+      // honouring province/neighbourhood/search); otherwise the whole set.
+      hasPriceCeiling
+        ? (hasBucketIds ? buildBase().select('id', { count: 'exact', head: true }).in('id', bucketIdList).range(0, 0) : Promise.resolve(emptyRes))
+        : buildBase().select('id', { count: 'exact', head: true }).range(0, 0),
     ]);
 
     if (pricedClaimedRes.error || pricedUnclaimedRes.error || claimedAllRes.error || unclaimedAllRes.error) {
