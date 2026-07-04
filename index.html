@@ -733,6 +733,36 @@
       appearance: auto;
     }
 
+    /* ─── PRICE CEILING CHIPS (M36) ─── */
+    .price-chips { display: inline-flex; align-items: center; gap: 0.5rem; }
+    .price-chip {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 0.4rem 0.9rem;
+      border-radius: 20px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.8rem; font-weight: 500;
+      cursor: pointer; white-space: nowrap;
+      transition: all 0.2s; flex-shrink: 0;
+    }
+    .price-chip:hover { border-color: var(--rose-m); color: var(--rose); }
+    .price-chip.active {
+      background: var(--rose); border-color: var(--rose); color: #fff;
+    }
+    .filter-spacer { flex: 1 1 auto; min-width: 0; }
+    .active-filter-line {
+      max-width: 1280px; margin: -14px auto 0; padding: 0 5% 28px;
+      display: flex; align-items: center; gap: 0.55rem;
+      font-family: 'DM Sans', sans-serif; font-size: 0.85rem; color: var(--muted);
+    }
+    .active-filter-line .aff-icon { color: var(--rose); display: inline-flex; align-items: center; }
+    .active-filter-clear {
+      background: transparent; border: none; color: var(--rose);
+      font-family: 'DM Sans', sans-serif; font-size: 0.85rem; font-weight: 500;
+      cursor: pointer; padding: 0; text-decoration: underline; text-underline-offset: 2px;
+    }
+
     /* ─── COMPARISON GRID ─── */
     .comparison-section {
       background: var(--warm);
@@ -2775,6 +2805,14 @@
   </div>
 
   <div class="filter-wrap">
+    <span class="filter-label">Botox / unit</span>
+    <div class="price-chips" role="group" aria-label="Filter by maximum Botox price per unit">
+      <button type="button" class="price-chip" data-max="any" aria-pressed="true" onclick="applyMaxPrice('any')">Any</button>
+      <button type="button" class="price-chip" data-max="5"  aria-pressed="false" onclick="applyMaxPrice('5')">≤ $5</button>
+      <button type="button" class="price-chip" data-max="8"  aria-pressed="false" onclick="applyMaxPrice('8')">≤ $8</button>
+      <button type="button" class="price-chip" data-max="11" aria-pressed="false" onclick="applyMaxPrice('11')">≤ $11</button>
+    </div>
+    <span class="filter-spacer" aria-hidden="true"></span>
     <span class="filter-label">Sort</span>
     <select class="sort-select" onchange="sortCards(this.value)" id="mainSortSelect">
       <option value="rating">Highest Rated</option>
@@ -2783,6 +2821,14 @@
       <option value="price-low">Price: Low → High</option>
       <option value="nearest">Nearest</option>
     </select>
+  </div>
+
+  <div class="active-filter-line" id="activeFilterLine" style="display:none;">
+    <span class="aff-icon" aria-hidden="true">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+    </span>
+    <span id="activeFilterText"></span>
+    <button type="button" class="active-filter-clear" onclick="applyMaxPrice('any')">Clear</button>
   </div>
 
   <div class="cards-grid" id="cardsGrid">
@@ -3362,6 +3408,7 @@ let currentFilter = 'all';
 let currentSort = 'reviews';
 let currentNameQuery = '';
 let currentInjectorFilter = 'all';
+let currentMaxPrice = null;      // number (price ceiling per unit) or null
 let userLocation = null;
 let currentClinic = null;
 let compareList = [];
@@ -3533,7 +3580,62 @@ function buildApiUrl(page) {
     params.set('injector', currentInjectorFilter);
   }
 
+  if (currentMaxPrice != null) {
+    params.set('maxprice', String(currentMaxPrice));
+  }
+
   return '/api/get-clinics?' + params.toString();
+}
+
+// ─── BOTOX PRICE CEILING FILTER (M36) ─────────────────────────
+// Chip values offered on the homepage. Guide-page CTAs deep-link in via
+// ?maxprice=. The ceiling is applied server-side (get-clinics.js) against the
+// same lowest price the cards display; unpriced clinics drop out of results
+// while a ceiling is active.
+const PRICE_CHIP_VALUES = [5, 8, 11];
+
+function syncPriceChipsUI() {
+  document.querySelectorAll('.price-chip').forEach(btn => {
+    const v = btn.dataset.max;
+    const active = (v === 'any' && currentMaxPrice == null)
+                || (v !== 'any' && currentMaxPrice != null && Number(v) === currentMaxPrice);
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+  });
+}
+
+function updateActiveFilterLine() {
+  const line = document.getElementById('activeFilterLine');
+  const text = document.getElementById('activeFilterText');
+  if (!line || !text) return;
+  if (currentMaxPrice == null) { line.style.display = 'none'; return; }
+  const n = currentTotal || 0;
+  text.textContent = n > 0
+    ? `${n.toLocaleString()} ${n === 1 ? 'clinic' : 'clinics'} with Botox at or under $${currentMaxPrice} / unit`
+    : `No clinics with Botox at or under $${currentMaxPrice} / unit — try a higher ceiling`;
+  line.style.display = '';
+}
+
+// Keep the ceiling in the URL so a filtered view is shareable. replaceState
+// avoids spamming history on every chip tap.
+function syncPriceUrl() {
+  const params = new URLSearchParams(window.location.search);
+  if (currentMaxPrice != null) params.set('maxprice', String(currentMaxPrice));
+  else params.delete('maxprice');
+  const qs = params.toString();
+  window.history.replaceState(null, '', window.location.pathname + (qs ? '?' + qs : '') + window.location.hash);
+}
+
+function applyMaxPrice(val) {
+  if (val === 'any' || val == null || val === '') {
+    currentMaxPrice = null;
+  } else {
+    const n = Number(val);
+    currentMaxPrice = Number.isFinite(n) ? n : null;
+  }
+  syncPriceChipsUI();
+  syncPriceUrl();
+  fetchPage(0, false);
 }
 
 // ─── FEATURED / PINNED CLINIC ─────────────────────────────────
@@ -3760,6 +3862,7 @@ async function fetchPage(page, append) {
 
     currentPage  = data.page ?? page;
     currentTotal = data.total ?? 0;
+    updateActiveFilterLine();
 
     if (raw.length === 0 && !append) {
       grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60px 0;color:var(--muted);font-size:0.9rem;">No clinics found. Try adjusting your filters.</div>';
@@ -4179,6 +4282,41 @@ function showToast(msg) {
 }
 
 // ─── INIT ──────────────────────────────────────────────────────
+// ─── URL-PARAM BOOTSTRAP (M36 deep-links) ─────────────────────
+// Guide CTAs link straight into a filtered view, e.g.
+// /?maxprice=8&sort=price&neighbourhood=toronto. Read those before the first
+// fetch so the initial render already reflects the requested filter. The
+// elements referenced here (chips, selects) exist above this point in the DOM.
+(function bootstrapFromUrl() {
+  const p = new URLSearchParams(window.location.search);
+
+  const mp = p.get('maxprice');
+  if (mp != null && mp !== '') {
+    const n = Number(mp);
+    if (PRICE_CHIP_VALUES.includes(n)) currentMaxPrice = n;
+  }
+
+  const s = p.get('sort');
+  if (s) {
+    const SORT_ALIAS = { price: 'price-low', 'price-low': 'price-low', 'price-high': 'price-high', rating: 'rating', reviews: 'reviews' };
+    if (SORT_ALIAS[s]) currentSort = SORT_ALIAS[s];
+  }
+
+  const nb = p.get('neighbourhood');
+  if (nb) {
+    const sel = document.getElementById('searchNeighbourhood');
+    if (sel && [...sel.options].some(o => o.value === nb)) {
+      currentFilter = nb;
+      sel.value = nb;
+    }
+  }
+
+  const sortSel = document.getElementById('mainSortSelect');
+  if (sortSel) sortSel.value = currentSort;
+
+  syncPriceChipsUI();
+})();
+
 (async function init() {
   const grid = document.getElementById('cardsGrid');
   grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60px 0;color:var(--muted);font-size:0.9rem;letter-spacing:0.03em;">Loading clinics…</div>';
@@ -4202,6 +4340,7 @@ function showToast(msg) {
     currentPageClinics = raw;
     currentPage  = 0;
     currentTotal = data.total || 0;
+    updateActiveFilterLine();
 
     if (raw.length === 0) {
       grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60px 0;color:var(--muted);font-size:0.9rem;">No clinics found.</div>';
