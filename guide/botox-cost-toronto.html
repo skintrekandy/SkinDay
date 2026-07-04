@@ -451,18 +451,18 @@
     /* ── MOBILE — consolidated at end so base styles don't override ── */
     /* ── MOBILE ── */
     @media (max-width: 640px) {
-      .guide-hero { padding: 88px 4% 60px; }
+      .guide-hero { padding: 88px 4% 24px; }
       .guide-hero h1 { font-size:1.95rem;margin-bottom:0.8rem;line-height:1.15; }
       .guide-hero .lead { font-size:0.88rem;line-height:1.55;margin-bottom:1.1rem; }
       .stat-strip { display:grid;grid-template-columns:repeat(3,1fr);gap:0.4rem;padding-top:1rem; }
       .stat-item { border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.65rem 0.3rem; }
       .stat-item + .stat-item { border-left:none; }
-      .stat-num { font-size:1.35rem; }
+      .stat-num { font-size:1.45rem; }
       .stat-num span { font-size:0.85rem; }
       .stat-desc { font-size:0.58rem;line-height:1.3; }
       .guide-wrap { padding:0 4% 60px;overflow-x:hidden; }
       body { overflow-x:hidden; }
-      .quick-answer-card { margin:-44px auto 1.75rem;padding:1rem; }
+      .quick-answer-card { margin:-32px auto 1.75rem;padding:1rem; }
       .quick-answer-table { font-size:0.83rem; }
       .quick-answer-table td { padding:0.45rem 0; }
       .jump-chips { flex-wrap:nowrap;overflow-x:auto;padding-bottom:0.5rem;-webkit-overflow-scrolling:touch;scrollbar-width:none; }
@@ -653,7 +653,7 @@
 
     <div class="stat-strip">
       <div class="stat-item">
-        <div class="stat-num" id="tor-stat-avg"><span>$</span><span id="tor-avg-val" style="color:var(--cream);">9.52</span></div>
+        <div class="stat-num" id="tor-stat-avg"><span>$</span><span id="tor-avg-val" style="color:var(--cream);font-size:inherit;">9.52</span></div>
         <div class="stat-desc">Average per unit · GTA</div>
       </div>
       <div class="stat-item">
