@@ -73,7 +73,7 @@
     /* ── HERO ── */
     .guide-hero {
       background: var(--deep);
-      padding: 120px 5% 72px;
+      padding: 96px 5% 40px;
       position: relative; overflow: hidden;
       text-align: center;
     }
@@ -120,9 +120,9 @@
       justify-content: center;
     }
     .stat-item {
-      flex: 0 0 auto;
-      padding: 0 2.5rem;
-      text-align: center;
+      flex: 1 1 0; padding: 1rem 1.25rem; text-align: center;
+      background: #2A231E; border: 1px solid rgba(201,169,110,0.18); border-radius: 10px;
+      margin: 0 0.3rem;
     }
     .stat-item + .stat-item {
       border-left: 1px solid rgba(255,255,255,0.07);
@@ -139,7 +139,7 @@
     /* ── LAYOUT ── */
     .guide-wrap {
       max-width: 760px; margin: 0 auto;
-      padding: 72px 5% 100px;
+      padding: 48px 5% 100px;
     }
 
     /* ── SECTIONS ── */
@@ -413,12 +413,12 @@
     /* ── QUICK ANSWER CARD ── */
     .quick-answer-card {
       background: white; border: 1px solid var(--border); border-radius: 12px;
-      padding: 1.5rem; margin: -36px auto 2.5rem;
+      padding: 1.5rem; margin: -16px auto 2.5rem;
       position: relative; z-index: 2;
       box-shadow: 0 8px 30px rgba(28,23,20,0.08);
     }
     .quick-answer-label { font-size:0.68rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--rose);margin-bottom:1rem; }
-    .quick-answer-table { width:100%;border-collapse:collapse;font-size:0.88rem; }
+    .quick-answer-table { width:100%; border-collapse:collapse; font-size:1rem; }
     .quick-answer-table tr { border-bottom:1px solid var(--border); }
     .quick-answer-table tr:last-child { border-bottom:none; }
     .quick-answer-table td { padding:0.55rem 0; }
@@ -428,7 +428,7 @@
     .quick-answer-cta { display:block;text-align:center;background:var(--rose);color:white;padding:0.65rem 1rem;border-radius:6px;font-size:0.85rem;font-weight:500;text-decoration:none;transition:background 0.2s;margin-top:1rem; }
     .quick-answer-cta:hover { background:var(--rose-m); }
     /* ── JUMP CHIPS ── */
-    .jump-chips { display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:2.5rem; }
+    .jump-chips { display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:2.5rem; position:sticky; top:0; z-index:20; background:var(--cream); padding-top:0.75rem; padding-bottom:0.75rem; margin-left:-5%; margin-right:-5%; padding-left:5%; padding-right:5%; }
     .jump-chip { font-size:0.78rem;font-weight:500;padding:0.35rem 0.85rem;border-radius:20px;background:var(--warm);color:var(--deep);text-decoration:none;border:1px solid var(--border);transition:background 0.2s; }
     .jump-chip:hover { background:var(--rose-bg); }
     .jump-chip.cta { background:var(--rose-bg);color:var(--rose);border-color:rgba(200,114,90,0.25); }
@@ -456,7 +456,7 @@
 
     /* ── MOBILE — consolidated at end so base styles don't override ── */
     @media (max-width: 640px) {
-      .guide-hero { padding: 88px 5% 24px; }
+      .guide-hero { padding: 80px 5% 32px; }
       .guide-hero h1 { font-size:2.15rem;margin-bottom:0.9rem; }
       .guide-hero .lead { font-size:0.9rem;line-height:1.55;margin-bottom:1.25rem; }
       .stat-strip { display:grid;grid-template-columns:repeat(3,1fr);gap:0.5rem;padding-top:1rem; }
@@ -465,9 +465,9 @@
       .stat-num { font-size:1.45rem; }
       .stat-num span { font-size:0.9rem; }
       .stat-desc { font-size:0.62rem;line-height:1.25; }
-      .quick-answer-card { margin:-32px auto 2rem;padding:1.1rem; }
-      .guide-wrap { padding:0 5% 60px;overflow-x:hidden; }
-      body { overflow-x:hidden; }
+      .quick-answer-card { margin:1.5rem auto 2rem;padding:1.1rem; }
+      .guide-wrap { padding:0 5% 60px; }
+      body { font-size:17px; }
       .chart-grid { grid-template-columns:1fr !important;gap:1.5rem !important; }
       #chart-legend { flex-direction:row !important;flex-wrap:wrap;gap:0.35rem !important; }
       .tier-grid { grid-template-columns:1fr; }
@@ -477,7 +477,42 @@
       .mid-cta { flex-direction:column; }
       .density-callout { flex-direction:column;gap:0.75rem; }
     }
-  </style>
+  
+    /* PRICE CHECKER */
+    .price-checker { background:var(--warm); border:1px solid var(--border); border-radius:12px; padding:1.4rem 1.5rem; margin:2rem 0; }
+    .price-checker-label { font-size:0.68rem; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:var(--rose); margin-bottom:0.6rem; }
+    .price-checker-heading { font-family:'Cormorant Garamond',serif; font-size:1.3rem; font-weight:400; color:var(--deep); margin-bottom:1rem; line-height:1.3; }
+    .price-checker-input-row { display:flex; gap:0.75rem; align-items:stretch; margin-bottom:1rem; }
+    .price-checker-input-row input { flex:1; padding:0.65rem 0.9rem; border:1px solid var(--border); border-radius:8px; font-size:1rem; font-family:inherit; background:white; color:var(--deep); outline:none; }
+    .price-checker-input-row input:focus { border-color:var(--rose); }
+    .price-checker-input-row button { background:var(--rose); color:white; border:none; border-radius:8px; padding:0.65rem 1.25rem; font-size:0.88rem; font-weight:600; font-family:inherit; cursor:pointer; white-space:nowrap; transition:background 0.2s; }
+    .price-checker-input-row button:hover { background:var(--rose-m); }
+    .price-checker-result { display:none; padding:1rem 1.1rem; border-radius:8px; font-size:0.9rem; line-height:1.55; }
+    .price-checker-result.below { background:#f0f7f3; border:1px solid rgba(61,122,85,0.2); color:#2d5a3d; }
+    .price-checker-result.mid { background:white; border:1px solid rgba(201,169,110,0.3); color:#5a4a1e; }
+    .price-checker-result.above { background:#fdf5f0; border:1px solid rgba(200,114,90,0.25); color:#5a2a1e; }
+    .price-checker-result strong { display:block; font-size:1rem; margin-bottom:0.3rem; }
+    .price-checker-cta { display:inline-block; margin-top:0.75rem; font-size:0.82rem; color:var(--rose); font-weight:500; text-decoration:none; }
+    .price-checker-footnote { font-size:0.8rem; color:var(--muted); line-height:1.5; margin-top:1rem; padding-top:1rem; border-top:1px solid var(--border); }
+
+    /* PRICE CHECKER RESULT - minimal scale card */
+    .pc-result-card { display:none; margin-top:1rem; }
+    .pc-tier { display:flex; align-items:center; gap:0.5rem; font-size:1.05rem; font-weight:600; color:var(--deep); margin-bottom:0.15rem; }
+    .pc-tier-dot { font-size:0.9rem; }
+    .pc-quote { font-family:'Cormorant Garamond',serif; font-size:2rem; color:var(--deep); line-height:1.1; margin-bottom:0.5rem; }
+    .pc-quote span { font-size:1.1rem; color:var(--muted); }
+    .pc-scale { margin:1.25rem 0 1.25rem; }
+    .pc-scale-row { display:grid; grid-template-columns:48px 1fr; align-items:center; gap:0.75rem; height:36px; }
+    .pc-scale-price { font-size:0.82rem; color:var(--muted); text-align:right; font-variant-numeric:tabular-nums; }
+    .pc-scale-track { display:flex; align-items:center; gap:0.55rem; }
+    .pc-scale-dot { width:11px; height:11px; border-radius:50%; background:var(--border); flex-shrink:0; }
+    .pc-scale-dot.on { background:var(--rose); box-shadow:0 0 0 4px rgba(200,114,90,0.15); }
+    .pc-scale-label { font-size:0.82rem; color:var(--dim); }
+    .pc-scale-you .pc-scale-label { color:var(--deep); font-weight:600; }
+    .pc-scale-you .pc-scale-price { color:var(--deep); font-weight:600; }
+    .pc-cta { display:inline-block; margin-top:0.25rem; font-size:0.9rem; color:var(--rose); font-weight:600; text-decoration:none; }
+    .pc-cta:hover { text-decoration:underline; }
+</style>
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -552,7 +587,7 @@
   <div class="hero-inner">
     <div class="hero-eyebrow">2026 Price Guide · London &amp; Southwestern Ontario</div>
     <h1>How Much Does Botox Cost in <em>London, Ontario?</em></h1>
-    <p class="lead">79% of London cosmetic clinics are rated 4.8 or higher on Google — and 71% sit at 4.9 or above. When nearly every clinic looks near-perfect, the rating tells you almost nothing. We analyzed real pricing, injector credentials, and brand data from London-area clinics — here's what actually matters before you book.</p>
+    <p class="lead">Most London clinics charge $9 to $11 per unit. The London-area average is $9.90 per unit, though prices vary by injector, clinic, and treatment area. Compare real pricing, injector credentials, and clinic data below.</p>
 
     <div class="stat-strip">
       <div class="stat-item">
@@ -582,11 +617,23 @@
         <tr><td>Common range</td><td>$9–$11 / unit</td></tr>
         <tr><td>Forehead (single area)</td><td>$95–$200</td></tr>
         <tr><td>Full upper face</td><td>$340–$595</td></tr>
-        <tr><td>Premium clinics</td><td>$11–$13 / unit</td></tr>
       </tbody>
     </table>
-    <p class="quick-answer-note">Updated May 2026 · based on verified SkinDay pricing</p>
-    <a href="/" class="quick-answer-cta">Compare London Botox clinics →</a>
+    <p class="quick-answer-note">Based on pricing collected from 500+ Canadian clinics, updated regularly</p>
+    <a href="/" class="quick-answer-cta">Browse London clinics →</a>
+  </div>
+
+  
+  <!-- PRICE CHECKER -->
+  <div class="price-checker">
+    <div class="price-checker-label">Quick check</div>
+    <div class="price-checker-heading">How does your quote compare?</div>
+    <div class="price-checker-input-row">
+      <input type="number" id="pcInput" placeholder="Enter price per unit e.g. 10" min="1" max="30" step="0.5" />
+      <button onclick="checkPrice()">Check it</button>
+    </div>
+    <div class="price-checker-result" id="pcResult"></div>
+    <p class="price-checker-footnote">Price is only one factor. Compare injector credentials, reviews, treatment philosophy, and published pricing before choosing a clinic.</p>
   </div>
 
   <!-- JUMP CHIPS -->
@@ -618,7 +665,7 @@
         <tr><td><strong>Frown lines</strong> <span style="font-size:0.78rem;color:var(--muted);">"11s" between brows</span></td><td>15–25 units</td><td>$150–$250</td></tr>
         <tr><td><strong>Crow's feet</strong></td><td>10–24 units</td><td>$100–$240</td></tr>
         <tr><td><strong>Lip flip</strong></td><td>4–8 units</td><td>$40–$80</td></tr>
-        <tr><td><strong>Jawline slimming</strong> <span style="font-size:0.78rem;color:var(--muted);">masseter</span></td><td>30–60 units</td><td>$300–$595</td></tr>
+        <tr><td><strong>Lower face slimming</strong> <span style="font-size:0.78rem;color:var(--muted);">masseter</span></td><td>30–60 units</td><td>$300–$595</td></tr>
         <tr><td><strong>Underarm sweating</strong> <span style="font-size:0.78rem;color:var(--muted);">both sides</span></td><td>50–100 units</td><td>$495–$990</td></tr>
       </tbody>
     </table>
@@ -870,6 +917,61 @@
   <p>© 2026 <a href="/">SkinDay</a> · London Botox Price Guide · <a href="/">Browse all clinics</a></p>
   <p style="margin-top:0.5rem;">Prices based on SkinDay's market analysis as of May 2026. Always confirm directly with the clinic before booking. "Botox" is used as a general term — clinics may use Botox®, Dysport®, Xeomin®, Nuceiva®, or Letybo®.</p>
 </div>
+
+
+<script>
+function checkPrice() {
+  const input = document.getElementById('pcInput');
+  const result = document.getElementById('pcResult');
+  const val = parseFloat(input.value);
+  if (isNaN(val) || val < 1 || val > 30) { result.style.display='none'; return; }
+  
+  const avg = 9.90;
+
+  let tier, dot, cta;
+  if (val < avg * 0.9) {
+    tier = 'Competitive pricing'; dot = '🟢';
+    cta = `See clinics around $${val.toFixed(0)} →`;
+  } else if (val <= avg * 1.1) {
+    tier = 'Typical pricing'; dot = '🟢';
+    cta = `Compare clinics around the London average →`;
+  } else {
+    tier = 'Premium pricing'; dot = '⭐';
+    cta = `Browse premium clinics →`;
+  }
+
+  // Build the locate-on-scale visual: three rungs (premium/average/competitive)
+  // with the user's quote marker on the appropriate rung
+  const yourTier = val < avg * 0.9 ? 'competitive' : (val <= avg * 1.1 ? 'typical' : 'premium');
+  const premiumP = (avg * 1.25).toFixed(0);
+  const avgP = avg.toFixed(0);
+  const compP = (avg * 0.8).toFixed(0);
+
+  function rung(label, price, key) {
+    const isYou = yourTier === key;
+    return `<div class="pc-scale-row${isYou ? ' pc-scale-you' : ''}">
+      <div class="pc-scale-price">$${price}</div>
+      <div class="pc-scale-track">
+        <span class="pc-scale-dot ${isYou ? 'on' : ''}"></span>
+        <span class="pc-scale-label">${label}${isYou ? ' · your quote' : ''}</span>
+      </div>
+    </div>`;
+  }
+
+  result.className = 'pc-result-card';
+  result.innerHTML = `
+    <div class="pc-tier"><span class="pc-tier-dot">${dot}</span>${tier}</div>
+    <div class="pc-quote">$${val.toFixed(2)}<span> / unit</span></div>
+    <div class="pc-scale">
+      ${rung('Premium', premiumP, 'premium')}
+      ${rung('London average', avgP, 'typical')}
+      ${rung('Competitive', compP, 'competitive')}
+    </div>
+    <a class="pc-cta" href="/">${cta}</a>`;
+  result.style.display = 'block';
+}
+document.getElementById('pcInput').addEventListener('keydown', function(e) { if (e.key === 'Enter') checkPrice(); });
+</script>
 
 </body>
 </html>

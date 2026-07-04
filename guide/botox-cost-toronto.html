@@ -73,7 +73,7 @@
     /* ── HERO ── */
     .guide-hero {
       background: var(--deep);
-      padding: 120px 5% 72px;
+      padding: 96px 5% 40px;
       position: relative; overflow: hidden;
       text-align: center;
     }
@@ -120,9 +120,9 @@
       justify-content: center;
     }
     .stat-item {
-      flex: 0 0 auto;
-      padding: 0 2.5rem;
-      text-align: center;
+      flex: 1 1 0; padding: 1rem 1.25rem; text-align: center;
+      background: #2A231E; border: 1px solid rgba(201,169,110,0.18); border-radius: 10px;
+      margin: 0 0.3rem;
     }
     .stat-item + .stat-item {
       border-left: 1px solid rgba(255,255,255,0.07);
@@ -139,7 +139,7 @@
     /* ── LAYOUT ── */
     .guide-wrap {
       max-width: 760px; margin: 0 auto;
-      padding: 72px 5% 100px;
+      padding: 48px 5% 100px;
     }
 
     /* ── SECTIONS ── */
@@ -407,12 +407,12 @@
     /* ── QUICK ANSWER CARD ── */
     .quick-answer-card {
       background: white; border: 1px solid var(--border); border-radius: 12px;
-      padding: 1.5rem; margin: -36px auto 2.5rem;
+      padding: 1.5rem; margin: -16px auto 2.5rem;
       position: relative; z-index: 2;
       box-shadow: 0 8px 30px rgba(28,23,20,0.08);
     }
     .quick-answer-label { font-size:0.68rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--rose);margin-bottom:1rem; }
-    .quick-answer-table { width:100%;border-collapse:collapse;font-size:0.88rem; }
+    .quick-answer-table { width:100%; border-collapse:collapse; font-size:1rem; }
     .quick-answer-table tr { border-bottom:1px solid var(--border); }
     .quick-answer-table tr:last-child { border-bottom:none; }
     .quick-answer-table td { padding:0.55rem 0; }
@@ -422,7 +422,7 @@
     .quick-answer-cta { display:block;text-align:center;background:var(--rose);color:white;padding:0.65rem 1rem;border-radius:6px;font-size:0.85rem;font-weight:500;text-decoration:none;transition:background 0.2s;margin-top:1rem; }
     .quick-answer-cta:hover { background:var(--rose-m); }
     /* ── JUMP CHIPS ── */
-    .jump-chips { display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:2.5rem; }
+    .jump-chips { display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:2.5rem; position:sticky; top:0; z-index:20; background:var(--cream); padding-top:0.75rem; padding-bottom:0.75rem; margin-left:-5%; margin-right:-5%; padding-left:5%; padding-right:5%; }
     .jump-chip { font-size:0.78rem;font-weight:500;padding:0.35rem 0.85rem;border-radius:20px;background:var(--warm);color:var(--deep);text-decoration:none;border:1px solid var(--border);transition:background 0.2s; }
     .jump-chip:hover { background:var(--rose-bg); }
     .jump-chip.cta { background:var(--rose-bg);color:var(--rose);border-color:rgba(200,114,90,0.25); }
@@ -451,19 +451,19 @@
     /* ── MOBILE — consolidated at end so base styles don't override ── */
     /* ── MOBILE ── */
     @media (max-width: 640px) {
-      .guide-hero { padding: 88px 4% 24px; }
+      .guide-hero { padding: 80px 4% 32px; }
       .guide-hero h1 { font-size:1.95rem;margin-bottom:0.8rem;line-height:1.15; }
-      .guide-hero .lead { font-size:0.88rem;line-height:1.55;margin-bottom:1.1rem; }
+      .guide-hero .lead { font-size:1rem;line-height:1.65;margin-bottom:1.1rem; }
       .stat-strip { display:grid;grid-template-columns:repeat(3,1fr);gap:0.4rem;padding-top:1rem; }
       .stat-item { border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.65rem 0.3rem; }
       .stat-item + .stat-item { border-left:none; }
       .stat-num { font-size:1.45rem; }
       .stat-num span { font-size:0.85rem; }
       .stat-desc { font-size:0.58rem;line-height:1.3; }
-      .guide-wrap { padding:0 4% 60px;overflow-x:hidden; }
-      body { overflow-x:hidden; }
-      .quick-answer-card { margin:-32px auto 1.75rem;padding:1rem; }
-      .quick-answer-table { font-size:0.83rem; }
+      .guide-wrap { padding:0 4% 60px; }
+      body { font-size:17px; }
+      .quick-answer-card { margin:1.5rem auto 1.75rem;padding:1rem; }
+      .quick-answer-table { width:100%; border-collapse:collapse; font-size:1rem; }
       .quick-answer-table td { padding:0.45rem 0; }
       .jump-chips { flex-wrap:nowrap;overflow-x:auto;padding-bottom:0.5rem;-webkit-overflow-scrolling:touch;scrollbar-width:none; }
       .jump-chips::-webkit-scrollbar { display:none; }
@@ -550,6 +550,25 @@
     .price-checker-result.above { background:#fdf5f0; border:1px solid rgba(200,114,90,0.25); color:#5a2a1e; }
     .price-checker-result strong { display:block; font-size:1rem; margin-bottom:0.3rem; }
     .price-checker-cta { display:inline-block;margin-top:0.75rem;font-size:0.82rem;color:var(--rose);font-weight:500;text-decoration:none; }
+    .price-checker-footnote { font-size:0.8rem; color:var(--muted); line-height:1.5; margin-top:1rem; padding-top:1rem; border-top:1px solid var(--border); }
+
+    /* PRICE CHECKER RESULT - minimal scale card */
+    .pc-result-card { display:none; margin-top:1rem; }
+    .pc-tier { display:flex; align-items:center; gap:0.5rem; font-size:1.05rem; font-weight:600; color:var(--deep); margin-bottom:0.15rem; }
+    .pc-tier-dot { font-size:0.9rem; }
+    .pc-quote { font-family:'Cormorant Garamond',serif; font-size:2rem; color:var(--deep); line-height:1.1; margin-bottom:0.5rem; }
+    .pc-quote span { font-size:1.1rem; color:var(--muted); }
+    .pc-scale { margin:1.25rem 0 1.25rem; }
+    .pc-scale-row { display:grid; grid-template-columns:48px 1fr; align-items:center; gap:0.75rem; height:36px; }
+    .pc-scale-price { font-size:0.82rem; color:var(--muted); text-align:right; font-variant-numeric:tabular-nums; }
+    .pc-scale-track { display:flex; align-items:center; gap:0.55rem; }
+    .pc-scale-dot { width:11px; height:11px; border-radius:50%; background:var(--border); flex-shrink:0; }
+    .pc-scale-dot.on { background:var(--rose); box-shadow:0 0 0 4px rgba(200,114,90,0.15); }
+    .pc-scale-label { font-size:0.82rem; color:var(--dim); }
+    .pc-scale-you .pc-scale-label { color:var(--deep); font-weight:600; }
+    .pc-scale-you .pc-scale-price { color:var(--deep); font-weight:600; }
+    .pc-cta { display:inline-block; margin-top:0.25rem; font-size:0.9rem; color:var(--rose); font-weight:600; text-decoration:none; }
+    .pc-cta:hover { text-decoration:underline; }
 </style>
   <script type="application/ld+json">
   {
@@ -649,7 +668,7 @@
   <div class="hero-inner">
     <div class="hero-eyebrow">2026 Price Guide · Greater Toronto Area</div>
     <h1>How Much Does Botox Cost in <em>Toronto?</em></h1>
-    <p class="lead">Almost every GTA cosmetic clinic is rated 4.8 or higher on Google. That number tells you almost nothing. We analyzed real pricing, injector credentials, and brand data from GTA clinics — here's what actually matters before you book.</p>
+    <p class="lead">Most Toronto clinics charge $7 to $11 per unit. The GTA average is $<span id="tor-lead-avg">9.52</span> per unit, though prices vary by neighbourhood, injector, and clinic. Compare real pricing, injector credentials, and clinic data below.</p>
 
     <div class="stat-strip">
       <div class="stat-item">
@@ -680,22 +699,22 @@
         <tr><td>Common range</td><td>$7–$11 / unit</td></tr>
         <tr><td>Forehead (single area)</td><td>$95–$190</td></tr>
         <tr><td>Full upper face</td><td>$330–$570</td></tr>
-        <tr><td>Premium clinics</td><td>$11–$15 / unit</td></tr>
       </tbody>
     </table>
-    <p class="quick-answer-note">Updated June 2026 · based on verified SkinDay pricing</p>
-    <a href="/" class="quick-answer-cta">Compare Toronto Botox clinics →</a>
+    <p class="quick-answer-note">Based on pricing collected from 500+ Canadian clinics, updated regularly</p>
+    <a href="/" class="quick-answer-cta">Browse Toronto clinics →</a>
   </div>
 
   <!-- PRICE CHECKER -->
   <div class="price-checker">
     <div class="price-checker-label">Quick check</div>
-    <div class="price-checker-heading">Were you quoted a good price?</div>
+    <div class="price-checker-heading">How does your quote compare?</div>
     <div class="price-checker-input-row">
       <input type="number" id="pcInput" placeholder="Enter price per unit e.g. 9" min="1" max="30" step="0.5" />
       <button onclick="checkPrice()">Check it</button>
     </div>
     <div class="price-checker-result" id="pcResult"></div>
+    <p class="price-checker-footnote">Price is only one factor. Compare injector credentials, reviews, treatment philosophy, and published pricing before choosing a clinic.</p>
   </div>
 
 
@@ -749,7 +768,7 @@
           <td>$40–$75</td>
         </tr>
         <tr>
-          <td><strong>Jawline slimming</strong> <span style="font-size:0.78rem;color:var(--muted);">masseter</span></td>
+          <td><strong>Lower face slimming</strong> <span style="font-size:0.78rem;color:var(--muted);">masseter</span></td>
           <td>30–60 units</td>
           <td>$285–$570</td>
         </tr>
@@ -793,7 +812,7 @@
         <div class="mobile-table-card-row"><span>Est. GTA cost</span><span>$40–$75</span></div>
       </div>
       <div class="mobile-table-card">
-        <div class="mobile-table-card-title">Jawline slimming</div>
+        <div class="mobile-table-card-title">Lower face slimming</div>
         <div class="mobile-table-card-row"><span>Typical units</span><span>30–60 units</span></div>
         <div class="mobile-table-card-row"><span>Est. GTA cost</span><span>$285–$570</span></div>
       </div>
@@ -810,7 +829,7 @@
     </div>
     <p style="font-size:0.75rem;color:var(--dim);">Unit ranges reflect standard clinical dosing. Cost estimates use the June 2026 GTA average of $<span id="tor-prose-2">9.52</span>/unit and are for planning only — your injector determines actual units. Larger areas like the masseter and underarms use the most product and cost the most accordingly.</p>
 
-    <p>A few takeaways: the "upper face" trio most people start with — forehead, frown lines, and crow's feet together — typically runs 35–60 units, or roughly <strong>$330–$570</strong> in Toronto. Functional treatments like jaw slimming and excessive sweating cost more simply because they require far more product, not because the price per unit is higher. And a lip flip is one of the cheapest entry points to Botox at well under $100.</p>
+    <p>A few takeaways: the "upper face" trio most people start with — forehead, frown lines, and crow's feet together — typically runs 35–60 units, or roughly <strong>$330–$570</strong> in Toronto. Functional treatments like lower face slimming and excessive sweating cost more simply because they require far more product, not because the price per unit is higher. And a lip flip is one of the cheapest entry points to Botox at well under $100.</p>
   </div>
 
   <!-- SECTION 5: BY AREA -->
@@ -1737,6 +1756,7 @@
     // Update all DOM targets
     const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
     set('tor-avg-val', avg);
+    set('tor-lead-avg', avg);
     set('tor-qa-avg', '$' + avg);
     set('tor-dc-avg', '$' + avg);
     set('tor-sticky-avg', '$' + avg + '/unit');
@@ -1770,33 +1790,50 @@ function checkPrice() {
   const input = document.getElementById('pcInput');
   const result = document.getElementById('pcResult');
   const val = parseFloat(input.value);
-  if (isNaN(val) || val < 1 || val > 30) {
-    result.style.display = 'none';
-    return;
-  }
-  // Get live avg if available, else use fallback
+  if (isNaN(val) || val < 1 || val > 30) { result.style.display='none'; return; }
   const avgEl = document.getElementById('tor-avg-val');
   const avg = avgEl ? parseFloat(avgEl.textContent) : 9.52;
 
-  let cls, heading, body, cta;
-  if (val <= avg * 0.85) {
-    cls = 'below';
-    heading = 'Below average for the GTA — good deal.';
-    body = `$${val.toFixed(2)}/unit is below the GTA average of $${avg.toFixed(2)}. Make sure the clinic is reputable and the injector is credentialed. A low price from a qualified RN or MD is a great find. A low price from an unknown is a risk.`;
-    cta = 'Compare credentialed clinics near you';
-  } else if (val <= avg * 1.18) {
-    cls = 'mid';
-    heading = 'Right in the GTA sweet spot.';
-    body = `$${val.toFixed(2)}/unit is close to the GTA average of $${avg.toFixed(2)}. This is typical for experienced RN- or NP-led clinics. Check what brand they use and whether a follow-up is included.`;
-    cta = 'See who else is at this price range';
+  let tier, dot, cta;
+  if (val < avg * 0.9) {
+    tier = 'Competitive pricing'; dot = '🟢';
+    cta = `See clinics around $${val.toFixed(0)} →`;
+  } else if (val <= avg * 1.1) {
+    tier = 'Typical pricing'; dot = '🟢';
+    cta = `Compare clinics around the GTA average →`;
   } else {
-    cls = 'above';
-    heading = 'Above average — make sure you know why.';
-    body = `$${val.toFixed(2)}/unit is above the GTA average of $${avg.toFixed(2)}. Premium prices are common at physician-led or concierge clinics. If it is a physician injecting directly, it may be worth it. If not, compare before you book.`;
-    cta = 'Compare physician-led clinics';
+    tier = 'Premium pricing'; dot = '⭐';
+    cta = `Browse premium clinics →`;
   }
-  result.className = 'price-checker-result ' + cls;
-  result.innerHTML = `<strong>${heading}</strong>${body}<br><a class="price-checker-cta" href="/">${cta} →</a>`;
+
+  // Build the locate-on-scale visual: three rungs (premium/average/competitive)
+  // with the user's quote marker on the appropriate rung
+  const yourTier = val < avg * 0.9 ? 'competitive' : (val <= avg * 1.1 ? 'typical' : 'premium');
+  const premiumP = (avg * 1.25).toFixed(0);
+  const avgP = avg.toFixed(0);
+  const compP = (avg * 0.8).toFixed(0);
+
+  function rung(label, price, key) {
+    const isYou = yourTier === key;
+    return `<div class="pc-scale-row${isYou ? ' pc-scale-you' : ''}">
+      <div class="pc-scale-price">$${price}</div>
+      <div class="pc-scale-track">
+        <span class="pc-scale-dot ${isYou ? 'on' : ''}"></span>
+        <span class="pc-scale-label">${label}${isYou ? ' · your quote' : ''}</span>
+      </div>
+    </div>`;
+  }
+
+  result.className = 'pc-result-card';
+  result.innerHTML = `
+    <div class="pc-tier"><span class="pc-tier-dot">${dot}</span>${tier}</div>
+    <div class="pc-quote">$${val.toFixed(2)}<span> / unit</span></div>
+    <div class="pc-scale">
+      ${rung('Premium', premiumP, 'premium')}
+      ${rung('GTA average', avgP, 'typical')}
+      ${rung('Competitive', compP, 'competitive')}
+    </div>
+    <a class="pc-cta" href="/">${cta}</a>`;
   result.style.display = 'block';
 }
 document.getElementById('pcInput').addEventListener('keydown', function(e) {
