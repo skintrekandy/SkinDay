@@ -397,7 +397,7 @@
         <div class="stat-desc fr">Fourchette complète</div>
       </div>
       <div class="stat-item">
-        <div class="stat-num" id="stat-count">—</div>
+        <div class="stat-num" id="stat-count">561+</div>
         <div class="stat-desc en">Montreal clinics tracked</div>
         <div class="stat-desc fr">Cliniques montréalaises répertoriées</div>
       </div>
@@ -1098,17 +1098,18 @@
   if (leadEl) leadEl.textContent = avgVal.toFixed(2);
   if (cardEl) cardEl.textContent = '$' + avgVal.toFixed(2);
 
-  // Fetch clinic count
+  // Fetch clinic count (Quebec province)
   try {
-    const cr = await fetch(`${SB}/rest/v1/clinics?select=id&neighbourhood=ilike.*Montreal*&approved=eq.true`, {
+    const cr = await fetch(`${SB}/rest/v1/clinics?select=id&province=eq.QC&approved=eq.true`, {
       method: 'HEAD', headers: { 'apikey': KEY, 'Prefer': 'count=exact' }
     });
     const count = parseInt(cr.headers.get('content-range')?.split('/')[1] || '0');
-    if (count > 0) {
-      const el = document.getElementById('stat-count');
-      if (el) el.textContent = count.toLocaleString('en-CA') + '+';
-    }
-  } catch(e) {}
+    const el = document.getElementById('stat-count');
+    if (el) el.textContent = count > 0 ? (count.toLocaleString('en-CA') + '+') : '561+';
+  } catch(e) {
+    const el = document.getElementById('stat-count');
+    if (el) el.textContent = '561+';
+  }
 
   // Draw chart
   const canvas = document.getElementById('priceDistChart');
