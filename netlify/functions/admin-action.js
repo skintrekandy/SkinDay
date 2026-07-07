@@ -399,9 +399,164 @@ exports.handler = async (event) => {
     };
   }
 
+  // ── LIST FLAGGED VOTES (M36 moderation queue) ────────────────────────────────
+  // Votes awaiting review: flagged = true and not yet hidden. Flagged votes still
+  // count publicly; this queue lets a human approve (clear the flag) or remove
+  // (set hidden, dropping it from the count). Enriched with clinic names and two
+  // context signals so the reviewer can judge the pattern.
+  if (action === 'list-flagged-votes') {
+    const { data: votes, error } = await supabase
+      .from('clinic_visits')
+      .select('id, clinic_id, user_id, would_return, treatment_type, visit_month, created_at')
+      .eq('flagged', true)
+      .not('hidden', 'is', true)
+      .order('user_id', { ascending: true })
+      .order('created_at', { ascending: true })
+      .limit(500);
+
+    if (error) {
+      console.error('list-flagged-votes error:', error);
+      return { statusCode: 500, headers, body: JSON.stringify({ error: 'Failed to list flagged votes' }) };
+    }
+
+    const rows = votes || [];
+    if (rows.length === 0) {
+      return { statusCode: 200, headers, body: JSON.stringify({ votes: [] }) };
+    }
+
+    // Clinic names for display.
+    const clinicIds = [...new Set(rows.map(r => String(r.clinic_id)))];
+    const { data: clinicRows } = await supabase
+      .from('clinics')
+      .select('id, name, neighbourhood')
+      .in('id', clinicIds);
+    const clinicNames = {};
+    (clinicRows || []).forEach(c => {
+      clinicNames[String(c.id)] = c.neighbourhood ? (c.name + ' (' + c.neighbourhood + ')') : c.name;
+    });
+
+    // Per-account context: how many clinics this account has voted on (the unique
+    // constraint means one vote per clinic, so this count is a clinic count). A
+    // real patient votes on a few; a staffer blasting locations votes on many.
+    const userIds = [...new Set(rows.map(r => r.user_id))];
+    const { data: userVoteRows } = await supabase
+      .from('clinic_visits')
+      .select('user_id')
+      .in('user_id', userIds)
+      .not('hidden', 'is', true);
+    const userTotals = {};
+    (userVoteRows || []).forEach(v => { userTotals[v.user_id] = (userTotals[v.user_id] || 0) + 1; });
+
+    // Per-clinic context: yes / total among counted votes, to surface all-yes bursts.
+    const { data: clinicVoteRows } = await supabase
+      .from('clinic_visits')
+      .select('clinic_id, would_return')
+      .in('clinic_id', clinicIds)
+      .not('hidden', 'is', true);
+    const clinicYes = {}, clinicTotal = {};
+    (clinicVoteRows || []).forEach(v => {
+      const k = String(v.clinic_id);
+      clinicTotal[k] = (clinicTotal[k] || 0) + 1;
+      if (v.would_return === 'yes') clinicYes[k] = (clinicYes[k] || 0) + 1;
+    });
+
+    const enriched = rows.map(r => {
+      const cid    = String(r.clinic_id);
+      const uTotal = userTotals[r.user_id] || 1;
+      const cYes   = clinicYes[cid]   || 0;
+      const cTotal = clinicTotal[cid] || 0;
+
+      let reason;
+      if (uTotal >= 5) {
+        reason = 'This account has voted on ' + uTotal + ' clinics';
+      } else if (cTotal >= 8 && cYes === cTotal) {
+        reason = 'Clinic is ' + cYes + '/' + cTotal + ' all-yes';
+      } else {
+        reason = 'Flagged for review';
+      }
+
+      return {
+        id:               String(r.id),
+        clinic_id:        cid,
+        clinic_name:      clinicNames[cid] || ('Clinic ' + cid),
+        user_id:          r.user_id,
+        would_return:     r.would_return,
+        treatment_type:   r.treatment_type,
+        visit_month:      r.visit_month,
+        created_at:       r.created_at,
+        user_total_votes: uTotal,
+        clinic_yes:       cYes,
+        clinic_total:     cTotal,
+        reason
+      };
+    });
+
+    return { statusCode: 200, headers, body: JSON.stringify({ votes: enriched }) };
+  }
+
+  // ── REVIEW ONE VOTE (M36) ────────────────────────────────────────────────────
+  // approve: clear the flag, vote stays counted.
+  // remove:  set hidden (drops from the public count) and clear the flag, since
+  //          the review is now resolved.
+  if (action === 'review-vote') {
+    const { visit_id, decision } = body;
+    if (!visit_id) {
+      return { statusCode: 400, headers, body: JSON.stringify({ error: 'visit_id required' }) };
+    }
+    if (!['approve', 'remove'].includes(decision)) {
+      return { statusCode: 400, headers, body: JSON.stringify({ error: "decision must be 'approve' or 'remove'" }) };
+    }
+
+    const update = decision === 'approve'
+      ? { flagged: false }
+      : { hidden: true, flagged: false };
+
+    const { error } = await supabase
+      .from('clinic_visits')
+      .update(update)
+      .eq('id', String(visit_id));
+
+    if (error) {
+      console.error('review-vote error:', error);
+      return { statusCode: 500, headers, body: JSON.stringify({ error: 'Failed to update vote' }) };
+    }
+
+    return { statusCode: 200, headers, body: JSON.stringify({ success: true, visit_id: String(visit_id), decision }) };
+  }
+
+  // ── REVIEW A GROUP OF VOTES (M36) ────────────────────────────────────────────
+  // Same decision applied to many votes at once, e.g. "approve all" for one honest
+  // patient across the locations they visited (the Rejuuv correction path).
+  if (action === 'review-votes-bulk') {
+    const { visit_ids, decision } = body;
+    if (!Array.isArray(visit_ids) || visit_ids.length === 0) {
+      return { statusCode: 400, headers, body: JSON.stringify({ error: 'visit_ids array required' }) };
+    }
+    if (!['approve', 'remove'].includes(decision)) {
+      return { statusCode: 400, headers, body: JSON.stringify({ error: "decision must be 'approve' or 'remove'" }) };
+    }
+
+    const update = decision === 'approve'
+      ? { flagged: false }
+      : { hidden: true, flagged: false };
+
+    const ids = visit_ids.map(String);
+    const { error } = await supabase
+      .from('clinic_visits')
+      .update(update)
+      .in('id', ids);
+
+    if (error) {
+      console.error('review-votes-bulk error:', error);
+      return { statusCode: 500, headers, body: JSON.stringify({ error: 'Failed to update votes' }) };
+    }
+
+    return { statusCode: 200, headers, body: JSON.stringify({ success: true, count: ids.length, decision }) };
+  }
+
     // ── APPROVE / REJECT ────────────────────────────────────────────────────────
   if (!['approve', 'reject', 'revoke'].includes(action)) {
-    return { statusCode: 400, headers, body: JSON.stringify({ error: 'Invalid action. Use approve, reject, revoke, list, set-prices, set-clinic-info, get-clinic-prices, delete-price, or add-clinic.' }) };
+    return { statusCode: 400, headers, body: JSON.stringify({ error: 'Invalid action. Use approve, reject, revoke, list, list-flagged-votes, review-vote, review-votes-bulk, set-prices, set-clinic-info, get-clinic-prices, delete-price, or add-clinic.' }) };
   }
 
   const { claim_id, admin_note } = body;
