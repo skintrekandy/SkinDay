@@ -4501,16 +4501,35 @@ async function initAuth() {
             access_token: session.access_token
           })
         }).then(res => {
-          if (res.ok || res.status === 409) {
-            setTimeout(() => {
-              const toast = document.createElement('div');
-              toast.style.cssText = 'position:fixed;bottom:2rem;left:50%;transform:translateX(-50%);background:#3D7A55;color:#fff;padding:1rem 2rem;border-radius:10px;font-family:\'DM Sans\',sans-serif;font-size:0.95rem;font-weight:500;z-index:9999;box-shadow:0 4px 24px rgba(0,0,0,0.25);white-space:nowrap;';
-              toast.textContent = res.status === 409 ? 'You already voted for this clinic.' : '✓ Your response was recorded — thanks!';
-              document.body.appendChild(toast);
-              setTimeout(() => toast.remove(), 4000);
-            }, 800);
+          // M36: never silently swallow the result. Success, already-voted, and
+          // auth failure each get a clear message. Green for recorded, rose for
+          // anything the user needs to act on.
+          const showToast = (text, bg) => setTimeout(() => {
+            const toast = document.createElement('div');
+            toast.style.cssText = `position:fixed;bottom:2rem;left:50%;transform:translateX(-50%);background:${bg};color:#fff;padding:1rem 2rem;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:0.95rem;font-weight:500;z-index:9999;box-shadow:0 4px 24px rgba(0,0,0,0.25);white-space:nowrap;max-width:90vw;`;
+            toast.textContent = text;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 4000);
+          }, 800);
+
+          if (res.ok) {
+            showToast('\u2713 Your response was recorded, thanks!', '#3D7A55');
+          } else if (res.status === 409) {
+            showToast('You already voted for this clinic.', '#3D7A55');
+          } else if (res.status === 401) {
+            showToast('Sign in to record your vote, then try again.', '#C8725A');
+          } else {
+            showToast('Could not record your vote. Please try again.', '#C8725A');
           }
-        }).catch(() => {});
+        }).catch(() => {
+          setTimeout(() => {
+            const toast = document.createElement('div');
+            toast.style.cssText = "position:fixed;bottom:2rem;left:50%;transform:translateX(-50%);background:#C8725A;color:#fff;padding:1rem 2rem;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:0.95rem;font-weight:500;z-index:9999;box-shadow:0 4px 24px rgba(0,0,0,0.25);white-space:nowrap;max-width:90vw;";
+            toast.textContent = 'Could not record your vote. Please try again.';
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 4000);
+          }, 800);
+        });
       }
     } else if (event === 'SIGNED_OUT') {
       setLoggedOut();
@@ -5237,8 +5256,12 @@ async function fetchMyVotes(clinicIds) {
     const session = (await _sb.auth.getSession()).data.session;
     if (!session?.access_token) return;
     const ids = clinicIds.map(id => `clinic_id=eq.${encodeURIComponent(String(id))}`).join(',');
+    // M36: no moderation filter here. A user's vote row is unique per clinic, so
+    // we always reflect it. Flagged votes now count; hidden ones still exist as a
+    // row. Filtering either out would make the card read "not voted" and let the
+    // user re-click straight into a 409 (already recorded) loop.
     const res = await fetch(
-      `${window.SB_URL}/rest/v1/clinic_visits?user_id=eq.${_currentUser.id}&or=(${ids})&select=clinic_id,would_return&flagged=not.is.true`,
+      `${window.SB_URL}/rest/v1/clinic_visits?user_id=eq.${_currentUser.id}&or=(${ids})&select=clinic_id,would_return`,
       { headers: { 'apikey': window.SB_KEY, 'Authorization': `Bearer ${session.access_token}` } }
     );
     if (!res.ok) return;
@@ -5365,7 +5388,7 @@ window.cardVote = async function(clinicId, val, btnEl) {
     if (prevVote == null) delete _myVotes[id]; else _myVotes[id] = prevVote;
     updateVoteButtons(id);
     _renderVoteCounts(id, prevYes, prevNo);
-    _flashVotePrompt(row, 'Could not save \u2014 try again');
+    _flashVotePrompt(row, 'Could not save, try again');
     return;
   }
 
@@ -5383,7 +5406,7 @@ window.cardVote = async function(clinicId, val, btnEl) {
   if (prevVote == null) delete _myVotes[id]; else _myVotes[id] = prevVote;
   updateVoteButtons(id);
   _renderVoteCounts(id, prevYes, prevNo);
-  _flashVotePrompt(row, res.status === 401 ? 'Please sign in again' : 'Could not save \u2014 try again');
+  _flashVotePrompt(row, res.status === 401 ? 'Sign in to vote' : 'Could not save, try again');
 };
 
 window.selectReturn = function selectReturn(val) {
@@ -5430,6 +5453,12 @@ async function submitVisit() {
 
     if (res.status === 409) {
       document.getElementById('visitError').textContent = 'You already shared your experience for this clinic.';
+      document.getElementById('vrYes').disabled = false;
+      document.getElementById('vrNo').disabled  = false;
+      return;
+    }
+    if (res.status === 401) {
+      document.getElementById('visitError').textContent = 'Please sign in to record your vote.';
       document.getElementById('vrYes').disabled = false;
       document.getElementById('vrNo').disabled  = false;
       return;
@@ -5593,7 +5622,7 @@ function maybeShowVisitPrompt() {
           <button class="cm-vote-btn cm-vote-no"  id="cm-vote-no"  onclick="castModalVote('no')">👎 Wouldn't go back</button>
         </div>
         <div class="cm-vote-signal" id="cm-vote-signal"></div>
-        <div class="cm-vote-confirm" id="cm-vote-confirm" style="display:none">✓ Thanks — your response is recorded</div>
+        <div class="cm-vote-confirm" id="cm-vote-confirm" style="display:none">✓ Thanks, your response is recorded</div>
       </div>
 
       <!-- Price block -->
@@ -5805,8 +5834,14 @@ async function castModalVoteSubmit(clinicId, val) {
     if (res.status === 409) {
       document.getElementById('cm-vote-confirm').textContent = 'You already shared your experience for this clinic.';
       document.getElementById('cm-vote-confirm').style.color = 'var(--muted)';
+    } else if (res.status === 401) {
+      document.getElementById('cm-vote-confirm').textContent = 'Please sign in to record your vote.';
+      document.getElementById('cm-vote-confirm').style.color = 'var(--rose)';
+      document.getElementById('cm-vote-buttons').style.display = '';
+      document.getElementById('cm-vote-yes').disabled = false;
+      document.getElementById('cm-vote-no').disabled  = false;
     } else if (res.ok) {
-      document.getElementById('cm-vote-confirm').textContent = '✓ Thanks — your response is recorded';
+      document.getElementById('cm-vote-confirm').textContent = '\u2713 Thanks, your response is recorded';
       document.getElementById('cm-vote-confirm').style.color = 'var(--green)';
     } else {
       document.getElementById('cm-vote-confirm').textContent = 'Something went wrong. Please try again.';
