@@ -9,6 +9,9 @@
 # can read the template at runtime.
 [functions]
   included_files = ["clinic.html"]
+  # sharp ships a native binary; esbuild must leave it external so it deploys intact.
+  node_bundler = "esbuild"
+  external_node_modules = ["sharp"]
 
 
 # ── CANONICAL HOMEPAGE ───────────────────────────────────────────
@@ -102,6 +105,12 @@
 [[redirects]]
   from   = "/api/update-visit"
   to     = "/.netlify/functions/update-visit"
+  status = 200
+
+# M11 clinic subscription lane: synchronous before/after case upload.
+[[redirects]]
+  from   = "/api/clinic-case-upload"
+  to     = "/.netlify/functions/clinic-case-upload"
   status = 200
 
 
