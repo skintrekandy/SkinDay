@@ -26,30 +26,30 @@
 # force = true is REQUIRED: the old studio.html / visualize.html files still
 # exist in this repo, and without force Netlify serves the static file
 # instead of redirecting.
-# Using 302 (temporary) for the first 48-72h to verify everything works on
-# skinday.com. Switch all four to 301 (permanent) once confirmed stable.
+# Now 301 (permanent): migration to skinday.com confirmed stable, so search
+# engines should pass authority to the new URLs and drop the old ones.
 [[redirects]]
   from   = "/studio"
   to     = "https://skinday.com/studio.html"
-  status = 302
+  status = 301
   force  = true
 
 [[redirects]]
   from   = "/studio.html"
   to     = "https://skinday.com/studio.html"
-  status = 302
+  status = 301
   force  = true
 
 [[redirects]]
   from   = "/visualize"
   to     = "https://skinday.com/visualize.html"
-  status = 302
+  status = 301
   force  = true
 
 [[redirects]]
   from   = "/visualize.html"
   to     = "https://skinday.com/visualize.html"
-  status = 302
+  status = 301
   force  = true
 
 
@@ -103,6 +103,22 @@
   from   = "/api/update-visit"
   to     = "/.netlify/functions/update-visit"
   status = 200
+
+
+# ── LEGACY CLINIC SLUG REDIRECTS ─────────────────────────────────
+# One-off 301s for clinic slugs that changed. MUST stay above the
+# /clinic/* catch-all below: Netlify matches top-to-bottom and the
+# catch-all (force = true) would otherwise swallow these first.
+#
+# Q Esthetics had two locations sharing the slug q-esthetics-laser-clinic
+# (a slug collision). Toronto (id 388) now owns -toronto and Richmond Hill
+# (id 371) owns -richmond-hill. The old bare slug was the indexed Toronto
+# URL and 1,598 requests were hitting it; send them to the Toronto page.
+[[redirects]]
+  from   = "/clinic/q-esthetics-laser-clinic"
+  to     = "/clinic/q-esthetics-laser-clinic-toronto"
+  status = 301
+  force  = true
 
 
 # ── CLINIC PAGES (SSR) ───────────────────────────────────────────
