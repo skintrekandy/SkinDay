@@ -6764,7 +6764,7 @@ let _hoverTimer = null;
 function _normCid(cid) { return String(cid); }
 function _getClinic(cid) { return _allClinics.find(c => String(c.id) === _normCid(cid)) || null; }
 function _getMarker(cid) { return _markers.find(m => m._cid === _normCid(cid) && !m._count) || null; }
-function isMobileMapUI() { return window.matchMedia('(hover: none)').matches; }
+function isMobileMapUI() { return window.matchMedia('(max-width: 768px)').matches; }
 
 // ─── LAYER 3: RENDER LAYER ───────────────────────────────────
 // Pure UI sync. Reads _activeCid, writes only to DOM.
