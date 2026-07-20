@@ -181,7 +181,7 @@ exports.handler = async (event) => {
         .from('clinics')
         .select('id, name, neighbourhood, province, website')
         .eq('approved', true)
-        .eq('country', params.country || 'canada')
+        .ilike('country', params.country || 'canada')
         .order('id', { ascending: true })
         .range(0, 29999);
 
@@ -227,10 +227,10 @@ exports.handler = async (event) => {
         .from('clinics')
         .select(CARD_FIELDS, { count: 'exact' })
         .eq('approved', true)
-        .eq('country', country);
+        .ilike('country', country);
 
       if (search)        q = q.ilike('name', `%${search}%`);
-      if (province)      q = q.eq('province', province);
+      if (province)      q = q.ilike('province', province);
       if (neighbourhood) {
         // Slug-to-exact-name map for cities where accent stripping breaks fuzzy match
         const SLUG_EXACT = {
