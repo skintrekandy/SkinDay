@@ -3,7 +3,7 @@
 // Server-side render for /clinic/{slug} pages.
 //
 // Why this exists:
-//   The existing client-side clinic.html template ships an empty shell —
+//   The existing client-side clinic.html template ships an empty shell -
 //   every clinic URL serves the same generic HTML, populated by JS at runtime.
 //   Googlebot crawls the empty shell first and treats all 5,800 clinic URLs
 //   as duplicates, dropping them from the index.
@@ -12,7 +12,7 @@
 //   On request to /clinic/{slug}, fetch the clinic from Supabase, inject
 //   real <title>, <meta>, OpenGraph, canonical, and a baseline content
 //   block into the HTML before sending. The existing client-side JS then
-//   hydrates over it — user experience unchanged, crawler experience fixed.
+//   hydrates over it - user experience unchanged, crawler experience fixed.
 //
 // Routing (in netlify.toml):
 //   [[redirects]]
@@ -65,15 +65,15 @@ function escapeHtml(s) {
 
 // ── SEO STRING BUILDERS ───────────────────────────────────────────
 // These mirror what a well-crafted manual page would have for each clinic.
-// Keep them succinct — Google truncates titles at ~60 chars and descriptions
+// Keep them succinct - Google truncates titles at ~60 chars and descriptions
 // at ~155 chars on SERPs.
 
 function buildTitle(clinic) {
   const name = clinic.name || 'Cosmetic Clinic';
   const loc  = clinic.neighbourhood || clinic.area || clinic.province || '';
-  // "Lumiere Aesthetics — Botox Price & Reviews · Toronto · SkinDay"
+  // "Lumiere Aesthetics - Botox Price & Reviews · Toronto · SkinDay"
   // Keep under 60 chars when possible
-  const base = `${name} — Botox Price & Reviews`;
+  const base = `${name} - Botox Price & Reviews`;
   const suffix = loc ? ` · ${loc}` : '';
   return `${base}${suffix} · SkinDay`;
 }
@@ -154,7 +154,7 @@ function buildSchema(clinic) {
   return JSON.stringify(schema).replace(/</g, '\\u003c');
 }
 
-// Server-rendered content block — minimal, semantic, crawler-focused.
+// Server-rendered content block - minimal, semantic, crawler-focused.
 //
 // Goal: defeat Google's Soft 404 classification by giving the page real,
 // unique, body-level content before any JavaScript runs.
@@ -292,7 +292,41 @@ function patchTemplate(html, clinic) {
 
 // ── HANDLER ──────────────────────────────────────────────────────
 
+// Hard timeout: return 503 (retry-able) instead of letting Netlify's 10s limit
+// fire a 500 (which Search Console logs as a server error and can hurt rankings).
+// 8 seconds gives the main logic 8s to complete; the remaining 2s is buffer for
+// Netlify's own response overhead. 503 tells Google "temporarily unavailable" -
+// it will retry and the page stays in good standing.
+function withTimeout(promise, ms) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`render-clinic timeout after ${ms}ms`)), ms)
+    ),
+  ]);
+}
+
 exports.handler = async (event) => {
+  try {
+    return await withTimeout(_handler(event), 8000);
+  } catch (err) {
+    if (err.message && err.message.includes('timeout')) {
+      console.error('render-clinic timeout:', err.message);
+      return {
+        statusCode: 503,
+        headers: {
+          'Content-Type': 'text/plain',
+          'Retry-After': '30',
+        },
+        body: 'Service temporarily unavailable. Please try again.',
+      };
+    }
+    console.error('render-clinic unhandled error:', err);
+    return { statusCode: 500, body: 'Internal error' };
+  }
+};
+
+async function _handler(event) {
   try {
     // Slug arrives via path splat from netlify.toml redirect.
     // Netlify can deliver this in several places depending on routing config,
@@ -326,29 +360,66 @@ exports.handler = async (event) => {
     );
 
     // Mirror get-clinics.js slug-mode shape so SEO output matches what
-    // the client-side renderer ultimately shows. Keep this minimal —
+    // the client-side renderer ultimately shows. Keep this minimal -
     // we only need fields used in title/desc/body, not the full payload.
     //
     // NOTE: we deliberately do NOT filter by approved here. We need to
     // distinguish three cases:
     //   (a) approved clinic        → render the page
-    //   (b) exists but unapproved  → 301 to "/" (recovers any accrued SEO
-    //                                 signal; avoids a dead end for users
-    //                                 clicking an old Google result)
+    //   (b) exists but unapproved  -> 410 Gone (removed listing; body
+    //                                 carries noindex plus a link to the
+    //                                 directory so users are not stranded)
     //   (c) slug not in DB at all  → real 404 (genuine garbage URL)
-    const { data: clinic, error } = await supabase
+    //
+    // Slugs are NOT unique. Three locations of one chain share a name and
+    // therefore a generated slug, and a Visualize Pro sign-up row carries the
+    // same generated slug as the directory listing it belongs to. The old
+    // query was .eq('slug', slug).limit(1).single() with no ordering, so
+    // Postgres was free to return any matching row, and which one it returned
+    // changed whenever the rows were rewritten. When it happened to return an
+    // unapproved row, the approved listing beside it was served as 410 Gone.
+    // Order explicitly and pick deliberately instead.
+    const { data: rows, error } = await supabase
       .from('clinics')
       .select(`
         id, name, slug, neighbourhood, area, province,
         rating, reviews, price, injector_credentials, logo_url, approved,
-        phone, website
+        phone, website, source
       `)
       .eq('slug', slug)
-      .limit(1)
-      .single();
+      .order('approved', { ascending: false, nullsFirst: false })
+      .order('id', { ascending: true })
+      .limit(10);
+
+    // A database error is not the same thing as "this clinic does not exist".
+    // Answering 404 on a transient failure lets an outage deindex a live page,
+    // so fail soft with a 503 that asks the crawler to come back instead.
+    if (error) {
+      console.error('render-clinic: slug lookup failed', slug, error.message);
+      return {
+        statusCode: 503,
+        headers: {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Retry-After': '120',
+        },
+        body: '<!DOCTYPE html><html><head><title>Temporarily unavailable \u00b7 SkinDay</title><meta name="robots" content="noindex" /></head><body><h1>Temporarily unavailable</h1><p>Please try again shortly, or <a href="/">browse clinics on SkinDay</a>.</p></body></html>',
+      };
+    }
+
+    // Prefer an approved directory listing. Fall back to any approved row, and
+    // only then to an unapproved one, so the 410 branch below still fires for a
+    // genuinely removed listing. Lowest id wins among equals, which keeps the
+    // longest-standing listing on the URL that search engines already indexed.
+    const matches = rows || [];
+    const approvedMatches = matches.filter(r => r.approved === true);
+    const clinic =
+      approvedMatches.find(r => r.source !== 'signup') ||
+      approvedMatches[0] ||
+      matches[0] ||
+      null;
 
     // Case (c): slug not found at all → real 404.
-    if (error || !clinic) {
+    if (!clinic) {
       return {
         statusCode: 404,
         headers: { 'Content-Type': 'text/html; charset=utf-8' },
@@ -357,48 +428,57 @@ exports.handler = async (event) => {
     }
 
     // Case (b): clinic exists but is no longer approved (removed in cleanup,
-    // non-cosmetic, etc.) → permanent redirect to the directory. A 301 passes
-    // any accumulated ranking signal to the homepage and gives users who land
-    // here from an old search result somewhere useful to go.
+    // non-cosmetic, etc.). Return 410 Gone rather than 301 to "/". Mass
+    // redirects of removed pages to the bare homepage get reclassified by
+    // Google as Soft 404s and keep getting re-crawled, so they never leave
+    // the index cleanly. A 410 says the page is intentionally gone: it drops
+    // from the index quickly and crawling backs off. The body still carries
+    // noindex and a human-friendly link to the directory, so a user landing
+    // here from an old search result is not stranded. If the clinic is later
+    // re-approved this path returns 200 again and it re-indexes on its own.
     if (clinic.approved !== true) {
       return {
-        statusCode: 301,
-        headers: { 'Location': '/' },
-        body: '',
+        statusCode: 410,
+        headers: { 'Content-Type': 'text/html; charset=utf-8' },
+        body: '<!DOCTYPE html><html><head><title>Clinic no longer listed \u00b7 SkinDay</title><meta name="robots" content="noindex" /></head><body><h1>This clinic is no longer listed</h1><p>This listing has been removed from SkinDay. <a href="/">Browse current clinics</a>.</p></body></html>',
       };
     }
 
     // Case (a): approved → fall through and render normally.
 
-    // Optional: attach expertise for richer SEO body
-    try {
-      const { data: expertiseRows } = await supabase
+    // Run the two optional enrichment queries in parallel rather than sequentially.
+    // Sequential adds ~200-400ms per request; under a Google crawl burst this was
+    // the primary cause of Netlify function timeouts (5xx in Search Console).
+    // Both are non-fatal - if either fails the page still renders with base data.
+    const [expertiseResult, priceResult] = await Promise.allSettled([
+      supabase
         .from('clinic_expertise')
         .select('value, is_other, other_text')
         .eq('clinic_id', String(clinic.id))
-        .limit(10);
-      if (expertiseRows && expertiseRows.length) {
-        clinic.identity = {
-          expertise: expertiseRows.map(r => ({
-            label: r.is_other ? r.other_text : r.value
-          })),
-        };
-      }
-    } catch (_) { /* non-fatal */ }
-
-    // Sync lowest price from clinic_prices, since clinics.price snapshot
-    // can lag behind the breakdown table (matches get-clinics.js behavior).
-    try {
-      const { data: priceRows } = await supabase
+        .limit(10),
+      supabase
         .from('clinic_prices')
         .select('price')
         .eq('clinic_id', String(clinic.id))
         .order('price', { ascending: true })
-        .limit(1);
-      if (priceRows && priceRows.length && priceRows[0].price != null) {
-        clinic.price = priceRows[0].price;
+        .limit(1),
+    ]);
+
+    if (expertiseResult.status === 'fulfilled') {
+      const rows = expertiseResult.value.data;
+      if (rows && rows.length) {
+        clinic.identity = {
+          expertise: rows.map(r => ({ label: r.is_other ? r.other_text : r.value })),
+        };
       }
-    } catch (_) { /* non-fatal */ }
+    }
+
+    if (priceResult.status === 'fulfilled') {
+      const rows = priceResult.value.data;
+      if (rows && rows.length && rows[0].price != null) {
+        clinic.price = rows[0].price;
+      }
+    }
 
     const template = loadTemplate();
     const rendered = patchTemplate(template, clinic);
@@ -423,6 +503,6 @@ exports.handler = async (event) => {
     };
   } catch (err) {
     console.error('render-clinic error:', err);
-    return { statusCode: 500, body: 'Internal error' };
+    throw err; // re-throw so outer handler's catch picks it up
   }
-};
+}
