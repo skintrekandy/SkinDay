@@ -370,19 +370,56 @@ async function _handler(event) {
     //                                 carries noindex plus a link to the
     //                                 directory so users are not stranded)
     //   (c) slug not in DB at all  → real 404 (genuine garbage URL)
-    const { data: clinic, error } = await supabase
+    //
+    // Slugs are NOT unique. Three locations of one chain share a name and
+    // therefore a generated slug, and a Visualize Pro sign-up row carries the
+    // same generated slug as the directory listing it belongs to. The old
+    // query was .eq('slug', slug).limit(1).single() with no ordering, so
+    // Postgres was free to return any matching row, and which one it returned
+    // changed whenever the rows were rewritten. When it happened to return an
+    // unapproved row, the approved listing beside it was served as 410 Gone.
+    // Order explicitly and pick deliberately instead.
+    const { data: rows, error } = await supabase
       .from('clinics')
       .select(`
         id, name, slug, neighbourhood, area, province,
         rating, reviews, price, injector_credentials, logo_url, approved,
-        phone, website
+        phone, website, source
       `)
       .eq('slug', slug)
-      .limit(1)
-      .single();
+      .order('approved', { ascending: false, nullsFirst: false })
+      .order('id', { ascending: true })
+      .limit(10);
+
+    // A database error is not the same thing as "this clinic does not exist".
+    // Answering 404 on a transient failure lets an outage deindex a live page,
+    // so fail soft with a 503 that asks the crawler to come back instead.
+    if (error) {
+      console.error('render-clinic: slug lookup failed', slug, error.message);
+      return {
+        statusCode: 503,
+        headers: {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Retry-After': '120',
+        },
+        body: '<!DOCTYPE html><html><head><title>Temporarily unavailable \u00b7 SkinDay</title><meta name="robots" content="noindex" /></head><body><h1>Temporarily unavailable</h1><p>Please try again shortly, or <a href="/">browse clinics on SkinDay</a>.</p></body></html>',
+      };
+    }
+
+    // Prefer an approved directory listing. Fall back to any approved row, and
+    // only then to an unapproved one, so the 410 branch below still fires for a
+    // genuinely removed listing. Lowest id wins among equals, which keeps the
+    // longest-standing listing on the URL that search engines already indexed.
+    const matches = rows || [];
+    const approvedMatches = matches.filter(r => r.approved === true);
+    const clinic =
+      approvedMatches.find(r => r.source !== 'signup') ||
+      approvedMatches[0] ||
+      matches[0] ||
+      null;
 
     // Case (c): slug not found at all → real 404.
-    if (error || !clinic) {
+    if (!clinic) {
       return {
         statusCode: 404,
         headers: { 'Content-Type': 'text/html; charset=utf-8' },
