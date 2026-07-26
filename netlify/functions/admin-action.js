@@ -55,6 +55,52 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+// Where a price came from. 'inquiry' means someone asked the clinic, 'clinic'
+// means the clinic maintains it themselves, 'website' means it was published
+// openly on the clinic's own site and read from there (M38 crawl). The label the
+// directory shows patients is driven off this, so it has to be truthful.
+const PRICE_SOURCES = ['inquiry', 'clinic', 'website'];
+
+// Recompute clinics.price from EVERY row in clinic_prices for this clinic.
+//
+// The old code reduced over only the prices in the current request, so a clinic
+// with Dysport at $4 already on file would end up with clinics.price = 12 after
+// someone saved Botox at $12. The card reads clinics.price and the modal reads
+// clinic_prices, so the two disagreed and the price filter used the wrong number.
+// delete-price never re-synced at all, which left a deleted price on the card
+// indefinitely.
+//
+// One write to clinics per call. That matters because clinics carries an
+// approve-clinic trigger that fires the approve-claim webhook on every row
+// update, so this is deliberately not called in a loop over a chain.
+async function syncClinicLowestPrice(clinicId) {
+  const id = String(clinicId);
+
+  const { data: rows, error } = await supabase
+    .from('clinic_prices')
+    .select('price, toxin, price_source, price_date')
+    .eq('clinic_id', id)
+    .order('price', { ascending: true })
+    .limit(1);
+
+  if (error) {
+    console.error('syncClinicLowestPrice read error:', error);
+    return { ok: false, error: error.message };
+  }
+
+  const update = (rows && rows.length)
+    ? { price: rows[0].price, price_source: rows[0].price_source,
+        price_date: rows[0].price_date, toxin_type: rows[0].toxin }
+    : { price: null, price_source: null, price_date: null, toxin_type: null };
+
+  const { error: upErr } = await supabase.from('clinics').update(update).eq('id', id);
+  if (upErr) {
+    console.error('syncClinicLowestPrice write error:', upErr);
+    return { ok: false, error: upErr.message };
+  }
+  return { ok: true, price: update.price };
+}
+
 exports.handler = async (event) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -114,19 +160,41 @@ exports.handler = async (event) => {
       return { statusCode: 400, headers, body: JSON.stringify({ error: 'prices array required' }) };
     }
 
-    const priceDate = new Date().toISOString().split('T')[0];
+    const priceDate = body.price_date || new Date().toISOString().split('T')[0];
 
-    // Ensure clinic row exists FIRST (foreign key requirement)
-    await supabase
+    // Where these prices came from. Defaults to 'inquiry' so the price intake
+    // form keeps working unchanged, but it is no longer hard-coded: a crawled
+    // price must not be presented to patients as one you verified by phone.
+    const priceSource = PRICE_SOURCES.includes(body.price_source) ? body.price_source : 'inquiry';
+
+    // The clinic row must exist for the foreign key. Only create it if it is
+    // genuinely missing. The old code upserted { id, approved: true } every
+    // time, and on an existing row an upsert is an update, so saving a price
+    // silently published an unapproved clinic. It also wrote to clinics twice
+    // per save, firing the approve-clinic webhook twice.
+    const { data: existingClinic } = await supabase
       .from('clinics')
-      .upsert({ id: String(clinic_id), approved: true }, { onConflict: 'id' });
+      .select('id')
+      .eq('id', String(clinic_id))
+      .maybeSingle();
+
+    if (!existingClinic) {
+      const { error: newClinicErr } = await supabase
+        .from('clinics')
+        .insert({ id: String(clinic_id), approved: true });
+      if (newClinicErr) {
+        console.error('set-prices clinic insert error:', newClinicErr);
+        return { statusCode: 500, headers, body: JSON.stringify({ error: newClinicErr.message }) };
+      }
+    }
 
     const rows = prices.map(p => ({
       clinic_id:     String(clinic_id),
       toxin:         p.toxin,
       price:         parseFloat(p.price),
       injector_type: p.injector_type || '',
-      price_source:  'inquiry',
+      currency:      'CAD',
+      price_source:  priceSource,
       price_date:    priceDate,
       updated_at:    new Date().toISOString()
     }));
@@ -140,19 +208,11 @@ exports.handler = async (event) => {
       return { statusCode: 500, headers, body: JSON.stringify({ error: pricesError.message }) };
     }
 
-    // Sync lowest price back to clinics table for card display
-    const lowestRow = rows.reduce((min, p) => p.price < min.price ? p : min, rows[0]);
-    await supabase
-      .from('clinics')
-      .update({
-        price:        lowestRow.price,
-        price_source: lowestRow.price_source,
-        price_date:   lowestRow.price_date,
-        toxin_type:   lowestRow.toxin
-      })
-      .eq('id', String(clinic_id));
+    // Sync the lowest price back to clinics for card display, computed across
+    // every row this clinic has, not just the ones in this request.
+    await syncClinicLowestPrice(clinic_id);
 
-    return { statusCode: 200, headers, body: JSON.stringify({ success: true, inserted: rows.length }) };
+    return { statusCode: 200, headers, body: JSON.stringify({ success: true, inserted: rows.length, price_source: priceSource }) };
   }
 
   // ── SET CLINIC INFO (credentials + languages) ────────────────────────────────
@@ -223,6 +283,14 @@ exports.handler = async (event) => {
       return { statusCode: 400, headers, body: JSON.stringify({ error: 'price_id required' }) };
     }
 
+    // Read the row first: after the delete there is no way to know which clinic
+    // needs its card price recomputed.
+    const { data: doomed } = await supabase
+      .from('clinic_prices')
+      .select('clinic_id')
+      .eq('id', price_id)
+      .maybeSingle();
+
     const { error } = await supabase
       .from('clinic_prices')
       .delete()
@@ -232,7 +300,174 @@ exports.handler = async (event) => {
       return { statusCode: 500, headers, body: JSON.stringify({ error: error.message }) };
     }
 
+    // Without this, deleting a clinic's lowest price leaves it on the card and
+    // in the price filter forever.
+    if (doomed && doomed.clinic_id) await syncClinicLowestPrice(doomed.clinic_id);
+
     return { statusCode: 200, headers, body: JSON.stringify({ success: true }) };
+  }
+
+  // ── PRICE CANDIDATES (M38 crawl review) ─────────────────────────────────────
+  // Candidates live in clinic_price_candidates, which has RLS enabled and no
+  // policies, so the public key cannot read them. Nothing a crawler found is
+  // visible to a patient until it is approved here and written to clinic_prices.
+
+  if (action === 'price-candidate-stats') {
+    const counts = {};
+    for (const st of ['needs_review', 'approved', 'rejected']) {
+      const { count } = await supabase
+        .from('clinic_price_candidates')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', st);
+      counts[st] = count || 0;
+    }
+    const { count: queueLeft } = await supabase
+      .from('crawl_price_queue')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'pending');
+
+    return { statusCode: 200, headers, body: JSON.stringify({ counts, queue_pending: queueLeft || 0 }) };
+  }
+
+  if (action === 'list-price-candidates') {
+    const status = body.status || 'needs_review';
+    const limit = Math.min(Math.max(parseInt(body.limit, 10) || 100, 1), 500);
+
+    const { data: cands, error } = await supabase
+      .from('clinic_price_candidates')
+      .select('*')
+      .eq('status', status)
+      .order('host', { ascending: true })
+      .order('toxin', { ascending: true })
+      .limit(limit);
+
+    if (error) {
+      console.error('list-price-candidates error:', error);
+      return { statusCode: 500, headers, body: JSON.stringify({ error: error.message }) };
+    }
+
+    // Names in a second query rather than a PostgREST embed, so this does not
+    // depend on the foreign key being named a particular way.
+    const ids = [...new Set((cands || []).map(c => String(c.clinic_id)))];
+    const names = {};
+    if (ids.length) {
+      const { data: clinics } = await supabase
+        .from('clinics')
+        .select('id, name, region, province, website')
+        .in('id', ids);
+      (clinics || []).forEach(c => { names[String(c.id)] = c; });
+    }
+
+    const out = (cands || []).map(c => ({
+      ...c,
+      clinic_name:    names[String(c.clinic_id)]?.name || ('Clinic ' + c.clinic_id),
+      clinic_region:  names[String(c.clinic_id)]?.region || null,
+      clinic_province: names[String(c.clinic_id)]?.province || null
+    }));
+
+    return { statusCode: 200, headers, body: JSON.stringify({ candidates: out }) };
+  }
+
+  if (action === 'approve-price-candidates') {
+    const ids = Array.isArray(body.ids) ? body.ids : (body.id ? [body.id] : []);
+    if (!ids.length) {
+      return { statusCode: 400, headers, body: JSON.stringify({ error: 'id or ids required' }) };
+    }
+
+    const nowIso = new Date().toISOString();
+    let approved = 0, alreadyPriced = 0;
+    const touched = new Set();
+    const errors = [];
+
+    for (const id of ids) {
+      const { data: cand } = await supabase
+        .from('clinic_price_candidates')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (!cand) { errors.push('candidate ' + id + ' not found'); continue; }
+
+      // A price obtained by asking the clinic outranks anything published on a
+      // web page, so an existing price for this toxin is never overwritten.
+      const { data: existing } = await supabase
+        .from('clinic_prices')
+        .select('id')
+        .eq('clinic_id', String(cand.clinic_id))
+        .eq('toxin', cand.toxin)
+        .limit(1);
+
+      if (existing && existing.length) {
+        await supabase
+          .from('clinic_price_candidates')
+          .update({ status: 'rejected', reviewed_at: nowIso,
+                    note: 'clinic already has a ' + cand.toxin + ' price' })
+          .eq('id', id);
+        alreadyPriced++;
+        continue;
+      }
+
+      // price_date is the day the page was READ, not the day it was approved.
+      // Staleness is the risk that turns a crawled price into a real complaint
+      // from a real patient, so the date has to mean what it says.
+      const priceDate = (cand.crawled_at || nowIso).split('T')[0];
+
+      const { error: insErr } = await supabase
+        .from('clinic_prices')
+        .upsert({
+          clinic_id:     String(cand.clinic_id),
+          toxin:         cand.toxin,
+          price:         cand.price,
+          injector_type: '',
+          currency:      cand.currency || 'CAD',
+          price_source:  'website',
+          price_date:    priceDate,
+          updated_at:    nowIso
+        }, { onConflict: 'clinic_id,toxin,injector_type' });
+
+      if (insErr) {
+        console.error('approve-price-candidate insert error:', insErr);
+        errors.push(insErr.message);
+        continue;
+      }
+
+      await supabase
+        .from('clinic_price_candidates')
+        .update({ status: 'approved', reviewed_at: nowIso })
+        .eq('id', id);
+
+      touched.add(String(cand.clinic_id));
+      approved++;
+    }
+
+    // One clinics write per affected clinic, after all its prices are in, rather
+    // than once per candidate. clinics carries the approve-clinic trigger.
+    for (const clinicId of touched) await syncClinicLowestPrice(clinicId);
+
+    return { statusCode: 200, headers, body: JSON.stringify({
+      success: errors.length === 0, approved, already_priced: alreadyPriced,
+      clinics_synced: touched.size, errors
+    })};
+  }
+
+  if (action === 'reject-price-candidates') {
+    const ids = Array.isArray(body.ids) ? body.ids : (body.id ? [body.id] : []);
+    if (!ids.length) {
+      return { statusCode: 400, headers, body: JSON.stringify({ error: 'id or ids required' }) };
+    }
+
+    const { error } = await supabase
+      .from('clinic_price_candidates')
+      .update({ status: 'rejected', reviewed_at: new Date().toISOString(),
+                note: body.note || null })
+      .in('id', ids);
+
+    if (error) {
+      console.error('reject-price-candidates error:', error);
+      return { statusCode: 500, headers, body: JSON.stringify({ error: error.message }) };
+    }
+
+    return { statusCode: 200, headers, body: JSON.stringify({ success: true, rejected: ids.length }) };
   }
 
   // ── ADD CLINIC ──────────────────────────────────────────────────────────────
@@ -399,9 +634,164 @@ exports.handler = async (event) => {
     };
   }
 
+  // ── LIST FLAGGED VOTES (M36 moderation queue) ────────────────────────────────
+  // Votes awaiting review: flagged = true and not yet hidden. Flagged votes still
+  // count publicly; this queue lets a human approve (clear the flag) or remove
+  // (set hidden, dropping it from the count). Enriched with clinic names and two
+  // context signals so the reviewer can judge the pattern.
+  if (action === 'list-flagged-votes') {
+    const { data: votes, error } = await supabase
+      .from('clinic_visits')
+      .select('id, clinic_id, user_id, would_return, treatment_type, visit_month, created_at')
+      .eq('flagged', true)
+      .not('hidden', 'is', true)
+      .order('user_id', { ascending: true })
+      .order('created_at', { ascending: true })
+      .limit(500);
+
+    if (error) {
+      console.error('list-flagged-votes error:', error);
+      return { statusCode: 500, headers, body: JSON.stringify({ error: 'Failed to list flagged votes' }) };
+    }
+
+    const rows = votes || [];
+    if (rows.length === 0) {
+      return { statusCode: 200, headers, body: JSON.stringify({ votes: [] }) };
+    }
+
+    // Clinic names for display.
+    const clinicIds = [...new Set(rows.map(r => String(r.clinic_id)))];
+    const { data: clinicRows } = await supabase
+      .from('clinics')
+      .select('id, name, neighbourhood')
+      .in('id', clinicIds);
+    const clinicNames = {};
+    (clinicRows || []).forEach(c => {
+      clinicNames[String(c.id)] = c.neighbourhood ? (c.name + ' (' + c.neighbourhood + ')') : c.name;
+    });
+
+    // Per-account context: how many clinics this account has voted on (the unique
+    // constraint means one vote per clinic, so this count is a clinic count). A
+    // real patient votes on a few; a staffer blasting locations votes on many.
+    const userIds = [...new Set(rows.map(r => r.user_id))];
+    const { data: userVoteRows } = await supabase
+      .from('clinic_visits')
+      .select('user_id')
+      .in('user_id', userIds)
+      .not('hidden', 'is', true);
+    const userTotals = {};
+    (userVoteRows || []).forEach(v => { userTotals[v.user_id] = (userTotals[v.user_id] || 0) + 1; });
+
+    // Per-clinic context: yes / total among counted votes, to surface all-yes bursts.
+    const { data: clinicVoteRows } = await supabase
+      .from('clinic_visits')
+      .select('clinic_id, would_return')
+      .in('clinic_id', clinicIds)
+      .not('hidden', 'is', true);
+    const clinicYes = {}, clinicTotal = {};
+    (clinicVoteRows || []).forEach(v => {
+      const k = String(v.clinic_id);
+      clinicTotal[k] = (clinicTotal[k] || 0) + 1;
+      if (v.would_return === 'yes') clinicYes[k] = (clinicYes[k] || 0) + 1;
+    });
+
+    const enriched = rows.map(r => {
+      const cid    = String(r.clinic_id);
+      const uTotal = userTotals[r.user_id] || 1;
+      const cYes   = clinicYes[cid]   || 0;
+      const cTotal = clinicTotal[cid] || 0;
+
+      let reason;
+      if (uTotal >= 5) {
+        reason = 'This account has voted on ' + uTotal + ' clinics';
+      } else if (cTotal >= 8 && cYes === cTotal) {
+        reason = 'Clinic is ' + cYes + '/' + cTotal + ' all-yes';
+      } else {
+        reason = 'Flagged for review';
+      }
+
+      return {
+        id:               String(r.id),
+        clinic_id:        cid,
+        clinic_name:      clinicNames[cid] || ('Clinic ' + cid),
+        user_id:          r.user_id,
+        would_return:     r.would_return,
+        treatment_type:   r.treatment_type,
+        visit_month:      r.visit_month,
+        created_at:       r.created_at,
+        user_total_votes: uTotal,
+        clinic_yes:       cYes,
+        clinic_total:     cTotal,
+        reason
+      };
+    });
+
+    return { statusCode: 200, headers, body: JSON.stringify({ votes: enriched }) };
+  }
+
+  // ── REVIEW ONE VOTE (M36) ────────────────────────────────────────────────────
+  // approve: clear the flag, vote stays counted.
+  // remove:  set hidden (drops from the public count) and clear the flag, since
+  //          the review is now resolved.
+  if (action === 'review-vote') {
+    const { visit_id, decision } = body;
+    if (!visit_id) {
+      return { statusCode: 400, headers, body: JSON.stringify({ error: 'visit_id required' }) };
+    }
+    if (!['approve', 'remove'].includes(decision)) {
+      return { statusCode: 400, headers, body: JSON.stringify({ error: "decision must be 'approve' or 'remove'" }) };
+    }
+
+    const update = decision === 'approve'
+      ? { flagged: false }
+      : { hidden: true, flagged: false };
+
+    const { error } = await supabase
+      .from('clinic_visits')
+      .update(update)
+      .eq('id', String(visit_id));
+
+    if (error) {
+      console.error('review-vote error:', error);
+      return { statusCode: 500, headers, body: JSON.stringify({ error: 'Failed to update vote' }) };
+    }
+
+    return { statusCode: 200, headers, body: JSON.stringify({ success: true, visit_id: String(visit_id), decision }) };
+  }
+
+  // ── REVIEW A GROUP OF VOTES (M36) ────────────────────────────────────────────
+  // Same decision applied to many votes at once, e.g. "approve all" for one honest
+  // patient across the locations they visited (the Rejuuv correction path).
+  if (action === 'review-votes-bulk') {
+    const { visit_ids, decision } = body;
+    if (!Array.isArray(visit_ids) || visit_ids.length === 0) {
+      return { statusCode: 400, headers, body: JSON.stringify({ error: 'visit_ids array required' }) };
+    }
+    if (!['approve', 'remove'].includes(decision)) {
+      return { statusCode: 400, headers, body: JSON.stringify({ error: "decision must be 'approve' or 'remove'" }) };
+    }
+
+    const update = decision === 'approve'
+      ? { flagged: false }
+      : { hidden: true, flagged: false };
+
+    const ids = visit_ids.map(String);
+    const { error } = await supabase
+      .from('clinic_visits')
+      .update(update)
+      .in('id', ids);
+
+    if (error) {
+      console.error('review-votes-bulk error:', error);
+      return { statusCode: 500, headers, body: JSON.stringify({ error: 'Failed to update votes' }) };
+    }
+
+    return { statusCode: 200, headers, body: JSON.stringify({ success: true, count: ids.length, decision }) };
+  }
+
     // ── APPROVE / REJECT ────────────────────────────────────────────────────────
   if (!['approve', 'reject', 'revoke'].includes(action)) {
-    return { statusCode: 400, headers, body: JSON.stringify({ error: 'Invalid action. Use approve, reject, revoke, list, set-prices, set-clinic-info, get-clinic-prices, delete-price, or add-clinic.' }) };
+    return { statusCode: 400, headers, body: JSON.stringify({ error: 'Invalid action. Use approve, reject, revoke, list, list-flagged-votes, review-vote, review-votes-bulk, set-prices, set-clinic-info, get-clinic-prices, delete-price, or add-clinic.' }) };
   }
 
   const { claim_id, admin_note } = body;
