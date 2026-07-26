@@ -3391,6 +3391,14 @@ window.SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsIn
 })();
 
 // ─── DATA ────────────────────────────────────────────────────
+// Provinces are stored lowercase, like languages and injector_credentials.
+// Every other field gets mapped to a display label on the way out; province was
+// the one that printed raw, hence "Toronto, on". Two-letter codes, so a plain
+// uppercase is right — title case would give "On".
+function provinceLabel(p) {
+  return p ? String(p).trim().toUpperCase() : '';
+}
+
 // clinicsIndex: lightweight {id, name, neighbourhood, province} — fetched once
 // used by Near Me, compare slots, hash routing
 let clinicsIndex = [];
@@ -3778,7 +3786,7 @@ function renderPageCards(clinicsData, append) {
           ${c.practitioners && c.practitioners.length > 0
             ? `<div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.2rem;">${c.practitioners[0].name}${c.practitioners[0].designation ? ' · ' + c.practitioners[0].designation : ''}</div>`
             : ''}
-          <div class="clinic-meta">📍 ${c.neighbourhood}${c.province ? `, ${c.province}` : ''}${(() => {
+          <div class="clinic-meta">📍 ${c.neighbourhood}${c.province ? `, ${provinceLabel(c.province)}` : ''}${(() => {
             if (!userLocation) return '';
             const coords = (c.lat && c.lng) ? [parseFloat(c.lat), parseFloat(c.lng)] : (c.maps_url?.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) ? [parseFloat(c.maps_url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/)[1]), parseFloat(c.maps_url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/)[2])] : HOOD_COORDS[c.neighbourhood?.toLowerCase().replace(/\s+/g,'-')]);
             if (!coords) return '';
@@ -4907,7 +4915,7 @@ async function renderShortlistDrawer() {
       <div class="shortlist-item-logo">${logoHTML}</div>
       <div class="shortlist-item-info">
         <div class="shortlist-item-name">${clinic.name}</div>
-        <div class="shortlist-item-meta">📍 ${clinic.neighbourhood || ''}${clinic.province ? ', '+clinic.province : ''}${credText ? ' · '+credText : ''}</div>
+        <div class="shortlist-item-meta">📍 ${clinic.neighbourhood || ''}${clinic.province ? ', '+provinceLabel(clinic.province) : ''}${credText ? ' · '+credText : ''}</div>
         <div class="shortlist-item-price">${price}</div>
       </div>
       <button class="shortlist-item-remove" onclick="toggleSave('${sid}'); setTimeout(renderShortlistDrawer,300);" title="Remove">✕</button>
@@ -5058,7 +5066,7 @@ async function openCompareModal() {
     return `
     <td class="compare-col-header">
       <span class="col-name">${displayName}</span>
-      <span class="col-meta">${c.neighbourhood}${c.province ? " · " + c.province : " · Canada"}</span>
+      <span class="col-meta">${c.neighbourhood}${c.province ? " · " + provinceLabel(c.province) : " · Canada"}</span>
     </td>`;
   }).join('');
 
@@ -6738,7 +6746,7 @@ function buildCard(c, carousel) {
       ${logoHTML}
       <div class="map-card-name-block">
         <div class="map-card-name">${c.name}${tick}</div>
-        <div class="map-card-meta">📍 ${c.neighbourhood||''}${c.province?', '+c.province:''}</div>
+        <div class="map-card-meta">📍 ${c.neighbourhood||''}${c.province?', '+provinceLabel(c.province):''}</div>
       </div>
       <div class="map-card-rating-badge">
         <div class="map-card-rating-score">${rating}</div>
