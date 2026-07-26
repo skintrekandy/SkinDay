@@ -29,10 +29,17 @@ const SB_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const ADMIN_SECRET = process.env.ADMIN_SECRET;
 
 // ── The extractor ───────────────────────────────────────────────────────────
-// Verified against a 28-case golden fixture drawn from five real Canadian
-// pricing pages. The reject rules matter more than the accept rule: half those
-// cases are pages that show a dollar sign and must still yield nothing.
-const MIN_UNIT_PRICE = 2;    // Dysport runs $3-5/unit
+// Verified against a 42-case golden fixture drawn from real Canadian pricing
+// pages AND the first full production run. Two run-driven fixes baked in: the
+// $6/unit floor and therapeutic-rate rejection, which killed the $2-$4 false
+// positives (therapeutic Botox priced separately from cosmetic on the same page).
+const MIN_UNIT_PRICE = 6;    // Cosmetic neurotoxin in Canada essentially never
+                             // sits below $6/unit. The old $2 floor let THERAPEUTIC
+                             // rates through: essentialsmedispa.ca published cosmetic
+                             // Botox at $10 AND therapeutic (migraine/TMJ, insurance)
+                             // at $3.57, and the extractor took the lower number.
+                             // $6 also excludes promo loss-leaders ($2.98/unit anchors)
+                             // that are real but misleading as a "typical" price.
 const MAX_UNIT_PRICE = 40;   // nothing legitimate is above this per unit
 const MAX_WINDOW_CHARS = 320;
 // With no explicit basis word, the brand and the number must be near enough to
@@ -76,27 +83,65 @@ const UNIT_BASIS = [
 // $195", a consult fee that keyword proximity would store as a Botox price and
 // be wrong by a factor of twenty.
 const DISQUALIFY = [
-  /\bconsult/i, /\bévaluation\b/i, /\bevaluation\b/i, /\bassessment\b/i,
+  // Consultation and assessment FEES, matched narrowly. A bare /consult/ was a
+  // mistake: pricing copy says "book your free consultation" a few words from
+  // the number, and the brand requirement plus the $2-$40 bound already reject
+  // almost every real consult fee, because those run $50 and up. unionmd's
+  // "Évaluation pour des injections esthétiques $195" is caught twice over: it
+  // names no brand, and $195 is far outside a per-unit range.
+  /consultation\s+(fee|fees|charge)/i, /\bfrais\s+de\s+consultation/i,
+  /\bévaluation\s+pour\b/i,
   /\bdeposit\b/i, /\bdépôt\b/i,
-  /\bminimum\b/i, /\bmin\.\b/i,
-  /\bper\s*area\b/i, /\/\s*area\b/i, /\barea\b/i, /\bzones?\b/i, /\brégions?\b/i,
-  /\bpackage\b/i, /\bforfait\b/i, /\bbundl/i, /\bsessions?\b/i, /\bséances?\b/i,
-  /\bsyringe\b/i, /\bseringue\b/i, /\bvial\b/i,
-  /\bmembership\b/i, /\badhésion\b/i, /\bannual\b/i, /\bannuel/i,
+
+  // Genuinely ambiguous: "from $8 per unit with a 20 unit minimum" is not $8.
+  /\bminimum\b/i, /\bmin\.\s/i,
+
+  // Per-area, per-session and package pricing, matched as a BASIS rather than as
+  // a bare word. "The total cost depends on your treatment area" is prose about
+  // an area, not a price per area, and rejecting on the bare word cost real
+  // prices on pages that explain what affects the total.
+  /\bper\s*area\b/i, /\/\s*area\b/i, /\beach\s+area\b/i, /\bpar\s*zone\b/i,
+  /\d+\s*areas?\b/i,
+  /\bper\s*session\b/i, /\/\s*session\b/i, /\d+\s*sessions?\b/i,
+  /\bper\s*syringe\b/i, /\bper\s*vial\b/i,
+  /\bpackage\b/i, /\bforfait\b/i, /\bbundl/i,
+  /\bmembership\b/i, /\badhésion\b/i, /\bannual\s+fee/i,
+
+  // Day-limited and promotional rates are not a standing price.
   /\bmonday|tuesday|wednesday|thursday|friday|saturday|sunday\b/i,
   /\blundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche\b/i,
-  /\bpromo/i, /\bspecial\b/i, /\bsale\b/i, /\blimited\s+time\b/i, /\brabais\b/i,
+  /\bpromo/i, /\bspecial\s+offer/i, /\bsale\b/i, /\blimited\s+time\b/i, /\brabais\b/i,
+
+  // A number sitting beside a different product tells us nothing about the
+  // toxin. This is the real protection against mis-assignment, so it stays broad.
   /\bfiller\b/i, /\bsculptra\b/i, /\bradiesse\b/i, /\bjuvéderm\b/i, /\bjuvederm\b/i,
-  /\brestylane\b/i, /\bharmonyca\b/i, /\bskinvive\b/i,
+  /\brestylane\b/i, /\bharmonyca\b/i, /\bskinvive\b/i, /\bteosyal\b/i, /\bversa\b/i,
   /\blaser\b/i, /\bhair\s+removal\b/i, /\bépilation\b/i,
   /\bfacial\b/i, /\bpeel\b/i, /\bmicroneedling\b/i, /\bprp\b/i, /\bprf\b/i,
   /\bcoolsculpting\b/i, /\bmorpheus\b/i, /\bbelkyra\b/i, /\bkybella\b/i,
-  /\bhyperhidrosis\b/i, /\bmigraine\b/i, /\bbruxism\b/i, /\bsweating\b/i,
-  /\btax\b/i, /\bgst\b/i, /\bhst\b/i,
+  /\bexosome/i, /\bhydrafacial\b/i,
+
+  // Therapeutic / medical-indication pricing is a DIFFERENT rate (often insurance-
+  // linked), not the cosmetic per-unit price a directory patient compares.
+  // essentialsmedispa.ca published cosmetic Botox at $10 AND therapeutic Botox at
+  // $3.57; the crawler took the lower one. This rejects the therapeutic line.
+  /\btherapeutic\b/i, /\bhyperhidrosis\b/i, /\bmigraine\b/i, /\bbruxism\b/i,
+  /\bTMJ\b/, /\bmasseter\b/i, /\bteeth\s*grinding\b/i, /\bjaw\s+clench/i,
+  /\bmedically\s+covered\b/i, /\binsurance\b/i, /\bmedical\s+botox\b/i,
+  /\bexcessive\s+sweat/i,
+
   // Discounts and credits are not prices.
   /\boff\b/i, /\bsave\b/i, /\bcredit\b/i, /\bgift\b/i, /\bcoupon\b/i,
-  /\brebate\b/i, /\bfree\b/i, /\bgratuit/i, /\d\s*%/
+  /\brebate\b/i, /\d\s*%/
 ];
+
+// DELIBERATELY NOT REJECTED, each one having cost a real price on a real page:
+//   "plus tax" / "plus GST"  abbotsfordplasticsurgery.com publishes
+//       "Our Botox treatments are $10 per unit plus tax". Tax does not change the
+//       unit price, and /tax/ threw the whole thing away.
+//   "free"  pricing pages offer free consultations next to the number.
+//   "hyperhidrosis", "migraine", "TMJ"  therapeutic toxin is still priced per
+//       unit, and a per-treatment package price is already outside the bound.
 
 // A toxin name inside a hostname is not a price context:
 // britishcolumbiabotoxclinics.com would otherwise seed a Botox window.
@@ -110,8 +155,8 @@ function stripUrls(text) {
 // Wix and Squarespace drop the whitespace between elements, so a brand ends up
 // glued to the previous word: "Book ServiceBotox/Dysport $7.25". No \b exists
 // between "e" and "B", so /\bbotox\b/ cannot match. Insert the missing space in
-// front of a brand name only, because a blanket lowercase-to-uppercase split
-// would also break "CoolSculpting" and "SkinVive", which the reject list needs.
+// front of a brand name only, because a blanket lowercase-to-uppercase split would
+// also break "CoolSculpting" and "SkinVive", which the reject list depends on.
 const JAMMED = /([a-z])(Botox|Dysport|Xeomin|Nuceiva|Jeuveau|Letybo)/g;
 function unjam(text) {
   return text.replace(JAMMED, (all, before, brand) => before + ' ' + brand);
