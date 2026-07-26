@@ -3100,8 +3100,11 @@
           var total = rows.length;
 
           rows.forEach(function(r) {
-            if (r.province && provinceCounts.hasOwnProperty(r.province)) {
-              provinceCounts[r.province] += 1;
+            // DB stores province lowercase (on/bc/qc/ab/mb); PROVINCE_META keys
+            // are uppercase, so normalise before matching or every bar reads 0.
+            var prov = r.province ? String(r.province).toUpperCase() : null;
+            if (prov && provinceCounts.hasOwnProperty(prov)) {
+              provinceCounts[prov] += 1;
             }
             if (r.neighbourhood === 'Toronto') torontoCount += 1;
             if (r.neighbourhood === 'Kelowna') kelownaCount += 1;
