@@ -648,6 +648,59 @@
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <link rel="manifest" href="/site.webmanifest">
+<style>
+  /* ── M36 flagged-votes queue ─────────────────────────────── */
+  .fv-pattern {
+    font-size: 0.82rem;
+    color: var(--dim);
+    background: rgba(255,255,255,0.03);
+    border-left: 2px solid var(--gold);
+    padding: 0.6rem 0.85rem;
+    border-radius: 0 6px 6px 0;
+    margin-bottom: 1rem;
+    line-height: 1.45;
+  }
+  .fv-rows { display: grid; gap: 0.6rem; }
+  .fv-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 0.9rem;
+    background: rgba(0,0,0,0.15);
+    border: 1px solid rgba(234,226,216,0.06);
+    border-radius: 8px;
+    flex-wrap: wrap;
+  }
+  .fv-row-main { min-width: 0; }
+  .fv-clinic { font-size: 0.95rem; color: var(--cream); font-weight: 500; }
+  .fv-sub { font-size: 0.78rem; color: var(--muted); margin-top: 0.25rem; }
+  .fv-reason { font-size: 0.75rem; color: var(--dim); margin-top: 0.2rem; font-style: italic; }
+  .fv-row-actions { display: flex; gap: 0.5rem; flex-shrink: 0; }
+  .fv-row-actions .btn-approve,
+  .fv-row-actions .btn-reject { padding: 0.45rem 0.9rem; font-size: 0.8rem; }
+  .fv-chip {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.06);
+    color: var(--dim);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .fv-chip.fv-yes { background: var(--green-bg); color: var(--green); }
+  .fv-chip.fv-no  { background: var(--red-bg);   color: var(--red); }
+  .fv-bulk {
+    display: flex;
+    gap: 0.6rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(234,226,216,0.06);
+    flex-wrap: wrap;
+  }
+</style>
 </head>
 <body>
 
@@ -697,6 +750,12 @@
     <button class="nav-tab" data-tab="practitioners" onclick="switchTab('practitioners')">
       👤 Practitioners
     </button>
+    <button class="nav-tab" data-tab="flagged-votes" onclick="switchTab('flagged-votes')">
+      Flagged votes <span class="tab-count zero" id="count-flagged-votes">—</span>
+    </button>
+    <button class="nav-tab" data-tab="price-crawl" onclick="switchTab('price-crawl')">
+      Price crawl
+    </button>
   </nav>
 
   <main class="admin-main">
@@ -723,6 +782,13 @@
       <div class="loading-state">
         <div class="spinner"></div>
         Loading claims…
+      </div>
+    </div>
+
+    <!-- FLAGGED VOTES PANEL (M36) -->
+    <div id="flagged-votes-panel" style="display:none">
+      <div id="flagged-votes-container">
+        <div class="loading-state"><div class="spinner"></div> Loading flagged votes…</div>
       </div>
     </div>
 
@@ -902,6 +968,50 @@
     </div>
 
     <!-- PRACTITIONERS PANEL -->
+    <div id="price-crawl-panel" style="display:none">
+      <div class="add-clinic-form">
+        <div class="form-title">Price crawl</div>
+        <div class="form-subtitle">Reads each clinic's own website for a published per-unit neurotoxin price and lands it as a candidate. Nothing here is visible to patients: candidates sit in a table the public key cannot read, and only approving one writes a price.</div>
+
+        <div class="form-section-label">Run</div>
+        <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;">
+          <button class="btn-primary" id="pc-start" onclick="pcStart()">Start crawl</button>
+          <button class="btn-ghost" id="pc-stop" onclick="pcStop()" style="display:none;">Stop</button>
+          <button class="btn-ghost" onclick="pcStart(true)">Retry failed</button>
+          <span id="pc-progress" style="font-size:.82rem;color:var(--muted);"></span>
+        </div>
+        <div class="form-subtitle" style="margin-top:.6rem;">Watch the first ten hosts before leaving it to loop. A price shown with a question mark had no "per unit" wording anywhere on the page and was accepted on the strength of the amount alone, so those deserve a closer look at review time.</div>
+
+        <div id="pc-log" style="display:none;margin-top:1rem;max-height:340px;overflow:auto;font-size:.78rem;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;border-top:1px solid var(--border);padding-top:.7rem;line-height:1.6;"></div>
+      </div>
+
+      <div class="add-clinic-form" style="margin-top:1.4rem;">
+        <div class="form-title">Review candidates</div>
+        <div class="form-subtitle">Approving writes the price to the clinic, labelled as published on their own website, and dates it to the day the page was read. Rejecting leaves the clinic without a price. A clinic that already has a price for that brand is skipped rather than overwritten.</div>
+
+        <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;margin-bottom:.9rem;">
+          <select class="form-input" id="pc-cand-status" style="max-width:190px;" onchange="pcLoadCandidates()">
+            <option value="needs_review">Needs review</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+          </select>
+          <button class="btn-ghost" onclick="pcLoadCandidates()">Refresh</button>
+          <span id="pc-cand-stats" style="font-size:.82rem;color:var(--muted);"></span>
+        </div>
+
+        <div id="pc-cand-actions" style="display:none;gap:.6rem;align-items:center;flex-wrap:wrap;margin-bottom:.9rem;">
+          <button class="btn-ghost" onclick="pcSelectAll(true)">Select all</button>
+          <button class="btn-ghost" onclick="pcSelectExplicit()">Select only the ones that said per unit</button>
+          <button class="btn-ghost" onclick="pcSelectAll(false)">Clear</button>
+          <button class="btn-approve" onclick="pcApproveSelected()">Approve selected</button>
+          <button class="btn-reject" onclick="pcRejectSelected()">Reject selected</button>
+          <span id="pc-cand-msg" style="font-size:.82rem;color:var(--muted);"></span>
+        </div>
+
+        <div id="pc-cand-list"></div>
+      </div>
+    </div>
+
     <div id="practitioners-panel" style="display:none">
       <div class="add-clinic-form">
         <div class="form-title">Practitioners</div>
@@ -1108,17 +1218,381 @@ function switchTab(tab) {
   const isAddClinic     = tab === 'add-clinic';
   const isPriceIntake   = tab === 'price-intake';
   const isPractitioners = tab === 'practitioners';
-  const isClaims        = !isAddClinic && !isPriceIntake && !isPractitioners;
+  const isFlaggedVotes  = tab === 'flagged-votes';
+  const isPriceCrawl    = tab === 'price-crawl';
+  const isClaims        = !isAddClinic && !isPriceIntake && !isPractitioners && !isFlaggedVotes && !isPriceCrawl;
 
   document.getElementById('claims-container').style.display      = isClaims        ? 'block' : 'none';
   document.getElementById('add-clinic-panel').style.display      = isAddClinic      ? 'block' : 'none';
   document.getElementById('price-intake-panel').style.display    = isPriceIntake    ? 'block' : 'none';
   document.getElementById('practitioners-panel').style.display   = isPractitioners  ? 'block' : 'none';
+  document.getElementById('flagged-votes-panel').style.display   = isFlaggedVotes   ? 'block' : 'none';
+  document.getElementById('price-crawl-panel').style.display     = isPriceCrawl     ? 'block' : 'none';
   document.getElementById('stats-bar').style.display             = isClaims && Object.values(allClaims).flat().length > 0 ? 'grid' : 'none';
 
   if (isClaims) renderTab(tab);
   if (isPriceIntake && !piClinicsLoaded) piLoadClinics();
   if (isPractitioners && !pracClinicsLoaded) pracLoadClinics();
+  if (isFlaggedVotes) loadFlaggedVotes();
+  if (isPriceCrawl) pcLoadCandidates();
+}
+
+// ── PRICE CRAWL (M38) ────────────────────────────────────────
+// Loops /.netlify/functions/crawl-prices a few hosts at a time from the browser.
+// Small batches for two reasons: each invocation finishes well inside the Netlify
+// timeout, and a bad extraction shows up in the log within seconds instead of
+// after a thousand hosts. Same approach as the Taiwan doctor crawl.
+let pcRunning = false;
+let pcTotals  = { hosts: 0, inserted: 0, empty: 0, errors: 0 };
+
+function pcLog(html, colour) {
+  const box = document.getElementById('pc-log');
+  box.style.display = 'block';
+  const line = document.createElement('div');
+  if (colour) line.style.color = colour;
+  line.innerHTML = html;
+  box.appendChild(line);
+  box.scrollTop = box.scrollHeight;
+}
+
+function pcButtons(running) {
+  document.getElementById('pc-start').style.display = running ? 'none' : '';
+  document.getElementById('pc-stop').style.display  = running ? '' : 'none';
+}
+
+function pcStop() {
+  pcRunning = false;
+  pcButtons(false);
+  pcLog('stopped.', 'var(--muted)');
+}
+
+async function pcStart(retry) {
+  if (pcRunning) return;
+  pcRunning = true;
+  pcTotals = { hosts: 0, inserted: 0, empty: 0, errors: 0 };
+  pcButtons(true);
+  pcLog(retry === true ? 'retrying hosts that failed…' : 'starting…', 'var(--muted)');
+
+  while (pcRunning) {
+    let data;
+    try {
+      const res = await fetch('/.netlify/functions/crawl-prices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-secret': adminSecret },
+        body: JSON.stringify({ batch: 3, retry: retry === true })
+      });
+      data = await res.json();
+      if (!res.ok) {
+        pcLog('error: ' + fvEscape((data && data.error) || res.status), 'var(--red)');
+        break;
+      }
+    } catch (e) {
+      pcLog('network error: ' + fvEscape(String((e && e.message) || e)), 'var(--red)');
+      break;
+    }
+
+    for (const p of (data.processed || [])) {
+      pcTotals.hosts++;
+      const host = fvEscape(p.host);
+      if (p.status === 'done') {
+        pcTotals.inserted += (p.inserted || 0);
+        const already = p.skipped ? ' (' + p.skipped + ' already priced)' : '';
+        pcLog('<strong>' + host + '</strong> · ' + fvEscape(p.summary || '') +
+              ' · ' + (p.inserted || 0) + ' candidate' + ((p.inserted === 1) ? '' : 's') +
+              ' across ' + p.clinics + ' clinic' + ((p.clinics === 1) ? '' : 's') + already,
+              'var(--green)');
+      } else if (p.status === 'empty') {
+        pcTotals.empty++;
+        pcLog(host + ' · no published price found', 'var(--muted)');
+      } else if (p.status === 'needs_render') {
+        pcLog(host + ' · javascript only, needs rendering', 'var(--gold)');
+      } else {
+        pcTotals.errors++;
+        pcLog(host + ' · ' + fvEscape(p.error || p.status), 'var(--red)');
+      }
+    }
+
+    document.getElementById('pc-progress').textContent =
+      pcTotals.hosts + ' hosts · ' + pcTotals.inserted + ' candidates · ' +
+      pcTotals.empty + ' no price · ' + pcTotals.errors + ' failed · ' +
+      ((data.remaining === undefined) ? '?' : data.remaining) + ' left';
+
+    if (data.done) { pcLog('queue empty. done.', 'var(--muted)'); break; }
+    await new Promise(r => setTimeout(r, 400));
+  }
+
+  pcRunning = false;
+  pcButtons(false);
+}
+
+// ── PRICE CANDIDATE REVIEW (M38) ─────────────────────────────
+let pcCandidates = [];
+
+function pcCandMsg(text, colour) {
+  const el = document.getElementById('pc-cand-msg');
+  el.textContent = text || '';
+  el.style.color = colour || 'var(--muted)';
+}
+
+async function pcLoadStats() {
+  const { ok, data } = await apiCall({ action: 'price-candidate-stats' });
+  if (!ok || !data || !data.counts) return;
+  document.getElementById('pc-cand-stats').textContent =
+    data.counts.needs_review + ' to review · ' + data.counts.approved + ' approved · ' +
+    data.counts.rejected + ' rejected · ' + data.queue_pending + ' hosts left to crawl';
+}
+
+async function pcLoadCandidates() {
+  const status = document.getElementById('pc-cand-status').value;
+  const list = document.getElementById('pc-cand-list');
+  list.innerHTML = '<div class="loading-state"><div class="spinner"></div> Loading candidates…</div>';
+  pcCandMsg('');
+
+  const { ok, data } = await apiCall({ action: 'list-price-candidates', status: status, limit: 300 });
+  if (!ok) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">!</div><div class="empty-title">Could not load candidates</div><div class="empty-desc">' +
+      fvEscape((data && data.error) || 'Please try again.') + '</div></div>';
+    return;
+  }
+
+  pcCandidates = data.candidates || [];
+  pcRenderCandidates();
+  pcLoadStats();
+}
+
+function pcRenderCandidates() {
+  const list = document.getElementById('pc-cand-list');
+  const actions = document.getElementById('pc-cand-actions');
+  const reviewing = document.getElementById('pc-cand-status').value === 'needs_review';
+
+  if (!pcCandidates.length) {
+    actions.style.display = 'none';
+    list.innerHTML = '<div class="empty-state"><div class="empty-title">Nothing here</div><div class="empty-desc">No candidates with that status.</div></div>';
+    return;
+  }
+  actions.style.display = reviewing ? 'flex' : 'none';
+
+  // Grouped by host, because one host can produce a row per brand per branch and
+  // they are almost always the same decision.
+  const byHost = {};
+  pcCandidates.forEach(c => {
+    const k = c.host || 'unknown';
+    (byHost[k] = byHost[k] || []).push(c);
+  });
+
+  let html = '';
+  Object.keys(byHost).sort().forEach(host => {
+    const rows = byHost[host];
+    html += '<div style="border:1px solid var(--border);border-radius:10px;margin-bottom:.9rem;overflow:hidden;">';
+    html += '<div style="background:var(--warm);padding:.55rem .8rem;font-size:.82rem;display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;">' +
+            '<strong>' + fvEscape(host) + '</strong>' +
+            '<a href="' + fvEscape(rows[0].source_url) + '" target="_blank" rel="noopener" style="color:var(--rose);text-decoration:none;">open the page it came from</a>' +
+            '</div>';
+
+    rows.forEach(c => {
+      const inferred = c.basis_source !== 'explicit';
+      const flag = inferred
+        ? '<span style="background:var(--red-bg);color:var(--red);padding:.1rem .4rem;border-radius:4px;font-size:.7rem;">no per unit wording</span>'
+        : '<span style="background:var(--green-bg);color:var(--green);padding:.1rem .4rem;border-radius:4px;font-size:.7rem;">said per unit</span>';
+      const range = c.from_range
+        ? ' <span style="background:var(--warm);color:var(--muted);padding:.1rem .4rem;border-radius:4px;font-size:.7rem;">low end of a range</span>'
+        : '';
+
+      html += '<div style="padding:.7rem .8rem;border-top:1px solid var(--border);font-size:.84rem;">' +
+        '<div style="display:flex;gap:.6rem;align-items:baseline;flex-wrap:wrap;">' +
+          (reviewing ? '<input type="checkbox" class="pc-cand-cb" value="' + fvEscape(c.id) + '" data-explicit="' + (inferred ? '0' : '1') + '">' : '') +
+          '<strong>$' + fvEscape(c.price) + '</strong>' +
+          '<span style="text-transform:capitalize;">' + fvEscape(c.toxin) + '</span>' +
+          '<span style="color:var(--muted);">' + fvEscape(c.clinic_name) +
+            (c.clinic_region ? ', ' + fvEscape(c.clinic_region) : '') + '</span>' +
+          flag + range +
+        '</div>' +
+        '<div style="color:var(--muted);margin-top:.35rem;font-size:.78rem;font-style:italic;">' +
+          fvEscape(c.raw_text || '') + '</div>' +
+        (reviewing
+          ? '<div style="margin-top:.5rem;display:flex;gap:.4rem;">' +
+            '<button class="btn-approve" onclick="pcDecide([\'' + c.id + '\'], true)">Approve</button>' +
+            '<button class="btn-reject" onclick="pcDecide([\'' + c.id + '\'], false)">Reject</button>' +
+            '</div>'
+          : (c.note ? '<div style="color:var(--muted);margin-top:.35rem;font-size:.76rem;">' + fvEscape(c.note) + '</div>' : '')) +
+        '</div>';
+    });
+    html += '</div>';
+  });
+
+  list.innerHTML = html;
+}
+
+function pcSelectAll(on) {
+  document.querySelectorAll('.pc-cand-cb').forEach(cb => { cb.checked = !!on; });
+}
+
+function pcSelectExplicit() {
+  document.querySelectorAll('.pc-cand-cb').forEach(cb => {
+    cb.checked = cb.dataset.explicit === '1';
+  });
+}
+
+function pcSelectedIds() {
+  return [...document.querySelectorAll('.pc-cand-cb:checked')].map(cb => cb.value);
+}
+
+function pcApproveSelected() { pcDecide(pcSelectedIds(), true); }
+function pcRejectSelected()  { pcDecide(pcSelectedIds(), false); }
+
+async function pcDecide(ids, approve) {
+  if (!ids || !ids.length) { pcCandMsg('Nothing selected.', 'var(--red)'); return; }
+  if (approve && ids.length > 1 && !confirm('Approve ' + ids.length + ' prices? They go live on the directory.')) return;
+
+  pcCandMsg((approve ? 'Approving ' : 'Rejecting ') + ids.length + '…');
+
+  const { ok, data } = await apiCall({
+    action: approve ? 'approve-price-candidates' : 'reject-price-candidates',
+    ids: ids
+  });
+
+  if (!ok) { pcCandMsg(fvEscape((data && data.error) || 'Failed.'), 'var(--red)'); return; }
+
+  if (approve) {
+    const skipped = data.already_priced ? ', ' + data.already_priced + ' skipped as already priced' : '';
+    pcCandMsg(data.approved + ' approved' + skipped + '.', 'var(--green)');
+  } else {
+    pcCandMsg(data.rejected + ' rejected.', 'var(--muted)');
+  }
+  if (data.errors && data.errors.length) pcCandMsg(fvEscape(data.errors[0]), 'var(--red)');
+
+  pcLoadCandidates();
+}
+
+// ── FLAGGED VOTES (M36 moderation queue) ─────────────────────
+let _flaggedVotes = [];
+
+function fvEscape(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+
+function fvSetCount() {
+  const el = document.getElementById('count-flagged-votes');
+  if (!el) return;
+  el.textContent = _flaggedVotes.length;
+  el.classList.toggle('zero', _flaggedVotes.length === 0);
+}
+
+async function loadFlaggedVotes() {
+  const container = document.getElementById('flagged-votes-container');
+  container.innerHTML = '<div class="loading-state"><div class="spinner"></div> Loading flagged votes…</div>';
+
+  const { ok, data } = await apiCall({ action: 'list-flagged-votes' });
+  if (!ok) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">!</div><div class="empty-title">Could not load flagged votes</div><div class="empty-desc">' + fvEscape((data && data.error) || 'Please try again.') + '</div></div>';
+    return;
+  }
+
+  _flaggedVotes = data.votes || [];
+  fvSetCount();
+  renderFlaggedVotes();
+}
+
+function renderFlaggedVotes() {
+  const container = document.getElementById('flagged-votes-container');
+
+  if (_flaggedVotes.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">◎</div><div class="empty-title">No votes awaiting review</div><div class="empty-desc">Flagged votes still count publicly. They appear here for a human to approve (keep counted) or remove (drop from the count).</div></div>';
+    return;
+  }
+
+  // Group by user_id. One account votes at most once per clinic, so a group is
+  // the set of distinct clinics this account voted on.
+  const groups = {};
+  _flaggedVotes.forEach(v => { (groups[v.user_id] = groups[v.user_id] || []).push(v); });
+
+  const cards = Object.keys(groups).map(userId => {
+    const votes       = groups[userId];
+    const shortId     = String(userId).slice(0, 8);
+    const clinicCount = votes.length;
+    const yesCount    = votes.filter(v => v.would_return === 'yes').length;
+    const accountTotal = votes[0].user_total_votes || clinicCount;
+
+    const summary = clinicCount > 1
+      ? (clinicCount + ' flagged votes · ' + yesCount + ' yes')
+      : '1 flagged vote';
+
+    const patternHint = accountTotal >= 5
+      ? ('This account has voted on ' + accountTotal + ' clinics total. Worth a close look before approving.')
+      : ('This account has voted on ' + accountTotal + ' clinic' + (accountTotal === 1 ? '' : 's') + ' total, one vote each. That is the normal pattern for a real patient rating the places they visited.');
+
+    const rows = votes.map(v => {
+      const when = new Date(v.created_at).toLocaleString('en-CA', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      const chip = v.would_return === 'yes'
+        ? '<span class="fv-chip fv-yes">yes</span>'
+        : (v.would_return === 'no' ? '<span class="fv-chip fv-no">no</span>' : '<span class="fv-chip">' + fvEscape(v.would_return) + '</span>');
+      return '' +
+        '<div class="fv-row">' +
+          '<div class="fv-row-main">' +
+            '<div class="fv-clinic">' + fvEscape(v.clinic_name) + '</div>' +
+            '<div class="fv-sub">' + chip + ' · ' + when + (v.treatment_type ? ' · ' + fvEscape(v.treatment_type) : '') + '</div>' +
+            '<div class="fv-reason">' + fvEscape(v.reason) + '</div>' +
+          '</div>' +
+          '<div class="fv-row-actions">' +
+            '<button class="btn-approve" onclick="reviewVote(\'' + fvEscape(v.id) + '\', \'approve\', this)">Approve</button>' +
+            '<button class="btn-reject" onclick="reviewVote(\'' + fvEscape(v.id) + '\', \'remove\', this)">Remove</button>' +
+          '</div>' +
+        '</div>';
+    }).join('');
+
+    const bulk = clinicCount > 1
+      ? ('<div class="fv-bulk">' +
+           '<button class="btn-approve" onclick="reviewGroup(\'' + fvEscape(userId) + '\', \'approve\', this)">Approve all ' + clinicCount + '</button>' +
+           '<button class="btn-reject" onclick="reviewGroup(\'' + fvEscape(userId) + '\', \'remove\', this)">Remove all ' + clinicCount + '</button>' +
+         '</div>')
+      : '';
+
+    return '' +
+      '<div class="claim-card">' +
+        '<div class="claim-header">' +
+          '<div>' +
+            '<div class="claim-clinic-name">Account ' + fvEscape(shortId) + '</div>' +
+            '<div class="claim-neighbourhood">' + summary + '</div>' +
+          '</div>' +
+          '<span class="claim-id">' + fvEscape(userId) + '</span>' +
+        '</div>' +
+        '<div class="fv-pattern">' + patternHint + '</div>' +
+        '<div class="fv-rows">' + rows + '</div>' +
+        bulk +
+      '</div>';
+  });
+
+  container.innerHTML = '<div class="claims-grid">' + cards.join('') + '</div>';
+}
+
+async function reviewVote(visitId, decision, btn) {
+  if (btn) { btn.disabled = true; btn.textContent = decision === 'approve' ? 'Approving…' : 'Removing…'; }
+  const { ok, data } = await apiCall({ action: 'review-vote', visit_id: visitId, decision });
+  if (!ok) {
+    if (btn) { btn.disabled = false; btn.textContent = decision === 'approve' ? 'Approve' : 'Remove'; }
+    alert((data && data.error) || 'Could not update the vote.');
+    return;
+  }
+  _flaggedVotes = _flaggedVotes.filter(v => v.id !== visitId);
+  fvSetCount();
+  renderFlaggedVotes();
+}
+
+async function reviewGroup(userId, decision, btn) {
+  const ids = _flaggedVotes.filter(v => String(v.user_id) === String(userId)).map(v => v.id);
+  if (ids.length === 0) return;
+  const verb = decision === 'approve' ? 'Approve' : 'Remove';
+  if (!confirm(verb + ' all ' + ids.length + ' flagged votes from this account?')) return;
+  if (btn) { btn.disabled = true; btn.textContent = decision === 'approve' ? 'Approving…' : 'Removing…'; }
+  const { ok, data } = await apiCall({ action: 'review-votes-bulk', visit_ids: ids, decision });
+  if (!ok) {
+    if (btn) { btn.disabled = false; btn.textContent = verb + ' all ' + ids.length; }
+    alert((data && data.error) || 'Could not update the votes.');
+    return;
+  }
+  _flaggedVotes = _flaggedVotes.filter(v => String(v.user_id) !== String(userId));
+  fvSetCount();
+  renderFlaggedVotes();
 }
 
 // ── RENDER ───────────────────────────────────────────────────
