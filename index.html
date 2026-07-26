@@ -3468,6 +3468,7 @@ function getRankLabel(rank, price) {
   return { cls: 'rank-mid', label: '$$$' };
 }
 
+function fmtPrice(v){const n=parseFloat(v);return Number.isFinite(n)?String(n):'';}
 function getToxinLabel(toxin) {
   const map = { botox:'Botox', dysport:'Dysport', xeomin:'Xeomin', nuceiva:'Nuceiva', letybo:'Letybo' };
   return map[toxin] || 'Botox';
@@ -6014,7 +6015,7 @@ window.openClinicModal = async function openClinicModal(clinicId) {
       inner.innerHTML = `<div class="cm-price-tiles">${sorted.map((p, i) => `
         <div class="cm-price-tile">
           <p class="cm-price-tile-label">${p.toxin.charAt(0).toUpperCase()+p.toxin.slice(1)}</p>
-          <p class="cm-price-tile-amount ${i === 0 ? 'lowest' : 'regular'}">$${parseFloat(p.price).toFixed(0)}</p>
+          <p class="cm-price-tile-amount ${i === 0 ? 'lowest' : 'regular'}">$${fmtPrice(p.price)}</p>
           <p class="cm-price-tile-sub">/ unit · ${p.injector_type ? (credMap[p.injector_type]||p.injector_type) : 'any injector'}</p>
         </div>`).join('')}</div>`;
     } else {
@@ -6024,7 +6025,7 @@ window.openClinicModal = async function openClinicModal(clinicId) {
             <p class="cm-price-row-name">${p.toxin.charAt(0).toUpperCase()+p.toxin.slice(1)}</p>
             <p class="cm-price-row-inj">${p.injector_type ? (credMap[p.injector_type]||p.injector_type) : 'Any injector'}</p>
           </div>
-          <p class="cm-price-row-amount ${i === 0 ? 'lowest' : 'regular'}">$${parseFloat(p.price).toFixed(0)}<span class="cm-price-row-unit">/unit</span></p>
+          <p class="cm-price-row-amount ${i === 0 ? 'lowest' : 'regular'}">$${fmtPrice(p.price)}<span class="cm-price-row-unit">/unit</span></p>
         </div>`).join('')}</div>`;
     }
 
