@@ -432,6 +432,102 @@ function metaDescription(html) {
   return m ? m[1] : '';
 }
 
+// JSON-LD is stripped out of the prose by toText along with every other script,
+// which throws away the one block a JavaScript-rendered site DOES serve
+// statically. Read it separately: a MedicalBusiness or Service block routinely
+// carries the treatment menu, and treatment names are device names.
+function jsonLdText(html) {
+  const out = [];
+  const re = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]{0,20000}?)<\/script>/gi;
+  let m;
+  while ((m = re.exec(html)) !== null && out.length < 6) {
+    // Keep the VALUES, drop the JSON punctuation and the keys' quoting. Parsing
+    // properly is not worth it: the matcher only wants a bag of words.
+    out.push(m[1].replace(/[{}\[\]"',:]/g, ' ').replace(/\s+/g, ' '));
+  }
+  return out.join(' ').slice(0, 8000);
+}
+
+// ---------------------------------------------------------------------------
+// SITEMAPS. A JavaScript-only site still serves a static sitemap, and the
+// own-page rule wants URLs rather than rendered text, so this recovers the
+// STRONGEST confidence tier from a site whose body copy we cannot read at all.
+// Squarespace, Wix and Square Online all serve one.
+//
+// Paths only ever feed pathHit. They cannot manufacture a prose false positive,
+// and since the Icon bug a path hit no longer clears the generic flag on its
+// own, so widening the path pool is a low-risk way to raise recall.
+// ---------------------------------------------------------------------------
+const SITEMAP_TIMEOUT_MS = 8000;
+const MAX_SITEMAP_URLS = 1200;
+const MAX_CHILD_SITEMAPS = 5;
+
+async function getXml(url) {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), SITEMAP_TIMEOUT_MS);
+  try {
+    const res = await fetch(url, {
+      redirect: 'follow',
+      signal: ctl.signal,
+      headers: { 'user-agent': UA, accept: 'application/xml,text/xml,text/plain,*/*' }
+    });
+    if (!res.ok) return null;
+    const body = await res.text();
+    // A site with no sitemap often serves its 404 PAGE with a 200, so require
+    // this to actually look like XML before believing it.
+    if (!/<(urlset|sitemapindex)\b/i.test(body)) return null;
+    return body;
+  } catch (e) {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function locs(xml) {
+  const out = [];
+  const re = /<loc>\s*([^<\s]{1,400})\s*<\/loc>/gi;
+  let m;
+  while ((m = re.exec(xml)) !== null && out.length < MAX_SITEMAP_URLS) {
+    out.push(m[1].replace(/&amp;/gi, '&'));
+  }
+  return out;
+}
+
+async function sitemapUrls(host) {
+  const bases = ['https://' + host, 'http://' + host];
+  let xml = null, found = null;
+  for (const base of bases) {
+    for (const path of ['/sitemap.xml', '/sitemap_index.xml', '/sitemap-index.xml', '/wp-sitemap.xml']) {
+      xml = await getXml(base + path);
+      if (xml) { found = base + path; break; }
+    }
+    if (xml) break;
+  }
+  // robots.txt is the last resort, and is where Shopify and some builders point.
+  if (!xml) {
+    try {
+      const r = await getPage('https://' + host + '/robots.txt');
+      const hit = r.ok && /Sitemap:\s*(\S+)/i.exec(r.html);
+      if (hit) { xml = await getXml(hit[1]); found = hit[1]; }
+    } catch (e) {}
+  }
+  if (!xml) return { urls: [], source: null };
+
+  let urls = locs(xml);
+  // A sitemap INDEX points at child sitemaps rather than pages. Follow a few.
+  if (/<sitemapindex\b/i.test(xml)) {
+    const children = urls.slice(0, MAX_CHILD_SITEMAPS);
+    urls = [];
+    for (const child of children) {
+      const childXml = await getXml(child);
+      if (childXml) urls = urls.concat(locs(childXml));
+      if (urls.length >= MAX_SITEMAP_URLS) break;
+    }
+  }
+  return { urls: urls.slice(0, MAX_SITEMAP_URLS), source: found };
+}
+
 // Scripts and styles come out first, or a JSON-LD blob or a CSS class named
 // .icon-halo becomes a device claim.
 function toText(html) {
@@ -526,14 +622,19 @@ async function crawlHost(row, matcher) {
     const r = await getPage(url);
     if (!r.ok) { lastError = 'HTTP ' + r.status + (r.error ? ' ' + r.error : '') + ' ' + url; return null; }
     const text = toText(r.html);
-    if (looksJsOnly(r.html, text)) { sawJsOnly = true; return null; }
+    const thin = looksJsOnly(r.html, text);
+    if (thin) sawJsOnly = true;
+    // A JavaScript-only page used to be thrown away whole. Its BODY copy is
+    // indeed empty, but the meta description and the JSON-LD block are served
+    // statically and are worth reading. The empty body is dropped, not the page.
     const page = {
       url: r.url,
-      text: text + ' ' + metaDescription(r.html),
-      links: hrefs(r.html, r.url)
+      text: (thin ? '' : text) + ' ' + metaDescription(r.html) + ' ' + jsonLdText(r.html),
+      links: hrefs(r.html, r.url),
+      thin: thin
     };
     pages.push(page);
-    return page;
+    return thin ? null : page;
   };
 
   let homePage = await readPage(home);
@@ -541,18 +642,30 @@ async function crawlHost(row, matcher) {
     // one retry on the bare http host, which the price run showed recovers a few
     homePage = await readPage('http://' + host + '/');
   }
-  if (!homePage) {
-    return { status: sawJsOnly ? 'needs_render' : 'error', pagesTried, lastError, matches: [], unknowns: [] };
+  // Nothing at all came back, not even a thin page: a genuine fetch failure.
+  if (!pages.length) {
+    return { status: 'error', pagesTried, lastError, matches: [], unknowns: [] };
   }
 
-  const techUrl = pickLink(homePage.links, TECH_HINTS, host.replace(/^www\./, ''), seen);
-  if (techUrl) await readPage(techUrl);
-  const svcUrl = pickLink(homePage.links, SERVICE_HINTS, host.replace(/^www\./, ''), seen);
-  if (svcUrl) await readPage(svcUrl);
+  let techUrl = null;
+  if (homePage) {
+    techUrl = pickLink(homePage.links, TECH_HINTS, host.replace(/^www\./, ''), seen);
+    if (techUrl) await readPage(techUrl);
+    const svcUrl = pickLink(homePage.links, SERVICE_HINTS, host.replace(/^www\./, ''), seen);
+    if (svcUrl) await readPage(svcUrl);
+  }
+
+  // ---- the sitemap pass ---------------------------------------------------
+  // Run for EVERY host, not just the JavaScript-only ones. It costs one extra
+  // fetch and it feeds the own-page tier directly, which is the evidence the
+  // review queue trusts most.
+  const sm = await sitemapUrls(host.replace(/^www\./, ''));
+  const sitemapLinks = sm.urls;
 
   // The homepage nav usually carries every device link on the site, so the
   // own-page signal is computed against the union of hrefs from all pages read.
-  const allLinks = pages.flatMap(p => p.links);
+  const allLinks = pages.flatMap(p => p.links).concat(sitemapLinks);
+  const thinOnly = pages.every(p => p.thin);
   const byDevice = new Map();
   const unknowns = new Map();
 
@@ -571,11 +684,21 @@ async function crawlHost(row, matcher) {
   }
 
   const matches = [...byDevice.values()].slice(0, MAX_DEVICES_PER_HOST);
+
+  // A host whose pages were ALL thin and which still yielded nothing stays
+  // needs_render, because a renderer is the only thing left that could help it.
+  // One that yielded something is done, and its rows are marked so review can
+  // see the evidence came from a sitemap rather than from readable text.
+  const status = matches.length ? 'done' : (thinOnly ? 'needs_render' : 'empty');
+
   return {
-    status: matches.length ? 'done' : 'empty',
+    status: status,
     pagesTried,
     lastError,
     techUrl: techUrl || null,
+    thinOnly: thinOnly,
+    sitemapUrls: sitemapLinks.length,
+    sitemapSource: sm.source,
     matches,
     unknowns: [...unknowns.values()].slice(0, MAX_UNKNOWNS_PER_HOST)
   };
@@ -687,7 +810,11 @@ async function doCrawl(supabase, body) {
             device_id: m.device_id,
             matched_text: m.matched_text,
             source_url: m.source_url,
-            page_kind: m.page_kind,
+            // A host whose pages were all JavaScript-only has no readable body
+            // copy, so its evidence came from the sitemap, the meta description
+            // or a JSON-LD block. Say so, rather than letting review assume the
+            // device name was read off a visible page.
+            page_kind: out.thinOnly ? 'sitemap' : m.page_kind,
             confidence: m.confidence,
             status: 'pending',
             run_id: runId
@@ -731,6 +858,8 @@ async function doCrawl(supabase, body) {
       status: out.status,
       clinics: clinicIds.length,
       pages: out.pagesTried,
+      sitemap_urls: out.sitemapUrls || 0,
+      thin_only: !!out.thinOnly,
       inserted: inserted,
       devices: out.matches.map(m => ({ model: m.model, category: m.category, confidence: m.confidence })),
       unknowns: out.unknowns.map(u => u.token),
