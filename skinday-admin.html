@@ -756,6 +756,9 @@
     <button class="nav-tab" data-tab="price-crawl" onclick="switchTab('price-crawl')">
       Price crawl
     </button>
+    <button class="nav-tab" data-tab="device-crawl" onclick="switchTab('device-crawl')">
+      Device crawl <span class="tab-count zero" id="count-device-crawl">—</span>
+    </button>
   </nav>
 
   <main class="admin-main">
@@ -1008,7 +1011,68 @@
           <span id="pc-cand-msg" style="font-size:.82rem;color:var(--muted);"></span>
         </div>
 
-        <div id="pc-cand-list"></div>
+          <div id="pc-cand-list"></div>
+      </div>
+    </div>
+
+    <!-- DEVICE CRAWL PANEL (M39) -->
+    <div id="device-crawl-panel" style="display:none">
+      <div class="add-clinic-form">
+        <div class="form-title">Device crawl</div>
+        <div class="form-subtitle">Reads each clinic's own website for the aesthetic devices they run, matched against the curated reference list of 82 models. Nothing here is visible to patients: candidates sit in a table the public key cannot read, and only approving one publishes a device.</div>
+
+        <div class="form-section-label">Run</div>
+        <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;">
+          <button class="btn-primary" id="dc-start" onclick="dcStart()">Start crawl</button>
+          <button class="btn-ghost" id="dc-stop" onclick="dcStop()" style="display:none;">Stop</button>
+          <button class="btn-ghost" onclick="dcStart(true)">Retry failed</button>
+          <span id="dc-progress" style="font-size:.82rem;color:var(--muted);"></span>
+        </div>
+        <div class="form-subtitle" style="margin-top:.6rem;">This only advances while the tab is open and awake, same as the price crawl, so do not run both at once. Watch the first ten hosts before leaving it to loop. Each device shows how it was found: <strong>own page</strong> means the clinic has a dedicated page for that machine, which is the strongest evidence; <strong>named</strong> means it was written in the page text; <strong>blog</strong> means it appeared in an article and may be a device they only wrote about.</div>
+
+        <div id="dc-log" style="display:none;margin-top:1rem;max-height:340px;overflow:auto;font-size:.78rem;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;border-top:1px solid var(--border);padding-top:.7rem;line-height:1.6;"></div>
+      </div>
+
+      <div class="add-clinic-form" style="margin-top:1.4rem;">
+        <div class="form-title">Review candidates</div>
+        <div class="form-subtitle">Approving publishes the device on the clinic, marked as listed rather than verified, and dates it to the day the page was read. A newly published device also writes an entry to the change feed, which is what a manufacturer subscribes to.</div>
+
+        <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;margin-bottom:.9rem;">
+          <select class="form-input" id="dc-cand-status" style="max-width:170px;" onchange="dcLoadCandidates()">
+            <option value="pending">Needs review</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+          </select>
+          <select class="form-input" id="dc-cand-conf" style="max-width:210px;" onchange="dcLoadCandidates()">
+            <option value="">Any evidence</option>
+            <option value="own_page">Own page only</option>
+            <option value="exact">Named in the text only</option>
+            <option value="blog_only">Blog mentions only</option>
+          </select>
+          <button class="btn-ghost" onclick="dcLoadCandidates()">Refresh</button>
+          <span id="dc-cand-stats" style="font-size:.82rem;color:var(--muted);"></span>
+        </div>
+
+        <div id="dc-cand-actions" style="display:none;gap:.6rem;align-items:center;flex-wrap:wrap;margin-bottom:.9rem;">
+          <button class="btn-ghost" onclick="dcSelectAll(true)">Select all</button>
+          <button class="btn-ghost" onclick="dcSelectOwnPage()">Select only the ones with their own page</button>
+          <button class="btn-ghost" onclick="dcSelectAll(false)">Clear</button>
+          <button class="btn-approve" onclick="dcApproveSelected()">Approve selected</button>
+          <button class="btn-reject" onclick="dcRejectSelected()">Reject selected</button>
+          <span id="dc-cand-msg" style="font-size:.82rem;color:var(--muted);"></span>
+        </div>
+
+        <div id="dc-cand-list"></div>
+      </div>
+
+      <div class="add-clinic-form" style="margin-top:1.4rem;">
+        <div class="form-title">Unmatched names</div>
+        <div class="form-subtitle">Capitalised names that sat next to a device word on a clinic page and matched nothing in the reference list. This is how the real Canadian long tail gets found. Anything here appearing on several hosts is probably a machine worth adding to the list.</div>
+        <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;margin-bottom:.9rem;">
+          <button class="btn-ghost" onclick="dcLoadUnknowns()">Load unmatched names</button>
+          <span id="dc-unknown-msg" style="font-size:.82rem;color:var(--muted);"></span>
+        </div>
+        <div id="dc-unknown-list"></div>
       </div>
     </div>
 
@@ -1220,7 +1284,8 @@ function switchTab(tab) {
   const isPractitioners = tab === 'practitioners';
   const isFlaggedVotes  = tab === 'flagged-votes';
   const isPriceCrawl    = tab === 'price-crawl';
-  const isClaims        = !isAddClinic && !isPriceIntake && !isPractitioners && !isFlaggedVotes && !isPriceCrawl;
+  const isDeviceCrawl   = tab === 'device-crawl';
+  const isClaims        = !isAddClinic && !isPriceIntake && !isPractitioners && !isFlaggedVotes && !isPriceCrawl && !isDeviceCrawl;
 
   document.getElementById('claims-container').style.display      = isClaims        ? 'block' : 'none';
   document.getElementById('add-clinic-panel').style.display      = isAddClinic      ? 'block' : 'none';
@@ -1228,6 +1293,7 @@ function switchTab(tab) {
   document.getElementById('practitioners-panel').style.display   = isPractitioners  ? 'block' : 'none';
   document.getElementById('flagged-votes-panel').style.display   = isFlaggedVotes   ? 'block' : 'none';
   document.getElementById('price-crawl-panel').style.display     = isPriceCrawl     ? 'block' : 'none';
+  document.getElementById('device-crawl-panel').style.display    = isDeviceCrawl    ? 'block' : 'none';
   document.getElementById('stats-bar').style.display             = isClaims && Object.values(allClaims).flat().length > 0 ? 'grid' : 'none';
 
   if (isClaims) renderTab(tab);
@@ -1235,6 +1301,7 @@ function switchTab(tab) {
   if (isPractitioners && !pracClinicsLoaded) pracLoadClinics();
   if (isFlaggedVotes) loadFlaggedVotes();
   if (isPriceCrawl) pcLoadCandidates();
+  if (isDeviceCrawl) dcLoadCandidates();
 }
 
 // ── PRICE CRAWL (M38) ────────────────────────────────────────
@@ -1462,6 +1529,284 @@ async function pcDecide(ids, approve) {
   if (data.errors && data.errors.length) pcCandMsg(fvEscape(data.errors[0]), 'var(--red)');
 
   pcLoadCandidates();
+}
+
+
+// ── DEVICE CRAWL (M39) ───────────────────────────────────────
+// Loops /.netlify/functions/crawl-devices a few hosts at a time from the
+// browser, same shape as the price crawl above. That function owns the whole M39
+// surface, crawl and review both, so admin-action.js is untouched by M39.
+const DC_FN = '/.netlify/functions/crawl-devices';
+let dcRunning = false;
+let dcRunId   = null;
+let dcTotals  = { hosts: 0, devices: 0, empty: 0, errors: 0, render: 0 };
+
+async function dcCall(body) {
+  const res = await fetch(DC_FN, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-admin-secret': adminSecret },
+    body: JSON.stringify(body)
+  });
+  const data = await res.json();
+  return { ok: res.ok, data };
+}
+
+function dcLog(html, colour) {
+  const box = document.getElementById('dc-log');
+  box.style.display = 'block';
+  const line = document.createElement('div');
+  if (colour) line.style.color = colour;
+  line.innerHTML = html;
+  box.appendChild(line);
+  box.scrollTop = box.scrollHeight;
+}
+
+function dcButtons(running) {
+  document.getElementById('dc-start').style.display = running ? 'none' : '';
+  document.getElementById('dc-stop').style.display  = running ? '' : 'none';
+}
+
+function dcStop() {
+  dcRunning = false;
+  dcButtons(false);
+  dcLog('stopped.', 'var(--muted)');
+}
+
+function dcConfLabel(conf) {
+  if (conf === 'own_page')  return '<span style="background:var(--green-bg);color:var(--green);padding:.1rem .4rem;border-radius:4px;font-size:.7rem;">own page</span>';
+  if (conf === 'blog_only') return '<span style="background:var(--red-bg);color:var(--red);padding:.1rem .4rem;border-radius:4px;font-size:.7rem;">blog only</span>';
+  return '<span style="background:var(--warm);color:var(--muted);padding:.1rem .4rem;border-radius:4px;font-size:.7rem;">named</span>';
+}
+
+async function dcStart(retry) {
+  if (dcRunning) return;
+  dcRunning = true;
+  dcTotals = { hosts: 0, devices: 0, empty: 0, errors: 0, render: 0 };
+  dcRunId = null;
+  dcButtons(true);
+  dcLog(retry === true ? 'retrying hosts that failed…' : 'starting…', 'var(--muted)');
+
+  while (dcRunning) {
+    let data;
+    try {
+      const r = await dcCall({ action: 'crawl', batch: 3, retry: retry === true, run_id: dcRunId });
+      data = r.data;
+      if (!r.ok) { dcLog('error: ' + fvEscape((data && data.error) || 'request failed'), 'var(--red)'); break; }
+    } catch (e) {
+      dcLog('network error: ' + fvEscape(String((e && e.message) || e)), 'var(--red)');
+      break;
+    }
+
+    retry = false;                     // requeue once, not on every loop
+    if (data.run_id) dcRunId = data.run_id;
+
+    for (const p of (data.processed || [])) {
+      dcTotals.hosts++;
+      const host = fvEscape(p.host);
+      if (p.status === 'done') {
+        dcTotals.devices += (p.devices || []).length;
+        const list = (p.devices || [])
+          .map(d => fvEscape(d.model) + ' ' + dcConfLabel(d.confidence)).join(', ');
+        dcLog('<strong>' + host + '</strong> · ' + list +
+              ' · across ' + p.clinics + ' clinic' + ((p.clinics === 1) ? '' : 's') +
+              ((p.unknowns || []).length ? ' · unmatched: ' + fvEscape(p.unknowns.join(', ')) : ''),
+              'var(--green)');
+      } else if (p.status === 'empty') {
+        dcTotals.empty++;
+        dcLog(host + ' · no devices found' +
+              ((p.unknowns || []).length ? ' · unmatched: ' + fvEscape(p.unknowns.join(', ')) : ''),
+              'var(--muted)');
+      } else if (p.status === 'needs_render') {
+        dcTotals.render++;
+        dcLog(host + ' · javascript only, needs rendering', 'var(--gold)');
+      } else {
+        dcTotals.errors++;
+        dcLog(host + ' · ' + fvEscape(p.error || p.status), 'var(--red)');
+      }
+    }
+
+    document.getElementById('dc-progress').textContent =
+      dcTotals.hosts + ' hosts · ' + dcTotals.devices + ' devices · ' +
+      dcTotals.empty + ' none found · ' + dcTotals.render + ' need rendering · ' +
+      dcTotals.errors + ' failed · ' +
+      ((data.remaining === undefined) ? '?' : data.remaining) + ' left';
+
+    if (data.done) { dcLog('queue empty. done.', 'var(--muted)'); break; }
+    await new Promise(r => setTimeout(r, 400));
+  }
+
+  dcRunning = false;
+  dcButtons(false);
+  dcLoadStats();
+}
+
+// ── DEVICE CANDIDATE REVIEW (M39) ────────────────────────────
+let dcCandidates = [];
+
+function dcCandMsg(text, colour) {
+  const el = document.getElementById('dc-cand-msg');
+  el.textContent = text || '';
+  el.style.color = colour || 'var(--muted)';
+}
+
+async function dcLoadStats() {
+  const { ok, data } = await dcCall({ action: 'candidate-stats' });
+  if (!ok || !data || !data.counts) return;
+  document.getElementById('dc-cand-stats').textContent =
+    data.counts.pending + ' to review · ' + data.counts.approved + ' approved · ' +
+    data.counts.rejected + ' rejected · ' + data.clinic_devices + ' published · ' +
+    data.queue.pending + ' hosts left to crawl';
+  const el = document.getElementById('count-device-crawl');
+  if (el) {
+    el.textContent = data.counts.pending;
+    el.classList.toggle('zero', data.counts.pending === 0);
+  }
+}
+
+async function dcLoadCandidates() {
+  const status = document.getElementById('dc-cand-status').value;
+  const conf   = document.getElementById('dc-cand-conf').value;
+  const list   = document.getElementById('dc-cand-list');
+  list.innerHTML = '<div class="loading-state"><div class="spinner"></div> Loading candidates…</div>';
+  dcCandMsg('');
+
+  const { ok, data } = await dcCall({ action: 'list-candidates', status: status, confidence: conf, limit: 300 });
+  if (!ok) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">!</div><div class="empty-title">Could not load candidates</div><div class="empty-desc">' +
+      fvEscape((data && data.error) || 'Please try again.') + '</div></div>';
+    return;
+  }
+
+  dcCandidates = data.candidates || [];
+  dcRenderCandidates();
+  dcLoadStats();
+}
+
+function dcRenderCandidates() {
+  const list = document.getElementById('dc-cand-list');
+  const actions = document.getElementById('dc-cand-actions');
+  const reviewing = document.getElementById('dc-cand-status').value === 'pending';
+
+  if (!dcCandidates.length) {
+    actions.style.display = 'none';
+    list.innerHTML = '<div class="empty-state"><div class="empty-title">Nothing here</div><div class="empty-desc">No candidates with that status. Run the crawl above first.</div></div>';
+    return;
+  }
+  actions.style.display = reviewing ? 'flex' : 'none';
+
+  // Grouped by host, because one host produces a row per device per branch and
+  // they are almost always the same decision.
+  const byHost = {};
+  dcCandidates.forEach(c => {
+    const k = c.host || 'unknown';
+    (byHost[k] = byHost[k] || []).push(c);
+  });
+
+  let html = '';
+  Object.keys(byHost).sort().forEach(host => {
+    const rows = byHost[host];
+    html += '<div style="border:1px solid var(--border);border-radius:10px;margin-bottom:.9rem;overflow:hidden;">';
+    html += '<div style="background:var(--warm);padding:.55rem .8rem;font-size:.82rem;display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;">' +
+            '<strong>' + fvEscape(host) + '</strong>' +
+            '<a href="' + fvEscape(rows[0].source_url || '#') + '" target="_blank" rel="noopener" style="color:var(--rose);text-decoration:none;">open the page it came from</a>' +
+            '</div>';
+
+    rows.forEach(c => {
+      html += '<div style="padding:.7rem .8rem;border-top:1px solid var(--border);font-size:.84rem;">' +
+        '<div style="display:flex;gap:.6rem;align-items:baseline;flex-wrap:wrap;">' +
+          (reviewing ? '<input type="checkbox" class="dc-cand-cb" value="' + fvEscape(c.id) + '" data-own="' + (c.confidence === 'own_page' ? '1' : '0') + '">' : '') +
+          '<strong>' + fvEscape(c.model) + '</strong>' +
+          '<span style="color:var(--muted);">' + fvEscape(c.manufacturer) + '</span>' +
+          '<span style="color:var(--gold);font-size:.78rem;">' + fvEscape(String(c.category || '').replace(/_/g, ' ')) + '</span>' +
+          dcConfLabel(c.confidence) +
+        '</div>' +
+        '<div style="color:var(--muted);margin-top:.3rem;font-size:.78rem;">' +
+          fvEscape(c.clinic_name) + (c.clinic_region ? ', ' + fvEscape(c.clinic_region) : '') +
+          ' · matched "' + fvEscape(c.matched_text || '') + '" on a ' + fvEscape(c.page_kind || 'page') + ' page' +
+        '</div>' +
+        (reviewing
+          ? '<div style="margin-top:.5rem;display:flex;gap:.4rem;">' +
+            '<button class="btn-approve" onclick="dcDecide([\'' + c.id + '\'], true)">Approve</button>' +
+            '<button class="btn-reject" onclick="dcDecide([\'' + c.id + '\'], false)">Reject</button>' +
+            '</div>'
+          : (c.note ? '<div style="color:var(--muted);margin-top:.35rem;font-size:.76rem;">' + fvEscape(c.note) + '</div>' : '')) +
+        '</div>';
+    });
+    html += '</div>';
+  });
+
+  list.innerHTML = html;
+}
+
+function dcSelectAll(on) {
+  document.querySelectorAll('.dc-cand-cb').forEach(cb => { cb.checked = !!on; });
+}
+
+function dcSelectOwnPage() {
+  document.querySelectorAll('.dc-cand-cb').forEach(cb => { cb.checked = cb.dataset.own === '1'; });
+}
+
+function dcSelectedIds() {
+  return [...document.querySelectorAll('.dc-cand-cb:checked')].map(cb => cb.value);
+}
+
+function dcApproveSelected() { dcDecide(dcSelectedIds(), true); }
+function dcRejectSelected()  { dcDecide(dcSelectedIds(), false); }
+
+async function dcDecide(ids, approve) {
+  if (!ids || !ids.length) { dcCandMsg('Nothing selected.', 'var(--red)'); return; }
+  if (approve && ids.length > 1 && !confirm('Publish ' + ids.length + ' devices? They go live on the directory.')) return;
+
+  dcCandMsg((approve ? 'Publishing ' : 'Rejecting ') + ids.length + '…');
+
+  const { ok, data } = await dcCall({
+    action: approve ? 'approve-candidates' : 'reject-candidates',
+    ids: ids
+  });
+
+  if (!ok) { dcCandMsg(fvEscape((data && data.error) || 'Failed.'), 'var(--red)'); return; }
+
+  if (approve) {
+    const ev = data.new_events ? ', ' + data.new_events + ' logged to the change feed' : '';
+    dcCandMsg((data.approved || 0) + ' published' + ev + '.', 'var(--green)');
+  } else {
+    dcCandMsg((data.rejected || 0) + ' rejected.', 'var(--muted)');
+  }
+  if (data.errors && data.errors.length) dcCandMsg(fvEscape(data.errors[0]), 'var(--red)');
+
+  dcLoadCandidates();
+}
+
+// ── THE CENSUS: names that matched nothing ───────────────────
+async function dcLoadUnknowns() {
+  const list = document.getElementById('dc-unknown-list');
+  const msg  = document.getElementById('dc-unknown-msg');
+  list.innerHTML = '<div class="loading-state"><div class="spinner"></div> Loading…</div>';
+  msg.textContent = '';
+
+  const { ok, data } = await dcCall({ action: 'list-unknowns' });
+  if (!ok) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-title">Could not load</div><div class="empty-desc">' +
+      fvEscape((data && data.error) || 'Please try again.') + '</div></div>';
+    return;
+  }
+
+  const rows = data.unknowns || [];
+  if (!rows.length) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-title">Nothing yet</div><div class="empty-desc">Unmatched names appear here once the crawl has run.</div></div>';
+    return;
+  }
+
+  msg.textContent = rows.length + ' distinct names, most widespread first';
+  list.innerHTML =
+    '<div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;font-size:.84rem;">' +
+    rows.map(u =>
+      '<div style="padding:.5rem .8rem;border-top:1px solid var(--border);display:flex;gap:1rem;align-items:baseline;justify-content:space-between;flex-wrap:wrap;">' +
+      '<strong>' + fvEscape(u.token) + '</strong>' +
+      '<span style="color:var(--muted);font-size:.78rem;">on ' + u.host_count + ' host' + (u.host_count === 1 ? '' : 's') +
+      (u.sample_url ? ' · <a href="' + fvEscape(u.sample_url) + '" target="_blank" rel="noopener" style="color:var(--rose);text-decoration:none;">see one</a>' : '') +
+      '</span></div>'
+    ).join('') + '</div>';
 }
 
 // ── FLAGGED VOTES (M36 moderation queue) ─────────────────────
