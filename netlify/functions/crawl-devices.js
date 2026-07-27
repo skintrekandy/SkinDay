@@ -146,6 +146,12 @@ function classifyPage(url) {
 // Every same-host URL path on the page, normalised. A clinic with a dedicated
 // /morpheus8/ page owns a Morpheus8. Blog paths are excluded, or a post titled
 // sofwave-vs-morpheus8 would read as two dedicated pages.
+// Asset and build paths are NOT pages. Every WordPress site serves icon.svg,
+// apple-touch-icon.png and /wp-content/themes/.../images/, which is how a real
+// run produced "Icon own page" on two unrelated clinic sites.
+const ASSET_EXT = /\.(png|jpe?g|gif|svg|webp|avif|ico|css|js|mjs|json|xml|txt|woff2?|ttf|eot|pdf|mp4|webm|zip)$/i;
+const ASSET_DIR = /\/(wp-content|wp-includes|wp-json|assets?|static|dist|build|themes?|plugins?|uploads?|images?|img|icons?|fonts?|media|cdn-cgi|_next|_nuxt)(\/|$)/i;
+
 function ownPagePaths(rawText, pageUrl) {
   let host = '';
   try { host = new URL(pageUrl).hostname.replace(/^www\./, ''); } catch (e) {}
@@ -155,6 +161,8 @@ function ownPagePaths(rawText, pageUrl) {
       const p = new URL(u);
       if (host && p.hostname.replace(/^www\./, '') !== host) return;
       if (BLOG_PATH.test(p.pathname)) return;
+      if (ASSET_EXT.test(p.pathname) || ASSET_DIR.test(p.pathname)) return;
+      if (p.pathname.split('/').filter(Boolean).length > 4) return;   // deep = not a service page
       paths.push(norm(decodeURIComponent(p.pathname)));
     } catch (e) {}
   };
@@ -239,10 +247,13 @@ function matchDevices(rawText, pageUrl, matcher, opts) {
 
     if (!pathHit && !proseHit) continue;
 
-    // A name that is also an ordinary word needs the manufacturer beside it or a
-    // dedicated page of its own. "Ultra Shine top coat" on a nail salon page is
-    // not a Cynosure Ultra, and precision beats recall here.
-    if (entry.corroborate && !corroborated && !pathHit) continue;
+    // A name that is also an ordinary word needs the MANUFACTURER beside it in
+    // the prose. Full stop. A path hit is not enough: /icons/, /our-icon-story/
+    // and a favicon all put "icon" in a URL. This costs the rare clinic that has
+    // an /icon-laser/ page and never names Cynosure, which is the right trade,
+    // because the alternative published a Cynosure Icon on two clinics that
+    // almost certainly do not own one.
+    if (entry.corroborate && !corroborated) continue;
 
     let confidence;
     if (isBlog) confidence = 'blog_only';
@@ -275,6 +286,11 @@ function matchDevices(rawText, pageUrl, matcher, opts) {
 // Capitalised or CamelCase tokens near a device word that matched NOTHING. This
 // is how the real Canadian long tail gets found, rather than by more desk
 // research. Reviewed in admin, never published.
+const CENSUS_CONTEXT = DEVICE_CONTEXT.concat([
+  'treatment', 'treatments', 'offer', 'offers', 'offering', 'reader',
+  'handpieces', 'wavelength', 'ablative', 'fractional', 'traitement'
+]);
+
 function censusUnknowns(rawText, matcher, mfrKnown) {
   const src = stripUrls(stripMarks(rawText));
   const flat = ' ' + norm(src) + ' ';
@@ -289,7 +305,7 @@ function censusUnknowns(rawText, matcher, mfrKnown) {
   const out = [];
   const seen = new Set();
   let m;
-  while ((m = re.exec(src)) !== null && out.length < 40) {
+  while ((m = re.exec(src)) !== null && out.length < 8) {
     const raw = m[1].trim();
     const n = norm(raw);
     if (!n || seen.has(n) || STOPWORDS.has(n)) continue;
@@ -308,9 +324,17 @@ function censusUnknowns(rawText, matcher, mfrKnown) {
     // A product name is capitalised every single time. Self-tuning, and it
     // clears most of the census noise without a dictionary.
     if (lowerElsewhere.has(n)) continue;
+    // Hashtag and slug runs (#ValentinesGlow, SelfLoveSeason, LaserHairRemoval)
+    // came back by the dozen from a real Instagram feed embed.
+    if ((raw.match(/[A-Z]/g) || []).length >= 3) continue;
+    if (m.index > 0 && src[m.index - 1] === '#') continue;   // #LipFiller, #ValentinesGlow
+    if (/\d/.test(n)) continue;                    // "Niagara 0", "Rated 5", "For 3"
     const at = flat.indexOf(' ' + n + ' ');
     if (at === -1) continue;
-    if (!hasAny(windowAround(flat, at + 1, n.length), DEVICE_CONTEXT)) continue;
+    // A TIGHT window. Over 160 chars, any page containing the word "laser"
+    // qualified every capitalised word on it.
+    const ctx = flat.slice(Math.max(0, at + 1 - 70), at + 1 + n.length + 70);
+    if (!hasAny(ctx, CENSUS_CONTEXT)) continue;
     seen.add(n);
     out.push({ token: raw, token_norm: n });
   }
@@ -354,6 +378,16 @@ const STOPWORDS = new Set([
   'experience', 'advanced', 'innovative', 'revolutionary', 'state',
   'complimentary', 'schedule', 'online', 'available', 'offering', 'winner',
   'magazine', 'awards', 'award', 'choice', 'years',
+  'welcome', 'services', 'glowing', 'glow', 'shine', 'starts', 'start',
+  'today', 'rejuvenate', 'rejuvenation', 'micro', 'moments', 'full', 'name',
+  'number', 'dream', 'submit', 'skip', 'content', 'open', 'close', 'however',
+  'view', 'website', 'follow', 'load', 'download', 'expires', 'current',
+  'amazing', 'expert', 'consider', 'combo', 'brows', 'lash', 'lashes',
+  'eyeliner', 'liner', 'technique', 'enhancement', 'marks', 'semi',
+  'freckles', 'tattoo', 'microshading', 'exosomes', 'vampire', 'faqs',
+  'only', 'touch', 'head', 'falls', 'rated', 'reviews', 'book', 'now',
+  'learn', 'more', 'here', 'terms', 'refund', 'cancellation', 'gift',
+  'cards', 'card', 'careers', 'blogs', 'newsletter', 'subscribe',
   'chemical', 'resurfacing', 'enhanced', 'comfort', 'simply', 'intensive',
   'lines', 'tone', 'smart', 'priming', 'compact', 'power', 'delivering',
   'celsius', 'utilizing', 'united', 'states', 'designed', 'many', 'along',
