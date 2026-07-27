@@ -504,6 +504,12 @@
     text-transform: uppercase;
   }
 
+  /* Crawl tabs are log and review surfaces, not forms, so the 640px form width
+     wastes most of the screen. Widened only while a crawl tab is active. */
+  .admin-main.crawl-wide { max-width: 1600px; }
+  .admin-main.crawl-wide .add-clinic-form { max-width: none; }
+  .admin-main.crawl-wide .form-subtitle { max-width: 78ch; }
+
   /* ── ADD CLINIC FORM ──────────────────────────────────────── */
   .add-clinic-form {
     background: var(--deep2);
@@ -985,7 +991,7 @@
         </div>
         <div class="form-subtitle" style="margin-top:.6rem;">Watch the first ten hosts before leaving it to loop. A price shown with a question mark had no "per unit" wording anywhere on the page and was accepted on the strength of the amount alone, so those deserve a closer look at review time.</div>
 
-        <div id="pc-log" style="display:none;margin-top:1rem;max-height:340px;overflow:auto;font-size:.78rem;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;border-top:1px solid var(--border);padding-top:.7rem;line-height:1.6;"></div>
+        <div id="pc-log" style="display:none;margin-top:1rem;max-height:60vh;overflow:auto;font-size:.78rem;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;border-top:1px solid var(--border);padding-top:.7rem;line-height:1.6;"></div>
       </div>
 
       <div class="add-clinic-form" style="margin-top:1.4rem;">
@@ -1030,7 +1036,7 @@
         </div>
         <div class="form-subtitle" style="margin-top:.6rem;">This only advances while the tab is open and awake, same as the price crawl, so do not run both at once. Watch the first ten hosts before leaving it to loop. Each device shows how it was found: <strong>own page</strong> means the clinic has a dedicated page for that machine, which is the strongest evidence; <strong>named</strong> means it was written in the page text; <strong>blog</strong> means it appeared in an article and may be a device they only wrote about.</div>
 
-        <div id="dc-log" style="display:none;margin-top:1rem;max-height:340px;overflow:auto;font-size:.78rem;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;border-top:1px solid var(--border);padding-top:.7rem;line-height:1.6;"></div>
+        <div id="dc-log" style="display:none;margin-top:1rem;max-height:60vh;overflow:auto;font-size:.78rem;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;border-top:1px solid var(--border);padding-top:.7rem;line-height:1.6;"></div>
       </div>
 
       <div class="add-clinic-form" style="margin-top:1.4rem;">
@@ -1295,6 +1301,7 @@ function switchTab(tab) {
   document.getElementById('price-crawl-panel').style.display     = isPriceCrawl     ? 'block' : 'none';
   document.getElementById('device-crawl-panel').style.display    = isDeviceCrawl    ? 'block' : 'none';
   document.getElementById('stats-bar').style.display             = isClaims && Object.values(allClaims).flat().length > 0 ? 'grid' : 'none';
+  document.querySelector('.admin-main').classList.toggle('crawl-wide', isPriceCrawl || isDeviceCrawl);
 
   if (isClaims) renderTab(tab);
   if (isPriceIntake && !piClinicsLoaded) piLoadClinics();
