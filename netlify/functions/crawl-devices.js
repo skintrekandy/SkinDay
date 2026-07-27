@@ -1,0 +1,910 @@
+// ===========================================================================
+// crawl-devices.js  -  SkinDay Canada M39 device crawler (Netlify Function)
+//
+// Deploy to /netlify/functions/crawl-devices.js. Triggered in a loop by the
+// Device crawl tab in skinday-admin.html, gated on x-admin-secret.
+//
+// Reads three pages per host: homepage, best technology-ish link, best
+// service-ish link. Lands rows in clinic_device_candidates (RLS on, no
+// policies) so nothing reaches a patient before review. Unmatched capitalised
+// tokens near a device word go to device_unknown_tokens as the census.
+//
+// The reference list is READ FROM device_reference at runtime, so a wrong row is
+// a SQL update and never a redeploy.
+//
+// Env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ADMIN_SECRET  (all already set)
+// ===========================================================================
+
+const { createClient } = require('@supabase/supabase-js');
+
+const BATCH_DEFAULT = 3;
+const BATCH_MAX = 5;
+const FETCH_TIMEOUT_MS = 12000;
+const MAX_DEVICES_PER_HOST = 25;   // a directory-style page can name dozens
+const MAX_UNKNOWNS_PER_HOST = 15;
+const UA = 'Mozilla/5.0 (compatible; SkinDayBot/1.0; +https://skinday.ca/bot)';
+
+
+// Single words from the reference list that are also ordinary English or
+// ordinary marketing words. These need corroboration exactly like the
+// name_is_also_generic rows do. Enumerated rather than guessed, because a wrong
+// category is the one error that wastes a sales call.
+const RISKY_SINGLE_WORD = new Set([
+  'elite', 'ultra', 'icon', 'halo', 'forma', 'genius', 'evolve', 'opus',
+  'clarity', 'fotona', 'fraxel', 'physiq', 'prime', 'secret', 'legacy',
+  'bliss', 'versa', 'accent', 'harmony', 'hybrid', 'tetra', 'spectra',
+  'mosaic', 'profound', 'potenza', 'moxi', 'vectus', 'cynergy', 'nordlys'
+]);
+
+const DEVICE_CONTEXT = [
+  'laser', 'lasers', 'device', 'devices', 'technology', 'technologies',
+  'platform', 'system', 'machine', 'handpiece', 'applicator', 'cartridge',
+  'radiofrequency', 'radio frequency', 'ultrasound', 'microneedling',
+  'resurfacing', 'tightening', 'appareil', 'technologie'
+];
+
+// A mention inside one of these frames is ABOUT a device rather than a claim to
+// own one. The device analogue of the price reject list, and the SEO farm and
+// competitor-comparison problem is what it exists for.
+const NEGATION_FRAMES = [
+  'unlike', 'compared to', 'compared with', 'comparison', ' vs ', ' vs.',
+  'versus', 'instead of', 'rather than', 'we do not use', 'we don t use',
+  'do not offer', 'don t offer', 'no longer offer', 'alternative to',
+  'alternatives to', 'competitor', 'competitors', 'other clinics',
+  'some clinics', 'many clinics', 'most clinics', 'elsewhere',
+  'difference between', 'what is the difference', 'similar to',
+  'often confused', 'not enhance', 'would duplicate', 'contrairement',
+  'au lieu de', 'which is right for you', 'which is better'
+];
+
+const BLOG_PATH = /\/(blog|blogs|news|article|articles|post|posts|magazine|journal|resources|glossary|guide|guides|category|tag|author|press)(\/|$|-|\?)/i;
+const TECH_PATH = /(technolog|our-?devices?|our-?lasers?|equipment|machines?|appareils)/i;
+const SERVICE_PATH = /(service|treatment|procedure|traitement|soins|price|pricing|menu)/i;
+
+function stripMarks(s) {
+  return String(s).replace(/[\u00ae\u2122\u2120\u00a9]/g, ' ');
+}
+
+function norm(s) {
+  return stripMarks(s)
+    .toLowerCase()
+    .replace(/[^a-z0-9\u4e00-\u9fff]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// A device may be written with or without a space before a trailing number
+// ("Morpheus8" / "Morpheus 8"), so both forms are indexed.
+function tokenVariants(name) {
+  const n = norm(name);
+  const out = new Set([n]);
+  out.add(n.replace(/([a-z]) (\d)/g, '$1$2'));
+  out.add(n.replace(/([a-z])(\d)/g, '$1 $2'));
+  return [...out].filter(Boolean);
+}
+
+function needsCorroboration(token, generic) {
+  if (generic) return true;
+  return token.split(' ').length === 1 && RISKY_SINGLE_WORD.has(token);
+}
+
+const MFR_NOISE = new Set([
+  'medical', 'aesthetics', 'aesthetic', 'systems', 'system', 'health',
+  'lasers', 'laser', 'technologies', 'group', 'inc', 'ltd', 'corp'
+]);
+
+// Longest token first, because Morpheus8 is a prefix of Morpheus8 Body and
+// PicoSure of PicoSure Pro.
+function buildMatcher(devices) {
+  const entries = [];
+  for (const d of devices) {
+    if (d.active === false) continue;
+    const mfrTokens = [...new Set(
+      [d.manufacturer, ...(d.manufacturer_aliases || [])]
+        .filter(Boolean)
+        .join(' ')
+        .split(/[\s/]+/)
+        .map(w => norm(w))
+        .filter(w => w.length > 3 && !MFR_NOISE.has(w))
+    )];
+    for (const name of [d.model, ...(d.model_aliases || [])]) {
+      for (const tok of tokenVariants(name)) {
+        if (tok.length < 3) continue;
+        entries.push({
+          token: tok,
+          device_id: d.id,
+          model: d.model,
+          category: d.category,
+          surface: name,
+          mfrTokens: mfrTokens,
+          corroborate: needsCorroboration(tok, !!d.name_is_also_generic)
+        });
+      }
+    }
+  }
+  entries.sort((a, b) => b.token.length - a.token.length);
+  return entries;
+}
+
+function hasAny(hay, needles) {
+  for (const n of needles) if (n && hay.indexOf(n) !== -1) return true;
+  return false;
+}
+
+function classifyPage(url) {
+  const u = String(url || '');
+  if (BLOG_PATH.test(u)) return 'blog';
+  if (TECH_PATH.test(u)) return 'tech';
+  if (SERVICE_PATH.test(u)) return 'service';
+  try {
+    const p = new URL(u).pathname;
+    if (p === '/' || p === '') return 'home';
+  } catch (e) {}
+  return 'other';
+}
+
+// Every same-host URL path on the page, normalised. A clinic with a dedicated
+// /morpheus8/ page owns a Morpheus8. Blog paths are excluded, or a post titled
+// sofwave-vs-morpheus8 would read as two dedicated pages.
+function ownPagePaths(rawText, pageUrl) {
+  let host = '';
+  try { host = new URL(pageUrl).hostname.replace(/^www\./, ''); } catch (e) {}
+  const paths = [];
+  const add = u => {
+    try {
+      const p = new URL(u);
+      if (host && p.hostname.replace(/^www\./, '') !== host) return;
+      if (BLOG_PATH.test(p.pathname)) return;
+      paths.push(norm(decodeURIComponent(p.pathname)));
+    } catch (e) {}
+  };
+  if (pageUrl) add(pageUrl);
+  const re = /https?:\/\/[^\s"'<>)\]]+/g;
+  let m, n = 0;
+  while ((m = re.exec(String(rawText))) !== null && n++ < 800) add(m[0]);
+  return paths;
+}
+
+// URLs go before prose matching. Booking widgets (vagaro, Zenoti) embed long
+// base64 blobs, and in M38 a hostname alone seeded a false window.
+function stripUrls(s) {
+  return String(s)
+    .replace(/https?:\/\/[^\s"'<>)\]]+/g, ' ')
+    .replace(/[\w.-]+@[\w.-]+\.\w+/g, ' ')
+    .replace(/\b[\w-]+\.(com|ca|net|org|io|co)\b/gi, ' ');
+}
+
+const WINDOW_BACK = 160;
+const WINDOW_FWD = 160;
+
+// Negation is checked over a MUCH tighter window than corroboration. Punctuation
+// is gone by normalisation time, so there are no sentence boundaries to split
+// on, and a wide window let one "Unlike traditional CO2 lasers" sentence poison
+// every device named in the paragraph before it.
+const NEG_BACK = 80;
+const NEG_FWD = 50;
+
+// Snap window edges out to whitespace so a truncated word cannot silently
+// disarm a reject rule. That bug cost real money in M38.
+function windowAround(text, at, len) {
+  let s = Math.max(0, at - WINDOW_BACK);
+  let e = Math.min(text.length, at + len + WINDOW_FWD);
+  let g = 0;
+  while (s > 0 && text[s] !== ' ' && g++ < 25) s--;
+  g = 0;
+  while (e < text.length && text[e] !== ' ' && g++ < 25) e++;
+  return text.slice(s, e);
+}
+
+const RANK = { own_page: 4, exact: 3, generic_review: 2, blog_only: 1 };
+
+function matchDevices(rawText, pageUrl, matcher, opts) {
+  opts = opts || {};
+  const pageKind = classifyPage(pageUrl);
+  const isBlog = pageKind === 'blog';
+  const pathBlob = ' ' + ownPagePaths(rawText, pageUrl).join(' ') + ' ';
+  const text = ' ' + norm(stripUrls(rawText)) + ' ';
+
+  const found = new Map();
+
+  for (const entry of matcher) {
+    const jammed = entry.token.replace(/ /g, '');
+    const pathHit = !isBlog && (
+      pathBlob.indexOf(' ' + entry.token + ' ') !== -1 ||
+      pathBlob.indexOf(' ' + jammed + ' ') !== -1
+    );
+
+    let proseHit = false;
+    let corroborated = false;
+    let snippet = '';
+    let from = 0;
+    for (;;) {
+      const at = text.indexOf(' ' + entry.token + ' ', from);
+      if (at === -1) break;
+      from = at + 1;
+      const negWin = text.slice(
+        Math.max(0, at + 1 - NEG_BACK),
+        Math.min(text.length, at + 1 + entry.token.length + NEG_FWD)
+      );
+      if (hasAny(negWin, NEGATION_FRAMES)) continue;
+      const win = windowAround(text, at + 1, entry.token.length);
+      proseHit = true;
+      if (!snippet) snippet = win.trim().slice(0, 220);
+      if (hasAny(win, entry.mfrTokens)) {
+        corroborated = true;
+        snippet = win.trim().slice(0, 220);
+        break;
+      }
+    }
+
+    if (!pathHit && !proseHit) continue;
+
+    // A name that is also an ordinary word needs the manufacturer beside it or a
+    // dedicated page of its own. "Ultra Shine top coat" on a nail salon page is
+    // not a Cynosure Ultra, and precision beats recall here.
+    if (entry.corroborate && !corroborated && !pathHit) continue;
+
+    let confidence;
+    if (isBlog) confidence = 'blog_only';
+    else if (pathHit) confidence = 'own_page';
+    else confidence = 'exact';
+
+    const prev = found.get(entry.device_id);
+    if (!prev || RANK[confidence] > RANK[prev.confidence]) {
+      found.set(entry.device_id, {
+        device_id: entry.device_id,
+        model: entry.model,
+        category: entry.category,
+        matched_text: entry.surface,
+        confidence: confidence,
+        page_kind: pageKind,
+        snippet: snippet || ('own page path: ' + entry.token)
+      });
+    }
+  }
+
+  return {
+    matches: [...found.values()],
+    unknowns: opts.collectUnknowns === false
+      ? []
+      : censusUnknowns(rawText, matcher, new Set(matcher.flatMap(e => e.mfrTokens))),
+    page_kind: pageKind
+  };
+}
+
+// Capitalised or CamelCase tokens near a device word that matched NOTHING. This
+// is how the real Canadian long tail gets found, rather than by more desk
+// research. Reviewed in admin, never published.
+function censusUnknowns(rawText, matcher, mfrKnown) {
+  const src = stripUrls(stripMarks(rawText));
+  const flat = ' ' + norm(src) + ' ';
+  const known = matcher.map(e => e.token);
+  const lowerElsewhere = new Set();
+  {
+    const re2 = /\b([a-z][a-z]{3,})\b/g;
+    let mm;
+    while ((mm = re2.exec(src)) !== null) lowerElsewhere.add(mm[1]);
+  }
+  const re = /\b([A-Z][a-zA-Z]{2,}(?:[A-Z][a-zA-Z0-9]*)*(?:\s?\d{1,3})?)\b/g;
+  const out = [];
+  const seen = new Set();
+  let m;
+  while ((m = re.exec(src)) !== null && out.length < 40) {
+    const raw = m[1].trim();
+    const n = norm(raw);
+    if (!n || seen.has(n) || STOPWORDS.has(n)) continue;
+    if (mfrKnown && mfrKnown.has(n)) continue;
+    if (n.length < 4 || n.length > 24) continue;
+    if (/^img ?\d+$/.test(n)) continue;
+    if (!/[aeiou]/.test(n)) continue;              // base64 debris
+    if (/^\d/.test(n)) continue;
+    const squashed = n.replace(/ /g, '');
+    let overlaps = false;
+    for (const k of known) {
+      if (k === n || k.replace(/ /g, '') === squashed) { overlaps = true; break; }
+    }
+    if (overlaps) continue;
+    // An ordinary English word appears in lowercase somewhere on the page too.
+    // A product name is capitalised every single time. Self-tuning, and it
+    // clears most of the census noise without a dictionary.
+    if (lowerElsewhere.has(n)) continue;
+    const at = flat.indexOf(' ' + n + ' ');
+    if (at === -1) continue;
+    if (!hasAny(windowAround(flat, at + 1, n.length), DEVICE_CONTEXT)) continue;
+    seen.add(n);
+    out.push({ token: raw, token_norm: n });
+  }
+  return out;
+}
+
+const STOPWORDS = new Set([
+  'the', 'and', 'for', 'our', 'your', 'you', 'all', 'new', 'more', 'this',
+  'that', 'with', 'from', 'what', 'when', 'where', 'which', 'how', 'why',
+  'book', 'booking', 'appointment', 'appointments', 'contact', 'about', 'home',
+  'blog', 'news', 'menu', 'search', 'login', 'sign', 'cart', 'shop', 'read',
+  'learn', 'click', 'call', 'email', 'phone', 'address', 'hours', 'save',
+  'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday',
+  'january', 'february', 'march', 'april', 'june', 'july', 'august',
+  'september', 'october', 'november', 'december',
+  'toronto', 'vancouver', 'montreal', 'calgary', 'ottawa', 'edmonton',
+  'winnipeg', 'mississauga', 'brampton', 'hamilton', 'quebec', 'ontario',
+  'alberta', 'manitoba', 'saskatchewan', 'canada', 'canadian', 'british',
+  'columbia', 'scotia', 'brunswick', 'yukon', 'nunavut',
+  'clinic', 'clinics', 'medical', 'medspa', 'aesthetic', 'aesthetics',
+  'cosmetic', 'cosmetics', 'dermatology', 'doctor', 'nurse', 'clinique',
+  'centre', 'center', 'institute', 'skin', 'skincare', 'beauty', 'radiant',
+  'laser', 'lasers', 'treatment', 'treatments', 'technology', 'technologies',
+  'device', 'devices', 'system', 'systems', 'machine', 'procedure', 'procedures',
+  'session', 'sessions', 'package', 'packages', 'consultation', 'consult',
+  'botox', 'dysport', 'xeomin', 'nuceiva', 'letybo', 'jeuveau', 'juvederm',
+  'restylane', 'sculptra', 'radiesse', 'teosyal', 'belkyra', 'kybella',
+  'filler', 'fillers', 'injectable', 'injectables', 'dermal',
+  'facial', 'facials', 'peel', 'peels', 'microneedling', 'dermaplaning',
+  'price', 'pricing', 'prices', 'financing', 'promotions',
+  'before', 'after', 'results', 'gallery', 'reviews', 'testimonials',
+  'privacy', 'policy', 'terms', 'conditions', 'sitemap', 'copyright',
+  'facebook', 'instagram', 'tiktok', 'youtube', 'twitter', 'linkedin',
+  'google', 'wordpress', 'squarespace', 'shopify', 'elementor', 'javascript',
+  'approved', 'certified', 'authorized', 'health',
+  'face', 'body', 'neck', 'chest', 'legs', 'arms', 'hair', 'removal',
+  'acne', 'scars', 'wrinkles', 'pigmentation', 'melasma', 'rosacea',
+  'collagen', 'elastin', 'dermis', 'epidermis', 'downtime', 'ablative',
+  'fractional', 'wavelength', 'wavelengths', 'energy', 'pulse', 'pulses',
+  'women', 'patients', 'patient', 'clients', 'client', 'team', 'staff',
+  'experience', 'advanced', 'innovative', 'revolutionary', 'state',
+  'complimentary', 'schedule', 'online', 'available', 'offering', 'winner',
+  'magazine', 'awards', 'award', 'choice', 'years',
+  'chemical', 'resurfacing', 'enhanced', 'comfort', 'simply', 'intensive',
+  'lines', 'tone', 'smart', 'priming', 'compact', 'power', 'delivering',
+  'celsius', 'utilizing', 'united', 'states', 'designed', 'many', 'along',
+  'understanding', 'unlike', 'experience', 'introduced', 'combines',
+  'combining', 'targets', 'target', 'stimulating', 'delivers', 'offering',
+  'proud', 'best', 'most', 'also', 'each', 'both', 'these', 'those', 'while',
+  'every', 'first', 'second', 'third', 'other', 'others', 'over', 'under'
+]);
+
+
+// ===========================================================================
+// Page fetching. Same shape as the M38 price crawler: hard timeout, cheap text
+// extraction, meta description read separately because it is the highest-signal
+// text on the page for the least bytes.
+// ===========================================================================
+
+async function getPage(url) {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), FETCH_TIMEOUT_MS);
+  try {
+    const res = await fetch(url, {
+      redirect: 'follow',
+      signal: ctl.signal,
+      headers: { 'user-agent': UA, accept: 'text/html,application/xhtml+xml' }
+    });
+    if (!res.ok) return { ok: false, status: res.status, url };
+    const ct = res.headers.get('content-type') || '';
+    if (!/text\/html|application\/xhtml/i.test(ct)) return { ok: false, status: 415, url };
+    const html = await res.text();
+    return { ok: true, status: res.status, url: res.url || url, html };
+  } catch (e) {
+    return { ok: false, status: 0, url, error: e && e.name === 'AbortError' ? 'timeout' : String(e && e.message || e) };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function metaDescription(html) {
+  const m = /<meta[^>]+name=["']description["'][^>]+content=["']([^"']{0,400})["']/i.exec(html)
+    || /<meta[^>]+content=["']([^"']{0,400})["'][^>]+name=["']description["']/i.exec(html)
+    || /<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']{0,400})["']/i.exec(html);
+  return m ? m[1] : '';
+}
+
+// Scripts and styles come out first, or a JSON-LD blob or a CSS class named
+// .icon-halo becomes a device claim.
+function toText(html) {
+  return String(html)
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, ' ')
+    .replace(/<!--[\s\S]*?-->/g, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&#(\d+);/g, (_, d) => String.fromCharCode(+d))
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// hrefs are kept SEPARATELY from prose. The own-page rule needs the URLs, and
+// the prose matcher needs them gone: booking widgets embed long base64 blobs.
+function hrefs(html, baseUrl) {
+  const out = [];
+  const re = /href=["']([^"'#]{1,300})["']/gi;
+  let m;
+  while ((m = re.exec(html)) !== null && out.length < 600) {
+    try { out.push(new URL(m[1], baseUrl).toString()); } catch (e) {}
+  }
+  return out;
+}
+
+// A page whose text is tiny but whose HTML is large is a JS-rendered site. Same
+// needs_render verdict the price crawler uses, and the ~217 known JavaScript-only
+// clinics land here.
+function looksJsOnly(html, text) {
+  return html.length > 4000 && text.length < 500;
+}
+
+const TECH_HINTS = [
+  'technology', 'technologies', 'our-technology', 'our-devices', 'devices',
+  'equipment', 'machines', 'lasers', 'our-lasers', 'laser-technology',
+  'technologie', 'appareils', 'plateau-technique'
+];
+const SERVICE_HINTS = [
+  'services', 'treatments', 'all-treatments', 'our-treatments', 'procedures',
+  'what-we-do', 'menu', 'price', 'pricing', 'traitements', 'soins', 'tarifs'
+];
+
+function scoreLink(url, hints) {
+  let path;
+  try { path = new URL(url).pathname.toLowerCase(); } catch (e) { return -1; }
+  if (BLOG_PATH.test(path)) return -1;
+  const flat = path.replace(/[^a-z]+/g, '-');
+  let best = -1;
+  hints.forEach((h, i) => {
+    const idx = flat.indexOf(h);
+    if (idx === -1) return;
+    // shorter paths win: /technology beats /blog/what-technology-means
+    const s = 100 - i - path.split('/').filter(Boolean).length * 5 - Math.min(idx, 40);
+    if (s > best) best = s;
+  });
+  return best;
+}
+
+function pickLink(links, hints, host, exclude) {
+  let bestUrl = null, bestScore = 0;
+  for (const l of links) {
+    let h;
+    try { h = new URL(l).hostname.replace(/^www\./, ''); } catch (e) { continue; }
+    if (h !== host) continue;
+    if (exclude && exclude.has(l)) continue;
+    const s = scoreLink(l, hints);
+    if (s > bestScore) { bestScore = s; bestUrl = l; }
+  }
+  return bestUrl;
+}
+
+// ===========================================================================
+// One host
+// ===========================================================================
+
+async function crawlHost(row, matcher) {
+  const host = row.host;
+  const home = row.home_url || ('https://' + host + '/');
+  const seen = new Set();
+  const pages = [];
+  let pagesTried = 0;
+  let lastError = null;
+  let sawJsOnly = false;
+
+  const readPage = async url => {
+    if (seen.has(url) || pages.length >= 3) return null;
+    seen.add(url);
+    pagesTried++;
+    const r = await getPage(url);
+    if (!r.ok) { lastError = 'HTTP ' + r.status + (r.error ? ' ' + r.error : '') + ' ' + url; return null; }
+    const text = toText(r.html);
+    if (looksJsOnly(r.html, text)) { sawJsOnly = true; return null; }
+    const page = {
+      url: r.url,
+      text: text + ' ' + metaDescription(r.html),
+      links: hrefs(r.html, r.url)
+    };
+    pages.push(page);
+    return page;
+  };
+
+  let homePage = await readPage(home);
+  if (!homePage && !sawJsOnly) {
+    // one retry on the bare http host, which the price run showed recovers a few
+    homePage = await readPage('http://' + host + '/');
+  }
+  if (!homePage) {
+    return { status: sawJsOnly ? 'needs_render' : 'error', pagesTried, lastError, matches: [], unknowns: [] };
+  }
+
+  const techUrl = pickLink(homePage.links, TECH_HINTS, host.replace(/^www\./, ''), seen);
+  if (techUrl) await readPage(techUrl);
+  const svcUrl = pickLink(homePage.links, SERVICE_HINTS, host.replace(/^www\./, ''), seen);
+  if (svcUrl) await readPage(svcUrl);
+
+  // The homepage nav usually carries every device link on the site, so the
+  // own-page signal is computed against the union of hrefs from all pages read.
+  const allLinks = pages.flatMap(p => p.links);
+  const byDevice = new Map();
+  const unknowns = new Map();
+
+  for (const p of pages) {
+    const linkBlob = allLinks.join(' ');
+    const res = matchDevices(p.text + ' ' + linkBlob, p.url, matcher);
+    for (const m of res.matches) {
+      const prev = byDevice.get(m.device_id);
+      if (!prev || RANK[m.confidence] > RANK[prev.confidence]) {
+        byDevice.set(m.device_id, Object.assign({}, m, { source_url: p.url }));
+      }
+    }
+    for (const u of res.unknowns) {
+      if (!unknowns.has(u.token_norm)) unknowns.set(u.token_norm, Object.assign({}, u, { source_url: p.url }));
+    }
+  }
+
+  const matches = [...byDevice.values()].slice(0, MAX_DEVICES_PER_HOST);
+  return {
+    status: matches.length ? 'done' : 'empty',
+    pagesTried,
+    lastError,
+    techUrl: techUrl || null,
+    matches,
+    unknowns: [...unknowns.values()].slice(0, MAX_UNKNOWNS_PER_HOST)
+  };
+}
+
+// ===========================================================================
+// Handler. This function owns the whole M39 surface: the crawl loop AND the
+// candidate review. Deliberately kept out of admin-action.js so nothing here can
+// break the M38 price handlers that already run in production.
+// ===========================================================================
+
+exports.handler = async event => {
+  if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: cors(), body: '' };
+
+  const secret = event.headers['x-admin-secret'] || event.headers['X-Admin-Secret'];
+  if (secret !== process.env.ADMIN_SECRET) return json(401, { error: 'unauthorized' });
+
+  let body = {};
+  try { body = JSON.parse(event.body || '{}'); } catch (e) {}
+  const action = body.action || 'crawl';
+
+  const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { persistSession: false }
+  });
+
+  try {
+    switch (action) {
+      case 'crawl':               return json(200, await doCrawl(supabase, body));
+      case 'candidate-stats':     return json(200, await candidateStats(supabase));
+      case 'list-candidates':     return json(200, await listCandidates(supabase, body));
+      case 'approve-candidates':  return json(200, await decide(supabase, body, true));
+      case 'reject-candidates':   return json(200, await decide(supabase, body, false));
+      case 'list-unknowns':       return json(200, await listUnknowns(supabase, body));
+      default:                    return json(400, { error: 'unknown action: ' + action });
+    }
+  } catch (e) {
+    return json(500, { error: String((e && e.message) || e) });
+  }
+};
+
+// ---------------------------------------------------------------------------
+// crawl
+// ---------------------------------------------------------------------------
+
+async function doCrawl(supabase, body) {
+  const batch = Math.min(Math.max(parseInt(body.batch, 10) || BATCH_DEFAULT, 1), BATCH_MAX);
+
+  if (body.retry === true) {
+    await supabase.from('crawl_device_queue')
+      .update({ status: 'pending', last_error: null })
+      .in('status', ['error', 'running']);
+  }
+
+  // One run row per crawl session, so a month-over-month diff can be scoped.
+  let runId = body.run_id || null;
+  if (!runId) {
+    const { data } = await supabase.from('device_crawl_runs')
+      .insert({ label: body.label || null }).select('id').single();
+    runId = data ? data.id : null;
+  }
+
+  const { data: claimable, error: claimErr } = await supabase
+    .from('crawl_device_queue')
+    .select('id, host, clinic_ids, home_url, attempts')
+    .eq('status', 'pending')
+    .order('id', { ascending: true })
+    .limit(batch);
+  if (claimErr) throw claimErr;
+
+  if (!claimable || !claimable.length) {
+    return { done: true, run_id: runId, processed: [], remaining: 0 };
+  }
+
+  await supabase.from('crawl_device_queue')
+    .update({ status: 'running' })
+    .in('id', claimable.map(r => r.id));
+
+  // Read the reference list fresh every invocation, so correcting a row is a SQL
+  // update and never a redeploy.
+  const { data: devices, error: refErr } = await supabase
+    .from('device_reference')
+    .select('id, model, model_aliases, manufacturer, manufacturer_aliases, category, name_is_also_generic, active')
+    .eq('active', true);
+  if (refErr) throw refErr;
+  const matcher = buildMatcher(devices || []);
+
+  const processed = [];
+
+  for (const row of claimable) {
+    let out;
+    try {
+      out = await crawlHost(row, matcher);
+    } catch (e) {
+      out = { status: 'error', pagesTried: 0, lastError: String((e && e.message) || e), matches: [], unknowns: [] };
+    }
+
+    const clinicIds = Array.isArray(row.clinic_ids) ? row.clinic_ids : [];
+    let inserted = 0;
+
+    if (out.matches.length && clinicIds.length) {
+      // A host fans out to every clinic on it, franchises included, the same
+      // chain rule the price crawl settled on.
+      const rows = [];
+      for (const clinicId of clinicIds) {
+        for (const m of out.matches) {
+          rows.push({
+            clinic_id: clinicId,
+            host: row.host,
+            device_id: m.device_id,
+            matched_text: m.matched_text,
+            source_url: m.source_url,
+            page_kind: m.page_kind,
+            confidence: m.confidence,
+            status: 'pending',
+            run_id: runId
+          });
+        }
+      }
+      for (let i = 0; i < rows.length; i += 200) {
+        const slice = rows.slice(i, i + 200);
+        const { error } = await supabase.from('clinic_device_candidates')
+          .upsert(slice, { onConflict: 'clinic_id,device_id,source_url', ignoreDuplicates: true });
+        if (!error) inserted += slice.length;
+        else out.lastError = 'candidate insert: ' + error.message;
+      }
+    }
+
+    if (out.unknowns.length) {
+      await supabase.from('device_unknown_tokens').insert(out.unknowns.map(u => ({
+        token: u.token,
+        token_norm: u.token_norm,
+        host: row.host,
+        clinic_id: clinicIds[0] || null,
+        source_url: u.source_url,
+        run_id: runId
+      })));
+    }
+
+    await supabase.from('crawl_device_queue').update({
+      status: out.status,
+      tech_url: out.techUrl || null,
+      pages_tried: out.pagesTried,
+      devices_found: out.matches.length,
+      unknowns_seen: out.unknowns.length,
+      attempts: (row.attempts || 0) + 1,
+      last_error: out.lastError,
+      last_run_id: runId,
+      fetched_at: new Date().toISOString()
+    }).eq('id', row.id);
+
+    processed.push({
+      host: row.host,
+      status: out.status,
+      clinics: clinicIds.length,
+      pages: out.pagesTried,
+      inserted: inserted,
+      devices: out.matches.map(m => ({ model: m.model, category: m.category, confidence: m.confidence })),
+      unknowns: out.unknowns.map(u => u.token),
+      error: out.lastError || null
+    });
+  }
+
+  const { count: remaining } = await supabase
+    .from('crawl_device_queue')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'pending');
+
+  if (runId) {
+    const { data: cur } = await supabase
+      .from('device_crawl_runs').select('hosts_done').eq('id', runId).single();
+    await supabase.from('device_crawl_runs')
+      .update({ hosts_done: ((cur && cur.hosts_done) || 0) + claimable.length })
+      .eq('id', runId);
+  }
+
+  return { done: false, run_id: runId, processed, remaining: remaining || 0 };
+}
+
+// ---------------------------------------------------------------------------
+// review
+// ---------------------------------------------------------------------------
+
+async function candidateStats(supabase) {
+  const c = async (table, col, val) => {
+    const q = supabase.from(table).select('id', { count: 'exact', head: true });
+    const { count } = col ? await q.eq(col, val) : await q;
+    return count || 0;
+  };
+  const [pending, approved, rejected, queuePending, queueDone, queueEmpty, needsRender, queueError, listed, unknowns] =
+    await Promise.all([
+      c('clinic_device_candidates', 'status', 'pending'),
+      c('clinic_device_candidates', 'status', 'approved'),
+      c('clinic_device_candidates', 'status', 'rejected'),
+      c('crawl_device_queue', 'status', 'pending'),
+      c('crawl_device_queue', 'status', 'done'),
+      c('crawl_device_queue', 'status', 'empty'),
+      c('crawl_device_queue', 'status', 'needs_render'),
+      c('crawl_device_queue', 'status', 'error'),
+      c('clinic_devices', null, null),
+      c('device_unknown_tokens', null, null)
+    ]);
+  return {
+    counts: { pending, approved, rejected },
+    queue: { pending: queuePending, done: queueDone, empty: queueEmpty, needs_render: needsRender, error: queueError },
+    clinic_devices: listed,
+    unknown_tokens: unknowns
+  };
+}
+
+// Two hops, never a PostgREST embed. The embed approach broke on the Taiwan
+// crawler and the fix was to join in JS.
+async function listCandidates(supabase, body) {
+  const status = ['pending', 'approved', 'rejected'].includes(body.status) ? body.status : 'pending';
+  const limit = Math.min(Math.max(parseInt(body.limit, 10) || 300, 1), 1000);
+
+  let q = supabase.from('clinic_device_candidates')
+    .select('id, clinic_id, host, device_id, matched_text, source_url, page_kind, confidence, status, note, crawled_at')
+    .eq('status', status)
+    .order('host', { ascending: true })
+    .limit(limit);
+  if (body.confidence) q = q.eq('confidence', body.confidence);
+
+  const { data: cands, error } = await q;
+  if (error) throw error;
+  if (!cands || !cands.length) return { candidates: [] };
+
+  const clinicIds = [...new Set(cands.map(c => c.clinic_id))];
+  const deviceIds = [...new Set(cands.map(c => c.device_id))];
+
+  const { data: clinics } = await supabase
+    .from('clinics').select('id, name, province').in('id', clinicIds);
+  const { data: devices } = await supabase
+    .from('device_reference').select('id, model, manufacturer, category').in('id', deviceIds);
+
+  const clinicById = new Map((clinics || []).map(c => [c.id, c]));
+  const deviceById = new Map((devices || []).map(d => [d.id, d]));
+
+  return {
+    candidates: cands.map(c => {
+      const cl = clinicById.get(c.clinic_id) || {};
+      const dv = deviceById.get(c.device_id) || {};
+      return Object.assign({}, c, {
+        clinic_name: cl.name || c.clinic_id,
+        clinic_region: cl.province || '',
+        model: dv.model || ('device ' + c.device_id),
+        manufacturer: dv.manufacturer || '',
+        category: dv.category || ''
+      });
+    })
+  };
+}
+
+async function decide(supabase, body, approve) {
+  const ids = body.ids || (body.id ? [body.id] : []);
+  if (!ids.length) return { error: 'no ids', approved: 0, rejected: 0 };
+
+  const { data: cands, error } = await supabase
+    .from('clinic_device_candidates')
+    .select('id, clinic_id, device_id, matched_text, source_url, confidence, run_id, crawled_at')
+    .in('id', ids)
+    .eq('status', 'pending');
+  if (error) throw error;
+  if (!cands || !cands.length) return { approved: 0, rejected: 0, errors: ['nothing pending in that selection'] };
+
+  const now = new Date().toISOString();
+
+  if (!approve) {
+    await supabase.from('clinic_device_candidates')
+      .update({ status: 'rejected', reviewed_at: now, note: body.note || null })
+      .in('id', cands.map(c => c.id));
+    return { rejected: cands.length };
+  }
+
+  // Which pairs are already published, so first_seen is preserved and the change
+  // feed does not log an "added" event for a device that was already there.
+  const { data: existing } = await supabase
+    .from('clinic_devices')
+    .select('clinic_id, device_id')
+    .in('clinic_id', [...new Set(cands.map(c => c.clinic_id))]);
+  const already = new Set((existing || []).map(r => r.clinic_id + '|' + r.device_id));
+
+  const today = (cands[0].crawled_at || now).slice(0, 10);
+  const upserts = cands.map(c => ({
+    clinic_id: c.clinic_id,
+    device_id: c.device_id,
+    status: 'listed',
+    source: 'website',
+    source_url: c.source_url,
+    matched_text: c.matched_text,
+    // Dated to the day the PAGE was read, not the day of approval. Staleness is
+    // what turns crawled data into a complaint, same call as the price crawl.
+    first_seen: (c.crawled_at || now).slice(0, 10),
+    last_seen: (c.crawled_at || now).slice(0, 10),
+    updated_at: now
+  }));
+
+  const errors = [];
+  let approved = 0;
+  for (let i = 0; i < upserts.length; i += 200) {
+    const slice = upserts.slice(i, i + 200);
+    const { error: upErr } = await supabase.from('clinic_devices')
+      .upsert(slice, { onConflict: 'clinic_id,device_id' });
+    if (upErr) errors.push(upErr.message);
+    else approved += slice.length;
+  }
+
+  // The change feed. Only genuinely new pairs produce an 'added' event.
+  const events = cands
+    .filter(c => !already.has(c.clinic_id + '|' + c.device_id))
+    .map(c => ({
+      clinic_id: c.clinic_id,
+      device_id: c.device_id,
+      event: 'added',
+      observed_at: today,
+      run_id: c.run_id,
+      source_url: c.source_url
+    }));
+  if (events.length) await supabase.from('clinic_device_events').insert(events);
+
+  await supabase.from('clinic_device_candidates')
+    .update({ status: 'approved', reviewed_at: now })
+    .in('id', cands.map(c => c.id));
+
+  return { approved, new_events: events.length, errors };
+}
+
+// The census. Grouped in JS because a GROUP BY over PostgREST needs a view, and
+// this table is small enough that it is not worth one.
+async function listUnknowns(supabase, body) {
+  const limit = Math.min(Math.max(parseInt(body.limit, 10) || 2000, 1), 5000);
+  const { data, error } = await supabase
+    .from('device_unknown_tokens')
+    .select('token, token_norm, host, source_url')
+    .order('id', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+
+  const grouped = new Map();
+  for (const r of (data || [])) {
+    const g = grouped.get(r.token_norm) || { token: r.token, token_norm: r.token_norm, hosts: new Set(), sample_url: r.source_url };
+    g.hosts.add(r.host);
+    grouped.set(r.token_norm, g);
+  }
+  return {
+    unknowns: [...grouped.values()]
+      .map(g => ({ token: g.token, token_norm: g.token_norm, host_count: g.hosts.size, sample_url: g.sample_url }))
+      .sort((a, b) => b.host_count - a.host_count)
+      .slice(0, 300)
+  };
+}
+
+function cors() {
+  return {
+    'access-control-allow-origin': '*',
+    'access-control-allow-headers': 'content-type, x-admin-secret',
+    'access-control-allow-methods': 'POST, OPTIONS'
+  };
+}
+
+function json(statusCode, obj) {
+  return {
+    statusCode,
+    headers: Object.assign({ 'content-type': 'application/json' }, cors()),
+    body: JSON.stringify(obj)
+  };
+}
