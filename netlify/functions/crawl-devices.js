@@ -987,7 +987,15 @@ async function decide(supabase, body, approve) {
   const already = new Set((existing || []).map(r => r.clinic_id + '|' + r.device_id));
 
   const today = (cands[0].crawled_at || now).slice(0, 10);
-  const upserts = cands.map(c => ({
+  const isNew = c => !already.has(c.clinic_id + '|' + c.device_id);
+  const day = c => (c.crawled_at || now).slice(0, 10);
+
+  // ⚠️ first_seen must NEVER be rewritten. A plain upsert would reset it to the
+  // newer crawl date every time a device is re-approved from a later run, which
+  // destroys the "installed since" signal that the change feed is sold on. So
+  // new pairs and existing pairs are written separately, and the update path
+  // simply omits the column.
+  const inserts = cands.filter(isNew).map(c => ({
     clinic_id: c.clinic_id,
     device_id: c.device_id,
     status: 'listed',
@@ -996,15 +1004,31 @@ async function decide(supabase, body, approve) {
     matched_text: c.matched_text,
     // Dated to the day the PAGE was read, not the day of approval. Staleness is
     // what turns crawled data into a complaint, same call as the price crawl.
-    first_seen: (c.crawled_at || now).slice(0, 10),
-    last_seen: (c.crawled_at || now).slice(0, 10),
+    first_seen: day(c),
+    last_seen: day(c),
+    updated_at: now
+  }));
+
+  const refreshes = cands.filter(c => !isNew(c)).map(c => ({
+    clinic_id: c.clinic_id,
+    device_id: c.device_id,
+    source_url: c.source_url,
+    matched_text: c.matched_text,
+    last_seen: day(c),
     updated_at: now
   }));
 
   const errors = [];
   let approved = 0;
-  for (let i = 0; i < upserts.length; i += 200) {
-    const slice = upserts.slice(i, i + 200);
+  for (let i = 0; i < inserts.length; i += 200) {
+    const slice = inserts.slice(i, i + 200);
+    const { error: upErr } = await supabase.from('clinic_devices')
+      .upsert(slice, { onConflict: 'clinic_id,device_id' });
+    if (upErr) errors.push(upErr.message);
+    else approved += slice.length;
+  }
+  for (let i = 0; i < refreshes.length; i += 200) {
+    const slice = refreshes.slice(i, i + 200);
     const { error: upErr } = await supabase.from('clinic_devices')
       .upsert(slice, { onConflict: 'clinic_id,device_id' });
     if (upErr) errors.push(upErr.message);
