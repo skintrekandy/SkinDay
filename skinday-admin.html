@@ -1034,7 +1034,7 @@
           <button class="btn-ghost" onclick="dcStart(true)">Retry failed</button>
           <span id="dc-progress" style="font-size:.82rem;color:var(--muted);"></span>
         </div>
-        <div class="form-subtitle" style="margin-top:.6rem;">This only advances while the tab is open and awake, same as the price crawl, so do not run both at once. Watch the first ten hosts before leaving it to loop. Each device shows how it was found: <strong>own page</strong> means the clinic has a dedicated page for that machine, which is the strongest evidence; <strong>named</strong> means it was written in the page text; <strong>blog</strong> means it appeared in an article and may be a device they only wrote about.</div>
+        <div class="form-subtitle" style="margin-top:.6rem;">This only advances while the tab is open and awake, same as the price crawl, so do not run both at once. Watch the first ten hosts before leaving it to loop. Each device shows how it was found: <strong>own page</strong> means the clinic has a dedicated page for that machine, which is the strongest evidence; <strong>named</strong> means it was written in the page text; <strong>blog</strong> means it appeared in an article and may be a device they only wrote about. A row marked <strong>sitemap</strong> came from a site whose pages are JavaScript-only, so the evidence is the clinic's own page addresses rather than readable text.</div>
 
         <div id="dc-log" style="display:none;margin-top:1rem;max-height:60vh;overflow:auto;font-size:.78rem;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;border-top:1px solid var(--border);padding-top:.7rem;line-height:1.6;"></div>
       </div>
@@ -1616,16 +1616,21 @@ async function dcStart(retry) {
           .map(d => fvEscape(d.model) + ' ' + dcConfLabel(d.confidence)).join(', ');
         dcLog('<strong>' + host + '</strong> · ' + list +
               ' · across ' + p.clinics + ' clinic' + ((p.clinics === 1) ? '' : 's') +
+              (p.thin_only ? ' · <span style="color:var(--gold);">javascript only, read from its sitemap</span>' : '') +
+              (p.sitemap_urls ? ' · sitemap ' + p.sitemap_urls + ' urls' : '') +
               ((p.unknowns || []).length ? ' · unmatched: ' + fvEscape(p.unknowns.join(', ')) : ''),
               'var(--green)');
       } else if (p.status === 'empty') {
         dcTotals.empty++;
         dcLog(host + ' · no devices found' +
+              (p.sitemap_urls ? ' · sitemap ' + p.sitemap_urls + ' urls read' : '') +
               ((p.unknowns || []).length ? ' · unmatched: ' + fvEscape(p.unknowns.join(', ')) : ''),
               'var(--muted)');
       } else if (p.status === 'needs_render') {
         dcTotals.render++;
-        dcLog(host + ' · javascript only, needs rendering', 'var(--gold)');
+        dcLog(host + ' · javascript only, and its sitemap did not help either'
+              + (p.sitemap_urls ? ' (sitemap had ' + p.sitemap_urls + ' urls)' : ' (no sitemap found)'),
+              'var(--gold)');
       } else {
         dcTotals.errors++;
         dcLog(host + ' · ' + fvEscape(p.error || p.status), 'var(--red)');
