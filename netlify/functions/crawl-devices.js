@@ -30,10 +30,22 @@ const UA = 'Mozilla/5.0 (compatible; SkinDayBot/1.0; +https://skinday.ca/bot)';
 // name_is_also_generic rows do. Enumerated rather than guessed, because a wrong
 // category is the one error that wastes a sales call.
 const RISKY_SINGLE_WORD = new Set([
-  'elite', 'ultra', 'icon', 'halo', 'forma', 'genius', 'evolve', 'opus',
-  'clarity', 'fotona', 'fraxel', 'physiq', 'prime', 'secret', 'legacy',
-  'bliss', 'versa', 'accent', 'harmony', 'hybrid', 'tetra', 'spectra',
-  'mosaic', 'profound', 'potenza', 'moxi', 'vectus', 'cynergy', 'nordlys'
+  // ⚠️ TRIMMED 2026-07-27. The first version of this list suppressed real
+  // installs and cost the data its credibility: Potenza came back as 14 clinics
+  // in Canada because the rule demanded "Cynosure Potenza" in the page text and
+  // clinics simply write "Potenza". Same for Moxi, Vectus, Cynergy, Nordlys and
+  // Physiq.
+  //
+  // THE TEST FOR THIS LIST is not "could this word appear elsewhere" but
+  // "would a reader of a clinic page be unsure this refers to a machine".
+  // Icon, Halo, Elite, Forma, Genius, Evolve, Prime, Secret, Legacy, Bliss,
+  // Versa, Accent, Harmony, Hybrid, Profound, Clarity, Opus, Mosaic, Spectra
+  // and Tetra are ordinary English or ordinary marketing words and stay.
+  // Coined product names come OUT: they are unambiguous on their own.
+  'elite', 'icon', 'halo', 'forma', 'genius', 'evolve', 'opus',
+  'clarity', 'prime', 'secret', 'legacy', 'bliss', 'versa', 'accent',
+  'harmony', 'hybrid', 'tetra', 'spectra', 'mosaic', 'profound',
+  'ultra'
 ]);
 
 const DEVICE_CONTEXT = [

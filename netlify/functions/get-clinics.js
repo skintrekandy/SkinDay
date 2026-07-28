@@ -92,6 +92,93 @@ const CONCERNS_MAP = buildTaxonomyMap('concerns.json', {
   'jawline-laxity':      'Skin laxity & sagging',
 });
 
+// ── DEVICES (M39) ────────────────────────────────────────────────
+// Published rows only. clinic_device_candidates is behind a review gate and
+// must never reach a patient; clinic_devices is the approved table.
+//
+// The shape returned to the client is deliberately flat and small: model,
+// manufacturer, the plain-English category label, and status. The card shows
+// model names only; the profile shows the rest.
+const DEVICE_SELECT = `
+  clinic_id, status, first_seen,
+  device_reference!inner ( model, manufacturer, category, active )
+`;
+
+// device_categories is 15 rows and never changes between requests, so it is
+// cached for the life of the container rather than re-fetched per call.
+let CATEGORY_LABELS = null;
+async function loadCategoryLabels(supabase) {
+  if (CATEGORY_LABELS) return CATEGORY_LABELS;
+  const { data } = await supabase
+    .from('device_categories')
+    .select('category, segment, label_en, sort_order, group_key, group_label, group_order');
+  CATEGORY_LABELS = {};
+  (data || []).forEach(r => { CATEGORY_LABELS[r.category] = r; });
+  return CATEGORY_LABELS;
+}
+
+// The card's chip vocabulary predates the device work and does not match
+// device_categories.segment. Mapping here rather than in the browser keeps the
+// two spellings from silently failing to join.
+const SEGMENT_TO_CARD_CATEGORY = {
+  laser_ipl:       'lasers_ipl',
+  rf_hifu:         'rf_hifu',
+  body_contouring: 'body',
+};
+
+function shapeDeviceRow(row, labels) {
+  const d = row.device_reference || {};
+  const cat = labels[d.category] || {};
+  return {
+    model:        d.model,
+    manufacturer: d.manufacturer,
+    category:     d.category,
+    category_label: cat.label_en || d.category,
+    segment:      cat.segment || null,
+    card_category: SEGMENT_TO_CARD_CATEGORY[cat.segment] || null,
+    status:       row.status,
+    sort_order:   cat.sort_order != null ? cat.sort_order : 999,
+  };
+}
+
+// URL-safe model key. Morpheus8 -> morpheus8, Clear + Brilliant -> clear-brilliant.
+// Kept in this file so the client and the server cannot drift apart on it.
+function slugifyModel(model) {
+  return String(model || '')
+    .toLowerCase()
+    .replace(/[\u00ae\u2122]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+async function fetchDevicesFor(supabase, clinicIds) {
+  if (!clinicIds || !clinicIds.length) return {};
+  const labels = await loadCategoryLabels(supabase);
+  const { data, error } = await supabase
+    .from('clinic_devices')
+    .select(DEVICE_SELECT)
+    .in('clinic_id', clinicIds)
+    .eq('device_reference.active', true);
+  if (error) {
+    // A device failure must never take the directory down with it. The page
+    // renders exactly as it did before M39 and the devices are simply absent.
+    console.warn('[get-clinics] device fetch failed, continuing without:', error.message);
+    return {};
+  }
+  const map = {};
+  (data || []).forEach(row => {
+    const cid = String(row.clinic_id);
+    if (!map[cid]) map[cid] = [];
+    map[cid].push(shapeDeviceRow(row, labels));
+  });
+  // Category order first, then model name, so a profile table reads sensibly
+  // and the card's first three chips are stable between loads.
+  Object.keys(map).forEach(cid => {
+    map[cid].sort((a, b) => (a.sort_order - b.sort_order) || String(a.model).localeCompare(String(b.model)));
+  });
+  return map;
+}
+
 const CARD_FIELDS = `
   id, name, slug, neighbourhood, area, province, region,
   rating, reviews, place_id, maps_url, rank,
@@ -138,11 +225,12 @@ exports.handler = async (event) => {
 
       // Attach identity, prices, and photos for this clinic
       const clinicId = String(data.id);
-      const [expertiseRes, concernsRes, photosRes, pricesRes] = await Promise.all([
+      const [expertiseRes, concernsRes, photosRes, pricesRes, devicesMap] = await Promise.all([
         supabase.from('clinic_expertise').select('value, is_other, other_text').eq('clinic_id', clinicId),
         supabase.from('clinic_concerns').select('value, is_other, other_text').eq('clinic_id', clinicId),
         supabase.from('clinic_photos').select('filename, display_order, is_hero').eq('clinic_id', clinicId).order('display_order', { ascending: true }),
         supabase.from('clinic_prices').select('toxin, price, injector_type, price_source, price_date').eq('clinic_id', clinicId).order('price', { ascending: true }),
+        fetchDevicesFor(supabase, [clinicId]),
       ]);
       data.identity = {
         expertise: (expertiseRes.data || []).map(r => normalizeIdentityRow(r, EXPERTISE_MAP)),
@@ -159,6 +247,10 @@ exports.handler = async (event) => {
         data.toxin_type   = lowest.toxin;
       }
       // photo_filenames: ordered list from DB, empty = client falls back to Storage listing
+      // M39 devices. An EMPTY ARRAY is meaningful and different from absent:
+      // most clinics simply have nothing crawled yet, and the profile must not
+      // render "no devices" as if it were a finding about the clinic.
+      data.devices = devicesMap[clinicId] || [];
       data.photo_filenames = (photosRes.data || []).map(r => r.filename);
       // hero_filename: explicitly designated cover photo, null = fallback to first photo
       const heroRow = (photosRes.data || []).find(r => r.is_hero === true);
@@ -172,6 +264,196 @@ exports.handler = async (event) => {
           'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60',
         },
         body: JSON.stringify(data),
+      };
+    }
+
+    // ── MODE: device facets (M39) ────────────────────────────
+    // The option list for the Technology filter, with a clinic count on every
+    // entry. Counts are the whole point: a filter option that returns three
+    // clinics is a dead end, so the UI can hide anything below a threshold
+    // instead of offering 122 models and letting the patient find the empty
+    // ones. Optionally scoped by province so a provincial view offers only
+    // what exists there.
+    if (params.mode === 'device-facets') {
+      const labels = await loadCategoryLabels(supabase);
+      const prov = (params.province || '').trim();
+
+      let scopedIds = null;
+      if (prov) {
+        const { data: provClinics } = await supabase
+          .from('clinics').select('id').eq('approved', true).ilike('province', prov).range(0, 29999);
+        scopedIds = new Set((provClinics || []).map(r => String(r.id)));
+      }
+
+      let q = supabase
+        .from('clinic_devices')
+        .select('clinic_id, device_reference!inner ( model, category, active )')
+        .eq('device_reference.active', true)
+        .range(0, 49999);
+      const { data, error } = await q;
+      if (error) return { statusCode: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ error: error.message }) };
+
+      const byModel = {};
+      const byCategory = {};
+      const modelCategory = {};
+      const allClinics = new Set();
+      (data || []).forEach(row => {
+        const cid = String(row.clinic_id);
+        if (scopedIds && !scopedIds.has(cid)) return;
+        const d = row.device_reference || {};
+        if (!d.model) return;
+        allClinics.add(cid);
+        (byModel[d.model] = byModel[d.model] || new Set()).add(cid);
+        if (d.category) {
+          (byCategory[d.category] = byCategory[d.category] || new Set()).add(cid);
+          modelCategory[d.model] = d.category;
+        }
+      });
+
+      const models = Object.keys(byModel)
+        .map(m => ({ model: m, slug: slugifyModel(m), clinics: byModel[m].size }))
+        .sort((a, b) => b.clinics - a.clinics || a.model.localeCompare(b.model));
+
+      const categories = Object.keys(byCategory)
+        .map(c => ({
+          category: c,
+          label: (labels[c] && labels[c].label_en) || c,
+          segment: (labels[c] && labels[c].segment) || null,
+          card_category: SEGMENT_TO_CARD_CATEGORY[labels[c] && labels[c].segment] || null,
+          sort_order: (labels[c] && labels[c].sort_order != null) ? labels[c].sort_order : 999,
+          clinics: byCategory[c].size,
+        }))
+        // Categories with a NULL segment (led, lesion_removal, womens_health)
+        // are deliberately outside the patient filter and are not offered here.
+        .filter(c => c.segment)
+        .sort((a, b) => a.sort_order - b.sort_order);
+
+      // Grouped the way the filter renders it, so the browser does not have to
+      // reconstruct which model belongs to which category.
+      const models_by_category = {};
+      models.forEach(m => {
+        const c = modelCategory[m.model];
+        if (!c) return;
+        (models_by_category[c] = models_by_category[c] || []).push(m);
+      });
+
+      // ── GROUP LEVEL ──────────────────────────────────────────
+      // Three tiers: group heading → subcategory row → model row. The group
+      // count is DISTINCT CLINICS across the whole group, not a sum of its
+      // subcategories, because one clinic can own an RF and a HIFU device and
+      // must not be counted twice.
+      const groupClinics = {};
+      const groupMeta = {};
+      (data || []).forEach(row => {
+        const cid = String(row.clinic_id);
+        if (scopedIds && !scopedIds.has(cid)) return;
+        const d = row.device_reference || {};
+        const lab = labels[d.category];
+        if (!lab || !lab.group_key || !lab.segment) return;
+        (groupClinics[lab.group_key] = groupClinics[lab.group_key] || new Set()).add(cid);
+        groupMeta[lab.group_key] = {
+          key: lab.group_key,
+          label: lab.group_label || lab.group_key,
+          order: lab.group_order != null ? lab.group_order : 999,
+        };
+      });
+
+      const groups = Object.keys(groupMeta)
+        .map(k => Object.assign({}, groupMeta[k], {
+          clinics: groupClinics[k].size,
+          categories: categories.filter(c => (labels[c.category] || {}).group_key === k),
+        }))
+        .sort((a, b) => a.order - b.order);
+
+      return {
+        statusCode: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=600',
+        },
+        body: JSON.stringify({ groups, models, categories, models_by_category, clinics_with_devices: allClinics.size }),
+      };
+    }
+
+    // ── MODE: every clinic with one device (M39, /devices/<model>) ──────
+    // Lean rows for the device landing pages, ALL of them in one call rather
+    // than the 24-per-page card grid, because the page lists the whole country
+    // and the crawler needs the full list in the SSR body.
+    if (params.mode === 'device-clinics') {
+      const slug = (params.device || '').trim().toLowerCase();
+      const cat  = (params.devicecat || '').trim().toLowerCase();
+      if (!slug && !cat) return { statusCode: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ error: 'device or devicecat required' }) };
+
+      const labels = await loadCategoryLabels(supabase);
+      const { data: devRows, error: devErr } = await supabase
+        .from('clinic_devices')
+        .select('clinic_id, status, device_reference!inner ( model, manufacturer, category, active )')
+        .eq('device_reference.active', true)
+        .range(0, 49999);
+      if (devErr) return { statusCode: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ error: devErr.message }) };
+
+      let device = null;
+      const statusByClinic = {};
+      const ids = new Set();
+      (devRows || []).forEach(row => {
+        const d = row.device_reference || {};
+        if (slug && slugifyModel(d.model) !== slug) return;
+        if (cat  && String(d.category || '').toLowerCase() !== cat) return;
+        if (!device) {
+          const c = labels[d.category] || {};
+          device = {
+            model: d.model, slug: slugifyModel(d.model),
+            manufacturer: d.manufacturer, category: d.category,
+            category_label: c.label_en || d.category, segment: c.segment || null,
+          };
+        }
+        const cid = String(row.clinic_id);
+        ids.add(cid);
+        // verified beats listed when a clinic somehow has both
+        if (row.status === 'verified' || !statusByClinic[cid]) statusByClinic[cid] = row.status;
+      });
+
+      if (!ids.size) {
+        return { statusCode: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ device, clinics: [] }) };
+      }
+
+      const { data: clinics, error: cErr } = await supabase
+        .from('clinics')
+        .select('id, name, slug, neighbourhood, province, rating, reviews, claimed, photo, logo')
+        .eq('approved', true)
+        .in('id', [...ids])
+        .order('reviews', { ascending: false, nullsFirst: false })
+        .range(0, 4999);
+      if (cErr) return { statusCode: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ error: cErr.message }) };
+
+      // Sibling models in the same category, so the page can cross-link into
+      // its neighbours instead of dead-ending. Internal links are the whole
+      // reason a set of pages like this indexes at all.
+      let siblings = [];
+      if (device && device.category) {
+        const sibCount = {};
+        (devRows || []).forEach(row => {
+          const d = row.device_reference || {};
+          if (String(d.category || '').toLowerCase() !== String(device.category).toLowerCase()) return;
+          if (slugifyModel(d.model) === device.slug) return;
+          (sibCount[d.model] = sibCount[d.model] || new Set()).add(String(row.clinic_id));
+        });
+        siblings = Object.keys(sibCount)
+          .map(m => ({ model: m, slug: slugifyModel(m), clinics: sibCount[m].size }))
+          .sort((a, b) => b.clinics - a.clinics).slice(0, 12);
+      }
+
+      const rows = (clinics || []).map(c => Object.assign({}, c, { device_status: statusByClinic[String(c.id)] || 'listed' }));
+
+      return {
+        statusCode: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Cache-Control': 'public, s-maxage=900, stale-while-revalidate=300',
+        },
+        body: JSON.stringify({ device, clinics: rows, total: rows.length, siblings }),
       };
     }
 
@@ -216,6 +498,50 @@ exports.handler = async (event) => {
     // no rebuild. Both are matched against the clinic's lowest clinic_prices
     // value — the same number the card displays — not the clinics.price
     // snapshot, which can lag.
+    // ── TECHNOLOGY FILTER (M39) ──────────────────────────────
+    // Same contract as the price ceiling: a deep-linkable query param applied
+    // SERVER-SIDE so paging and counts stay correct, e.g.
+    //   ?device=morpheus8            one model
+    //   ?devicecat=rf_microneedling  a whole category
+    // Resolved to a clinic id list and applied inside buildBase(), so it
+    // composes with province, neighbourhood, search, injector and the price
+    // ceiling without touching any of that logic.
+    const deviceSlug  = (params.device || '').trim().toLowerCase();
+    const deviceCat   = (params.devicecat || '').trim().toLowerCase();
+    const deviceGroup = (params.devicegroup || '').trim().toLowerCase();
+    const hasDeviceFilter = !!(deviceSlug || deviceCat || deviceGroup);
+    let deviceClinicIds = null;
+
+    if (hasDeviceFilter) {
+      const { data: devRows, error: devErr } = await supabase
+        .from('clinic_devices')
+        .select('clinic_id, device_reference!inner ( model, category, active )')
+        .eq('device_reference.active', true)
+        .range(0, 49999);
+
+      if (devErr) {
+        console.error('Supabase error (device filter):', devErr);
+        return { statusCode: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ error: devErr.message }) };
+      }
+
+      const catLabels = await loadCategoryLabels(supabase);
+      const set = new Set();
+      (devRows || []).forEach(row => {
+        const d = row.device_reference || {};
+        if (deviceSlug && slugifyModel(d.model) !== deviceSlug) return;
+        if (deviceCat  && String(d.category || '').toLowerCase() !== deviceCat) return;
+        if (deviceGroup) {
+          const lab = catLabels[d.category] || {};
+          if (String(lab.group_key || '').toLowerCase() !== deviceGroup) return;
+        }
+        set.add(String(row.clinic_id));
+      });
+      // Bounded by construction: only ~1,584 clinics have ANY device, so this
+      // list can never grow past that even for the broadest category, which
+      // keeps the resulting .in() well inside a safe URL length.
+      deviceClinicIds = [...set];
+    }
+
     const maxprice = (params.maxprice != null && params.maxprice !== '') ? parseFloat(params.maxprice) : null;
     const minprice = (params.minprice != null && params.minprice !== '') ? parseFloat(params.minprice) : null;
     const hasPriceCeiling = Number.isFinite(maxprice) || Number.isFinite(minprice);
@@ -254,6 +580,10 @@ exports.handler = async (event) => {
       }
       if (injector)      q = q.ilike('injector_credentials', `%${injector}%`);
       if (promo)         q = q.eq('promo', true).not('promo_text', 'is', null);
+      // Technology filter. An empty match list must yield NO results rather
+      // than being skipped, or "clinics with a Morpheus8" would silently
+      // return every clinic in the province.
+      if (hasDeviceFilter) q = q.in('id', deviceClinicIds.length ? deviceClinicIds : ['__none__']);
 
       return q;
     };
@@ -395,9 +725,10 @@ exports.handler = async (event) => {
     const clinicIds = pageSlice.map(c => String(c.id));
     let pricesMap   = {};
     let identityMap = {};
+    let deviceMapForPage = {};
 
     if (clinicIds.length > 0) {
-      const [pricesRes, expertiseRes, concernsRes] = await Promise.all([
+      const [pricesRes, expertiseRes, concernsRes, devicesMap] = await Promise.all([
         supabase
           .from('clinic_prices')
           .select('clinic_id, toxin, price, injector_type, price_source, price_date')
@@ -411,7 +742,9 @@ exports.handler = async (event) => {
           .from('clinic_concerns')
           .select('clinic_id, value, is_other, other_text')
           .in('clinic_id', clinicIds),
+        fetchDevicesFor(supabase, clinicIds),
       ]);
+      deviceMapForPage = devicesMap || {};
 
       if (pricesRes.data && pricesRes.data.length) {
         pricesRes.data.forEach(p => {
@@ -467,6 +800,12 @@ exports.handler = async (event) => {
       } else {
         out.prices = [];
       }
+
+      // M39: model names for the card chips, full rows for the profile modal.
+      // Omitted entirely when empty so the card renders exactly as before for
+      // the ~70% of clinics with nothing crawled.
+      const clinicDevices = deviceMapForPage[String(clinic.id)];
+      if (clinicDevices && clinicDevices.length) out.devices = clinicDevices;
 
       // Attach identity
       const id = identityMap[String(clinic.id)];
