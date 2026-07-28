@@ -704,6 +704,13 @@
       font-size: 0.78rem; font-weight: 500; letter-spacing: 0.05em;
       color: var(--muted); text-transform: uppercase; margin-right: 0.25rem;
     }
+
+    /* Each label is bound to its own control. On desktop this is visually
+       invisible (same gap as the bar), and on mobile it is what lets the three
+       filters stack as labelled rows instead of scrolling off the screen. */
+    .filter-group {
+      display: flex; align-items: center; gap: 0.75rem; min-width: 0;
+    }
     .filter-btn {
       background: transparent;
       border: 1px solid var(--border);
@@ -2034,16 +2041,37 @@
       .hero-stats { flex-wrap: wrap; gap: 1.2rem; }
       .stat-num { font-size: 1.3rem; }
 
-      /* Filter bar — horizontally scrollable on mobile */
+      /* Filter bar on mobile: STACKED, not scrolled.
+         It used to be one nowrap scrolling row, which pushed Technology and Sort
+         off the right edge where nobody found them. Three labelled rows costs
+         about 110px of height and makes all three filters visible. */
       .filter-wrap {
-        flex-wrap: nowrap;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
+        flex-wrap: wrap;
+        overflow-x: visible;
+        gap: 0.9rem;
         padding-bottom: 20px;
-        scrollbar-width: none;
       }
-      .filter-wrap::-webkit-scrollbar { display: none; }
-      .sort-select { flex-shrink: 0; margin-left: 0; }
+      .filter-group {
+        flex: 0 0 100%;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.35rem;
+      }
+      .filter-label { margin-right: 0; }
+      /* The spacer only exists to push Sort right on a single row. */
+      .filter-spacer { display: none; }
+      /* The price chips are the one control that can still overrun a narrow
+         screen, so that row alone stays swipeable. */
+      .price-chips {
+        display: flex; gap: 0.4rem;
+        max-width: 100%; overflow-x: auto;
+        -webkit-overflow-scrolling: touch; scrollbar-width: none;
+      }
+      .price-chips::-webkit-scrollbar { display: none; }
+      .tech-picker { width: 100%; }
+      .tech-btn { max-width: 100%; width: 100%; justify-content: space-between; }
+      .tech-panel { width: calc(100vw - 10%); max-width: none; }
+      .sort-select { flex-shrink: 0; margin-left: 0; width: 100%; }
 
       /* Cards — single column */
       .cards-grid { grid-template-columns: 1fr; padding: 0 4%; }
@@ -2932,6 +2960,7 @@
   </div>
 
   <div class="filter-wrap">
+    <div class="filter-group">
     <span class="filter-label">Botox / unit</span>
     <div class="price-chips" role="group" aria-label="Filter by maximum Botox price per unit">
       <button type="button" class="price-chip" data-max="any" aria-pressed="true" onclick="applyMaxPrice('any')">Any</button>
@@ -2939,6 +2968,8 @@
       <button type="button" class="price-chip" data-max="8"  aria-pressed="false" onclick="applyMaxPrice('8')">≤ $8</button>
       <button type="button" class="price-chip" data-max="11" aria-pressed="false" onclick="applyMaxPrice('11')">≤ $11</button>
     </div>
+    </div>
+    <div class="filter-group">
     <span class="filter-label">Technology</span>
     <div class="tech-picker" id="techPicker">
       <button type="button" class="tech-btn" id="techBtn" onclick="toggleTechPanel()" aria-haspopup="listbox" aria-expanded="false">
@@ -2950,7 +2981,9 @@
         <div class="tech-scroll" id="techScroll"></div>
       </div>
     </div>
+    </div>
     <span class="filter-spacer" aria-hidden="true"></span>
+    <div class="filter-group">
     <span class="filter-label">Sort</span>
     <select class="sort-select" onchange="sortCards(this.value)" id="mainSortSelect">
       <option value="rating">Highest Rated</option>
@@ -2959,6 +2992,7 @@
       <option value="price-low">Price: Low → High</option>
       <option value="nearest">Nearest</option>
     </select>
+    </div>
   </div>
 
   <div class="active-filter-line" id="activeFilterLine" style="display:none;">
