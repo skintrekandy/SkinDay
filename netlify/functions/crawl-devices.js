@@ -109,9 +109,15 @@ function stripMarks(s) {
   return String(s).replace(/[\u00ae\u2122\u2120\u00a9]/g, ' ');
 }
 
+// ⚠️⚠️ THE PLUS SIGN CARRIES MEANING AND MUST SURVIVE NORMALISATION.
+// Stripping it made "excel V+" and "excel V" the same string, so Cutera's
+// current generation could not be told from the previous one, and the same was
+// true of xeo+/xeo, Elite+/Elite and Smartskin+/Smartskin. A generation pair
+// that normalises identically is a guaranteed miscount.
 function norm(s) {
   return stripMarks(s)
     .toLowerCase()
+    .replace(/\+/g, ' plus ')
     .replace(/[^a-z0-9\u4e00-\u9fff]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -124,6 +130,17 @@ function tokenVariants(name) {
   const out = new Set([n]);
   out.add(n.replace(/([a-z]) (\d)/g, '$1$2'));
   out.add(n.replace(/([a-z])(\d)/g, '$1 $2'));
+
+  // A plus sign does two different jobs, and only one of them is a generation
+  // marker. TRAILING plus is the generation ("excel v plus", "elite plus") and
+  // must stay, or the generations collapse again. A plus BETWEEN words is a
+  // conjunction ("Clear + Brilliant"), and clinics write that name both with and
+  // without it, so emit the version without.
+  const parts = n.split(' ');
+  if (parts.length > 2 && parts.indexOf('plus') > 0 && parts.indexOf('plus') < parts.length - 1) {
+    out.add(parts.filter(w => w !== 'plus').join(' '));
+  }
+
   return [...out].filter(Boolean);
 }
 
