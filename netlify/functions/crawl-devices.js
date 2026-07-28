@@ -227,12 +227,42 @@ function matchDevices(rawText, pageUrl, matcher, opts) {
 
   const found = new Map();
 
+  // ⚠️⚠️ OVERLAP SUPPRESSION. The matcher walks entries LONGEST TOKEN FIRST and
+  // records the character span of every accepted match, so a shorter name that
+  // sits inside a longer one already matched at the same place cannot match
+  // again.
+  //
+  // Without this, one mention counts twice: "Stellar M22" contains " m22 ", and
+  // "PicoSure Pro" contains " picosure ", so every Stellar M22 install was also
+  // an M22 install and every PicoSure Pro was also a PicoSure. Same for
+  // "Elite iQ", which contains the normalised " elite " of Elite+.
+  //
+  // Spans, not a global "this model already matched" flag: a clinic that
+  // genuinely owns BOTH a PicoSure and a PicoSure Pro names them in two
+  // different places, and both should still count.
+  const claimedProse = [];
+  const claimedPath = [];
+  const overlaps = (spans, a, b) => spans.some(([s, e]) => a < e && b > s);
+
   for (const entry of matcher) {
     const jammed = entry.token.replace(/ /g, '');
-    const pathHit = !isBlog && (
-      pathBlob.indexOf(' ' + entry.token + ' ') !== -1 ||
-      pathBlob.indexOf(' ' + jammed + ' ') !== -1
-    );
+
+    let pathHit = false;
+    if (!isBlog) {
+      for (const needle of [' ' + entry.token + ' ', ' ' + jammed + ' ']) {
+        let pFrom = 0;
+        for (;;) {
+          const pAt = pathBlob.indexOf(needle, pFrom);
+          if (pAt === -1) break;
+          pFrom = pAt + 1;
+          if (overlaps(claimedPath, pAt + 1, pAt + needle.length - 1)) continue;
+          claimedPath.push([pAt + 1, pAt + needle.length - 1]);
+          pathHit = true;
+          break;
+        }
+        if (pathHit) break;
+      }
+    }
 
     let proseHit = false;
     let corroborated = false;
@@ -242,12 +272,15 @@ function matchDevices(rawText, pageUrl, matcher, opts) {
       const at = text.indexOf(' ' + entry.token + ' ', from);
       if (at === -1) break;
       from = at + 1;
+      // Already consumed by a longer model name at this exact position.
+      if (overlaps(claimedProse, at + 1, at + 1 + entry.token.length)) continue;
       const negWin = text.slice(
         Math.max(0, at + 1 - NEG_BACK),
         Math.min(text.length, at + 1 + entry.token.length + NEG_FWD)
       );
       if (hasAny(negWin, NEGATION_FRAMES)) continue;
       const win = windowAround(text, at + 1, entry.token.length);
+      claimedProse.push([at + 1, at + 1 + entry.token.length]);
       proseHit = true;
       if (!snippet) snippet = win.trim().slice(0, 220);
       if (hasAny(win, entry.mfrTokens)) {
