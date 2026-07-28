@@ -773,7 +773,30 @@
       font-family: 'DM Sans', sans-serif; letter-spacing: 0.04em;
       background: rgba(0,0,0,0.35); border-radius: 20px; padding: 4px 12px;
     }
-  </style>
+  
+  /* ── TECHNOLOGY CARD (M39) ─────────────────────────────────── */
+  .device-list { display: flex; flex-direction: column; gap: 0.9rem; }
+  .device-group-label {
+    font-size: 0.66rem; letter-spacing: 0.09em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 0.35rem;
+  }
+  .device-row {
+    display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap;
+    padding: 0.32rem 0; border-top: 1px solid var(--border);
+  }
+  .device-group .device-row:first-of-type { border-top: none; }
+  .device-model { font-size: 0.88rem; font-weight: 600; color: var(--deep); }
+  .device-mfr   { font-size: 0.74rem; color: var(--muted); }
+  .device-status {
+    margin-left: auto; font-size: 0.62rem; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--muted);
+    border: 1px solid var(--border); border-radius: 3px; padding: 0.08rem 0.34rem;
+  }
+  .device-status-verified { color: #2f7d4f; border-color: rgba(47,125,79,0.35); }
+  .device-footnote {
+    margin-top: 0.8rem; font-size: 0.68rem; line-height: 1.5; color: var(--muted);
+  }
+</style>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="/favicon-32x32.png" type="image/png" sizes="32x32">
   <link rel="icon" href="/favicon-16x16.png" type="image/png" sizes="16x16">
@@ -1075,6 +1098,61 @@ function renderClinic(clinic) {
       </div>
     </div>` : '';
 
+  // Device model and manufacturer strings originate from a crawl, so they are
+  // escaped rather than interpolated raw. clinic.html had no helper of its own.
+  const escapeHtml = (v) => String(v == null ? '' : v)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+  // ── TECHNOLOGY (M39) ──────────────────────────────────────────
+  // Sits directly under Treatments Offered: those chips say WHAT the clinic
+  // does, this table says WHAT WITH. Grouped by the plain-English category
+  // label rather than the internal category key.
+  //
+  // Renders NOTHING when the clinic has no rows. About 70% of clinics have not
+  // had their site read yet, and a "No devices listed" empty state would read
+  // as a finding about the clinic rather than a gap in our data.
+  const devices = Array.isArray(clinic.devices) ? clinic.devices : [];
+  let deviceCardHTML = '';
+  if (devices.length) {
+    const groups = {};
+    devices.forEach(d => {
+      const key = d.category_label || d.category || 'Other';
+      (groups[key] = groups[key] || []).push(d);
+    });
+    // Preserve the order the API already sorted by (category sort_order).
+    const orderedLabels = [];
+    devices.forEach(d => {
+      const key = d.category_label || d.category || 'Other';
+      if (orderedLabels.indexOf(key) === -1) orderedLabels.push(key);
+    });
+
+    const rows = orderedLabels.map(label => `
+      <div class="device-group">
+        <div class="device-group-label">${escapeHtml(label)}</div>
+        ${groups[label].map(d => `
+          <div class="device-row">
+            <span class="device-model">${escapeHtml(d.model)}</span>
+            ${d.manufacturer ? `<span class="device-mfr">${escapeHtml(d.manufacturer)}</span>` : ''}
+            ${d.status === 'verified'
+              ? `<span class="device-status device-status-verified">Verified</span>`
+              : `<span class="device-status">Listed</span>`}
+          </div>`).join('')}
+      </div>`).join('');
+
+    deviceCardHTML = `
+    <div class="card animate animate-delay-1">
+      <div class="card-section">
+        <div class="section-label">Technology</div>
+        <div class="device-list">${rows}</div>
+        <div class="device-footnote">
+          Listed from this clinic's own website. "Verified" means we confirmed the
+          machine with the clinic directly.
+        </div>
+      </div>
+    </div>`;
+  }
+
   const tierAHero = hasTierA ? `
     <div class="profile-hero-photo animate" id="profile-hero-photo">
       <img id="hero-main-img" src="" alt="${clinic.name}" loading="eager" onerror="this.parentElement.classList.add('hero-img-failed')" />
@@ -1127,6 +1205,9 @@ function renderClinic(clinic) {
 
     <!-- TREATMENT CATEGORIES -->
     ${categoriesCardHTML}
+
+    <!-- TECHNOLOGY (M39) -->
+    ${deviceCardHTML}
 
     <!-- PROMO (above pricing, only when promo text exists) -->
     ${promoHTML}
