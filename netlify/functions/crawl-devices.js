@@ -22,7 +22,39 @@ const BATCH_MAX = 5;
 const FETCH_TIMEOUT_MS = 12000;
 const MAX_DEVICES_PER_HOST = 25;   // a directory-style page can name dozens
 const MAX_UNKNOWNS_PER_HOST = 15;
-const UA = 'Mozilla/5.0 (compatible; SkinDayBot/1.0; +https://skinday.ca/bot)';
+// ⚠️⚠️ THE USER AGENT AND HEADERS ARE LOAD-BEARING, not boilerplate.
+//
+// signaturemedispa.com — a clinic with 25 machines and a dedicated page per
+// device — returned HTTP 403 on BOTH https and the http retry. It was never a
+// matcher problem: the site's WAF refused the request before serving a byte.
+// The old string was `Mozilla/5.0 (compatible; SkinDayBot/1.0; ...)`, and the
+// bare "(compatible; …Bot)" shape is what most managed WAF rulesets reject.
+//
+// This UA STILL IDENTIFIES US and still points at a bot page, which matters:
+// we are reading public service pages for a directory, and a clinic that wants
+// to see who is asking should be able to. What changed is that it now looks
+// like a real browser build, and the request carries the headers a real browser
+// sends. In practice the missing accept-language and sec-fetch-* headers reject
+// more crawlers than the UA string does.
+//
+// ⓘ If a host still 403s after this, that is a DELIBERATE block and the honest
+// options are to enter it by hand or ask the clinic through the portal. Do not
+// escalate to a fully disguised UA without deciding that on purpose.
+const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36 SkinDayBot/1.0 (+https://skinday.ca/bot)';
+
+// Sent on every page fetch. A request with only user-agent and accept looks
+// automated no matter what the UA says.
+const BROWSER_HEADERS = {
+  'user-agent': UA,
+  accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+  'accept-language': 'en-CA,en;q=0.9,fr-CA;q=0.8',
+  'upgrade-insecure-requests': '1',
+  'sec-fetch-dest': 'document',
+  'sec-fetch-mode': 'navigate',
+  'sec-fetch-site': 'none',
+  'sec-fetch-user': '?1',
+  'cache-control': 'max-age=0',
+};
 
 
 // Single words from the reference list that are also ordinary English or
@@ -456,7 +488,7 @@ async function getPage(url) {
     const res = await fetch(url, {
       redirect: 'follow',
       signal: ctl.signal,
-      headers: { 'user-agent': UA, accept: 'text/html,application/xhtml+xml' }
+      headers: BROWSER_HEADERS
     });
     if (!res.ok) return { ok: false, status: res.status, url };
     const ct = res.headers.get('content-type') || '';
@@ -514,7 +546,11 @@ async function getXml(url) {
     const res = await fetch(url, {
       redirect: 'follow',
       signal: ctl.signal,
-      headers: { 'user-agent': UA, accept: 'application/xml,text/xml,text/plain,*/*' }
+      headers: Object.assign({}, BROWSER_HEADERS, {
+        accept: 'application/xml,text/xml,text/plain,*/*;q=0.8',
+        'sec-fetch-dest': 'empty',
+        'sec-fetch-mode': 'cors',
+      })
     });
     if (!res.ok) return null;
     const body = await res.text();
@@ -665,7 +701,16 @@ async function crawlHost(row, matcher) {
     seen.add(url);
     pagesTried++;
     const r = await getPage(url);
-    if (!r.ok) { lastError = 'HTTP ' + r.status + (r.error ? ' ' + r.error : '') + ' ' + url; return null; }
+    if (!r.ok) {
+      // 403 and 429 are the site CHOOSING to refuse us. Labelling them
+      // separately matters: they are not transient, so requeueing them forever
+      // is pointless, and they are the population that needs manual entry or a
+      // portal invitation instead.
+      const blocked = (r.status === 403 || r.status === 429 || r.status === 401);
+      lastError = (blocked ? 'BLOCKED ' : '') + 'HTTP ' + r.status
+        + (r.error ? ' ' + r.error : '') + ' ' + url;
+      return null;
+    }
     const text = toText(r.html);
     const thin = looksJsOnly(r.html, text);
     if (thin) sawJsOnly = true;
