@@ -791,6 +791,15 @@ exports.handler = async event => {
 async function doCrawl(supabase, body) {
   const batch = Math.min(Math.max(parseInt(body.batch, 10) || BATCH_DEFAULT, 1), BATCH_MAX);
 
+  // ⭐ SINGLE-HOST MODE. Crawl one named host immediately, whatever its queue
+  // status, and report what happened.
+  //
+  // This exists because every diagnosis so far has required a full country run
+  // or a guess. When a clinic we know owns 25 machines comes back with none, the
+  // question "what did the crawler actually read on that host" should take
+  // fifteen seconds, not a week.
+  const oneHost = (body.host || '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '');
+
   if (body.retry === true) {
     await supabase.from('crawl_device_queue')
       .update({ status: 'pending', last_error: null })
@@ -805,13 +814,25 @@ async function doCrawl(supabase, body) {
     runId = data ? data.id : null;
   }
 
-  const { data: claimable, error: claimErr } = await supabase
+  let claimQuery = supabase
     .from('crawl_device_queue')
-    .select('id, host, clinic_ids, home_url, attempts')
-    .eq('status', 'pending')
-    .order('id', { ascending: true })
-    .limit(batch);
+    .select('id, host, clinic_ids, home_url, attempts');
+
+  if (oneHost) {
+    // Deliberately ignores status and `excluded`: the whole point is to inspect
+    // a host the normal loop would skip.
+    claimQuery = claimQuery.eq('host', oneHost).limit(1);
+  } else {
+    claimQuery = claimQuery.eq('status', 'pending').order('id', { ascending: true }).limit(batch);
+  }
+
+  const { data: claimable, error: claimErr } = await claimQuery;
   if (claimErr) throw claimErr;
+
+  if (oneHost && (!claimable || !claimable.length)) {
+    return { done: true, run_id: runId, processed: [], remaining: 0,
+             note: 'No queue row for host "' + oneHost + '". Check the spelling, or it may be stored with a www prefix or a subdomain.' };
+  }
 
   if (!claimable || !claimable.length) {
     return { done: true, run_id: runId, processed: [], remaining: 0 };
@@ -900,6 +921,18 @@ async function doCrawl(supabase, body) {
 
     processed.push({
       host: row.host,
+      // Single-host mode returns the evidence, not just the verdict: which pages
+      // were read, what the sitemap gave, and every unmatched capitalised token.
+      diagnostic: oneHost ? {
+        pages_read: out.pagesTried,
+        tech_url: out.techUrl,
+        sitemap_urls: out.sitemapUrls || 0,
+        sitemap_source: out.sitemapSource || null,
+        thin_only: !!out.thinOnly,
+        matched: out.matches.map(m => m.model + ' [' + m.confidence + '/' + m.page_kind + '] via "' + m.matched_text + '"'),
+        unmatched_sample: out.unknowns.map(u => u.token),
+        error: out.lastError || null,
+      } : undefined,
       status: out.status,
       clinics: clinicIds.length,
       pages: out.pagesTried,
