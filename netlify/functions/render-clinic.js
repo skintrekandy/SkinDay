@@ -196,6 +196,15 @@ function buildSeoBody(clinic) {
     paragraphs.push(`Specialties: ${expertise.map(e => escapeHtml(e.label)).join(', ')}.`);
   }
 
+  // M39 devices. Named machines are strong, specific keywords on a clinic page
+  // ("morpheus8 toronto" lands here as well as on /devices/morpheus8), and
+  // without this the SSR paint has no technology at all and Googlebot never
+  // sees it, because the card only appears after the client hydrates.
+  const devices = clinic.devices || [];
+  if (devices.length) {
+    paragraphs.push(`Technology listed by ${name}: ${devices.slice(0, 12).map(d => escapeHtml(d.model)).join(', ')}.`);
+  }
+
   if (clinic.phone) {
     paragraphs.push(`Contact ${name} at ${escapeHtml(clinic.phone)}.`);
   }
@@ -450,7 +459,7 @@ async function _handler(event) {
     // Sequential adds ~200-400ms per request; under a Google crawl burst this was
     // the primary cause of Netlify function timeouts (5xx in Search Console).
     // Both are non-fatal - if either fails the page still renders with base data.
-    const [expertiseResult, priceResult] = await Promise.allSettled([
+    const [expertiseResult, priceResult, deviceResult] = await Promise.allSettled([
       supabase
         .from('clinic_expertise')
         .select('value, is_other, other_text')
@@ -462,6 +471,14 @@ async function _handler(event) {
         .eq('clinic_id', String(clinic.id))
         .order('price', { ascending: true })
         .limit(1),
+      // M39. Same non-fatal contract as the two above: if it fails the page
+      // still renders, just without the technology line.
+      supabase
+        .from('clinic_devices')
+        .select('device_reference!inner ( model, active )')
+        .eq('clinic_id', String(clinic.id))
+        .eq('device_reference.active', true)
+        .limit(30),
     ]);
 
     if (expertiseResult.status === 'fulfilled') {
@@ -470,6 +487,16 @@ async function _handler(event) {
         clinic.identity = {
           expertise: rows.map(r => ({ label: r.is_other ? r.other_text : r.value })),
         };
+      }
+    }
+
+    if (deviceResult.status === 'fulfilled') {
+      const rows = deviceResult.value.data;
+      if (rows && rows.length) {
+        clinic.devices = rows
+          .map(r => (r.device_reference || {}))
+          .filter(d => d.model)
+          .sort((a, b) => String(a.model).localeCompare(String(b.model)));
       }
     }
 
