@@ -1599,16 +1599,37 @@ async function dcStart(retry) {
   dcButtons(true);
   dcLog(retry === true ? 'retrying hosts that failed…' : 'starting…', 'var(--muted)');
 
+  // ⭐ A SINGLE BAD RESPONSE MUST NOT END THE RUN.
+  // The loop used to break on the first error, so one gateway timeout meant the
+  // crawl silently stopped and had to be restarted by hand every few minutes.
+  // Netlify returns an HTML error page when a function is killed, which arrives
+  // here as "Unexpected token '<'". That is transient by nature: back off and
+  // carry on, and only give up after several consecutive failures.
+  let consecutiveFailures = 0;
+  const MAX_CONSECUTIVE_FAILURES = 5;
+
   while (dcRunning) {
     let data;
     try {
       const r = await dcCall({ action: 'crawl', batch: 3, retry: retry === true, run_id: dcRunId });
       data = r.data;
-      if (!r.ok) { dcLog('error: ' + fvEscape((data && data.error) || 'request failed'), 'var(--red)'); break; }
+      if (!r.ok) throw new Error((data && data.error) || 'request failed');
     } catch (e) {
-      dcLog('network error: ' + fvEscape(String((e && e.message) || e)), 'var(--red)');
-      break;
+      consecutiveFailures++;
+      if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+        dcLog('stopping after ' + consecutiveFailures + ' consecutive failures: '
+              + fvEscape(String((e && e.message) || e)), 'var(--red)');
+        break;
+      }
+      const waitMs = 2000 * consecutiveFailures;   // 2s, 4s, 6s, 8s
+      dcLog('hiccup (' + consecutiveFailures + '/' + MAX_CONSECUTIVE_FAILURES + '): '
+            + fvEscape(String((e && e.message) || e))
+            + ' · retrying in ' + (waitMs / 1000) + 's', 'var(--gold)');
+      await new Promise(r2 => setTimeout(r2, waitMs));
+      continue;
     }
+
+    consecutiveFailures = 0;
 
     retry = false;                     // requeue once, not on every loop
     if (data.run_id) dcRunId = data.run_id;
