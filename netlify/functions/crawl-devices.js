@@ -569,7 +569,12 @@ function jsonLdText(html) {
 // and since the Icon bug a path hit no longer clears the generic flag on its
 // own, so widening the path pool is a low-risk way to raise recall.
 // ---------------------------------------------------------------------------
-const SITEMAP_TIMEOUT_MS = 8000;
+// ⚠️⚠️ 4s, not 8s, and only a few probes. The first version tried TWO schemes
+// times FOUR paths sequentially at 8s each: up to 64 SECONDS on a host with no
+// sitemap, against a Netlify function limit of 26. The function was killed, the
+// browser got an HTML error page instead of JSON, and the crawl loop stopped
+// dead. That is why the run needed restarting every 10-15 minutes.
+const SITEMAP_TIMEOUT_MS = 4000;
 const MAX_SITEMAP_URLS = 1200;
 const MAX_CHILD_SITEMAPS = 5;
 
@@ -610,16 +615,16 @@ function locs(xml) {
 }
 
 async function sitemapUrls(host) {
-  const bases = ['https://' + host, 'http://' + host];
+  // Bounded on purpose: at most three probes, https only. A host that answers on
+  // http but not https will have already told us so via the home fetch, and one
+  // clinic's sitemap is never worth risking the whole batch.
   let xml = null, found = null;
-  for (const base of bases) {
-    for (const path of ['/sitemap.xml', '/sitemap_index.xml', '/sitemap-index.xml', '/wp-sitemap.xml']) {
-      xml = await getXml(base + path);
-      if (xml) { found = base + path; break; }
-    }
-    if (xml) break;
+  for (const path of ['/sitemap.xml', '/sitemap_index.xml', '/wp-sitemap.xml']) {
+    xml = await getXml('https://' + host + path);
+    if (xml) { found = 'https://' + host + path; break; }
   }
-  // robots.txt is the last resort, and is where Shopify and some builders point.
+  // robots.txt is the last resort and costs one more fetch, so it only runs when
+  // the three direct probes all missed.
   if (!xml) {
     try {
       const r = await getPage('https://' + host + '/robots.txt');
@@ -932,7 +937,22 @@ async function doCrawl(supabase, body) {
 
   const processed = [];
 
+  // ⭐⭐ A WALL-CLOCK DEADLINE. Netlify kills a function at 26 seconds and
+  // returns an HTML error page, which the browser loop cannot parse, so the
+  // whole crawl stops and has to be restarted by hand. One slow host should
+  // cost one host, never the run.
+  //
+  // Any host still unclaimed when the deadline passes is released back to
+  // 'pending' so the next invocation picks it up. Nothing is lost or skipped.
+  const DEADLINE_MS = 20000;
+  const startedAt = Date.now();
+  const deferred = [];
+
   for (const row of claimable) {
+    if (Date.now() - startedAt > DEADLINE_MS) {
+      deferred.push(row.id);
+      continue;
+    }
     let out;
     try {
       out = await crawlHost(row, matcher);
@@ -1022,6 +1042,15 @@ async function doCrawl(supabase, body) {
       unknowns: out.unknowns.map(u => u.token),
       error: out.lastError || null
     });
+  }
+
+  // Put anything the deadline cut short back in the queue.
+  if (deferred.length) {
+    await supabase
+      .from('crawl_device_queue')
+      .update({ status: 'pending' })
+      .in('id', deferred);
+    console.log('deadline reached, released ' + deferred.length + ' host(s) back to pending');
   }
 
   const { count: remaining } = await supabase
