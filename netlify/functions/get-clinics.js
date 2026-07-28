@@ -111,7 +111,7 @@ async function loadCategoryLabels(supabase) {
   if (CATEGORY_LABELS) return CATEGORY_LABELS;
   const { data } = await supabase
     .from('device_categories')
-    .select('category, segment, label_en, sort_order');
+    .select('category, segment, label_en, sort_order, group_key, group_label, group_order');
   CATEGORY_LABELS = {};
   (data || []).forEach(r => { CATEGORY_LABELS[r.category] = r; });
   return CATEGORY_LABELS;
@@ -337,6 +337,34 @@ exports.handler = async (event) => {
         (models_by_category[c] = models_by_category[c] || []).push(m);
       });
 
+      // ── GROUP LEVEL ──────────────────────────────────────────
+      // Three tiers: group heading → subcategory row → model row. The group
+      // count is DISTINCT CLINICS across the whole group, not a sum of its
+      // subcategories, because one clinic can own an RF and a HIFU device and
+      // must not be counted twice.
+      const groupClinics = {};
+      const groupMeta = {};
+      (data || []).forEach(row => {
+        const cid = String(row.clinic_id);
+        if (scopedIds && !scopedIds.has(cid)) return;
+        const d = row.device_reference || {};
+        const lab = labels[d.category];
+        if (!lab || !lab.group_key || !lab.segment) return;
+        (groupClinics[lab.group_key] = groupClinics[lab.group_key] || new Set()).add(cid);
+        groupMeta[lab.group_key] = {
+          key: lab.group_key,
+          label: lab.group_label || lab.group_key,
+          order: lab.group_order != null ? lab.group_order : 999,
+        };
+      });
+
+      const groups = Object.keys(groupMeta)
+        .map(k => Object.assign({}, groupMeta[k], {
+          clinics: groupClinics[k].size,
+          categories: categories.filter(c => (labels[c.category] || {}).group_key === k),
+        }))
+        .sort((a, b) => a.order - b.order);
+
       return {
         statusCode: 200,
         headers: {
@@ -344,7 +372,7 @@ exports.handler = async (event) => {
           'Access-Control-Allow-Origin': '*',
           'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=600',
         },
-        body: JSON.stringify({ models, categories, models_by_category, clinics_with_devices: allClinics.size }),
+        body: JSON.stringify({ groups, models, categories, models_by_category, clinics_with_devices: allClinics.size }),
       };
     }
 
@@ -478,9 +506,10 @@ exports.handler = async (event) => {
     // Resolved to a clinic id list and applied inside buildBase(), so it
     // composes with province, neighbourhood, search, injector and the price
     // ceiling without touching any of that logic.
-    const deviceSlug = (params.device || '').trim().toLowerCase();
-    const deviceCat  = (params.devicecat || '').trim().toLowerCase();
-    const hasDeviceFilter = !!(deviceSlug || deviceCat);
+    const deviceSlug  = (params.device || '').trim().toLowerCase();
+    const deviceCat   = (params.devicecat || '').trim().toLowerCase();
+    const deviceGroup = (params.devicegroup || '').trim().toLowerCase();
+    const hasDeviceFilter = !!(deviceSlug || deviceCat || deviceGroup);
     let deviceClinicIds = null;
 
     if (hasDeviceFilter) {
@@ -495,11 +524,16 @@ exports.handler = async (event) => {
         return { statusCode: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ error: devErr.message }) };
       }
 
+      const catLabels = await loadCategoryLabels(supabase);
       const set = new Set();
       (devRows || []).forEach(row => {
         const d = row.device_reference || {};
         if (deviceSlug && slugifyModel(d.model) !== deviceSlug) return;
         if (deviceCat  && String(d.category || '').toLowerCase() !== deviceCat) return;
+        if (deviceGroup) {
+          const lab = catLabels[d.category] || {};
+          if (String(lab.group_key || '').toLowerCase() !== deviceGroup) return;
+        }
         set.add(String(row.clinic_id));
       });
       // Bounded by construction: only ~1,584 clinics have ANY device, so this
