@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aesthetic Devices in Canada — SkinDay</title>
+  <link rel="canonical" id="meta-canonical" href="https://skinday.ca/devices/" />
+  <meta name="description" id="meta-description" content="Find Canadian cosmetic clinics by the technology they use. Browse clinics by device and treatment category on SkinDay." />
+  <!-- OpenGraph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="SkinDay" />
+  <meta property="og:title" id="og-title" content="Aesthetic Devices in Canada — SkinDay" />
+  <meta property="og:description" id="og-description" content="Find Canadian cosmetic clinics by the technology they use." />
+  <meta property="og:url" id="og-url" content="https://skinday.ca/devices/" />
+  <meta property="og:image" id="og-image" content="https://skinday.ca/og-default.jpg" />
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" id="tw-title" content="Aesthetic Devices in Canada — SkinDay" />
+  <meta name="twitter:description" id="tw-description" content="Find Canadian cosmetic clinics by the technology they use." />
+  <meta name="twitter:image" id="tw-image" content="https://skinday.ca/og-default.jpg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --cream:   #FAF7F2;
+      --warm:    #F4EDE4;
+      --deep:    #1C1714;
+      --rose:    #C8725A;
+      --rose-m:  #D4896E;
+      --rose-bg: #F5E8E3;
+      --gold:    #C9A96E;
+      --muted:   #8A7B72;
+      --dim:     #B5A89F;
+      --border:  #EAE2D8;
+      --green:   #3D7A55;
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--cream);
+      color: var(--deep);
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.55;
+    }
+    a { color: inherit; }
+
+    .wrap { max-width: 940px; margin: 0 auto; padding: 0 1.4rem; }
+
+    /* ── header ─────────────────────────────────────────────── */
+    .site-head {
+      border-bottom: 1px solid var(--border);
+      background: var(--cream);
+      padding: 1.1rem 0;
+    }
+    .site-head-inner { display: flex; align-items: center; gap: 1rem; }
+    .brand {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.5rem; font-weight: 500; letter-spacing: 0.01em;
+      text-decoration: none;
+    }
+    .brand span { color: var(--rose); }
+    .head-link {
+      margin-left: auto; font-size: 0.8rem; color: var(--muted);
+      text-decoration: none; letter-spacing: 0.02em;
+    }
+    .head-link:hover { color: var(--rose); }
+
+    /* ── breadcrumb ─────────────────────────────────────────── */
+    .crumb {
+      font-size: 0.74rem; color: var(--muted); letter-spacing: 0.03em;
+      padding: 1.1rem 0 0;
+    }
+    .crumb a { text-decoration: none; }
+    .crumb a:hover { color: var(--rose); }
+    .crumb span { color: var(--dim); }
+
+    /* ── page head ──────────────────────────────────────────── */
+    .page-head { padding: 0.6rem 0 1.6rem; }
+    h1 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(1.9rem, 5vw, 2.7rem);
+      font-weight: 400; letter-spacing: -0.01em; line-height: 1.15;
+      margin-bottom: 0.5rem;
+    }
+    .page-sub { font-size: 0.94rem; color: var(--muted); max-width: 62ch; }
+    .device-meta {
+      display: flex; flex-wrap: wrap; gap: 0.45rem;
+      margin-top: 0.9rem;
+    }
+    .meta-chip {
+      font-size: 0.7rem; letter-spacing: 0.03em;
+      padding: 0.24rem 0.55rem; border-radius: 4px;
+      background: var(--warm); border: 1px solid var(--border); color: var(--muted);
+    }
+    .meta-chip strong { color: var(--deep); font-weight: 600; }
+
+    /* ── province filter ───────────────────────────────────── */
+    .prov-row {
+      display: flex; flex-wrap: wrap; gap: 0.4rem;
+      padding: 0 0 1.4rem;
+    }
+    .prov-chip {
+      font-size: 0.74rem; letter-spacing: 0.02em;
+      padding: 0.3rem 0.65rem; border-radius: 20px;
+      border: 1px solid var(--border); background: transparent;
+      color: var(--muted); cursor: pointer;
+      font-family: inherit; transition: all 0.15s;
+    }
+    .prov-chip:hover { border-color: var(--rose-m); color: var(--deep); }
+    .prov-chip.on { background: var(--rose); border-color: var(--rose); color: #fff; }
+
+    /* ── clinic list ───────────────────────────────────────── */
+    .clinic-list { display: flex; flex-direction: column; gap: 0.55rem; padding-bottom: 2.4rem; }
+    .clinic-row {
+      display: flex; align-items: baseline; gap: 0.7rem; flex-wrap: wrap;
+      padding: 0.85rem 1rem;
+      background: #fff; border: 1px solid var(--border); border-radius: 10px;
+      text-decoration: none; transition: border-color 0.15s, transform 0.15s;
+    }
+    .clinic-row:hover { border-color: var(--rose-m); transform: translateY(-1px); }
+    .clinic-name { font-size: 0.98rem; font-weight: 600; }
+    .clinic-where { font-size: 0.8rem; color: var(--muted); }
+    .clinic-right { margin-left: auto; display: flex; align-items: center; gap: 0.6rem; }
+    .clinic-rating { font-size: 0.8rem; color: var(--muted); white-space: nowrap; }
+    .clinic-rating strong { color: var(--deep); font-weight: 600; }
+    .verified-tag {
+      font-size: 0.6rem; letter-spacing: 0.06em; text-transform: uppercase;
+      color: var(--green); border: 1px solid rgba(61,122,85,0.3);
+      border-radius: 3px; padding: 0.08rem 0.32rem; white-space: nowrap;
+    }
+
+    /* ── sibling / category cross-links ────────────────────── */
+    .also-block { border-top: 1px solid var(--border); padding: 1.6rem 0 2.6rem; }
+    .also-label {
+      font-size: 0.68rem; letter-spacing: 0.09em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 0.7rem;
+    }
+    .also-links { display: flex; flex-wrap: wrap; gap: 0.45rem; }
+    .also-link {
+      font-size: 0.8rem; text-decoration: none;
+      padding: 0.32rem 0.7rem; border-radius: 20px;
+      background: var(--warm); border: 1px solid var(--border);
+      transition: all 0.15s;
+    }
+    .also-link:hover { border-color: var(--rose-m); background: var(--rose-bg); }
+    .also-link em { font-style: normal; color: var(--muted); font-size: 0.72rem; }
+
+    /* ── index mode ────────────────────────────────────────── */
+    .cat-block { padding-bottom: 1.8rem; }
+    .cat-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.3rem; font-weight: 500; margin-bottom: 0.15rem;
+    }
+    .cat-count { font-size: 0.74rem; color: var(--muted); margin-bottom: 0.7rem; }
+
+    .note {
+      font-size: 0.74rem; color: var(--muted); line-height: 1.6;
+      border-top: 1px solid var(--border); padding: 1.4rem 0 3rem; max-width: 68ch;
+    }
+    .state { padding: 3rem 0; text-align: center; color: var(--muted); font-size: 0.9rem; }
+    .cta {
+      display: inline-block; margin-top: 1rem; text-decoration: none;
+      font-size: 0.82rem; letter-spacing: 0.02em;
+      padding: 0.55rem 1.1rem; border-radius: 20px;
+      background: var(--rose); color: #fff;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="site-head">
+    <div class="wrap site-head-inner">
+      <a class="brand" href="/">Skin<span>Day</span></a>
+      <a class="head-link" href="/">Browse all clinics</a>
+    </div>
+  </header>
+
+  <!-- SSR content is injected here by render-devices.js. The client script
+       below then hydrates over it, so the crawler and the visitor see the
+       same page and neither waits on the other. -->
+
+  <main class="wrap" id="app">
+    <div class="state" id="loading">Loading…</div>
+  </main>
+
+<script>
+// ─── /devices/ and /devices/<model> ───────────────────────────
+// One template, two modes, decided by the path. Data comes from the same
+// get-clinics function the directory uses:
+//   mode=device-facets   → every model with a clinic count (index mode)
+//   mode=device-clinics  → one model plus every clinic that has it
+const SITE = 'https://skinday.ca';
+
+function esc(v) {
+  return String(v == null ? '' : v)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function slugFromPath() {
+  const m = window.location.pathname.match(/^\/devices\/([^\/?#]+)/);
+  return m ? decodeURIComponent(m[1]).toLowerCase() : null;
+}
+
+const PROV_NAMES = {
+  ON: 'Ontario', QC: 'Quebec', BC: 'British Columbia', AB: 'Alberta',
+  MB: 'Manitoba', SK: 'Saskatchewan', NS: 'Nova Scotia', NB: 'New Brunswick',
+  NL: 'Newfoundland', PE: 'PEI', YT: 'Yukon', NT: 'NWT', NU: 'Nunavut',
+};
+function provLabel(p) {
+  if (!p) return '';
+  const k = String(p).trim();
+  return PROV_NAMES[k.toUpperCase()] || k;
+}
+
+let state = { clinics: [], device: null, prov: null };
+
+function clinicRow(c) {
+  const where = [c.neighbourhood, provLabel(c.province)].filter(Boolean).join(', ');
+  const rating = (c.rating != null)
+    ? `<span class="clinic-rating"><strong>${Number(c.rating).toFixed(1)}</strong>${c.reviews ? ' · ' + Number(c.reviews).toLocaleString() + ' reviews' : ''}</span>`
+    : '';
+  const verified = c.device_status === 'verified'
+    ? '<span class="verified-tag">Verified</span>' : '';
+  const href = c.slug ? `/clinic/${encodeURIComponent(c.slug)}` : '/';
+  return `<a class="clinic-row" href="${href}">
+    <span class="clinic-name">${esc(c.name)}</span>
+    ${where ? `<span class="clinic-where">${esc(where)}</span>` : ''}
+    <span class="clinic-right">${verified}${rating}</span>
+  </a>`;
+}
+
+function renderModelPage(data) {
+  const d = data.device || {};
+  const all = state.clinics;
+  const shown = state.prov ? all.filter(c => String(c.province || '').toUpperCase() === state.prov) : all;
+
+  const provs = [...new Set(all.map(c => String(c.province || '').toUpperCase()).filter(Boolean))]
+    .sort((a, b) => all.filter(c => String(c.province||'').toUpperCase() === b).length
+                  - all.filter(c => String(c.province||'').toUpperCase() === a).length);
+
+  const provChips = provs.length > 1 ? `<div class="prov-row">
+      <button class="prov-chip ${state.prov ? '' : 'on'}" onclick="setProv(null)">All Canada (${all.length})</button>
+      ${provs.map(p => `<button class="prov-chip ${state.prov === p ? 'on' : ''}" onclick="setProv('${p}')">${esc(provLabel(p))} (${all.filter(c => String(c.province||'').toUpperCase() === p).length})</button>`).join('')}
+    </div>` : '';
+
+  const siblings = (data.siblings || []).length ? `<div class="also-block">
+      <div class="also-label">Other ${esc((d.category_label || '').toLowerCase())} devices</div>
+      <div class="also-links">
+        ${data.siblings.map(s => `<a class="also-link" href="/devices/${esc(s.slug)}">${esc(s.model)} <em>${s.clinics}</em></a>`).join('')}
+      </div>
+    </div>` : '';
+
+  document.getElementById('app').innerHTML = `
+    <div class="crumb"><a href="/">SkinDay</a> <span>/</span> <a href="/devices/">Devices</a> <span>/</span> ${esc(d.model || '')}</div>
+    <div class="page-head">
+      <h1>${esc(d.model || 'Device')}</h1>
+      <p class="page-sub">${all.length
+        ? `${all.length.toLocaleString()} ${all.length === 1 ? 'clinic' : 'clinics'} in Canada list ${esc(d.model)} on their own website.`
+        : `No clinics in our directory currently list ${esc(d.model)}.`}</p>
+      <div class="device-meta">
+        ${d.manufacturer ? `<span class="meta-chip">Made by <strong>${esc(d.manufacturer)}</strong></span>` : ''}
+        ${d.category_label ? `<span class="meta-chip">${esc(d.category_label)}</span>` : ''}
+      </div>
+    </div>
+    ${provChips}
+    <div class="clinic-list">${shown.map(clinicRow).join('')}</div>
+    ${siblings}
+    <div class="note">
+      Device listings are read from each clinic's own website and are shown as the
+      clinic presents them. "Verified" means the clinic confirmed the machine with
+      us directly. A clinic that does not appear here may still offer the
+      treatment without naming the device online.
+      <br><a class="cta" href="/?device=${esc(d.slug || '')}">See these clinics on the directory</a>
+    </div>`;
+}
+
+function setProv(p) {
+  state.prov = p;
+  renderModelPage(state.raw);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function renderIndexPage(facets) {
+  const cats = facets.categories || [];
+  const byCat = facets.models_by_category || {};
+  const blocks = cats.map(c => {
+    const models = (byCat[c.category] || []);
+    if (!models.length) return '';
+    return `<div class="cat-block">
+      <div class="cat-title">${esc(c.label)}</div>
+      <div class="cat-count">${c.clinics.toLocaleString()} ${c.clinics === 1 ? 'clinic' : 'clinics'}</div>
+      <div class="also-links">
+        ${models.map(m => `<a class="also-link" href="/devices/${esc(m.slug)}">${esc(m.model)} <em>${m.clinics}</em></a>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('app').innerHTML = `
+    <div class="crumb"><a href="/">SkinDay</a> <span>/</span> Devices</div>
+    <div class="page-head">
+      <h1>Aesthetic devices in Canada</h1>
+      <p class="page-sub">Browse Canadian clinics by the technology they use. Every number is the count of clinics that name that device on their own website.</p>
+    </div>
+    ${blocks || '<div class="state">Device data is being compiled.</div>'}
+    <div class="note">
+      Listings are read from each clinic's own website. A clinic may offer a
+      treatment without naming the device it uses, so these counts are a floor
+      rather than a total.
+    </div>`;
+}
+
+(async function init() {
+  const slug = slugFromPath();
+  try {
+    if (slug) {
+      const res = await fetch('/api/get-clinics?mode=device-clinics&device=' + encodeURIComponent(slug));
+      if (!res.ok) throw new Error('device fetch failed');
+      const data = await res.json();
+      if (!data.device) { window.location.replace('/devices/'); return; }
+      state.raw = data;
+      state.clinics = data.clinics || [];
+      renderModelPage(data);
+    } else {
+      const res = await fetch('/api/get-clinics?mode=device-facets');
+      if (!res.ok) throw new Error('facet fetch failed');
+      renderIndexPage(await res.json());
+    }
+  } catch (e) {
+    // If SSR already put content on the page, leave it alone rather than
+    // replacing a good server render with an error.
+    if (!document.getElementById('ssr-content')) {
+      document.getElementById('app').innerHTML =
+        '<div class="state">We could not load device data just now.<br><a class="cta" href="/">Browse clinics instead</a></div>';
+    }
+  }
+})();
+</script>
+</body>
+</html>

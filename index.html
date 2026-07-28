@@ -750,6 +750,106 @@
     .price-chip.active {
       background: var(--rose); border-color: var(--rose); color: #fff;
     }
+    /* M39 technology filter. A native <select> could not do this: optgroup
+       labels render pale grey and cannot be restyled in Safari, and a native
+       control cannot show three tiers. So it is a custom panel, sized and
+       coloured to match .sort-select. */
+    .tech-picker { position: relative; }
+    .tech-btn {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      max-width: 250px; padding: 0.36rem 0.7rem;
+      font-family: inherit; font-size: 0.8rem; color: var(--deep);
+      background: #fff; border: 1px solid var(--border); border-radius: 6px;
+      cursor: pointer; white-space: nowrap; overflow: hidden;
+    }
+    .tech-btn:hover { border-color: var(--rose-m); }
+    .tech-btn.on { border-color: var(--rose); color: var(--rose); }
+    #techBtnLabel { overflow: hidden; text-overflow: ellipsis; }
+    .tech-caret { color: var(--muted); font-size: 0.7rem; }
+
+    .tech-panel {
+      display: none; position: absolute; z-index: 60; top: calc(100% + 6px); left: 0;
+      width: 320px; max-width: min(320px, calc(100vw - 2rem));
+      background: #fff; border: 1px solid var(--border); border-radius: 10px;
+      box-shadow: 0 12px 34px rgba(28,23,20,0.13);
+      overflow: hidden;
+    }
+    .tech-panel.open { display: block; }
+    .tech-search {
+      width: 100%; border: none; border-bottom: 1px solid var(--border);
+      padding: 0.62rem 0.8rem; font-family: inherit; font-size: 0.82rem;
+      color: var(--deep); background: var(--cream);
+    }
+    .tech-search:focus { outline: none; background: #fff; }
+    .tech-scroll { max-height: 340px; overflow-y: auto; padding: 0.25rem 0; }
+
+    /* The group heading. Dark, bold, and it carries the count itself, so there
+       is no "All rf microneedling (643)" row repeating underneath it. Clicking
+       it filters the whole group. */
+    .tech-group {
+      display: flex; align-items: baseline; gap: 0.4rem; width: 100%;
+      padding: 0.5rem 0.8rem 0.3rem;
+      background: none; border: none; cursor: pointer;
+      font-family: 'Cormorant Garamond', serif; font-size: 1rem; font-weight: 600;
+      color: var(--deep); text-align: left;
+    }
+    .tech-group:hover { color: var(--rose); }
+    .tech-group .n { font-family: 'DM Sans', sans-serif; font-size: 0.7rem; font-weight: 500; color: var(--muted); }
+    .tech-group.sel { color: var(--rose); }
+
+    /* Subcategory row. */
+    .tech-sub {
+      display: flex; align-items: baseline; gap: 0.4rem; width: 100%;
+      padding: 0.26rem 0.8rem 0.26rem 1.35rem;
+      background: none; border: none; cursor: pointer;
+      font-family: inherit; font-size: 0.78rem; font-weight: 600;
+      color: var(--deep); text-align: left; letter-spacing: 0.01em;
+    }
+    .tech-sub:hover { background: var(--warm); }
+    .tech-sub .n { font-size: 0.68rem; font-weight: 400; color: var(--muted); }
+    .tech-sub.sel { color: var(--rose); }
+
+    /* Model row, one indent deeper again. */
+    .tech-model {
+      display: flex; align-items: baseline; gap: 0.4rem; width: 100%;
+      padding: 0.22rem 0.8rem 0.22rem 2.1rem;
+      background: none; border: none; cursor: pointer;
+      font-family: inherit; font-size: 0.78rem; color: var(--muted);
+      text-align: left;
+    }
+    .tech-model:hover { background: var(--warm); color: var(--deep); }
+    .tech-model .n { font-size: 0.66rem; color: var(--dim); }
+    .tech-model.sel { color: var(--rose); font-weight: 600; }
+
+    .tech-any {
+      width: 100%; padding: 0.45rem 0.8rem; text-align: left;
+      background: none; border: none; border-bottom: 1px solid var(--border);
+      font-family: inherit; font-size: 0.8rem; color: var(--muted); cursor: pointer;
+    }
+    .tech-any:hover { background: var(--warm); color: var(--deep); }
+    .tech-empty { padding: 1rem 0.8rem; font-size: 0.78rem; color: var(--muted); }
+
+    @media (max-width: 640px) { .tech-btn { max-width: 160px; } }
+
+    /* M39 device chips on the card. Deliberately DIFFERENT from .cat-chip:
+       those are the clinic's self-declared treatment categories, these are the
+       actual machines. Same row height, quieter fill, monospace-ish tracking so
+       a model number reads as a product name rather than a tag. */
+    .card-devices {
+      display: flex; flex-wrap: wrap; gap: 0.3rem;
+      margin-top: 0.4rem;
+    }
+    .dev-chip {
+      display: inline-flex; align-items: center; gap: 0.25rem;
+      font-size: 0.66rem; letter-spacing: 0.02em; font-weight: 500;
+      padding: 0.16rem 0.42rem; border-radius: 4px;
+      background: rgba(200,114,90,0.07);
+      border: 1px solid rgba(200,114,90,0.18);
+      color: var(--deep);
+      white-space: nowrap;
+    }
+    .dev-chip-more { background: transparent; border-style: dashed; color: var(--muted); }
+
     .filter-spacer { flex: 1 1 auto; min-width: 0; }
     .active-filter-line {
       max-width: 1280px; margin: -14px auto 0; padding: 0 5% 28px;
@@ -2812,6 +2912,17 @@
       <button type="button" class="price-chip" data-max="8"  aria-pressed="false" onclick="applyMaxPrice('8')">≤ $8</button>
       <button type="button" class="price-chip" data-max="11" aria-pressed="false" onclick="applyMaxPrice('11')">≤ $11</button>
     </div>
+    <span class="filter-label">Technology</span>
+    <div class="tech-picker" id="techPicker">
+      <button type="button" class="tech-btn" id="techBtn" onclick="toggleTechPanel()" aria-haspopup="listbox" aria-expanded="false">
+        <span id="techBtnLabel">Any technology</span>
+        <span class="tech-caret" aria-hidden="true">⌄</span>
+      </button>
+      <div class="tech-panel" id="techPanel" role="listbox" aria-label="Technology">
+        <input type="text" class="tech-search" id="techSearch" placeholder="Search a device or treatment" oninput="renderTechPanel()" autocomplete="off" />
+        <div class="tech-scroll" id="techScroll"></div>
+      </div>
+    </div>
     <span class="filter-spacer" aria-hidden="true"></span>
     <span class="filter-label">Sort</span>
     <select class="sort-select" onchange="sortCards(this.value)" id="mainSortSelect">
@@ -2828,7 +2939,7 @@
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
     </span>
     <span id="activeFilterText"></span>
-    <button type="button" class="active-filter-clear" onclick="applyMaxPrice('any')">Clear</button>
+    <button type="button" class="active-filter-clear" onclick="clearAllFilters()">Clear</button>
   </div>
 
   <div class="cards-grid" id="cardsGrid">
@@ -3326,6 +3437,7 @@
         <li><a href="/guide/botox-cost-vancouver">Botox Guide Vancouver</a></li>
         <li><a href="/guide/botox-cost-london-ontario">Botox Guide London</a></li>
         <li><a href="/guide/botox-cost-montreal">Botox Guide Montreal</a></li>
+        <li><a href="/devices/">Clinics by Device</a></li>
         <li><a href="/insights">SkinDay Insights</a></li>
         <li><a href="https://skinday.com">SkinDay Global</a></li>
       </ul>
@@ -3420,6 +3532,10 @@ let currentSort = 'reviews';
 let currentNameQuery = '';
 let currentInjectorFilter = 'all';
 let currentMaxPrice = null;      // number (price ceiling per unit) or null
+let currentDevice   = null;      // model slug, e.g. 'morpheus8'
+let currentDeviceCat = null;     // fine subcategory, e.g. 'tightening_rf'
+let currentDeviceGroup = null;   // group, e.g. 'laser_ipl' or 'tightening'
+let deviceFacets    = null;      // { models, categories, clinics_with_devices }
 let userLocation = null;
 let currentClinic = null;
 let compareList = [];
@@ -3596,6 +3712,12 @@ function buildApiUrl(page) {
     params.set('maxprice', String(currentMaxPrice));
   }
 
+  // M39 technology filter. Applied server-side so paging and the result count
+  // stay correct, exactly like the price ceiling above.
+  if (currentDevice)      params.set('device', currentDevice);
+  if (currentDeviceCat)   params.set('devicecat', currentDeviceCat);
+  if (currentDeviceGroup) params.set('devicegroup', currentDeviceGroup);
+
   return '/api/get-clinics?' + params.toString();
 }
 
@@ -3620,12 +3742,40 @@ function updateActiveFilterLine() {
   const line = document.getElementById('activeFilterLine');
   const text = document.getElementById('activeFilterText');
   if (!line || !text) return;
-  if (currentMaxPrice == null) { line.style.display = 'none'; return; }
+
+  const hasDevice = !!(currentDevice || currentDeviceCat || currentDeviceGroup);
+  if (currentMaxPrice == null && !hasDevice) { line.style.display = 'none'; return; }
+
   const n = currentTotal || 0;
-  text.textContent = n > 0
-    ? `${n.toLocaleString()} ${n === 1 ? 'clinic' : 'clinics'} with Botox at or under $${currentMaxPrice} / unit`
-    : `No clinics with Botox at or under $${currentMaxPrice} / unit — try a higher ceiling`;
+  const clinicWord = n === 1 ? 'clinic' : 'clinics';
+  const bits = [];
+  if (hasDevice)              bits.push(`listing ${activeDeviceLabel()}`);
+  if (currentMaxPrice != null) bits.push(`with Botox at or under $${currentMaxPrice} / unit`);
+
+  if (n > 0) {
+    text.textContent = `${n.toLocaleString()} ${clinicWord} ${bits.join(' and ')}`;
+  } else if (hasDevice && currentMaxPrice != null) {
+    text.textContent = `No clinics match both filters. Try clearing the price ceiling.`;
+  } else if (hasDevice) {
+    text.textContent = `No clinics listing ${activeDeviceLabel()} in this view. Try another area.`;
+  } else {
+    text.textContent = `No clinics with Botox at or under $${currentMaxPrice} / unit. Try a higher ceiling.`;
+  }
+
   line.style.display = '';
+}
+
+// Clear button now clears whichever filters are on, not just the price.
+function clearAllFilters() {
+  currentMaxPrice = null;
+  currentDevice = null;
+  currentDeviceCat = null;
+  currentDeviceGroup = null;
+  syncPriceChipsUI();
+  syncTechButton();
+  syncPriceUrl();
+  syncDeviceUrl();
+  fetchPage(0, false);
 }
 
 // Keep the ceiling in the URL so a filtered view is shareable. replaceState
@@ -3649,6 +3799,148 @@ function applyMaxPrice(val) {
   syncPriceUrl();
   fetchPage(0, false);
 }
+
+// ─── TECHNOLOGY FILTER (M39) ──────────────────────────────────
+// Mirrors the price ceiling above: a deep-linkable param, applied server-side,
+// with the active-filter line stating the result in words.
+//
+// Options come from /api/get-clinics?mode=device-facets, which returns a clinic
+// COUNT on every entry. That count is the point: offering all 122 models would
+// bury the patient in options that return two clinics each. Anything under the
+// threshold is left out, and every remaining option shows its count so the
+// choice is informed before the click.
+const DEVICE_MIN_CLINICS = 3;
+
+async function loadDeviceFacets() {
+  try {
+    const res = await fetch('/api/get-clinics?mode=device-facets');
+    if (!res.ok) return;
+    deviceFacets = await res.json();
+    renderTechPanel();
+    syncTechButton();
+  } catch (e) {
+    // The directory works without it; the control just stays on "Any".
+    console.warn('[device facets] unavailable', e);
+  }
+}
+
+function toggleTechPanel(force) {
+  const panel = document.getElementById('techPanel');
+  const btn   = document.getElementById('techBtn');
+  if (!panel) return;
+  const open = (force !== undefined) ? force : !panel.classList.contains('open');
+  panel.classList.toggle('open', open);
+  btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (open) {
+    renderTechPanel();
+    const q = document.getElementById('techSearch');
+    if (q) { q.value = ''; setTimeout(() => q.focus(), 30); }
+  }
+}
+
+// Click-away close. Registered once, not per open.
+document.addEventListener('click', (e) => {
+  const wrap = document.getElementById('techPicker');
+  if (wrap && !wrap.contains(e.target)) toggleTechPanel(false);
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') toggleTechPanel(false); });
+
+// ⭐ THREE TIERS, and the count lives on the heading rather than in a repeated
+// "All <category>" row underneath it. Group heading, subcategory, model. Every
+// level is clickable and filters at that level.
+function renderTechPanel() {
+  const box = document.getElementById('techScroll');
+  if (!box || !deviceFacets) return;
+
+  const q = (document.getElementById('techSearch') || {}).value || '';
+  const term = q.trim().toLowerCase();
+  const groups = deviceFacets.groups || [];
+  const byCat = deviceFacets.models_by_category || {};
+
+  let html = `<button type="button" class="tech-any" onclick="applyDevice('')">Any technology</button>`;
+  let matches = 0;
+
+  groups.forEach(g => {
+    const cats = (g.categories || []);
+    // While searching, only the matching models are shown, and a group or
+    // subcategory appears only if something under it matched.
+    const catBlocks = cats.map(c => {
+      const models = (byCat[c.category] || []).filter(m => m.clinics >= DEVICE_MIN_CLINICS);
+      const shownModels = term ? models.filter(m => m.model.toLowerCase().includes(term)) : models;
+      const catMatches = !term
+        || c.label.toLowerCase().includes(term)
+        || g.label.toLowerCase().includes(term)
+        || shownModels.length > 0;
+      if (!catMatches) return '';
+      const modelRows = (term ? shownModels : models).map(m => {
+        matches++;
+        return `<button type="button" class="tech-model ${currentDevice === m.slug ? 'sel' : ''}" onclick="applyDevice('model:${m.slug}')">${m.model} <span class="n">${m.clinics}</span></button>`;
+      }).join('');
+      return `<button type="button" class="tech-sub ${currentDeviceCat === c.category ? 'sel' : ''}" onclick="applyDevice('cat:${c.category}')">${c.label} <span class="n">${c.clinics}</span></button>${modelRows}`;
+    }).join('');
+
+    const groupMatches = !term || g.label.toLowerCase().includes(term) || catBlocks.length > 0;
+    if (!groupMatches || !catBlocks) return;
+
+    html += `<button type="button" class="tech-group ${currentDeviceGroup === g.key ? 'sel' : ''}" onclick="applyDevice('group:${g.key}')">${g.label} <span class="n">${g.clinics}</span></button>${catBlocks}`;
+  });
+
+  if (term && matches === 0) html += '<div class="tech-empty">Nothing matches that.</div>';
+  box.innerHTML = html;
+}
+
+function techLabel() {
+  if (!deviceFacets) return currentDevice || currentDeviceCat || currentDeviceGroup || 'Any technology';
+  if (currentDevice) {
+    const m = (deviceFacets.models || []).find(x => x.slug === currentDevice);
+    return m ? m.model : currentDevice;
+  }
+  if (currentDeviceCat) {
+    for (const g of (deviceFacets.groups || [])) {
+      const c = (g.categories || []).find(x => x.category === currentDeviceCat);
+      if (c) return g.label + ' · ' + c.label;
+    }
+    return currentDeviceCat;
+  }
+  if (currentDeviceGroup) {
+    const g = (deviceFacets.groups || []).find(x => x.key === currentDeviceGroup);
+    return g ? g.label : currentDeviceGroup;
+  }
+  return 'Any technology';
+}
+
+function syncTechButton() {
+  const btn = document.getElementById('techBtn');
+  const lab = document.getElementById('techBtnLabel');
+  if (!btn || !lab) return;
+  const active = !!(currentDevice || currentDeviceCat || currentDeviceGroup);
+  lab.textContent = techLabel();
+  btn.classList.toggle('on', active);
+}
+
+function syncDeviceUrl() {
+  const params = new URLSearchParams(window.location.search);
+  if (currentDevice) params.set('device', currentDevice); else params.delete('device');
+  if (currentDeviceCat) params.set('devicecat', currentDeviceCat); else params.delete('devicecat');
+  if (currentDeviceGroup) params.set('devicegroup', currentDeviceGroup); else params.delete('devicegroup');
+  const qs = params.toString();
+  window.history.replaceState(null, '', window.location.pathname + (qs ? '?' + qs : '') + window.location.hash);
+}
+
+function applyDevice(val) {
+  currentDevice = null; currentDeviceCat = null; currentDeviceGroup = null;
+  if (val && val.indexOf('group:') === 0)      currentDeviceGroup = val.slice(6);
+  else if (val && val.indexOf('cat:') === 0)   currentDeviceCat   = val.slice(4);
+  else if (val && val.indexOf('model:') === 0) currentDevice      = val.slice(6);
+  syncTechButton();
+  syncDeviceUrl();
+  toggleTechPanel(false);
+  fetchPage(0, false);
+}
+
+// Human label for whatever technology filter is active, used in the line under
+// the filter bar.
+function activeDeviceLabel() { return techLabel(); }
 
 // ─── FEATURED / PINNED CLINIC ─────────────────────────────────
 // Floats a featured listing to the very top of the list, ahead of every sort.
@@ -3757,6 +4049,21 @@ function renderPageCards(clinicsData, append) {
     const categoriesHTML = cats.length
       ? `<div class="card-categories">${catChips}${catOverflow > 0 ? `<span class="cat-chip cat-chip-more">+${catOverflow}</span>` : ''}</div>`
       : '';
+
+    // M39 devices. The chips above are the clinic's self-declared treatment
+    // CATEGORIES; these are the actual machines, which is the information the
+    // card did not previously carry. Model names only, no manufacturer — the
+    // card's job is "does this clinic have the machine I searched for".
+    // Nothing renders when there are none, because most clinics have not had
+    // their site read yet and an empty row would read as a finding.
+    const devs = Array.isArray(c.devices) ? c.devices : [];
+    const devShown = devs.slice(0, 3);
+    const devOverflow = devs.length - devShown.length;
+    const devicesHTML = devs.length
+      ? `<div class="card-devices" aria-label="Technology listed by this clinic">${
+          devShown.map(d => `<span class="dev-chip">${d.model}</span>`).join('')
+        }${devOverflow > 0 ? `<span class="dev-chip dev-chip-more">+${devOverflow}</span>` : ''}</div>`
+      : '';
     return `
       <div class="clinic-card${hasPrice ? '' : ' no-price'}" data-id="${c.id}">
         ${(() => {
@@ -3804,6 +4111,7 @@ function renderPageCards(clinicsData, append) {
           <div class="review-count">${(c.reviews || 0).toLocaleString()} Google reviews</div>
           ${pillsHTML}
           ${categoriesHTML}
+          ${devicesHTML}
         </div>
         ${priceBlockHTML}
         <div class="card-visit-row">
@@ -3877,7 +4185,9 @@ async function fetchPage(page, append) {
     updateActiveFilterLine();
 
     if (raw.length === 0 && !append) {
-      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60px 0;color:var(--muted);font-size:0.9rem;">No clinics found. Try adjusting your filters.</div>';
+      grid.innerHTML = (currentDevice || currentDeviceCat || currentDeviceGroup)
+        ? `<div style="grid-column:1/-1;text-align:center;padding:60px 0;color:var(--muted);font-size:0.9rem;">No clinics listing ${activeDeviceLabel()} here. Try another area or clear the filter.</div>`
+        : '<div style="grid-column:1/-1;text-align:center;padding:60px 0;color:var(--muted);font-size:0.9rem;">No clinics found. Try adjusting your filters.</div>';
     } else {
       renderPageCards(raw, append);
     }
@@ -4326,12 +4636,25 @@ function showToast(msg) {
   const sortSel = document.getElementById('mainSortSelect');
   if (sortSel) sortSel.value = currentSort;
 
+  // M39: /?device=morpheus8 or /?devicecat=rf_microneedling, so a guide page
+  // can CTA straight into "clinics with a Morpheus8 in Toronto".
+  const dev = p.get('device');
+  if (dev) currentDevice = dev.trim().toLowerCase();
+  const devCat = p.get('devicecat');
+  if (devCat && !currentDevice) currentDeviceCat = devCat.trim().toLowerCase();
+  const devGroup = p.get('devicegroup');
+  if (devGroup && !currentDevice && !currentDeviceCat) currentDeviceGroup = devGroup.trim().toLowerCase();
+
   syncPriceChipsUI();
 })();
 
 (async function init() {
   const grid = document.getElementById('cardsGrid');
   grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60px 0;color:var(--muted);font-size:0.9rem;letter-spacing:0.03em;">Loading clinics…</div>';
+
+  // Technology filter options. Non-blocking: the grid must never wait on it,
+  // and if it fails the control simply stays on "Any technology".
+  loadDeviceFacets();
 
   // Fetch index + first page in parallel
   const [indexRes, pageRes] = await Promise.allSettled([
