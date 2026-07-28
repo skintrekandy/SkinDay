@@ -3464,7 +3464,6 @@
         <li><a href="/guide/botox-cost-vancouver">Botox Guide Vancouver</a></li>
         <li><a href="/guide/botox-cost-london-ontario">Botox Guide London</a></li>
         <li><a href="/guide/botox-cost-montreal">Botox Guide Montreal</a></li>
-        <li><a href="/devices/">Clinics by Device</a></li>
         <li><a href="/insights">SkinDay Insights</a></li>
         <li><a href="https://skinday.com">SkinDay Global</a></li>
       </ul>
@@ -4106,7 +4105,7 @@ function renderPageCards(clinicsData, append) {
     const devOverflow = devs.length - devShown.length;
     const devicesHTML = devs.length
       ? `<div class="card-devices" aria-label="Technology listed by this clinic">${
-          devShown.map(d => `<a class="dev-chip" href="/devices/${devSlug(d.model)}" onclick="event.stopPropagation()">${devEsc(d.model)}</a>`).join('')
+          devShown.map(d => `<a class="dev-chip" href="/?device=${devSlug(d.model)}" onclick="event.stopPropagation()">${devEsc(d.model)}</a>`).join('')
         }${devOverflow > 0 ? `<span class="dev-chip dev-chip-more">+${devOverflow}</span>` : ''}</div>`
       : '';
     return `
@@ -6380,7 +6379,7 @@ window.openClinicModal = async function openClinicModal(clinicId) {
         <div>
           <div class="cm-dev-group-label">${devEsc(key)}</div>
           <div class="cm-dev-chips">${seen[key].map(d => {
-            return `<a class="cm-dev-chip" href="/devices/${devSlug(d.model)}">${devEsc(d.model)}${
+            return `<a class="cm-dev-chip" href="/?device=${devSlug(d.model)}">${devEsc(d.model)}${
               d.manufacturer ? `<span class="mfr">${devEsc(d.manufacturer)}</span>` : ''
             }${d.status === 'verified' ? '<span class="vtag">✓</span>' : ''}</a>`;
           }).join('')}</div>
