@@ -841,6 +841,7 @@
     }
     .dev-chip {
       display: inline-flex; align-items: center; gap: 0.25rem;
+      text-decoration: none;
       font-size: 0.66rem; letter-spacing: 0.02em; font-weight: 500;
       padding: 0.16rem 0.42rem; border-radius: 4px;
       background: rgba(200,114,90,0.07);
@@ -1007,6 +1008,32 @@
       padding: 0 24px 16px;
       align-items: center;
     }
+
+    /* M39 devices in the modal. Grouped by category with the count of models,
+       because the modal has room for the structure the card does not. */
+    .cm-devices { padding: 0 24px 16px; }
+    .cm-devices-label {
+      font-size: 0.64rem; letter-spacing: 0.09em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 0.5rem;
+    }
+    .cm-devices-list { display: flex; flex-direction: column; gap: 0.55rem; }
+    .cm-dev-group-label {
+      font-size: 0.66rem; letter-spacing: 0.04em; color: var(--dim);
+      margin-bottom: 0.25rem;
+    }
+    .cm-dev-chips { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+    .cm-dev-chip {
+      display: inline-flex; align-items: center; gap: 0.28rem;
+      font-size: 0.72rem; letter-spacing: 0.01em; font-weight: 500;
+      padding: 0.2rem 0.5rem; border-radius: 4px;
+      background: rgba(200,114,90,0.07);
+      border: 1px solid rgba(200,114,90,0.18);
+      color: var(--deep); text-decoration: none;
+    }
+    .cm-dev-chip:hover { background: var(--rose-bg); border-color: var(--rose-m); }
+    .cm-dev-chip .mfr { color: var(--muted); font-weight: 400; font-size: 0.66rem; }
+    .cm-dev-chip .vtag { color: var(--green); font-size: 0.6rem; letter-spacing: 0.04em; }
+    .cm-dev-note { font-size: 0.66rem; color: var(--dim); line-height: 1.5; margin-top: 0.5rem; }
     .clinic-name {
       font-family: 'Cormorant Garamond', serif;
       font-size: 1.25rem; font-weight: 500;
@@ -3809,6 +3836,24 @@ function applyMaxPrice(val) {
 // bury the patient in options that return two clinics each. Anything under the
 // threshold is left out, and every remaining option shows its count so the
 // choice is informed before the click.
+// Device model and manufacturer strings originate from a crawl of third-party
+// websites, so they are escaped before being interpolated into HTML. index.html
+// had no helper of its own.
+function devEsc(v) {
+  return String(v == null ? '' : v)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// Shared with the modal and the device pages so the three cannot disagree on
+// what "morpheus8" means.
+function devSlug(model) {
+  return String(model || '').toLowerCase()
+    .replace(/[\u00ae\u2122]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
 const DEVICE_MIN_CLINICS = 3;
 
 async function loadDeviceFacets() {
@@ -3874,15 +3919,15 @@ function renderTechPanel() {
       if (!catMatches) return '';
       const modelRows = (term ? shownModels : models).map(m => {
         matches++;
-        return `<button type="button" class="tech-model ${currentDevice === m.slug ? 'sel' : ''}" onclick="applyDevice('model:${m.slug}')">${m.model} <span class="n">${m.clinics}</span></button>`;
+        return `<button type="button" class="tech-model ${currentDevice === m.slug ? 'sel' : ''}" onclick="applyDevice('model:${m.slug}')">${devEsc(m.model)} <span class="n">${m.clinics}</span></button>`;
       }).join('');
-      return `<button type="button" class="tech-sub ${currentDeviceCat === c.category ? 'sel' : ''}" onclick="applyDevice('cat:${c.category}')">${c.label} <span class="n">${c.clinics}</span></button>${modelRows}`;
+      return `<button type="button" class="tech-sub ${currentDeviceCat === c.category ? 'sel' : ''}" onclick="applyDevice('cat:${c.category}')">${devEsc(c.label)} <span class="n">${c.clinics}</span></button>${modelRows}`;
     }).join('');
 
     const groupMatches = !term || g.label.toLowerCase().includes(term) || catBlocks.length > 0;
     if (!groupMatches || !catBlocks) return;
 
-    html += `<button type="button" class="tech-group ${currentDeviceGroup === g.key ? 'sel' : ''}" onclick="applyDevice('group:${g.key}')">${g.label} <span class="n">${g.clinics}</span></button>${catBlocks}`;
+    html += `<button type="button" class="tech-group ${currentDeviceGroup === g.key ? 'sel' : ''}" onclick="applyDevice('group:${g.key}')">${devEsc(g.label)} <span class="n">${g.clinics}</span></button>${catBlocks}`;
   });
 
   if (term && matches === 0) html += '<div class="tech-empty">Nothing matches that.</div>';
@@ -4061,7 +4106,7 @@ function renderPageCards(clinicsData, append) {
     const devOverflow = devs.length - devShown.length;
     const devicesHTML = devs.length
       ? `<div class="card-devices" aria-label="Technology listed by this clinic">${
-          devShown.map(d => `<span class="dev-chip">${d.model}</span>`).join('')
+          devShown.map(d => `<a class="dev-chip" href="/devices/${devSlug(d.model)}" onclick="event.stopPropagation()">${devEsc(d.model)}</a>`).join('')
         }${devOverflow > 0 ? `<span class="dev-chip dev-chip-more">+${devOverflow}</span>` : ''}</div>`
       : '';
     return `
@@ -5949,6 +5994,13 @@ function maybeShowVisitPrompt() {
       <!-- Treatment categories -->
       <div class="cm-categories" id="cm-categories" style="display:none"></div>
 
+      <!-- Technology (M39). Sits under the category chips for the same reason
+           the profile does: the chips say what they do, this says what with. -->
+      <div class="cm-devices" id="cm-devices" style="display:none">
+        <div class="cm-devices-label">Technology</div>
+        <div class="cm-devices-list" id="cm-devices-list"></div>
+      </div>
+
       <!-- Vote block -->
       <div class="cm-vote-block" id="cm-vote-block">
         <div class="cm-vote-label">Been here?</div>
@@ -6303,6 +6355,41 @@ window.openClinicModal = async function openClinicModal(clinicId) {
     } else {
       cmCatEl.innerHTML = '';
       cmCatEl.style.display = 'none';
+    }
+  }
+
+  // ── Technology (M39) ────────────────────────────────────────
+  // The card carries model names only; the modal has room to group them by
+  // category, name the manufacturer, and link each chip into its device page.
+  // Nothing renders when the clinic has no rows, for the same reason as the
+  // card and the profile: most clinics have not been read yet, and an empty
+  // block would read as a finding about the clinic.
+  const cmDevWrap = document.getElementById('cm-devices');
+  const cmDevList = document.getElementById('cm-devices-list');
+  if (cmDevWrap && cmDevList) {
+    const cmDevs = Array.isArray(clinic.devices) ? clinic.devices : [];
+    if (cmDevs.length) {
+      const groups = [];
+      const seen = {};
+      cmDevs.forEach(d => {
+        const key = d.category_label || d.category || 'Other';
+        if (!seen[key]) { seen[key] = []; groups.push(key); }
+        seen[key].push(d);
+      });
+      cmDevList.innerHTML = groups.map(key => `
+        <div>
+          <div class="cm-dev-group-label">${devEsc(key)}</div>
+          <div class="cm-dev-chips">${seen[key].map(d => {
+            return `<a class="cm-dev-chip" href="/devices/${devSlug(d.model)}">${devEsc(d.model)}${
+              d.manufacturer ? `<span class="mfr">${devEsc(d.manufacturer)}</span>` : ''
+            }${d.status === 'verified' ? '<span class="vtag">✓</span>' : ''}</a>`;
+          }).join('')}</div>
+        </div>`).join('') +
+        '<div class="cm-dev-note">Listed from this clinic\'s own website. A check mark means the clinic confirmed it with us.</div>';
+      cmDevWrap.style.display = 'block';
+    } else {
+      cmDevList.innerHTML = '';
+      cmDevWrap.style.display = 'none';
     }
   }
 
