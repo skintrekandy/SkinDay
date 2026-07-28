@@ -127,9 +127,21 @@ function tokenVariants(name) {
   return [...out].filter(Boolean);
 }
 
+// ⚠️⚠️ MULTI-WORD TOKENS ARE SELF-DISAMBIGUATING AND NEVER NEED CORROBORATION,
+// even on a device flagged name_is_also_generic.
+//
+// This was the bug that made Signature return no Halo and no diVa despite a
+// dedicated /treatment/halo-laser/ page. The generic flag lives on the DEVICE,
+// so it was forcing "Halo Laser" and "diVa Vaginal Rejuvenation" to also carry
+// the manufacturer, which no clinic writes. That defeated the entire point of
+// adding disambiguating aliases.
+//
+// Bare "halo" is an ordinary English word and stays guarded. "halo laser" is
+// not ambiguous to any reader, so it stands on its own.
 function needsCorroboration(token, generic) {
+  if (token.split(' ').length > 1) return false;
   if (generic) return true;
-  return token.split(' ').length === 1 && RISKY_SINGLE_WORD.has(token);
+  return RISKY_SINGLE_WORD.has(token);
 }
 
 const MFR_NOISE = new Set([
@@ -214,7 +226,12 @@ function ownPagePaths(rawText, pageUrl) {
   const re = /https?:\/\/[^\s"'<>)\]]+/g;
   let m, n = 0;
   while ((m = re.exec(String(rawText))) !== null && n++ < 800) add(m[0]);
-  return paths;
+  // ⚠️⚠️ DEDUPE. The pool is the union of the page's hrefs AND the sitemap, so
+  // the same url arrives twice and each copy is a separate character span. That
+  // defeated the overlap suppression entirely: BBL and BBL Hero BOTH matched
+  // "BroadBand Light" on signaturemedispa.com, one per copy of the url, and
+  // every owner of a newer generation was double counted alongside the older.
+  return [...new Set(paths)];
 }
 
 // URLs go before prose matching. Booking widgets (vagaro, Zenoti) embed long
