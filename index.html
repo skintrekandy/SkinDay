@@ -750,6 +750,32 @@
     .price-chip.active {
       background: var(--rose); border-color: var(--rose); color: #fff;
     }
+    /* M39 technology filter. Styled off .sort-select so the bar keeps one
+       visual language; wider because model names are longer than "Highest Rated". */
+    .tech-select {
+      max-width: 230px;
+    }
+    @media (max-width: 640px) { .tech-select { max-width: 170px; } }
+
+    /* M39 device chips on the card. Deliberately DIFFERENT from .cat-chip:
+       those are the clinic's self-declared treatment categories, these are the
+       actual machines. Same row height, quieter fill, monospace-ish tracking so
+       a model number reads as a product name rather than a tag. */
+    .card-devices {
+      display: flex; flex-wrap: wrap; gap: 0.3rem;
+      margin-top: 0.4rem;
+    }
+    .dev-chip {
+      display: inline-flex; align-items: center; gap: 0.25rem;
+      font-size: 0.66rem; letter-spacing: 0.02em; font-weight: 500;
+      padding: 0.16rem 0.42rem; border-radius: 4px;
+      background: rgba(200,114,90,0.07);
+      border: 1px solid rgba(200,114,90,0.18);
+      color: var(--deep);
+      white-space: nowrap;
+    }
+    .dev-chip-more { background: transparent; border-style: dashed; color: var(--muted); }
+
     .filter-spacer { flex: 1 1 auto; min-width: 0; }
     .active-filter-line {
       max-width: 1280px; margin: -14px auto 0; padding: 0 5% 28px;
@@ -2812,6 +2838,10 @@
       <button type="button" class="price-chip" data-max="8"  aria-pressed="false" onclick="applyMaxPrice('8')">≤ $8</button>
       <button type="button" class="price-chip" data-max="11" aria-pressed="false" onclick="applyMaxPrice('11')">≤ $11</button>
     </div>
+    <span class="filter-label">Technology</span>
+    <select class="sort-select tech-select" id="techSelect" onchange="applyDevice(this.value)" aria-label="Filter by treatment technology or device">
+      <option value="">Any technology</option>
+    </select>
     <span class="filter-spacer" aria-hidden="true"></span>
     <span class="filter-label">Sort</span>
     <select class="sort-select" onchange="sortCards(this.value)" id="mainSortSelect">
@@ -2828,7 +2858,7 @@
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
     </span>
     <span id="activeFilterText"></span>
-    <button type="button" class="active-filter-clear" onclick="applyMaxPrice('any')">Clear</button>
+    <button type="button" class="active-filter-clear" onclick="clearAllFilters()">Clear</button>
   </div>
 
   <div class="cards-grid" id="cardsGrid">
@@ -3420,6 +3450,9 @@ let currentSort = 'reviews';
 let currentNameQuery = '';
 let currentInjectorFilter = 'all';
 let currentMaxPrice = null;      // number (price ceiling per unit) or null
+let currentDevice   = null;      // model slug, e.g. 'morpheus8'
+let currentDeviceCat = null;     // fine category, e.g. 'rf_microneedling'
+let deviceFacets    = null;      // { models, categories, clinics_with_devices }
 let userLocation = null;
 let currentClinic = null;
 let compareList = [];
@@ -3596,6 +3629,11 @@ function buildApiUrl(page) {
     params.set('maxprice', String(currentMaxPrice));
   }
 
+  // M39 technology filter. Applied server-side so paging and the result count
+  // stay correct, exactly like the price ceiling above.
+  if (currentDevice)    params.set('device', currentDevice);
+  if (currentDeviceCat) params.set('devicecat', currentDeviceCat);
+
   return '/api/get-clinics?' + params.toString();
 }
 
@@ -3620,12 +3658,39 @@ function updateActiveFilterLine() {
   const line = document.getElementById('activeFilterLine');
   const text = document.getElementById('activeFilterText');
   if (!line || !text) return;
-  if (currentMaxPrice == null) { line.style.display = 'none'; return; }
+
+  const hasDevice = !!(currentDevice || currentDeviceCat);
+  if (currentMaxPrice == null && !hasDevice) { line.style.display = 'none'; return; }
+
   const n = currentTotal || 0;
-  text.textContent = n > 0
-    ? `${n.toLocaleString()} ${n === 1 ? 'clinic' : 'clinics'} with Botox at or under $${currentMaxPrice} / unit`
-    : `No clinics with Botox at or under $${currentMaxPrice} / unit — try a higher ceiling`;
+  const clinicWord = n === 1 ? 'clinic' : 'clinics';
+  const bits = [];
+  if (hasDevice)              bits.push(`listing ${activeDeviceLabel()}`);
+  if (currentMaxPrice != null) bits.push(`with Botox at or under $${currentMaxPrice} / unit`);
+
+  if (n > 0) {
+    text.textContent = `${n.toLocaleString()} ${clinicWord} ${bits.join(' and ')}`;
+  } else if (hasDevice && currentMaxPrice != null) {
+    text.textContent = `No clinics match both filters. Try clearing the price ceiling.`;
+  } else if (hasDevice) {
+    text.textContent = `No clinics listing ${activeDeviceLabel()} in this view. Try another area.`;
+  } else {
+    text.textContent = `No clinics with Botox at or under $${currentMaxPrice} / unit. Try a higher ceiling.`;
+  }
+
   line.style.display = '';
+}
+
+// Clear button now clears whichever filters are on, not just the price.
+function clearAllFilters() {
+  currentMaxPrice = null;
+  currentDevice = null;
+  currentDeviceCat = null;
+  syncPriceChipsUI();
+  syncTechSelectUI();
+  syncPriceUrl();
+  syncDeviceUrl();
+  fetchPage(0, false);
 }
 
 // Keep the ceiling in the URL so a filtered view is shareable. replaceState
@@ -3648,6 +3713,107 @@ function applyMaxPrice(val) {
   syncPriceChipsUI();
   syncPriceUrl();
   fetchPage(0, false);
+}
+
+// ─── TECHNOLOGY FILTER (M39) ──────────────────────────────────
+// Mirrors the price ceiling above: a deep-linkable param, applied server-side,
+// with the active-filter line stating the result in words.
+//
+// Options come from /api/get-clinics?mode=device-facets, which returns a clinic
+// COUNT on every entry. That count is the point: offering all 122 models would
+// bury the patient in options that return two clinics each. Anything under the
+// threshold is left out, and every remaining option shows its count so the
+// choice is informed before the click.
+const DEVICE_MIN_CLINICS = 3;
+
+async function loadDeviceFacets() {
+  try {
+    const res = await fetch('/api/get-clinics?mode=device-facets');
+    if (!res.ok) return;
+    deviceFacets = await res.json();
+    populateTechSelect();
+  } catch (e) {
+    // The directory works without it; the control simply stays on "Any".
+    console.warn('[device facets] unavailable', e);
+  }
+}
+
+function populateTechSelect() {
+  const sel = document.getElementById('techSelect');
+  if (!sel || !deviceFacets) return;
+
+  const cats   = deviceFacets.categories || [];
+  const models = (deviceFacets.models || []).filter(m => m.clinics >= DEVICE_MIN_CLINICS);
+
+  // Which category a model belongs to is not in the facet payload, so models
+  // are grouped by matching them back through the category list the server
+  // already ordered. Anything unmatched lands in a final group rather than
+  // being dropped.
+  let html = '<option value="">Any technology</option>';
+  cats.forEach(c => {
+    html += `<optgroup label="${c.label}">`;
+    html += `<option value="cat:${c.category}">All ${c.label.toLowerCase()} (${c.clinics})</option>`;
+    (deviceFacets.models_by_category && deviceFacets.models_by_category[c.category] || [])
+      .filter(m => m.clinics >= DEVICE_MIN_CLINICS)
+      .forEach(m => { html += `<option value="model:${m.slug}">${m.model} (${m.clinics})</option>`; });
+    html += '</optgroup>';
+  });
+
+  // Fallback for payloads without the grouping: one flat list of the models
+  // that actually have depth, most common first.
+  if (!deviceFacets.models_by_category && models.length) {
+    html += '<optgroup label="Devices">';
+    models.forEach(m => { html += `<option value="model:${m.slug}">${m.model} (${m.clinics})</option>`; });
+    html += '</optgroup>';
+  }
+
+  sel.innerHTML = html;
+  syncTechSelectUI();
+}
+
+function syncTechSelectUI() {
+  const sel = document.getElementById('techSelect');
+  if (!sel) return;
+  const want = currentDevice ? 'model:' + currentDevice
+             : currentDeviceCat ? 'cat:' + currentDeviceCat
+             : '';
+  if ([...sel.options].some(o => o.value === want)) sel.value = want;
+}
+
+function syncDeviceUrl() {
+  const params = new URLSearchParams(window.location.search);
+  if (currentDevice) params.set('device', currentDevice); else params.delete('device');
+  if (currentDeviceCat) params.set('devicecat', currentDeviceCat); else params.delete('devicecat');
+  const qs = params.toString();
+  window.history.replaceState(null, '', window.location.pathname + (qs ? '?' + qs : '') + window.location.hash);
+}
+
+function applyDevice(val) {
+  if (!val) {
+    currentDevice = null; currentDeviceCat = null;
+  } else if (val.indexOf('cat:') === 0) {
+    currentDeviceCat = val.slice(4); currentDevice = null;
+  } else if (val.indexOf('model:') === 0) {
+    currentDevice = val.slice(6); currentDeviceCat = null;
+  }
+  syncTechSelectUI();
+  syncDeviceUrl();
+  fetchPage(0, false);
+}
+
+// Human label for whatever technology filter is active, used in the line under
+// the filter bar.
+function activeDeviceLabel() {
+  if (!deviceFacets) return currentDevice || currentDeviceCat || '';
+  if (currentDevice) {
+    const m = (deviceFacets.models || []).find(x => x.slug === currentDevice);
+    return m ? m.model : currentDevice;
+  }
+  if (currentDeviceCat) {
+    const c = (deviceFacets.categories || []).find(x => x.category === currentDeviceCat);
+    return c ? c.label.toLowerCase() : currentDeviceCat;
+  }
+  return '';
 }
 
 // ─── FEATURED / PINNED CLINIC ─────────────────────────────────
@@ -3757,6 +3923,21 @@ function renderPageCards(clinicsData, append) {
     const categoriesHTML = cats.length
       ? `<div class="card-categories">${catChips}${catOverflow > 0 ? `<span class="cat-chip cat-chip-more">+${catOverflow}</span>` : ''}</div>`
       : '';
+
+    // M39 devices. The chips above are the clinic's self-declared treatment
+    // CATEGORIES; these are the actual machines, which is the information the
+    // card did not previously carry. Model names only, no manufacturer — the
+    // card's job is "does this clinic have the machine I searched for".
+    // Nothing renders when there are none, because most clinics have not had
+    // their site read yet and an empty row would read as a finding.
+    const devs = Array.isArray(c.devices) ? c.devices : [];
+    const devShown = devs.slice(0, 3);
+    const devOverflow = devs.length - devShown.length;
+    const devicesHTML = devs.length
+      ? `<div class="card-devices" aria-label="Technology listed by this clinic">${
+          devShown.map(d => `<span class="dev-chip">${d.model}</span>`).join('')
+        }${devOverflow > 0 ? `<span class="dev-chip dev-chip-more">+${devOverflow}</span>` : ''}</div>`
+      : '';
     return `
       <div class="clinic-card${hasPrice ? '' : ' no-price'}" data-id="${c.id}">
         ${(() => {
@@ -3804,6 +3985,7 @@ function renderPageCards(clinicsData, append) {
           <div class="review-count">${(c.reviews || 0).toLocaleString()} Google reviews</div>
           ${pillsHTML}
           ${categoriesHTML}
+          ${devicesHTML}
         </div>
         ${priceBlockHTML}
         <div class="card-visit-row">
@@ -3877,7 +4059,9 @@ async function fetchPage(page, append) {
     updateActiveFilterLine();
 
     if (raw.length === 0 && !append) {
-      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60px 0;color:var(--muted);font-size:0.9rem;">No clinics found. Try adjusting your filters.</div>';
+      grid.innerHTML = (currentDevice || currentDeviceCat)
+        ? `<div style="grid-column:1/-1;text-align:center;padding:60px 0;color:var(--muted);font-size:0.9rem;">No clinics listing ${activeDeviceLabel()} here. Try another area or clear the filter.</div>`
+        : '<div style="grid-column:1/-1;text-align:center;padding:60px 0;color:var(--muted);font-size:0.9rem;">No clinics found. Try adjusting your filters.</div>';
     } else {
       renderPageCards(raw, append);
     }
@@ -4326,12 +4510,23 @@ function showToast(msg) {
   const sortSel = document.getElementById('mainSortSelect');
   if (sortSel) sortSel.value = currentSort;
 
+  // M39: /?device=morpheus8 or /?devicecat=rf_microneedling, so a guide page
+  // can CTA straight into "clinics with a Morpheus8 in Toronto".
+  const dev = p.get('device');
+  if (dev) currentDevice = dev.trim().toLowerCase();
+  const devCat = p.get('devicecat');
+  if (devCat && !currentDevice) currentDeviceCat = devCat.trim().toLowerCase();
+
   syncPriceChipsUI();
 })();
 
 (async function init() {
   const grid = document.getElementById('cardsGrid');
   grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60px 0;color:var(--muted);font-size:0.9rem;letter-spacing:0.03em;">Loading clinics…</div>';
+
+  // Technology filter options. Non-blocking: the grid must never wait on it,
+  // and if it fails the control simply stays on "Any technology".
+  loadDeviceFacets();
 
   // Fetch index + first page in parallel
   const [indexRes, pageRes] = await Promise.allSettled([
