@@ -1034,6 +1034,12 @@
           <button class="btn-ghost" onclick="dcStart(true)">Retry failed</button>
           <span id="dc-progress" style="font-size:.82rem;color:var(--muted);"></span>
         </div>
+
+        <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;margin-top:.7rem;padding-top:.7rem;border-top:1px solid var(--border);">
+          <input class="form-input" id="dc-one-host" placeholder="signaturemedispa.com" style="max-width:260px;" onkeydown="if(event.key==='Enter')dcTestHost()" />
+          <button class="btn-ghost" onclick="dcTestHost()">Test this host</button>
+          <span style="font-size:.78rem;color:var(--muted);">Crawls one site now and shows exactly what it read, whatever its queue status.</span>
+        </div>
         <div class="form-subtitle" style="margin-top:.6rem;">This only advances while the tab is open and awake, same as the price crawl, so do not run both at once. Watch the first ten hosts before leaving it to loop. Each device shows how it was found: <strong>own page</strong> means the clinic has a dedicated page for that machine, which is the strongest evidence; <strong>named</strong> means it was written in the page text; <strong>blog</strong> means it appeared in an article and may be a device they only wrote about. A row marked <strong>sitemap</strong> came from a site whose pages are JavaScript-only, so the evidence is the clinic's own page addresses rather than readable text.</div>
 
         <div id="dc-log" style="display:none;margin-top:1rem;max-height:60vh;overflow:auto;font-size:.78rem;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;border-top:1px solid var(--border);padding-top:.7rem;line-height:1.6;"></div>
@@ -1649,6 +1655,53 @@ async function dcStart(retry) {
 
   dcRunning = false;
   dcButtons(false);
+  dcLoadStats();
+}
+
+// ⭐ Crawl ONE host on demand and print the matcher's working.
+// Every diagnosis before this needed a full country run or a guess. When a
+// clinic we know owns 25 machines comes back with none, finding out what the
+// crawler actually read should take fifteen seconds.
+async function dcTestHost() {
+  const input = document.getElementById('dc-one-host');
+  const host = (input && input.value || '').trim();
+  if (!host) { dcLog('Enter a host first.', 'var(--red)'); return; }
+
+  dcLog('testing ' + fvEscape(host) + ' …', 'var(--muted)');
+
+  let data;
+  try {
+    const r = await dcCall({ action: 'crawl', host: host, batch: 1 });
+    data = r.data;
+    if (!r.ok) { dcLog('error: ' + fvEscape((data && data.error) || 'request failed'), 'var(--red)'); return; }
+  } catch (e) {
+    dcLog('network error: ' + fvEscape(String((e && e.message) || e)), 'var(--red)');
+    return;
+  }
+
+  if (data.note) { dcLog(fvEscape(data.note), 'var(--gold)'); return; }
+
+  (data.processed || []).forEach(p => {
+    const d = p.diagnostic || {};
+    dcLog('<strong>' + fvEscape(p.host) + '</strong> · verdict: ' + fvEscape(p.status), 'var(--deep)');
+    dcLog('   pages read: ' + (d.pages_read != null ? d.pages_read : '?')
+          + ' · tech page: ' + fvEscape(d.tech_url || 'none picked')
+          + ' · sitemap: ' + (d.sitemap_urls || 0) + ' urls'
+          + (d.sitemap_source ? ' from ' + fvEscape(d.sitemap_source) : '')
+          + (d.thin_only ? ' · JAVASCRIPT ONLY' : ''), 'var(--muted)');
+    if (d.error) dcLog('   fetch error: ' + fvEscape(d.error), 'var(--red)');
+    if ((d.matched || []).length) {
+      dcLog('   matched ' + d.matched.length + ':', 'var(--green)');
+      d.matched.forEach(m => dcLog('      ' + fvEscape(m), 'var(--green)'));
+    } else {
+      dcLog('   matched nothing', 'var(--red)');
+    }
+    if ((d.unmatched_sample || []).length) {
+      dcLog('   unmatched names seen: ' + fvEscape(d.unmatched_sample.join(', ')), 'var(--gold)');
+    }
+    dcLog('   ' + p.clinics + ' clinic row(s) on this host · ' + p.inserted + ' candidate row(s) written', 'var(--muted)');
+  });
+
   dcLoadStats();
 }
 
