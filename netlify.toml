@@ -5,10 +5,12 @@
   functions = "netlify/functions"
   publish    = "."          # static HTML files are in root
 
-# Functions need clinic.html in the bundle so the SSR function
-# can read the template at runtime.
+# Functions need the HTML templates in the bundle so the SSR functions can
+# read them at runtime. render-clinic.js reads clinic.html; render-devices.js
+# reads devices.html. A template missing from this list makes the function
+# throw at cold start and every URL it serves returns 503.
 [functions]
-  included_files = ["clinic.html"]
+  included_files = ["clinic.html", "devices.html"]
 
 
 # ── CANONICAL HOMEPAGE ───────────────────────────────────────────
@@ -16,6 +18,13 @@
 [[redirects]]
   from   = "/index.html"
   to     = "/"
+  status = 301
+  force  = true
+
+
+[[redirects]]
+  from   = "/devices.html"
+  to     = "/devices/"
   status = 301
   force  = true
 
@@ -132,6 +141,42 @@
 [[redirects]]
   from   = "/clinic/*"
   to     = "/.netlify/functions/render-clinic/:splat?slug=:splat"
+  status = 200
+  force  = true
+
+
+# ── DEVICE PAGES (SSR, M39) ──────────────────────────────────────
+# Server-side render /devices/ and /devices/{model} so Google sees the model
+# name, the clinic count and the clinic list baked into the HTML. Without SSR
+# every device URL would serve the same empty devices.html shell and the whole
+# set would be treated as duplicates, exactly as happened with clinic pages.
+#
+# ⚠️ force = true is REQUIRED on all three, and not for the usual reason.
+# devices.html sits in the repo root, and Netlify's automatic pretty-URL
+# handling maps /devices.html to /devices, so WITHOUT force it would serve the
+# empty static shell instead of calling the function. Same trap the studio
+# redirects hit.
+#
+# The two exact paths must come BEFORE the splat rule: Netlify matches
+# top-to-bottom, and /devices/* would otherwise swallow the bare index.
+[[redirects]]
+  from   = "/devices"
+  to     = "/.netlify/functions/render-devices"
+  status = 200
+  force  = true
+
+[[redirects]]
+  from   = "/devices/"
+  to     = "/.netlify/functions/render-devices"
+  status = 200
+  force  = true
+
+# Slug passed as both a path splat and a query param, for the same reason as
+# the clinic rule: whichever way Netlify populates the event, the function
+# finds it.
+[[redirects]]
+  from   = "/devices/*"
+  to     = "/.netlify/functions/render-devices/:splat?slug=:splat"
   status = 200
   force  = true
 
@@ -260,6 +305,10 @@
 # ── DYNAMIC SITEMAP ──────────────────────────────────────────────
 # Serves live clinic slugs from Supabase instead of the stale static file.
 # `force = true` ensures this overrides any leftover static sitemap.xml.
+#
+# ⚠️ TODO (M39): netlify/functions/sitemap.js does not yet emit the device URLs.
+# /devices/ and every /devices/{model} slug need adding, or the new pages are
+# only discoverable through the footer link and will index slowly.
 [[redirects]]
   from   = "/sitemap.xml"
   to     = "/.netlify/functions/sitemap"
