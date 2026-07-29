@@ -227,6 +227,44 @@ function classifyPage(url) {
 const ASSET_EXT = /\.(png|jpe?g|gif|svg|webp|avif|ico|css|js|mjs|json|xml|txt|woff2?|ttf|eot|pdf|mp4|webm|zip)$/i;
 const ASSET_DIR = /\/(wp-content|wp-includes|wp-json|assets?|static|dist|build|themes?|plugins?|uploads?|images?|img|icons?|fonts?|media|cdn-cgi|_next|_nuxt)(\/|$)/i;
 
+// ⚠️⚠️ A URL THAT NAMES MORE THAN ONE DEVICE IS A COMPARISON, NOT A PRODUCT PAGE.
+// Found on Andy's own clinic: skin-trek.com/nerd/ultherapy-vs-thermage-vs-sofwave
+// is an educational comparison article, and it credited Skin Trek with a SOFWAVE
+// they do not own. Two failures stacked:
+//   1. `/nerd/` is not in BLOG_PATH, because it is that site's own word for its
+//      blog. Guessing every clinic's name for its content section is a losing
+//      game: /nerd/, /learn/, /insights/, /academy/, /the-edit/.
+//   2. The slug contains THREE device names, so the own-page rule fired for all
+//      three, which is the STRONGEST evidence tier and is auto-approved in bulk.
+//
+// ⭐ THE GENERAL FIX does not need to know the folder name. A page whose URL
+// carries an explicit comparison word, or names two or more different devices,
+// is about devices rather than owned by the clinic. This is the SEO problem Andy
+// named: clinics write comparison content precisely to rank for competitors'
+// brand terms, so this pattern will only become more common.
+const COMPARE_PATH = /(^|[^a-z])(vs|versus|compare[sd]?|comparison|difference|differences|which-is-better|or)([^a-z]|$)/i;
+
+function isComparisonPath(pathname, entries) {
+  if (COMPARE_PATH.test(pathname)) return true;
+  // ⚠️ WHOLE TOKENS ONLY. A first version also allowed a bare substring match,
+  // and short tokens matched inside longer words, so EVERY path looked like a
+  // comparison and every own_page collapsed to blog_only. Boundaries matter here
+  // for exactly the reason they matter in the prose matcher.
+  // ⚠️⚠️ COUNT DISTINCT DEVICES, NOT DISTINCT TOKENS. A first version counted
+  // tokens and broke drmikeroskies.com/laser-treatments/sciton-halo, because
+  // "sciton halo" and "halo" are TWO TOKENS FOR ONE MACHINE and read as a
+  // comparison of two devices. One device named two ways is still one device.
+  const flat = ' ' + norm(decodeURIComponent(pathname)) + ' ';
+  const models = new Set();
+  for (const e of entries) {
+    if (e.token && e.token.length >= 3 && flat.indexOf(' ' + e.token + ' ') !== -1) {
+      models.add(e.model);
+      if (models.size >= 2) return true;
+    }
+  }
+  return false;
+}
+
 function ownPagePaths(rawText, pageUrl) {
   let host = '';
   try { host = new URL(pageUrl).hostname.replace(/^www\./, ''); } catch (e) {}
@@ -288,7 +326,21 @@ const RANK = { own_page: 4, exact: 3, generic_review: 2, blog_only: 1 };
 
 function matchDevices(rawText, pageUrl, matcher, opts) {
   opts = opts || {};
-  const pageKind = classifyPage(pageUrl);
+  let pageKind = classifyPage(pageUrl);
+
+  // ⚠️⚠️ COMPARISON PAGES ARE TREATED EXACTLY LIKE BLOG PAGES, which means
+  // blog_only at best and never auto-approved. Denying only the own-page tier
+  // would not have saved Skin Trek: Sofwave is a distinctive name, so it would
+  // have fallen through to `exact` and the bulk-approve rule auto-approves
+  // `exact` on distinctive names. The whole PAGE has to be demoted, not the one
+  // evidence tier.
+  let comparisonPage = false;
+  try {
+    const pn = new URL(pageUrl).pathname;
+    comparisonPage = isComparisonPath(pn, Array.isArray(matcher) ? matcher : []);
+  } catch (e) {}
+  if (comparisonPage) pageKind = 'blog';
+
   const isBlog = pageKind === 'blog';
   const pathBlob = ' ' + ownPagePaths(rawText, pageUrl).join(' ') + ' ';
   const text = ' ' + norm(stripUrls(rawText)) + ' ';
