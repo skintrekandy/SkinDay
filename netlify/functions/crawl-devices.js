@@ -131,15 +131,17 @@ function tokenVariants(name) {
   out.add(n.replace(/([a-z]) (\d)/g, '$1$2'));
   out.add(n.replace(/([a-z])(\d)/g, '$1 $2'));
 
-  // A plus sign does two different jobs, and only one of them is a generation
-  // marker. TRAILING plus is the generation ("excel v plus", "elite plus") and
-  // must stay, or the generations collapse again. A plus BETWEEN words is a
-  // conjunction ("Clear + Brilliant"), and clinics write that name both with and
-  // without it, so emit the version without.
-  const parts = n.split(' ');
-  if (parts.length > 2 && parts.indexOf('plus') > 0 && parts.indexOf('plus') < parts.length - 1) {
-    out.add(parts.filter(w => w !== 'plus').join(' '));
-  }
+  // ⚠️⚠️ NO CONJUNCTION VARIANT. An earlier version of this function stripped a
+  // MIDDLE plus, so "Clear + Brilliant" also matched the bare phrase
+  // "clear brilliant". That looked harmless and was not: "clear, brilliant skin"
+  // is stock marketing copy, punctuation is gone by normalisation time, and the
+  // device ended up credited to 131 clinics on prose alone.
+  //
+  // The conjunction is part of the brand and clinics print it: Clear + Brilliant,
+  // Clear & Brilliant, Clear and Brilliant. Those go in `model_aliases` as
+  // explicit strings, which is data and reviewable, rather than a generated
+  // variant nobody can see. A TRAILING plus still survives as the generation
+  // marker ("excel v plus", "elite plus"), which is the only job it has here.
 
   return [...out].filter(Boolean);
 }
@@ -693,9 +695,23 @@ const SERVICE_HINTS = [
   'what-we-do', 'menu', 'price', 'pricing', 'traitements', 'soins', 'tarifs'
 ];
 
+// ⚠️⚠️ ASSET FILES ARE NOT PAGES, and this cost dozens of clinics.
+// `menu` is a SERVICE_HINT because clinics publish a "treatment menu". But it
+// also matches WordPress theme assets:
+//     /elementor-pro/assets/css/widget-nav-menu.min.css
+//     /cdn/shop/t/5/assets/component-menu-drawer.css
+//     /themify/js/modules/themify-sidemenu.js
+//     411sante.com/css/menu.css
+// The scorer picked those as the services page, the server answered HTTP 415
+// (it will not serve a stylesheet to an HTML accept header), and the whole
+// clinic was recorded as a fetch failure. Every one of those is a clinic we
+// could have read.
+const ASSET_PATH = /\.(css|js|mjs|json|xml|png|jpe?g|gif|svg|webp|avif|ico|woff2?|ttf|eot|mp4|webm|zip|pdf)(\?|$)/i;
+
 function scoreLink(url, hints) {
   let path;
   try { path = new URL(url).pathname.toLowerCase(); } catch (e) { return -1; }
+  if (ASSET_PATH.test(path)) return -1;
   if (BLOG_PATH.test(path)) return -1;
   const flat = path.replace(/[^a-z]+/g, '-');
   let best = -1;
@@ -740,6 +756,12 @@ async function crawlHost(row, matcher) {
     seen.add(url);
     pagesTried++;
     const r = await getPage(url);
+    if (/\.(css|js|png|jpe?g|gif|svg|webp|ico|woff2?|ttf)(\?|$)/i.test(url)) {
+      // Second line of defence: no code path should ever fetch an asset as a
+      // page, and if one does it is a bug worth seeing rather than a timeout.
+      lastError = 'ASSET URL, not a page: ' + url;
+      return null;
+    }
     if (!r.ok) {
       // 403 and 429 are the site CHOOSING to refuse us. Labelling them
       // separately matters: they are not transient, so requeueing them forever
