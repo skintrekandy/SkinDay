@@ -265,7 +265,17 @@ function isComparisonPath(pathname, entries) {
   return false;
 }
 
-function ownPagePaths(rawText, pageUrl) {
+// ⚠️⚠️ TAKES `entries` NOW, because of a gap in my own comparison fix. The page
+// level test only saw the url being FETCHED. Skin Trek's
+// /nerd/ultherapy-vs-thermage-vs-sofwave arrived from the SITEMAP as one of
+// hundreds of harvested paths, so the page url was the homepage, the comparison
+// test never saw it, and `source_url` recorded the homepage too, which is why the
+// SQL cleanup could not find the row either.
+//
+// ⭐ BLOG_PATH was already filtered HERE, per path. The comparison test belongs in
+// exactly the same place and did not get there. Every filter that protects the
+// own-page tier has to run per harvested path, not once per fetched page.
+function ownPagePaths(rawText, pageUrl, entries) {
   let host = '';
   try { host = new URL(pageUrl).hostname.replace(/^www\./, ''); } catch (e) {}
   const paths = [];
@@ -274,6 +284,7 @@ function ownPagePaths(rawText, pageUrl) {
       const p = new URL(u);
       if (host && p.hostname.replace(/^www\./, '') !== host) return;
       if (BLOG_PATH.test(p.pathname)) return;
+      if (entries && isComparisonPath(p.pathname, entries)) return;
       if (ASSET_EXT.test(p.pathname) || ASSET_DIR.test(p.pathname)) return;
       if (p.pathname.split('/').filter(Boolean).length > 4) return;   // deep = not a service page
       paths.push(norm(decodeURIComponent(p.pathname)));
@@ -342,7 +353,7 @@ function matchDevices(rawText, pageUrl, matcher, opts) {
   if (comparisonPage) pageKind = 'blog';
 
   const isBlog = pageKind === 'blog';
-  const pathBlob = ' ' + ownPagePaths(rawText, pageUrl).join(' ') + ' ';
+  const pathBlob = ' ' + ownPagePaths(rawText, pageUrl, Array.isArray(matcher) ? matcher : []).join(' ') + ' ';
   const text = ' ' + norm(stripUrls(rawText)) + ' ';
 
   const found = new Map();
