@@ -1080,6 +1080,35 @@ async function doCrawl(supabase, body) {
       }
     }
 
+    // ---- sightings: one row per (clinic, device, run, url), plain insert -----
+    // The candidate table freezes crawled_at at first sighting because it is
+    // `on conflict do nothing`. Sightings do NOT: every run records what THIS
+    // run's matcher believed, so a re-find is visible instead of dropped. This
+    // never touches a candidate row, so no approve/reject can be clobbered.
+    // ignoreDuplicates handles the chain fan-out reading one host once per run.
+    if (out.matches.length && clinicIds.length) {
+      const sightRows = [];
+      for (const clinicId of clinicIds) {
+        for (const m of out.matches) {
+          sightRows.push({
+            clinic_id: clinicId,
+            device_id: m.device_id,
+            host: row.host,
+            run_id: runId,
+            source_url: m.source_url,
+            page_kind: out.thinOnly ? 'sitemap' : m.page_kind,
+            confidence: m.confidence
+          });
+        }
+      }
+      for (let i = 0; i < sightRows.length; i += 200) {
+        await supabase.from('clinic_device_sightings')
+          .upsert(sightRows.slice(i, i + 200),
+                  { onConflict: 'clinic_id,device_id,run_id,source_url',
+                    ignoreDuplicates: true });
+      }
+    }
+
     if (out.unknowns.length) {
       await supabase.from('device_unknown_tokens').insert(out.unknowns.map(u => ({
         token: u.token,
@@ -1102,6 +1131,25 @@ async function doCrawl(supabase, body) {
       last_run_id: runId,
       fetched_at: new Date().toISOString()
     }).eq('id', row.id);
+
+    // ---- per-run host record --------------------------------------------
+    // The queue row above is OVERWRITTEN every run, losing its verdict history.
+    // This keeps one immutable row per host per run, carrying the BLOCKED/HTTP
+    // label, so a later "no sighting for this pair" can be read correctly:
+    // host status 'done' with no sighting = brand gone; 'error'/blocked = we
+    // could not look, leave the published row alone. That distinction is the
+    // whole reason the change feed can ever be trusted.
+    if (runId) {
+      await supabase.from('crawl_run_hosts')
+        .upsert({
+          run_id: runId,
+          host: row.host,
+          status: out.status,
+          pages_read: out.pagesTried,
+          devices_found: out.matches.length,
+          last_error: out.lastError || null
+        }, { onConflict: 'run_id,host', ignoreDuplicates: false });
+    }
 
     processed.push({
       host: row.host,
