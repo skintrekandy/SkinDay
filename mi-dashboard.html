@@ -50,6 +50,48 @@
   .tabs button.on { color:var(--ink); border-bottom-color:var(--accent); }
   .tabs .listcount { font-family:var(--font-mono); font-size:10px; background:var(--accent); color:#fff; border-radius:100px; padding:1px 6px; }
 
+  /* Settings follows the Visualize Pro portal: collapsible sections, collapsed
+     by default, each stating what it is for before it shows a control. */
+  .sec { margin-bottom:14px; }
+  .sec-head { cursor:pointer; position:relative; padding:18px 66px 18px 20px; border:1px solid var(--line); border-radius:12px; transition:background .15s ease, border-color .15s ease; user-select:none; }
+  .sec-head:hover { border-color:var(--accent); background:var(--accent-soft); }
+  .sec-head:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+  .sec-head h2 { font-size:21px; font-weight:600; letter-spacing:-.015em; margin:6px 0 0; }
+  .sec-head p { color:var(--muted); font-size:15px; line-height:1.6; margin:12px 0 0; max-width:62ch; }
+  .sec-head .chevron { position:absolute; right:16px; top:24px; width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:var(--accent); color:#fff; font-size:12px; line-height:1; box-shadow:0 1px 5px rgba(0,0,0,.15); pointer-events:none; transition:transform .2s ease; }
+  .sec.open > .sec-head .chevron { transform:rotate(180deg); }
+  .sec.open > .sec-head { margin-bottom:20px; border-color:var(--accent); }
+  .sec:not(.open) > :not(.sec-head) { display:none !important; }
+  .sec:not(.open) > .sec-head p { display:none; }
+  .eyebrow { font-family:var(--font-mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--faint); display:block; margin-bottom:7px; }
+  .box { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:28px; box-shadow:var(--shadow); }
+  .field { margin-bottom:18px; }
+  .field input[type=text], .field input[type=email], .field select { width:100%; padding:12px 13px; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--surface); color:var(--ink); font:inherit; font-size:15.5px; }
+  .field input:focus, .field select:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
+  .field small { display:block; color:var(--muted); font-size:13px; margin-top:7px; line-height:1.5; }
+  .row2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .act { background:var(--accent); color:#fff; border:0; border-radius:var(--radius-sm); padding:11px 18px; font:inherit; font-size:14.5px; font-weight:500; cursor:pointer; }
+  .act:hover { background:var(--accent-strong); }
+  .quiet { background:none; border:1px solid var(--line); color:var(--ink-2); border-radius:var(--radius-sm); padding:9px 14px; font:inherit; font-size:13.5px; cursor:pointer; }
+  .quiet:hover { border-color:var(--accent); color:var(--accent-strong); }
+  .note { font-size:13.5px; margin-top:10px; color:var(--muted); line-height:1.55; }
+  .readonly { font-family:var(--font-mono); font-size:13px; color:var(--ink-2); background:var(--surface-2); border:1px solid var(--line-2); border-radius:var(--radius-sm); padding:11px 13px; }
+  .swatches { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+  .swatch { width:30px; height:30px; border-radius:8px; cursor:pointer; padding:0; border:2px solid transparent; box-shadow:0 0 0 1px var(--line); transition:transform .1s ease; }
+  .swatch:hover { transform:scale(1.08); }
+  .swatch.sel { border-color:var(--surface); box-shadow:0 0 0 2px var(--ink); }
+  .swatch-custom { display:inline-flex; align-items:center; gap:8px; cursor:pointer; font-size:13.5px; color:var(--muted); }
+  .swatch-custom input[type=color] { width:30px; height:30px; border:0; background:none; padding:0; cursor:pointer; }
+  .member { display:flex; align-items:center; gap:14px; padding:16px 2px; border-top:1px solid var(--line); }
+  .member:last-child { border-bottom:1px solid var(--line); }
+  .member .em { font-size:.98rem; font-weight:500; }
+  .member .sub { font-size:.82rem; color:var(--muted); margin-top:2px; }
+  .member .grow { flex:1; }
+  .member.off { opacity:.5; }
+  .rpill { font-family:var(--font-mono); font-size:.66rem; letter-spacing:.06em; text-transform:uppercase; border-radius:100px; padding:4px 9px; border:1px solid var(--line); color:var(--muted); }
+  .rpill.you { border-color:var(--accent); color:var(--accent-strong); }
+  .invite-link { margin-top:14px; padding:14px; border-radius:var(--radius-sm); background:var(--surface-2); font-family:var(--font-mono); font-size:.8rem; word-break:break-all; line-height:1.6; border:1px solid var(--line); }
+
   main { max-width:1120px; margin:0 auto; padding:32px 28px 90px; }
   .panel { display:none; } .panel.on { display:block; }
 
@@ -113,9 +155,13 @@
   .contacts a, .contacts span { font-size:13px; color:var(--ink-2); display:inline-flex; align-items:center; gap:6px; }
   .contacts .ico { color:var(--accent); }
   .plates { display:flex; gap:7px; flex-wrap:wrap; margin-top:13px; }
-  .plate { font-family:var(--font-mono); font-size:11px; padding:4px 10px; border-radius:6px; border:1px solid var(--line); color:var(--ink-2); background:var(--surface-2); }
-  .plate.ours { border-color:var(--accent); color:var(--accent-strong); background:var(--accent-soft); }
-  .plate.comp { border-color:#E4B8B1; color:var(--comp); background:var(--comp-soft); }
+  /* A clinic with 20 machines was 20 red pills, which read as an alarm rather
+     than an inventory. Competitors are now NEUTRAL and carry a small
+     manufacturer-coloured dot; only the tenant's own devices are filled. */
+  .plate { display:inline-flex; align-items:center; gap:6px; font-family:var(--font-mono); font-size:11px; padding:4px 10px 4px 8px; border-radius:6px; border:1px solid var(--line-2); color:var(--ink-2); background:var(--surface); }
+  .plate .mdot { width:7px; height:7px; border-radius:50%; flex:none; }
+  .plate.ours { border-color:var(--accent); color:var(--accent-strong); background:var(--accent-soft); font-weight:500; }
+  .plate.ours .mdot { background:var(--accent) !important; }
   .reasons { display:flex; gap:7px; flex-wrap:wrap; margin-top:13px; }
   .reason { font-size:12px; color:var(--muted); background:var(--surface-2); border:1px solid var(--line-2); border-radius:100px; padding:4px 11px; }
   .reason.key { color:var(--accent-strong); background:var(--accent-soft); border-color:var(--accent); }
@@ -158,13 +204,13 @@
       <span class="badge" id="mfrBadge"></span>
       <div class="spacer"></div>
       <span class="mono" id="whoami"></span>
+      <button class="out" id="settingsBtn" style="display:none">Settings</button>
       <button class="out" id="signout">Sign out</button>
     </div>
     <div class="tabs">
       <button data-tab="portfolio" class="on">Portfolio</button>
       <button data-tab="accounts">Accounts</button>
       <button data-tab="list">My List <span class="listcount" id="listCount" style="display:none">0</span></button>
-      <button data-tab="settings" id="tabSettings" style="display:none">Settings</button>
     </div>
   </header>
 
@@ -204,25 +250,90 @@
       <div id="acctList"><div class="empty">Choose a filter to load accounts.</div></div>
     </section>
 
+    <!-- SETTINGS. Reached from the header, not the tab bar: the tabs are the
+         three things a rep does, and settings is not one of them. -->
     <section class="panel" id="panel-settings">
-      <div class="sec-label">Account</div>
-      <div class="cat">
-        <div class="dev"><span class="dn">Organisation</span><span class="spacer"></span><span class="num" id="setOwner"></span></div>
-        <div class="dev"><span class="dn">Installed base defined by</span><span class="spacer"></span><span class="num" id="setOwnerType"></span></div>
-      </div>
-      <div class="sec-label">Appearance</div>
-      <div class="cat" style="padding:18px">
-        <label class="mono">Display name</label>
-        <input id="setName" type="text" style="width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:var(--radius-sm);font:inherit;margin:6px 0 18px">
-        <label class="mono">Accent colour</label>
-        <div style="display:flex;gap:10px;align-items:center;margin:6px 0 18px">
-          <input id="setAccent" type="color" style="width:52px;height:38px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);padding:3px">
-          <input id="setAccentHex" type="text" placeholder="#147D74" style="flex:1;padding:11px 13px;border:1px solid var(--line);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:13px">
+
+      <div class="sec open" style="margin-bottom:26px">
+        <div class="sec-head" style="border:0;padding:0;cursor:default">
+          <span class="eyebrow">Settings</span>
+          <h2 style="font-size:30px">Your organisation.</h2>
+          <p id="setLede"></p>
         </div>
-        <label class="mono">Logo URL (https)</label>
-        <input id="setLogo" type="text" placeholder="https://..." style="width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:var(--radius-sm);font:inherit;margin:6px 0 18px">
-        <div class="actions"><button class="btn savebtn" id="setSave">Save settings</button><span class="mono" id="setMsg" style="margin-left:10px"></span></div>
       </div>
+
+      <div class="sec" id="secOrg">
+        <div class="sec-head" role="button" tabindex="0" aria-expanded="false"><span class="chevron">&#9662;</span>
+          <span class="eyebrow">Organisation</span>
+          <h2>Name and appearance.</h2>
+          <p>Your name and colour appear across the dashboard for everyone on your team.</p>
+        </div>
+        <div class="box">
+          <div class="field">
+            <label class="eyebrow" for="setName">Display name</label>
+            <input type="text" id="setName" maxlength="120">
+          </div>
+          <div class="field">
+            <label class="eyebrow">Installed base defined by</label>
+            <div class="readonly" id="setOwnerType"></div>
+            <small>Set by your agreement with SkinDay. Contact us to change it.</small>
+          </div>
+          <div class="field">
+            <label class="eyebrow">Accent colour</label>
+            <div class="swatches" id="brandSwatches"></div>
+            <div class="swatch-custom" style="margin-top:12px">
+              <input type="color" id="setAccent"><span>Custom</span>
+              <input type="text" id="setAccentHex" placeholder="#147D74" style="width:110px;padding:8px 10px;border:1px solid var(--line);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:12.5px">
+            </div>
+          </div>
+          <div class="field">
+            <label class="eyebrow" for="setLogo">Logo URL</label>
+            <input type="text" id="setLogo" placeholder="https://...">
+            <small>Must be https. Leave blank for none.</small>
+          </div>
+          <button class="act" id="setSave">Save</button>
+          <span class="note" id="setMsg" style="margin-left:10px"></span>
+        </div>
+      </div>
+
+      <div class="sec" id="secTeam">
+        <div class="sec-head" role="button" tabindex="0" aria-expanded="false"><span class="chevron">&#9662;</span>
+          <span class="eyebrow">Team</span>
+          <h2>Who can get in.</h2>
+          <p>Saved accounts and notes are recorded against the person who made them. That only means something if nobody shares a login.</p>
+        </div>
+        <div class="box">
+          <div class="field">
+            <label class="eyebrow" for="invName">Name</label>
+            <input type="text" id="invName" maxlength="120" placeholder="Full name">
+          </div>
+          <div class="row2">
+            <div class="field">
+              <label class="eyebrow" for="invEmail">Invite by email</label>
+              <input type="email" id="invEmail" placeholder="name@company.com">
+            </div>
+            <div class="field">
+              <label class="eyebrow" for="invRole">Role</label>
+              <select id="invRole">
+                <option value="rep">Field rep</option>
+                <option value="manager">Manager</option>
+                <option value="admin">Admin</option>
+              </select>
+              <small>Managers see every rep's list. Admins also manage the team and these settings.</small>
+            </div>
+          </div>
+          <div class="field">
+            <label class="eyebrow" for="invProvince">Territory</label>
+            <select id="invProvince"><option value="">All Canada</option></select>
+            <small>A rep with a territory only ever sees that province.</small>
+          </div>
+          <button class="act" id="invSend">Send invitation</button>
+          <span class="note" id="invNote" style="margin-left:10px"></span>
+          <div class="invite-link" id="invLink" style="display:none"></div>
+        </div>
+        <div id="teamList"></div>
+      </div>
+
     </section>
 
     <section class="panel" id="panel-list">
@@ -277,13 +388,14 @@
       r.setProperty('--accent-soft','color-mix(in srgb, '+t.accent_hex+' 12%, #fff)');
     }
     if(t.role==='admin'){
-      el('tabSettings').style.display='';
-      el('setOwner').textContent=t.display_name||'';
-      el('setOwnerType').textContent=t.owner_type==='distributor'?'Distributor portfolio':'Manufacturer portfolio';
+      el('settingsBtn').style.display='';
+      el('setLede').textContent='Signed in as '+(t.user_name||'admin')+'. Changes here apply to everyone at '+(t.display_name||'your organisation')+'.';
+      el('setOwnerType').textContent=(t.owner_type==='distributor'?'Distributor portfolio \u00b7 ':'Manufacturer portfolio \u00b7 ')+(t.owner_name||'');
       el('setName').value=t.display_name||'';
       el('setAccentHex').value=t.accent_hex||'';
       if(/^#[0-9A-Fa-f]{6}$/.test(t.accent_hex||'')) el('setAccent').value=t.accent_hex;
       el('setLogo').value=t.logo_url||'';
+      renderSwatches(t.accent_hex||'');
     }
     // a locked territory is not a choice, so the control is removed rather than disabled
     if(t.province){
@@ -293,8 +405,79 @@
       el('geoLocked').textContent=String(t.province).toUpperCase()+' territory';
     }
   }
+  var hashKey=(location.hash.match(/[#&]k=([^&]+)/)||[])[1];
+  if(hashKey){ history.replaceState(null,'',location.pathname); tryKey(decodeURIComponent(hashKey)); }
   el('pw').addEventListener('keydown',function(ev){ if(ev.key==='Enter'){ var v=el('pw').value.trim(); if(!v)return; el('gateErr').textContent='Checking...'; tryKey(v); } });
   el('signout').addEventListener('click',function(){ location.reload(); });
+
+  el('settingsBtn').addEventListener('click',function(){
+    Array.prototype.forEach.call(document.querySelectorAll('.tabs button'),function(x){ x.classList.remove('on'); });
+    Array.prototype.forEach.call(document.querySelectorAll('.panel'),function(p){ p.classList.remove('on'); });
+    el('panel-settings').classList.add('on');
+    loadTeam();
+  });
+  // collapsible sections, collapsed until asked for
+  Array.prototype.forEach.call(document.querySelectorAll('#panel-settings .sec > .sec-head[role=button]'),function(h){
+    function tog(){ var sec=h.parentNode; var open=sec.classList.toggle('open'); h.setAttribute('aria-expanded',open?'true':'false'); }
+    h.addEventListener('click',tog);
+    h.addEventListener('keydown',function(ev){ if(ev.key==='Enter'||ev.key===' '){ ev.preventDefault(); tog(); } });
+  });
+
+  var SWATCHES=['#147D74','#1F6FB2','#4F55C4','#8A4FBE','#B23A6E','#C0563A','#B9822E','#2F7D4F','#3A4A5C','#14181D'];
+  function renderSwatches(cur){
+    el('brandSwatches').innerHTML=SWATCHES.map(function(c){
+      return '<button class="swatch'+(c.toLowerCase()===(cur||'').toLowerCase()?' sel':'')+'" data-c="'+c+'" style="background:'+c+'" title="'+c+'"></button>';
+    }).join('');
+    Array.prototype.forEach.call(el('brandSwatches').querySelectorAll('.swatch'),function(b){
+      b.addEventListener('click',function(){
+        var c=b.getAttribute('data-c');
+        el('setAccentHex').value=c; el('setAccent').value=c; renderSwatches(c);
+      });
+    });
+  }
+
+  function loadTeam(){
+    if(!ME||ME.role!=='admin') return;
+    el('teamList').innerHTML='<div class="empty"><span class="spin"></span></div>';
+    api('list_users',{}).then(function(res){ renderTeam(res.users||[]); }).catch(function(){ el('teamList').innerHTML=''; });
+    fillNamed(el('invProvince'),[],'All Canada');
+    api('geo',{}).then(function(r){ var sel=el('invProvince'); sel.innerHTML='<option value="">All Canada</option>'+(r.geo||[]).map(function(g){ return '<option value="'+esc(g.value)+'">'+esc(String(g.value).toUpperCase())+'</option>'; }).join(''); }).catch(function(){});
+  }
+  function renderTeam(rows){
+    if(!rows.length){ el('teamList').innerHTML='<div class="note">Nobody invited yet.</div>'; return; }
+    el('teamList').innerHTML=rows.map(function(u){
+      var bits=[u.email||'no email'];
+      if(u.province) bits.push(String(u.province).toUpperCase()+' territory');
+      bits.push((u.saved_count||0)+' saved');
+      return '<div class="member'+(u.active?'':' off')+'">'+
+        '<div class="grow"><div class="em">'+esc(u.name)+'</div><div class="sub">'+esc(bits.join(' \u00b7 '))+'</div></div>'+
+        '<span class="rpill'+(ME&&u.user_id===ME.user_id?' you':'')+'">'+esc(u.role)+'</span>'+
+        '<button class="quiet togactive" data-uid="'+u.user_id+'" data-to="'+(u.active?'0':'1')+'">'+(u.active?'Deactivate':'Reactivate')+'</button>'+
+      '</div>';
+    }).join('');
+    Array.prototype.forEach.call(el('teamList').querySelectorAll('.togactive'),function(b){
+      b.addEventListener('click',function(){
+        api('set_user_active',{user_id:b.getAttribute('data-uid'),active:b.getAttribute('data-to')==='1'})
+          .then(loadTeam).catch(handleErr);
+      });
+    });
+  }
+  el('invSend').addEventListener('click',function(){
+    var nm=el('invName').value.trim();
+    if(!nm){ el('invNote').textContent='A name is required.'; return; }
+    el('invNote').textContent='Creating...'; el('invLink').style.display='none';
+    api('invite_user',{name:nm,email:el('invEmail').value.trim(),role:el('invRole').value,province:el('invProvince').value})
+      .then(function(res){
+        var u=res.user||{};
+        el('invNote').textContent='Invited.';
+        el('invLink').style.display='';
+        var link=location.origin+location.pathname+'#k='+encodeURIComponent(u.access_code||'');
+        el('invLink').innerHTML='<b>Send this link to '+esc(nm)+'</b><br>'+esc(link)+
+          '<br><span style="color:var(--muted)">Shown once. If it is lost, invite again.</span>';
+        el('invName').value=''; el('invEmail').value='';
+        loadTeam();
+      }).catch(function(e){ el('invNote').textContent=(e&&e.error)?e.error:'Could not invite.'; });
+  });
 
   Array.prototype.forEach.call(document.querySelectorAll('.tabs button'),function(b){
     b.addEventListener('click',function(){
@@ -414,7 +597,24 @@
     if(a.neighbourhood) bits.push('<span><span class="ico">&#9678;</span>'+esc(a.neighbourhood)+'</span>');
     return bits.length?'<div class="contacts">'+bits.join('')+'</div>':'';
   }
-  function platesHtml(devs){ if(!devs||!devs.length) return ''; return '<div class="plates">'+devs.map(function(d){ return '<span class="plate '+(d.is_ours?'ours':'comp')+'">'+esc(d.model)+'</span>'; }).join('')+'</div>'; }
+  // One stable hue per manufacturer, from the name itself, so the palette needs
+  // no config and never runs out. Saturation and lightness are fixed low, which
+  // keeps forty makers looking like one family rather than a paint chart.
+  var HUE_CACHE={};
+  function mfrColor(name){
+    if(!name) return 'var(--line)';
+    if(HUE_CACHE[name]) return HUE_CACHE[name];
+    var h=0; for(var i=0;i<name.length;i++){ h=(h*31+name.charCodeAt(i))>>>0; }
+    var c='hsl('+(h%360)+',42%,58%)';
+    HUE_CACHE[name]=c; return c;
+  }
+  function platesHtml(devs){
+    if(!devs||!devs.length) return '';
+    return '<div class="plates">'+devs.map(function(d){
+      return '<span class="plate '+(d.is_ours?'ours':'')+'" title="'+esc(d.manufacturer||'')+'">'+
+             '<span class="mdot" style="background:'+mfrColor(d.manufacturer)+'"></span>'+esc(d.model)+'</span>';
+    }).join('')+'</div>';
+  }
 
   ['acctCategory','acctSegment','acctMfr','acctDist'].forEach(function(id){ el(id).addEventListener('change',loadAccounts); });
   function loadAccounts(){
