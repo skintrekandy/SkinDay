@@ -8,7 +8,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-  /* ---- token system, matched to clinic-portal.html (Visualize Pro) ---- */
   :root {
     --bg:#F3F5F7; --surface:#FFFFFF; --surface-2:#F7F9FB;
     --ink:#171A1F; --ink-2:#2B313A; --muted:#5A626E; --faint:#8A929E;
@@ -20,13 +19,11 @@
     --accent-tint:color-mix(in srgb, var(--accent) 14%, var(--surface));
     --accent-line:color-mix(in srgb, var(--accent) 34%, var(--line));
     --accent-ring:color-mix(in srgb, var(--accent) 55%, transparent);
-    /* competitive palette: ours = accent, competitor = rose, gap/greenfield = gold */
     --ours:var(--accent);
     --comp:#C0473A;
     --comp-soft:color-mix(in srgb, #C0473A 9%, var(--surface));
     --comp-line:color-mix(in srgb, #C0473A 34%, var(--line));
-    --gold:#B9822E;
-    --gold-soft:color-mix(in srgb, #B9822E 10%, var(--surface));
+    --gold:#B9822E; --gold-soft:color-mix(in srgb, #B9822E 12%, var(--surface));
     --ok:#2F7D5B; --bad:#C0473A;
     --radius:12px; --radius-sm:8px;
     --shadow:0 1px 2px rgba(20,26,33,.04), 0 8px 24px -18px rgba(20,26,33,.35);
@@ -38,22 +35,20 @@
   body { margin:0; background:var(--bg); color:var(--ink); font-family:var(--font-ui); font-size:16px; line-height:1.6; }
   ::selection { background:var(--accent-tint); }
   :focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:4px; }
-  a { color:var(--accent-strong); }
+  a { color:var(--accent-strong); text-decoration:none; }
+  a:hover { text-decoration:underline; }
 
   .mono { font-family:var(--font-mono); font-size:10.5px; font-weight:500; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); }
   .mono-sq::before { content:""; display:inline-block; width:7px; height:7px; margin-right:7px; background:var(--accent); vertical-align:middle; }
 
-  /* ---- gate ---- */
   #gate { position:fixed; inset:0; background:var(--bg); display:flex; align-items:center; justify-content:center; padding:24px; z-index:50; }
   .gate-card { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:38px 34px; width:100%; max-width:400px; }
   .gate-card .brand { font-size:22px; font-weight:600; letter-spacing:-.01em; }
   .gate-card .sub { color:var(--muted); font-size:14px; margin:6px 0 24px; }
-  .gate-card label { display:block; }
   .gate-card input { width:100%; padding:12px 14px; border:1px solid var(--line); border-radius:var(--radius-sm); font:inherit; font-size:15px; margin-top:8px; background:var(--surface); }
   .gate-card input:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-ring); }
   .gate-err { color:var(--bad); font-size:13px; margin-top:12px; min-height:18px; }
 
-  /* ---- shell ---- */
   #app { display:none; }
   header.top { position:sticky; top:0; z-index:20; background:var(--surface); border-bottom:1px solid var(--line); box-shadow:0 1px 0 var(--accent-line); }
   .top-in { max-width:1280px; margin:0 auto; padding:14px 24px; display:flex; align-items:center; gap:18px; }
@@ -66,105 +61,109 @@
   .top button.out:hover { color:var(--ink); }
 
   .tabs { max-width:1280px; margin:0 auto; padding:0 24px; display:flex; gap:2px; border-bottom:1px solid var(--line); }
-  .tabs button { background:none; border:0; border-bottom:2px solid transparent; padding:14px 16px; font:inherit; font-size:14.5px; font-weight:500; color:var(--muted); cursor:pointer; margin-bottom:-1px; }
+  .tabs button { background:none; border:0; border-bottom:2px solid transparent; padding:14px 16px; font:inherit; font-size:14.5px; font-weight:500; color:var(--muted); cursor:pointer; margin-bottom:-1px; display:flex; align-items:center; gap:7px; }
   .tabs button:hover { color:var(--ink); }
   .tabs button.on { color:var(--ink); border-bottom-color:var(--accent); }
+  .tabs .listcount { font-family:var(--font-mono); font-size:10px; background:var(--accent); color:var(--accent-ink); border-radius:100px; padding:1px 6px; }
 
-  main { max-width:1280px; margin:0 auto; padding:26px 24px 80px; }
+  main { max-width:1280px; margin:0 auto; padding:26px 24px 90px; }
   .panel { display:none; }
   .panel.on { display:block; }
 
-  /* ---- geography bar ---- */
   .geobar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:22px; }
-  .geobar .crumb { display:flex; align-items:center; gap:8px; }
   .geobar select { font-family:var(--font-ui); font-size:.9rem; color:var(--ink); padding:9px 32px 9px 13px; border:1px solid var(--line); background:var(--surface); border-radius:var(--radius-sm); cursor:pointer; -webkit-appearance:none; appearance:none; background-image:url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235A626E' stroke-width='2'%3e%3cpath d='M6 9l6 6 6-6'/%3e%3c/svg%3e"); background-repeat:no-repeat; background-position:right 10px center; background-size:14px; }
   .geobar select:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-ring); }
   .geobar .sep { color:var(--faint); }
   .geobar .reset { background:none; border:0; color:var(--accent-strong); font:inherit; font-size:13px; cursor:pointer; }
 
-  /* ---- KPI tiles ---- */
-  .kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:14px; }
-  .kpi { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:20px; box-shadow:var(--shadow); }
-  .kpi .lab { font-family:var(--font-mono); font-size:10px; letter-spacing:.07em; text-transform:uppercase; color:var(--faint); }
-  .kpi .num { font-size:34px; font-weight:600; letter-spacing:-.02em; margin-top:8px; line-height:1; }
-  .kpi .delta { font-family:var(--font-mono); font-size:11px; margin-top:8px; color:var(--faint); }
-  .kpi .delta.up { color:var(--ok); } .kpi .delta.down { color:var(--bad); }
-  .kpi.k-ours .num { color:var(--ours); }
-  .kpi.k-green .num { color:var(--gold); }
-  .kpi .hint { font-size:11.5px; color:var(--faint); margin-top:6px; line-height:1.4; }
-
-  .note { font-size:12.5px; color:var(--muted); background:var(--surface-2); border:1px solid var(--line-2); border-radius:var(--radius-sm); padding:11px 14px; margin-bottom:24px; }
-  .note b { color:var(--ink-2); }
-
-  /* ---- category rows ---- */
   .sec-title { font-size:18px; font-weight:600; letter-spacing:-.01em; margin:26px 0 4px; }
-  .sec-title + .sec-sub { color:var(--muted); font-size:13.5px; margin:0 0 16px; }
+  .sec-title.first { margin-top:0; }
+  .sec-sub { color:var(--muted); font-size:13.5px; margin:0 0 16px; }
+
+  .pgroup { margin-bottom:26px; }
+  .pgroup-head { display:flex; align-items:baseline; gap:10px; margin-bottom:12px; }
+  .pgroup-head .cat { font-size:16px; font-weight:600; }
+  .pgroup-head .grp { font-family:var(--font-mono); font-size:9.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--faint); }
+  .pgroup-head .tot { margin-left:auto; font-family:var(--font-mono); font-size:12px; color:var(--accent-strong); }
+  .device { display:grid; grid-template-columns:1fr 150px; gap:16px; align-items:center; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:14px 18px; margin-bottom:8px; box-shadow:var(--shadow); }
+  .device.focus { border-color:var(--accent-line); background:var(--accent-soft); }
+  .device .dname { font-weight:600; font-size:14.5px; display:flex; align-items:center; gap:9px; }
+  .device .fbadge { font-family:var(--font-mono); font-size:8.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--accent-ink); background:var(--accent); border-radius:100px; padding:2px 7px; }
+  .device .gens { font-size:11.5px; color:var(--muted); margin-top:4px; }
+  .device .gens .up { color:var(--gold); font-weight:500; }
+  .device .installs { text-align:right; }
+  .device .installs .n { font-size:24px; font-weight:600; color:var(--accent-strong); line-height:1; }
+  .device .installs .l { font-family:var(--font-mono); font-size:9px; letter-spacing:.05em; text-transform:uppercase; color:var(--faint); }
+
   .catlist { display:flex; flex-direction:column; gap:8px; }
-  .catrow { display:grid; grid-template-columns:180px 1fr 132px; align-items:center; gap:16px; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:14px 18px; cursor:pointer; transition:border-color .14s; }
+  .catrow { display:grid; grid-template-columns:180px 1fr 140px; align-items:center; gap:16px; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:14px 18px; cursor:pointer; transition:border-color .14s; }
   .catrow:hover { border-color:var(--accent); }
   .catrow .cname { font-weight:600; font-size:14.5px; }
   .catrow .cgroup { font-family:var(--font-mono); font-size:9.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--faint); margin-top:2px; }
   .bar { height:18px; border-radius:5px; overflow:hidden; display:flex; background:var(--line-2); }
-  .bar .seg-ours { background:var(--ours); }
-  .bar .seg-comp { background:var(--comp); }
+  .bar .seg-ours { background:var(--ours); } .bar .seg-comp { background:var(--comp); }
   .catrow .cnums { text-align:right; font-family:var(--font-mono); font-size:12px; }
   .catrow .cnums .o { color:var(--ours); } .catrow .cnums .c { color:var(--comp); }
   .catrow .cnums .cshare { color:var(--accent-strong); font-weight:500; margin-top:3px; font-size:12.5px; }
 
-  /* ---- accounts + opportunities tables ---- */
   .toolbar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:16px; }
-  .toolbar select, .toolbar input { font-family:var(--font-ui); font-size:.9rem; color:var(--ink); padding:9px 13px; border:1px solid var(--line); background:var(--surface); border-radius:var(--radius-sm); }
-  .toolbar select { padding-right:32px; -webkit-appearance:none; appearance:none; cursor:pointer; background-image:url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235A626E' stroke-width='2'%3e%3cpath d='M6 9l6 6 6-6'/%3e%3c/svg%3e"); background-repeat:no-repeat; background-position:right 10px center; background-size:14px; }
-  .toolbar input:focus, .toolbar select:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-ring); }
+  .toolbar select { font-family:var(--font-ui); font-size:.9rem; color:var(--ink); padding:9px 32px 9px 13px; border:1px solid var(--line); background:var(--surface); border-radius:var(--radius-sm); -webkit-appearance:none; appearance:none; cursor:pointer; background-image:url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235A626E' stroke-width='2'%3e%3cpath d='M6 9l6 6 6-6'/%3e%3c/svg%3e"); background-repeat:no-repeat; background-position:right 10px center; background-size:14px; }
+  .toolbar select:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-ring); }
   .toolbar .count { margin-left:auto; font-family:var(--font-mono); font-size:11px; color:var(--muted); }
 
   .acct { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:16px 18px; margin-bottom:10px; box-shadow:var(--shadow); }
   .acct .head { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
   .acct .aname { font-weight:600; font-size:15.5px; }
   .acct .ameta { font-family:var(--font-mono); font-size:11px; color:var(--muted); }
-  .acct .ascore { margin-left:auto; text-align:right; }
+  .acct .ascore { margin-left:auto; text-align:right; padding-left:14px; }
   .acct .ascore .s { font-size:22px; font-weight:600; color:var(--accent-strong); line-height:1; }
   .acct .ascore .sl { font-family:var(--font-mono); font-size:9px; letter-spacing:.06em; text-transform:uppercase; color:var(--faint); }
+  .contacts { display:flex; gap:14px; flex-wrap:wrap; margin-top:9px; }
+  .contacts a, .contacts span { font-size:12.5px; color:var(--ink-2); display:inline-flex; align-items:center; gap:5px; }
+  .contacts .ico { color:var(--accent); }
   .plates { display:flex; gap:6px; flex-wrap:wrap; margin-top:11px; }
-  .plate { font-family:var(--font-mono); font-size:11px; padding:4px 9px; border-radius:6px; border:1px solid var(--line); color:var(--ink-2); background:var(--surface-2); display:inline-flex; align-items:center; gap:6px; }
+  .plate { font-family:var(--font-mono); font-size:11px; padding:4px 9px; border-radius:6px; border:1px solid var(--line); color:var(--ink-2); background:var(--surface-2); }
   .plate.ours { border-color:var(--accent-line); background:var(--accent-soft); color:var(--accent-strong); }
   .plate.comp { border-color:var(--comp-line); background:var(--comp-soft); color:var(--comp); }
-  .plate .ev { font-size:9px; opacity:.7; }
   .reasons { display:flex; gap:6px; flex-wrap:wrap; margin-top:11px; }
   .reason { font-size:11.5px; color:var(--muted); background:var(--surface-2); border:1px solid var(--line-2); border-radius:100px; padding:3px 10px; }
   .reason.key { color:var(--accent-strong); background:var(--accent-soft); border-color:var(--accent-line); }
 
-  .evtier { font-family:var(--font-mono); font-size:9.5px; letter-spacing:.05em; text-transform:uppercase; padding:2px 7px; border-radius:100px; border:1px solid var(--line); color:var(--faint); }
-  .evtier.confirmed { color:var(--ok); border-color:color-mix(in srgb,var(--ok) 40%,var(--line)); }
-  .evtier.detected { color:var(--muted); }
+  .actions { display:flex; gap:8px; margin-top:12px; align-items:center; }
+  .btn { font:inherit; font-size:13px; font-weight:500; padding:7px 14px; border-radius:var(--radius-sm); border:1px solid var(--line); background:var(--surface); color:var(--ink); cursor:pointer; display:inline-flex; align-items:center; gap:6px; }
+  .btn:hover { border-color:var(--accent); color:var(--accent-strong); }
+  .btn.on { background:var(--accent-soft); border-color:var(--accent-line); color:var(--accent-strong); }
+  .btn.mini { padding:5px 10px; font-size:12px; }
+
+  .note-edit { width:100%; margin-top:10px; padding:9px 12px; border:1px solid var(--line); border-radius:var(--radius-sm); font:inherit; font-size:13px; resize:vertical; min-height:38px; background:var(--surface-2); }
+  .note-edit:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-ring); background:var(--surface); }
+  .note-saved { font-family:var(--font-mono); font-size:10px; color:var(--ok); }
 
   .empty { text-align:center; color:var(--faint); font-size:14px; padding:50px 20px; }
   .spin { display:inline-block; width:15px; height:15px; border:2px solid var(--line); border-top-color:var(--accent); border-radius:50%; animation:sp .7s linear infinite; vertical-align:middle; }
   @keyframes sp { to { transform:rotate(360deg); } }
 
   @media (max-width:820px) {
-    .kpis { grid-template-columns:repeat(2,1fr); }
+    .device { grid-template-columns:1fr; }
+    .device .installs { text-align:left; }
     .catrow { grid-template-columns:1fr; gap:10px; }
     .catrow .cnums { text-align:left; }
+    .acct .ascore { margin-left:0; padding-left:0; }
   }
 </style>
 </head>
 <body>
 
-<!-- ============ GATE ============ -->
 <div id="gate">
   <div class="gate-card">
     <div class="brand">SkinDay <b>Market Intelligence</b></div>
     <div class="sub">Canadian aesthetic device landscape. Enter your access key to continue.</div>
-    <label>
-      <span class="mono mono-sq">Access key</span>
-      <input id="pw" type="password" autocomplete="off" placeholder="••••••••••" autofocus>
-    </label>
+    <span class="mono mono-sq">Access key</span>
+    <input id="pw" type="password" autocomplete="off" placeholder="key" autofocus>
     <div class="gate-err" id="gateErr"></div>
   </div>
 </div>
 
-<!-- ============ APP ============ -->
 <div id="app">
   <header class="top">
     <div class="top-in">
@@ -175,34 +174,32 @@
       <button class="out" id="signout">Sign out</button>
     </div>
     <div class="tabs">
-      <button data-tab="market" class="on">Market</button>
+      <button data-tab="portfolio" class="on">Portfolio</button>
       <button data-tab="accounts">Accounts</button>
       <button data-tab="opportunities">Opportunities</button>
+      <button data-tab="list">My List <span class="listcount" id="listCount" style="display:none">0</span></button>
     </div>
   </header>
 
   <main>
-    <!-- geography bar (shared) -->
     <div class="geobar" id="geobar">
-      <div class="crumb"><span class="mono">Territory</span></div>
+      <span class="mono">Territory</span>
       <select id="selProvince"><option value="">All Canada</option></select>
-      <span class="sep" id="sepCity" style="display:none">›</span>
-      <select id="selCity" style="display:none"><option value="">All cities</option></select>
-      <span class="sep" id="sepHood" style="display:none">›</span>
+      <span class="sep" id="sepHood" style="display:none">&#8250;</span>
       <select id="selHood" style="display:none"><option value="">All areas</option></select>
       <button class="reset" id="geoReset" style="display:none">Reset</button>
     </div>
 
-    <!-- ===== MARKET ===== -->
-    <section class="panel on" id="panel-market">
-      <div class="kpis" id="kpis"></div>
-      <div class="note" id="marketNote"></div>
-      <div class="sec-title">By category</div>
-      <p class="sec-sub">Clinics running <b id="csub-ours">Cynosure Lutronic</b> vs a competitor, per device category. Click a row to see those accounts.</p>
+    <section class="panel on" id="panel-portfolio">
+      <div class="sec-title first">Your installed base</div>
+      <p class="sec-sub">Cynosure Lutronic devices across this territory, led by your strongest category. <span style="color:var(--gold)">Gold</span> marks clinics naming an older generation, an upgrade conversation.</p>
+      <div id="portfolioList"><div class="empty"><span class="spin"></span></div></div>
+
+      <div class="sec-title">Competitive field by category</div>
+      <p class="sec-sub">Your share of clinics running a device in each category. Click a row to see those accounts.</p>
       <div class="catlist" id="catlist"><div class="empty"><span class="spin"></span></div></div>
     </section>
 
-    <!-- ===== ACCOUNTS ===== -->
     <section class="panel" id="panel-accounts">
       <div class="toolbar">
         <select id="acctCategory"><option value="">All categories</option></select>
@@ -211,21 +208,26 @@
           <option value="competitor">Running a competitor</option>
           <option value="ours">Running ours</option>
           <option value="none">No device (in category)</option>
-          <option value="greenfield">Greenfield (confirmed, no device)</option>
+          <option value="greenfield">Greenfield</option>
         </select>
         <span class="count" id="acctCount"></span>
       </div>
       <div id="acctList"><div class="empty">Choose a filter to load accounts.</div></div>
     </section>
 
-    <!-- ===== OPPORTUNITIES ===== -->
     <section class="panel" id="panel-opportunities">
       <div class="toolbar">
         <select id="oppCategory"></select>
         <span class="count" id="oppCount"></span>
       </div>
-      <p class="sec-sub" style="margin:-6px 0 16px">Ranked by fit. Every account shows the reasons behind its score, so you can judge the call yourself.</p>
+      <p class="sec-sub" style="margin:-6px 0 16px">Ranked by fit. Every account shows the reasons behind its score and how to reach them. Save the ones worth a call to your list.</p>
       <div id="oppList"><div class="empty">Pick a category to rank opportunities.</div></div>
+    </section>
+
+    <section class="panel" id="panel-list">
+      <div class="sec-title first">My list</div>
+      <p class="sec-sub">Clinics you saved to follow up, with your notes. Shared across your team.</p>
+      <div id="savedList"><div class="empty">Your saved clinics will appear here. Add them from Opportunities or Accounts.</div></div>
     </section>
   </main>
 </div>
@@ -234,251 +236,237 @@
 (function () {
   'use strict';
   var API = '/.netlify/functions/mi-dashboard';
-  var KEY = null; // access key held in memory only, never stored
+  var KEY = null;
   var geo = { province:'', city:'', neighbourhood:'' };
-  var loaded = { accounts:false, opportunities:false };
-  var catCache = []; // categories from last market load, reused to populate selects
+  var loaded = { accounts:false, opportunities:false, list:false };
+  var catCache = [];
+  var savedIds = {};
 
   function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
   function el(id){ return document.getElementById(id); }
 
   function api(action, extra){
     var body = Object.assign({ action:action, province:geo.province, city:geo.city, neighbourhood:geo.neighbourhood }, extra||{});
-    return fetch(API, {
-      method:'POST',
-      headers:{ 'content-type':'application/json', 'x-mi-secret':KEY },
-      body: JSON.stringify(body)
-    }).then(function(r){
-      if (r.status === 401) { throw { unauth:true }; }
-      return r.json().then(function(j){ if(!r.ok) throw j; return j; });
-    });
+    return fetch(API, { method:'POST', headers:{ 'content-type':'application/json', 'x-mi-secret':KEY }, body: JSON.stringify(body) })
+      .then(function(r){ if (r.status===401) throw { unauth:true }; return r.json().then(function(j){ if(!r.ok) throw j; return j; }); });
   }
 
-  // ---------- GATE ----------
   function tryKey(k){
     KEY = k;
-    // a cheap authenticated ping: geo with no args
     return api('geo', {}).then(function(res){
-      el('gate').style.display='none';
-      el('app').style.display='block';
-      bootstrap(res.geo || []);
-    }).catch(function(e){
-      KEY = null;
-      el('gateErr').textContent = e && e.unauth ? 'Incorrect access key.' : 'Could not connect. Try again.';
-    });
+      el('gate').style.display='none'; el('app').style.display='block';
+      fillSelect(el('selProvince'), res.geo||[], 'All Canada');
+      refreshPortfolio(); loadSavedIds();
+    }).catch(function(e){ KEY=null; el('gateErr').textContent = e&&e.unauth ? 'Incorrect access key.' : 'Could not connect. Try again.'; });
   }
-  el('pw').addEventListener('keydown', function(ev){
-    if (ev.key === 'Enter') {
-      var v = el('pw').value.trim();
-      if (!v) return;
-      el('gateErr').textContent = 'Checking…';
-      tryKey(v);
-    }
-  });
+  el('pw').addEventListener('keydown', function(ev){ if (ev.key==='Enter'){ var v=el('pw').value.trim(); if(!v)return; el('gateErr').textContent='Checking...'; tryKey(v); } });
   el('signout').addEventListener('click', function(){ location.reload(); });
 
-  // ---------- TABS ----------
   Array.prototype.forEach.call(document.querySelectorAll('.tabs button'), function(b){
     b.addEventListener('click', function(){
       Array.prototype.forEach.call(document.querySelectorAll('.tabs button'), function(x){ x.classList.remove('on'); });
       Array.prototype.forEach.call(document.querySelectorAll('.panel'), function(p){ p.classList.remove('on'); });
       b.classList.add('on');
-      var tab = b.getAttribute('data-tab');
-      el('panel-'+tab).classList.add('on');
-      if (tab === 'accounts' && !loaded.accounts) loadAccounts();
-      if (tab === 'opportunities' && !loaded.opportunities) loadOpportunities();
+      var tab=b.getAttribute('data-tab'); el('panel-'+tab).classList.add('on');
+      if (tab==='accounts' && !loaded.accounts) loadAccounts();
+      if (tab==='opportunities' && !loaded.opportunities) loadOpportunities();
+      if (tab==='list') loadSaved();
     });
   });
 
-  // ---------- GEOGRAPHY ----------
-  function bootstrap(provinces){
-    fillSelect(el('selProvince'), provinces, 'All Canada');
-    // also seed category selects from a categories call
-    refreshAll();
-  }
   function fillSelect(sel, rows, allLabel){
-    var cur = sel.value;
-    sel.innerHTML = '<option value="">'+esc(allLabel)+'</option>' +
-      rows.map(function(r){ return '<option value="'+esc(r.value)+'">'+esc(r.value)+' ('+r.clinics+')</option>'; }).join('');
-    if (cur) sel.value = cur;
+    var cur=sel.value;
+    sel.innerHTML='<option value="">'+esc(allLabel)+'</option>'+rows.map(function(r){ return '<option value="'+esc(r.value)+'">'+esc(r.value)+' ('+r.clinics+')</option>'; }).join('');
+    if (cur) sel.value=cur;
   }
   el('selProvince').addEventListener('change', function(){
-    geo.province = this.value; geo.city=''; geo.neighbourhood='';
-    el('selCity').style.display = geo.province ? '' : 'none';
-    el('sepCity').style.display = geo.province ? '' : 'none';
-    el('selHood').style.display='none'; el('sepHood').style.display='none';
-    el('geoReset').style.display = geo.province ? '' : 'none';
-    if (geo.province) api('geo',{}).then(function(res){ fillSelect(el('selCity'), res.geo||[], 'All cities'); });
-    onGeoChange();
-  });
-  el('selCity').addEventListener('change', function(){
-    geo.city = this.value; geo.neighbourhood='';
-    el('selHood').style.display = geo.city ? '' : 'none';
-    el('sepHood').style.display = geo.city ? '' : 'none';
-    if (geo.city) api('geo',{}).then(function(res){ fillSelect(el('selHood'), res.geo||[], 'All areas'); });
+    geo.province=this.value; geo.neighbourhood='';
+    el('selHood').style.display = geo.province?'':'none';
+    el('sepHood').style.display = geo.province?'':'none';
+    el('geoReset').style.display = geo.province?'':'none';
+    if (geo.province) api('geo',{}).then(function(res){ fillSelect(el('selHood'), res.geo||[], 'All areas'); });
     onGeoChange();
   });
   el('selHood').addEventListener('change', function(){ geo.neighbourhood=this.value; onGeoChange(); });
   el('geoReset').addEventListener('click', function(){
-    geo={province:'',city:'',neighbourhood:''};
-    el('selProvince').value=''; el('selCity').style.display='none'; el('sepCity').style.display='none';
-    el('selHood').style.display='none'; el('sepHood').style.display='none'; this.style.display='none';
-    onGeoChange();
+    geo={province:'',city:'',neighbourhood:''}; el('selProvince').value='';
+    el('selHood').style.display='none'; el('sepHood').style.display='none'; this.style.display='none'; onGeoChange();
   });
-  function onGeoChange(){ loaded.accounts=false; loaded.opportunities=false; refreshAll(); }
-
-  // ---------- MARKET (KPIs + categories) ----------
-  function refreshAll(){
-    el('kpis').innerHTML = '<div class="empty" style="grid-column:1/-1"><span class="spin"></span></div>';
-    api('overview', {}).then(function(res){
-      renderKpis(res.kpis);
-      renderCategories(res.categories||[]);
-      catCache = res.categories || [];
-      seedCategorySelects();
-      // if accounts/opps tabs are visible, refresh them too
-      if (el('panel-accounts').classList.contains('on')) loadAccounts();
-      if (el('panel-opportunities').classList.contains('on')) loadOpportunities();
-    }).catch(handleErr);
+  function onGeoChange(){
+    loaded.accounts=false; loaded.opportunities=false; refreshPortfolio();
+    if (el('panel-accounts').classList.contains('on')) loadAccounts();
+    if (el('panel-opportunities').classList.contains('on')) loadOpportunities();
   }
 
-  function deltaHtml(d){
-    if (d==null) return '<div class="delta">— no prior month yet</div>';
-    var cls = d>0?'up':(d<0?'down':''); var sign = d>0?'+':'';
-    return '<div class="delta '+cls+'">'+sign+d+' vs last month</div>';
+  function refreshPortfolio(){
+    el('portfolioList').innerHTML='<div class="empty"><span class="spin"></span></div>';
+    el('catlist').innerHTML='<div class="empty"><span class="spin"></span></div>';
+    api('portfolio', {}).then(function(res){ renderPortfolio(res.portfolio||[]); }).catch(handleErr);
+    api('categories', {}).then(function(res){ renderCategories(res.categories||[]); catCache=res.categories||[]; seedCategorySelects(); }).catch(handleErr);
   }
-  function renderKpis(k){
-    if (!k) { el('kpis').innerHTML=''; return; }
-    var d = k.delta || {};
-    var tiles = [
-      { lab:'Total clinics', num:k.total, cls:'', delta:d.total, hint:'Approved directory clinics in this territory' },
-      { lab:'Running our devices', num:k.with_ours, cls:'k-ours', delta:d.with_ours, hint:'Have at least one '+esc(k.scope&&k.scope.manufacturer||'')+' device' },
-      { lab:'Without our devices', num:k.without_ours, cls:'', delta:d.without_ours, hint:'The full addressable field' },
-      { lab:'No device at all', num:k.crawled_empty, cls:'k-green', delta:d.crawled_empty, hint:'Confirmed with no device on file — true greenfield' }
-    ];
-    el('kpis').innerHTML = tiles.map(function(t){
-      return '<div class="kpi '+t.cls+'">'+
-        '<div class="lab">'+esc(t.lab)+'</div>'+
-        '<div class="num">'+(t.num==null?'—':t.num)+'</div>'+
-        deltaHtml(t.delta)+
-        '<div class="hint">'+t.hint+'</div>'+
-      '</div>';
+  function renderPortfolio(rows){
+    if (!rows.length){ el('portfolioList').innerHTML='<div class="empty">No installed base in this territory.</div>'; return; }
+    var order=[], groups={};
+    rows.forEach(function(r){
+      if (!groups[r.category]){ groups[r.category]={label:r.label||r.category, group_label:r.group_label, devices:[], total:0}; order.push(r.category); }
+      groups[r.category].devices.push(r); groups[r.category].total += (r.installs||0);
+    });
+    el('portfolioList').innerHTML = order.map(function(cat){
+      var g=groups[cat];
+      var devs=g.devices.map(function(d){
+        var up = (d.gen_base||0)>0 ? '<span class="up">'+d.gen_base+' older gen (upgrade lead)</span>' : '';
+        var newer = (d.gen_newer||0)>0 ? (d.gen_newer+' current gen') : '';
+        var gens=[newer, up].filter(Boolean).join(' &middot; ');
+        return '<div class="device'+(d.focus?' focus':'')+'">'+
+          '<div><div class="dname">'+esc(d.model)+(d.focus?'<span class="fbadge">Focus</span>':'')+'</div>'+
+            (gens?'<div class="gens">'+gens+'</div>':'')+'</div>'+
+          '<div class="installs"><span class="n">'+(d.installs||0)+'</span><br><span class="l">clinics</span></div>'+
+        '</div>';
+      }).join('');
+      return '<div class="pgroup"><div class="pgroup-head"><span class="cat">'+esc(g.label)+'</span>'+
+        '<span class="grp">'+esc(g.group_label||'')+'</span><span class="tot">'+g.total+' installs</span></div>'+devs+'</div>';
     }).join('');
-    el('marketNote').innerHTML = '<b>Reading this honestly:</b> "No device at all" counts only clinics we could confirm have no device on file. Clinics we could not confirm are excluded, not counted as empty — so this is a conservative floor that grows as our coverage deepens.';
   }
-
-  function sharePct(ours, comp){
-    var o = ours||0, c = comp||0, t = o+c;
-    if (!t) return 0;
-    return Math.round(o/t*100);
-  }
+  function sharePct(o,c){ o=o||0; c=c||0; var t=o+c; return t?Math.round(o/t*100):0; }
   function renderCategories(cats){
-    if (!cats.length){ el('catlist').innerHTML='<div class="empty">No category data for this territory.</div>'; return; }
-    var max = Math.max.apply(null, cats.map(function(c){ return c.total_in_category||0; })) || 1;
-    el('catlist').innerHTML = cats.map(function(c){
-      var total = c.total_in_category||0;
-      var ow = Math.round((c.ours||0)/max*100), cw = Math.round((c.competitor||0)/max*100);
+    if (!cats.length){ el('catlist').innerHTML='<div class="empty">No category data.</div>'; return; }
+    var max=Math.max.apply(null, cats.map(function(c){ return c.total_in_category||0; }))||1;
+    el('catlist').innerHTML=cats.map(function(c){
+      var ow=Math.round((c.ours||0)/max*100), cw=Math.round((c.competitor||0)/max*100);
       return '<div class="catrow" data-cat="'+esc(c.category)+'">'+
         '<div><div class="cname">'+esc(c.label||c.category)+'</div><div class="cgroup">'+esc(c.group_label||'')+'</div></div>'+
         '<div class="bar"><div class="seg-ours" style="width:'+ow+'%"></div><div class="seg-comp" style="width:'+cw+'%"></div></div>'+
-        '<div class="cnums"><span class="o">'+(c.ours||0)+' ours</span> · <span class="c">'+(c.competitor||0)+' comp</span>'+
-          '<div class="cshare">'+sharePct(c.ours, c.competitor)+'% ours</div></div>'+
+        '<div class="cnums"><span class="o">'+(c.ours||0)+' ours</span> &middot; <span class="c">'+(c.competitor||0)+' comp</span>'+
+          '<div class="cshare">'+sharePct(c.ours,c.competitor)+'% ours</div></div>'+
       '</div>';
     }).join('');
     Array.prototype.forEach.call(document.querySelectorAll('.catrow'), function(row){
       row.addEventListener('click', function(){
-        var cat = row.getAttribute('data-cat');
-        // jump to accounts, filtered to this category + competitor segment
-        el('acctCategory').value = cat; el('acctSegment').value = 'competitor';
-        document.querySelector('.tabs button[data-tab="accounts"]').click();
-        loadAccounts();
+        el('acctCategory').value=row.getAttribute('data-cat'); el('acctSegment').value='competitor';
+        document.querySelector('.tabs button[data-tab="accounts"]').click(); loadAccounts();
       });
     });
   }
-
   function seedCategorySelects(){
-    var opts = '<option value="">All categories</option>' + catCache.map(function(c){
-      return '<option value="'+esc(c.category)+'">'+esc(c.label||c.category)+'</option>';
-    }).join('');
-    var ac = el('acctCategory'); var cur=ac.value; ac.innerHTML=opts; ac.value=cur;
-    var oc = el('oppCategory');
-    if (!oc.options.length) {
-      oc.innerHTML = '<option value="">Choose a category…</option>' + catCache.map(function(c){
-        return '<option value="'+esc(c.category)+'">'+esc(c.label||c.category)+'</option>';
-      }).join('');
-    }
+    var opts='<option value="">All categories</option>'+catCache.map(function(c){ return '<option value="'+esc(c.category)+'">'+esc(c.label||c.category)+'</option>'; }).join('');
+    var ac=el('acctCategory'); var cur=ac.value; ac.innerHTML=opts; ac.value=cur;
+    var oc=el('oppCategory');
+    if (!oc.options.length){ oc.innerHTML='<option value="">Choose a category...</option>'+catCache.map(function(c){ return '<option value="'+esc(c.category)+'">'+esc(c.label||c.category)+'</option>'; }).join(''); }
   }
 
-  // ---------- ACCOUNTS ----------
+  function contactsHtml(a){
+    var bits=[];
+    if (a.phone) bits.push('<a href="tel:'+esc(a.phone)+'"><span class="ico">&#9742;</span>'+esc(a.phone)+'</a>');
+    if (a.website) bits.push('<a href="'+esc(a.website)+'" target="_blank" rel="noopener"><span class="ico">&#8599;</span>Website</a>');
+    if (a.neighbourhood) bits.push('<span><span class="ico">&#9678;</span>'+esc(a.neighbourhood)+'</span>');
+    return bits.length ? '<div class="contacts">'+bits.join('')+'</div>' : '';
+  }
+  function platesHtml(devs){
+    if (!devs || !devs.length) return '';
+    return '<div class="plates">'+devs.map(function(d){ return '<span class="plate '+(d.is_ours?'ours':'comp')+'">'+esc(d.model)+'</span>'; }).join('')+'</div>';
+  }
+
   el('acctCategory').addEventListener('change', loadAccounts);
   el('acctSegment').addEventListener('change', loadAccounts);
   function loadAccounts(){
-    loaded.accounts = true;
-    el('acctList').innerHTML = '<div class="empty"><span class="spin"></span></div>';
-    api('accounts', { category: el('acctCategory').value, segment: el('acctSegment').value, limit:200 })
+    loaded.accounts=true;
+    el('acctList').innerHTML='<div class="empty"><span class="spin"></span></div>';
+    api('accounts', { category:el('acctCategory').value, segment:el('acctSegment').value, limit:200 })
       .then(function(res){ renderAccounts(res.accounts||[]); }).catch(handleErr);
   }
   function renderAccounts(rows){
     el('acctCount').textContent = rows.length + (rows.length===200?'+ shown':' accounts');
-    if (!rows.length){ el('acctList').innerHTML='<div class="empty">No accounts match this filter in this territory.</div>'; return; }
-    el('acctList').innerHTML = rows.map(function(a){
-      var devs = (a.devices||[]).map(function(d){
-        return '<span class="plate '+(d.is_ours?'ours':'comp')+'">'+esc(d.model)+'</span>';
-      }).join('');
-      var loc = [a.neighbourhood, a.city].filter(Boolean).join(', ');
-      return '<div class="acct">'+
-        '<div class="head"><span class="aname">'+esc(a.name)+'</span>'+
-          '<span class="ameta">'+esc(loc)+(a.reviews!=null?' · '+a.reviews+' reviews':'')+'</span>'+
-          ''+
-        '</div>'+
-        (devs?'<div class="plates">'+devs+'</div>':'<div class="plates"><span class="reason">No device in this category</span></div>')+
-      '</div>';
-    }).join('');
+    if (!rows.length){ el('acctList').innerHTML='<div class="empty">No accounts match this filter.</div>'; return; }
+    el('acctList').innerHTML = rows.map(function(a){ return acctCard(a, false); }).join('');
+    wireSaveButtons(el('acctList'), rows);
   }
 
-  // ---------- OPPORTUNITIES ----------
   el('oppCategory').addEventListener('change', loadOpportunities);
   function loadOpportunities(){
-    var cat = el('oppCategory').value;
+    var cat=el('oppCategory').value;
     if (!cat){ el('oppList').innerHTML='<div class="empty">Pick a category to rank opportunities.</div>'; el('oppCount').textContent=''; return; }
-    loaded.opportunities = true;
-    el('oppList').innerHTML = '<div class="empty"><span class="spin"></span></div>';
-    api('opportunities', { category: cat, limit:100 })
-      .then(function(res){ renderOpps(res.opportunities||[]); }).catch(handleErr);
+    loaded.opportunities=true;
+    el('oppList').innerHTML='<div class="empty"><span class="spin"></span></div>';
+    api('opportunities', { category:cat, limit:100 }).then(function(res){ renderOpps(res.opportunities||[]); }).catch(handleErr);
   }
   function renderOpps(rows){
-    el('oppCount').textContent = rows.length + ' ranked';
-    if (!rows.length){ el('oppList').innerHTML='<div class="empty">No scored opportunities in this territory for that category.</div>'; return; }
-    el('oppList').innerHTML = rows.map(function(o){
-      var reasons = (o.reasons||[]).map(function(r,i){
-        return '<span class="reason'+(i===0?' key':'')+'">'+esc(r)+'</span>';
-      }).join('');
-      var comps = (o.competitor_devices||[]).map(function(d){
-        return '<span class="plate comp">'+esc(d.model||'')+'</span>';
-      }).join('');
-      var loc = [o.neighbourhood, o.city].filter(Boolean).join(', ');
-      return '<div class="acct">'+
-        '<div class="head"><span class="aname">'+esc(o.name)+'</span>'+
-          '<span class="ameta">'+esc(loc)+(o.reviews!=null?' · '+o.reviews+' reviews':'')+'</span>'+
-          '<span class="ascore"><span class="s">'+o.score+'</span><br><span class="sl">fit score</span></span>'+
-        '</div>'+
-        (comps?'<div class="plates">'+comps+'</div>':'')+
-        (reasons?'<div class="reasons">'+reasons+'</div>':'')+
+    el('oppCount').textContent = rows.length+' ranked';
+    if (!rows.length){ el('oppList').innerHTML='<div class="empty">No scored opportunities here for that category.</div>'; return; }
+    el('oppList').innerHTML = rows.map(function(o){ return acctCard(o, true); }).join('');
+    wireSaveButtons(el('oppList'), rows);
+  }
+
+  function acctCard(a, isOpp){
+    var reasons = isOpp ? (a.reasons||[]).map(function(r,i){ return '<span class="reason'+(i===0?' key':'')+'">'+esc(r)+'</span>'; }).join('') : '';
+    var devs = isOpp ? (a.competitor_devices||[]) : (a.devices||[]);
+    var scoreHtml = isOpp ? '<span class="ascore"><span class="s">'+a.score+'</span><br><span class="sl">fit score</span></span>' : '';
+    var saved = savedIds[a.clinic_id];
+    return '<div class="acct" data-cid="'+esc(a.clinic_id)+'">'+
+      '<div class="head"><span class="aname">'+esc(a.name)+'</span>'+
+        '<span class="ameta">'+(a.reviews!=null?a.reviews+' reviews':'')+'</span>'+scoreHtml+'</div>'+
+      contactsHtml(a)+ platesHtml(devs)+
+      (reasons?'<div class="reasons">'+reasons+'</div>':'')+
+      '<div class="actions"><button class="btn savebtn'+(saved?' on':'')+'" data-cid="'+esc(a.clinic_id)+'">'+(saved?'&#10003; Saved':'+ Save to my list')+'</button></div>'+
+    '</div>';
+  }
+  function wireSaveButtons(container, rows){
+    Array.prototype.forEach.call(container.querySelectorAll('.savebtn'), function(btn){
+      btn.addEventListener('click', function(){
+        var cid=btn.getAttribute('data-cid');
+        if (savedIds[cid]){
+          api('remove_account', { clinic_id:cid }).then(function(){ delete savedIds[cid]; btn.classList.remove('on'); btn.textContent='+ Save to my list'; updateListCount(); loaded.list=false; }).catch(handleErr);
+        } else {
+          api('save_account', { clinic_id:cid }).then(function(){ savedIds[cid]=true; btn.classList.add('on'); btn.textContent='\u2713 Saved'; updateListCount(); loaded.list=false; }).catch(handleErr);
+        }
+      });
+    });
+  }
+
+  function loadSavedIds(){ api('list_saved', {}).then(function(res){ (res.saved||[]).forEach(function(s){ savedIds[s.clinic_id]=true; }); updateListCount(); }).catch(function(){}); }
+  function updateListCount(){ var n=Object.keys(savedIds).length; var c=el('listCount'); c.textContent=n; c.style.display=n?'':'none'; }
+  function loadSaved(){
+    loaded.list=true;
+    el('savedList').innerHTML='<div class="empty"><span class="spin"></span></div>';
+    api('list_saved', {}).then(function(res){ renderSaved(res.saved||[]); }).catch(handleErr);
+  }
+  function renderSaved(rows){
+    savedIds={}; rows.forEach(function(r){ savedIds[r.clinic_id]=true; }); updateListCount();
+    if (!rows.length){ el('savedList').innerHTML='<div class="empty">No saved clinics yet. Add them from Opportunities or Accounts.</div>'; return; }
+    el('savedList').innerHTML = rows.map(function(a){
+      return '<div class="acct" data-cid="'+esc(a.clinic_id)+'">'+
+        '<div class="head"><span class="aname">'+esc(a.name)+'</span>'+
+          '<span class="ameta">'+[a.neighbourhood, (a.province||'').toUpperCase()].filter(Boolean).join(', ')+(a.reviews!=null?' &middot; '+a.reviews+' reviews':'')+'</span></div>'+
+        contactsHtml(a)+ platesHtml(a.devices)+
+        '<textarea class="note-edit" data-cid="'+esc(a.clinic_id)+'" placeholder="Add a note (call outcome, contact name, next step)...">'+esc(a.note||'')+'</textarea>'+
+        '<div class="actions"><button class="btn mini savenote" data-cid="'+esc(a.clinic_id)+'">Save note</button>'+
+          '<span class="note-saved" data-cid="'+esc(a.clinic_id)+'" style="display:none">saved</span>'+
+          '<button class="btn mini removebtn" data-cid="'+esc(a.clinic_id)+'">Remove</button></div>'+
       '</div>';
     }).join('');
+    Array.prototype.forEach.call(el('savedList').querySelectorAll('.savenote'), function(btn){
+      btn.addEventListener('click', function(){
+        var cid=btn.getAttribute('data-cid');
+        var ta=el('savedList').querySelector('textarea[data-cid="'+cid+'"]');
+        api('set_note', { clinic_id:cid, note:ta.value }).then(function(){
+          var s=el('savedList').querySelector('.note-saved[data-cid="'+cid+'"]'); s.style.display=''; setTimeout(function(){ s.style.display='none'; }, 1500);
+        }).catch(handleErr);
+      });
+    });
+    Array.prototype.forEach.call(el('savedList').querySelectorAll('.removebtn'), function(btn){
+      btn.addEventListener('click', function(){
+        var cid=btn.getAttribute('data-cid');
+        api('remove_account', { clinic_id:cid }).then(function(){ delete savedIds[cid]; updateListCount(); loadSaved(); }).catch(handleErr);
+      });
+    });
   }
 
   function handleErr(e){
     if (e && e.unauth){ location.reload(); return; }
-    var msg = (e && e.detail) ? e.detail : (e && e.error) ? e.error : 'Something went wrong.';
-    // show the error in whichever panel is active
-    var active = document.querySelector('.panel.on');
-    if (active) {
-      var box = active.querySelector('.empty') || active;
-      // don't nuke KPIs on a category error; only fill obvious containers
-    }
+    var msg=(e&&e.detail)?e.detail:(e&&e.error)?e.error:'Something went wrong.';
     console.error('MI error:', e);
-    var k = el('kpis'); if (k && k.querySelector('.spin')) k.innerHTML = '<div class="empty" style="grid-column:1/-1">Could not load: '+esc(msg)+'</div>';
-    var c = el('catlist'); if (c && c.querySelector('.spin')) c.innerHTML = '<div class="empty">Could not load: '+esc(msg)+'</div>';
+    ['portfolioList','catlist','acctList','oppList','savedList'].forEach(function(id){
+      var box=el(id); if (box && box.querySelector('.spin')) box.innerHTML='<div class="empty">Could not load: '+esc(msg)+'</div>';
+    });
   }
 })();
 </script>
