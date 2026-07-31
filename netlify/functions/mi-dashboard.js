@@ -265,6 +265,38 @@ exports.handler = async (event) => {
         return json(200, { saved: data || [] });
       }
 
+      // ---- Team (admin only) ----
+      case 'list_users': {
+        if (!isAdmin) return json(403, { error: 'admin only' });
+        const { data, error } = await supabase.rpc('mi_list_users', { p_tenant_id: me.tenant_id });
+        if (error) throw error;
+        return json(200, { users: data || [] });
+      }
+      case 'invite_user': {
+        if (!isAdmin) return json(403, { error: 'admin only' });
+        if (!nz(body.name)) return json(400, { error: 'name required' });
+        const { data, error } = await supabase.rpc('mi_invite_user', {
+          p_tenant_id: me.tenant_id,
+          p_name: String(body.name).trim(),
+          p_email: nz(body.email),
+          p_role: nz(body.role) || 'rep',
+          p_province: nz(body.province)
+        });
+        if (error) throw error;
+        return json(200, { user: Array.isArray(data) && data.length ? data[0] : null });
+      }
+      case 'set_user_active': {
+        if (!isAdmin) return json(403, { error: 'admin only' });
+        if (!body.user_id) return json(400, { error: 'user_id required' });
+        const { data, error } = await supabase.rpc('mi_set_user_active', {
+          p_tenant_id: me.tenant_id,
+          p_user_id: parseInt(body.user_id, 10),
+          p_active: body.active === true
+        });
+        if (error) throw error;
+        return json(200, { result: data });
+      }
+
       // ---- Settings (admin only) ----
       case 'save_settings': {
         if (!isAdmin) return json(403, { error: 'admin only' });
