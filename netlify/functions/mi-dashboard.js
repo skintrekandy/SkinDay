@@ -136,6 +136,46 @@ exports.handler = async (event) => {
         return json(200, { kpis: k.data, categories: c.data || [], geo: g.data || [] });
       }
 
+      // the manufacturer's own installed base, their taxonomy, generation split
+      case 'portfolio': {
+        const { data, error } = await supabase.rpc('mi_portfolio', {
+          p_province: province, p_neighbourhood: neighbourhood, p_manufacturer: manufacturer
+        });
+        if (error) throw error;
+        return json(200, { portfolio: data || [] });
+      }
+
+      // ---- My List (shared saved accounts + notes) ----
+      case 'save_account': {
+        if (!body.clinic_id) return json(400, { error: 'clinic_id required' });
+        const { data, error } = await supabase.rpc('mi_save_account', {
+          p_clinic_id: String(body.clinic_id), p_note: nz(body.note)
+        });
+        if (error) throw error;
+        return json(200, { result: data });
+      }
+      case 'set_note': {
+        if (!body.clinic_id) return json(400, { error: 'clinic_id required' });
+        const { data, error } = await supabase.rpc('mi_set_note', {
+          p_clinic_id: String(body.clinic_id), p_note: body.note == null ? '' : String(body.note)
+        });
+        if (error) throw error;
+        return json(200, { result: data });
+      }
+      case 'remove_account': {
+        if (!body.clinic_id) return json(400, { error: 'clinic_id required' });
+        const { data, error } = await supabase.rpc('mi_remove_account', {
+          p_clinic_id: String(body.clinic_id)
+        });
+        if (error) throw error;
+        return json(200, { result: data });
+      }
+      case 'list_saved': {
+        const { data, error } = await supabase.rpc('mi_list_saved', {});
+        if (error) throw error;
+        return json(200, { saved: data || [] });
+      }
+
       default:
         return json(400, { error: 'unknown action', got: action });
     }
