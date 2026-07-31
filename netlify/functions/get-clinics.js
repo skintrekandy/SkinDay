@@ -278,53 +278,42 @@ exports.handler = async (event) => {
       const labels = await loadCategoryLabels(supabase);
       const prov = (params.province || '').trim();
 
-      let scopedIds = null;
-      if (prov) {
-        const { data: provClinics } = await supabase
-          .from('clinics').select('id').eq('approved', true).ilike('province', prov).range(0, 29999);
-        scopedIds = new Set((provClinics || []).map(r => String(r.id)));
-      }
-
-      let q = supabase
-        .from('clinic_devices')
-        .select('clinic_id, device_reference!inner ( model, category, active )')
-        .eq('device_reference.active', true)
-        .range(0, 49999);
-      const { data, error } = await q;
+      // Counting happens in Postgres (device_facets RPC), not here. The old
+      // version pulled every clinic_devices row into this function and counted
+      // in JS, which hit PostgREST's max-rows cap: the result was an unordered
+      // truncated subset, so the NEWEST rows silently vanished (DermaV, restored
+      // the day before, disappeared from the filter entirely) while the absence
+      // of approved/country filters inflated every other count with de-approved
+      // and non-Canadian clinics. Both faults are gone: the RPC scopes to
+      // approved clinics in one country and returns ~170 aggregated rows.
+      const { data: facets, error } = await supabase.rpc('device_facets', {
+        p_country: (params.country || 'canada'),
+        p_province: prov || null,
+      });
       if (error) return { statusCode: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ error: error.message }) };
 
-      const byModel = {};
-      const byCategory = {};
+      const raw = facets || {};
+      const models = (raw.models || []).map(m => ({
+        model: m.model, slug: slugifyModel(m.model), clinics: m.clinics,
+      }));
+
       const modelCategory = {};
-      const allClinics = new Set();
-      (data || []).forEach(row => {
-        const cid = String(row.clinic_id);
-        if (scopedIds && !scopedIds.has(cid)) return;
-        const d = row.device_reference || {};
-        if (!d.model) return;
-        allClinics.add(cid);
-        (byModel[d.model] = byModel[d.model] || new Set()).add(cid);
-        if (d.category) {
-          (byCategory[d.category] = byCategory[d.category] || new Set()).add(cid);
-          modelCategory[d.model] = d.category;
-        }
-      });
+      (raw.models || []).forEach(m => { if (m.category) modelCategory[m.model] = m.category; });
 
-      const models = Object.keys(byModel)
-        .map(m => ({ model: m, slug: slugifyModel(m), clinics: byModel[m].size }))
-        .sort((a, b) => b.clinics - a.clinics || a.model.localeCompare(b.model));
-
-      const categories = Object.keys(byCategory)
-        .map(c => ({
-          category: c,
-          label: (labels[c] && labels[c].label_en) || c,
-          segment: (labels[c] && labels[c].segment) || null,
-          card_category: SEGMENT_TO_CARD_CATEGORY[labels[c] && labels[c].segment] || null,
-          sort_order: (labels[c] && labels[c].sort_order != null) ? labels[c].sort_order : 999,
-          clinics: byCategory[c].size,
-        }))
-        // Categories with a NULL segment (led, lesion_removal, womens_health)
-        // are deliberately outside the patient filter and are not offered here.
+      const categories = (raw.categories || [])
+        .map(c => {
+          const lab = labels[c.category] || {};
+          return {
+            category: c.category,
+            label: lab.label_en || c.category,
+            segment: lab.segment || null,
+            card_category: SEGMENT_TO_CARD_CATEGORY[lab.segment] || null,
+            sort_order: lab.sort_order != null ? lab.sort_order : 999,
+            clinics: c.clinics,
+          };
+        })
+        // Categories with a NULL segment (led, lesion_removal) are deliberately
+        // outside the patient filter and are not offered here.
         .filter(c => c.segment)
         .sort((a, b) => a.sort_order - b.sort_order);
 
@@ -337,31 +326,17 @@ exports.handler = async (event) => {
         (models_by_category[c] = models_by_category[c] || []).push(m);
       });
 
-      // ── GROUP LEVEL ──────────────────────────────────────────
-      // Three tiers: group heading → subcategory row → model row. The group
+      // Three tiers: group heading -> subcategory row -> model row. The group
       // count is DISTINCT CLINICS across the whole group, not a sum of its
       // subcategories, because one clinic can own an RF and a HIFU device and
-      // must not be counted twice.
-      const groupClinics = {};
-      const groupMeta = {};
-      (data || []).forEach(row => {
-        const cid = String(row.clinic_id);
-        if (scopedIds && !scopedIds.has(cid)) return;
-        const d = row.device_reference || {};
-        const lab = labels[d.category];
-        if (!lab || !lab.group_key || !lab.segment) return;
-        (groupClinics[lab.group_key] = groupClinics[lab.group_key] || new Set()).add(cid);
-        groupMeta[lab.group_key] = {
-          key: lab.group_key,
-          label: lab.group_label || lab.group_key,
-          order: lab.group_order != null ? lab.group_order : 999,
-        };
-      });
-
-      const groups = Object.keys(groupMeta)
-        .map(k => Object.assign({}, groupMeta[k], {
-          clinics: groupClinics[k].size,
-          categories: categories.filter(c => (labels[c.category] || {}).group_key === k),
+      // must not be counted twice. That distinct count is computed in SQL.
+      const groups = (raw.groups || [])
+        .map(g => ({
+          key: g.key,
+          label: g.label || g.key,
+          order: g.order != null ? g.order : 999,
+          clinics: g.clinics,
+          categories: categories.filter(c => (labels[c.category] || {}).group_key === g.key),
         }))
         .sort((a, b) => a.order - b.order);
 
@@ -372,7 +347,7 @@ exports.handler = async (event) => {
           'Access-Control-Allow-Origin': '*',
           'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=60',
         },
-        body: JSON.stringify({ groups, models, categories, models_by_category, clinics_with_devices: allClinics.size }),
+        body: JSON.stringify({ groups, models, categories, models_by_category, clinics_with_devices: raw.clinics_with_devices || 0 }),
       };
     }
 
