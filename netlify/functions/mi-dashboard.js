@@ -73,6 +73,12 @@ async function rpcRow(supabase, fn, args) {
 async function resolveIdentity(supabase, secret) {
   if (!secret) return null;
 
+  // A real sign-in. The browser keeps sending the session token in the same
+  // header, so every action below is unchanged by the move to passwords.
+  const asSession = await rpcRow(supabase, 'mi_session_identity', { p_session: secret });
+  if (asSession) return asSession;
+
+  // Legacy per-user access codes, still honoured so nobody is locked out.
   const asUser = await rpcRow(supabase, 'mi_user_by_secret', { p_secret: secret });
   if (asUser) return asUser;
 
@@ -102,6 +108,40 @@ exports.handler = async (event) => {
     { auth: { persistSession: false } }
   );
 
+  // ---- public actions ---------------------------------------------------------
+  // Signing in and accepting an invitation necessarily happen before there is
+  // an identity to check, so they sit ahead of the gate.
+  if (body.action === 'login') {
+    const { data, error } = await supabase.rpc('mi_login', {
+      p_email: String(body.email || '').trim(),
+      p_password: String(body.password || '')
+    });
+    if (error) return json(500, { error: 'query failed', detail: error.message });
+    if (!data || data.ok !== true) return json(401, { error: 'Email or password is incorrect.' });
+    return json(200, { session: data.session });
+  }
+  if (body.action === 'invite_status') {
+    const { data, error } = await supabase.rpc('mi_invite_status', {
+      p_token: String(body.token || '')
+    });
+    if (error) return json(500, { error: 'query failed', detail: error.message });
+    const row = Array.isArray(data) && data.length ? data[0] : null;
+    return json(200, { invite: row && row.valid ? row : null });
+  }
+  if (body.action === 'accept_invite') {
+    const { data, error } = await supabase.rpc('mi_accept_invite', {
+      p_token: String(body.token || ''),
+      p_password: String(body.password || '')
+    });
+    if (error) return json(400, { error: error.message });
+    // sign them straight in rather than making them type it again
+    const { data: li } = await supabase.rpc('mi_login', {
+      p_email: String(body.email || '').trim(),
+      p_password: String(body.password || '')
+    });
+    return json(200, { ok: true, session: (li && li.session) || null, result: data });
+  }
+
   // ---- gate + identity -------------------------------------------------------
   const secret = event.headers['x-mi-secret'] || event.headers['X-Mi-Secret'];
   const me = await resolveIdentity(supabase, secret);
@@ -115,6 +155,8 @@ exports.handler = async (event) => {
     logo_url: me.logo_url || null,
     owner_type: me.owner_type,
     user_name: me.user_name,
+    user_id: me.user_id || null,
+    email: me.email || null,
     role: me.role,
     province: me.province || null
   };
@@ -263,6 +305,51 @@ exports.handler = async (event) => {
         }, scope, owner));
         if (error) throw error;
         return json(200, { saved: data || [] });
+      }
+
+      // ---- Comments: the shared layer over someone else's private note ----
+      case 'add_comment': {
+        if (!body.clinic_id) return json(400, { error: 'clinic_id required' });
+        const { data, error } = await supabase.rpc('mi_add_comment', Object.assign({
+          p_clinic_id: String(body.clinic_id),
+          p_body: String(body.body || ''),
+          p_author: me.user_name || 'Admin'
+        }, scope));
+        if (error) return json(400, { error: error.message });
+        return json(200, { result: data });
+      }
+      case 'delete_comment': {
+        if (!body.comment_id) return json(400, { error: 'comment_id required' });
+        const { data, error } = await supabase.rpc('mi_delete_comment', Object.assign({
+          p_comment_id: parseInt(body.comment_id, 10)
+        }, scope));
+        if (error) throw error;
+        return json(200, { result: data });
+      }
+
+      // ---- Your account (any signed-in user) ----
+      case 'logout': {
+        await supabase.rpc('mi_logout', { p_session: secret });
+        return json(200, { ok: true });
+      }
+      case 'set_own_name': {
+        if (!me.user_id) return json(400, { error: 'no personal account to edit' });
+        const { data, error } = await supabase.rpc('mi_set_own_name', {
+          p_user_id: me.user_id, p_name: String(body.name || '')
+        });
+        if (error) return json(400, { error: error.message });
+        return json(200, { result: data });
+      }
+      case 'set_password': {
+        if (!me.user_id) return json(400, { error: 'no personal account to edit' });
+        const { data, error } = await supabase.rpc('mi_set_password', {
+          p_user_id: me.user_id,
+          p_current: String(body.current || ''),
+          p_new: String(body.new_password || '')
+        });
+        if (error) return json(400, { error: error.message });
+        // every session for this user was just invalidated, this one included
+        return json(200, { result: data, signed_out: true });
       }
 
       // ---- Team (admin only) ----
