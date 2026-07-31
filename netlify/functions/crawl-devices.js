@@ -595,12 +595,16 @@ async function getPage(url, allowRetry) {
       signal: ctl.signal,
       headers: BROWSER_HEADERS
     });
-    if (res.status === 429 && allowRetry !== false) {
+    // Two escalating waits, not one: laserclinics.ca refused four attempts at
+    // 2.5s. Only 11 hosts nationally hit this, so the worst case costs about a
+    // minute across the whole crawl.
+    if (res.status === 429 && (allowRetry === undefined || allowRetry > 0)) {
+      const left = allowRetry === undefined ? 2 : allowRetry;
       const ra = parseInt(res.headers.get('retry-after') || '', 10);
-      const waitMs = Math.min(Number.isFinite(ra) ? ra * 1000 : 2500, 8000);
+      const waitMs = Math.min(Number.isFinite(ra) ? ra * 1000 : (left === 2 ? 6000 : 15000), 20000);
       clearTimeout(timer);
       await sleep(waitMs);
-      return getPage(url, false);
+      return getPage(url, left - 1);
     }
     if (!res.ok) return { ok: false, status: res.status, url };
     const ct = res.headers.get('content-type') || '';
@@ -853,6 +857,11 @@ async function crawlHost(row, matcher) {
       if (pages.length === 0) lastError = msg;
       return null;
     }
+    // A page came back. Whatever failed on the way here (a dead apex, a 404 on
+    // a picked link) is no longer this host's verdict — leaving it set kept
+    // chickingston.com in the "failed" bucket while it was reading fine, which
+    // would have meant the coverage number never improved.
+    lastError = null;
     const text = toText(r.html);
     const thin = looksJsOnly(r.html, text);
     if (thin) sawJsOnly = true;
