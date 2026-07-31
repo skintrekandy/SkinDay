@@ -109,6 +109,7 @@
   .bar .seg-comp { background:var(--comp); }
   .catrow .cnums { text-align:right; font-family:var(--font-mono); font-size:12px; }
   .catrow .cnums .o { color:var(--ours); } .catrow .cnums .c { color:var(--comp); }
+  .catrow .cnums .cshare { color:var(--accent-strong); font-weight:500; margin-top:3px; font-size:12.5px; }
 
   /* ---- accounts + opportunities tables ---- */
   .toolbar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:16px; }
@@ -210,7 +211,7 @@
           <option value="competitor">Running a competitor</option>
           <option value="ours">Running ours</option>
           <option value="none">No device (in category)</option>
-          <option value="greenfield">Greenfield (crawled, none)</option>
+          <option value="greenfield">Greenfield (confirmed, no device)</option>
         </select>
         <span class="count" id="acctCount"></span>
       </div>
@@ -352,7 +353,7 @@
       { lab:'Total clinics', num:k.total, cls:'', delta:d.total, hint:'Approved directory clinics in this territory' },
       { lab:'Running our devices', num:k.with_ours, cls:'k-ours', delta:d.with_ours, hint:'Have at least one '+esc(k.scope&&k.scope.manufacturer||'')+' device' },
       { lab:'Without our devices', num:k.without_ours, cls:'', delta:d.without_ours, hint:'The full addressable field' },
-      { lab:'No device at all', num:k.crawled_empty, cls:'k-green', delta:d.crawled_empty, hint:'Crawled successfully, named no device — true greenfield' }
+      { lab:'No device at all', num:k.crawled_empty, cls:'k-green', delta:d.crawled_empty, hint:'Confirmed with no device on file — true greenfield' }
     ];
     el('kpis').innerHTML = tiles.map(function(t){
       return '<div class="kpi '+t.cls+'">'+
@@ -362,9 +363,14 @@
         '<div class="hint">'+t.hint+'</div>'+
       '</div>';
     }).join('');
-    el('marketNote').innerHTML = '<b>Reading this honestly:</b> "No device at all" counts only clinics we crawled successfully and found nothing — clinics we could not read (blocked or JavaScript-only sites) are excluded, not counted as empty. So this is a floor for greenfield, and it grows more accurate as coverage improves.';
+    el('marketNote').innerHTML = '<b>Reading this honestly:</b> "No device at all" counts only clinics we could confirm have no device on file. Clinics we could not confirm are excluded, not counted as empty — so this is a conservative floor that grows as our coverage deepens.';
   }
 
+  function sharePct(ours, comp){
+    var o = ours||0, c = comp||0, t = o+c;
+    if (!t) return 0;
+    return Math.round(o/t*100);
+  }
   function renderCategories(cats){
     if (!cats.length){ el('catlist').innerHTML='<div class="empty">No category data for this territory.</div>'; return; }
     var max = Math.max.apply(null, cats.map(function(c){ return c.total_in_category||0; })) || 1;
@@ -374,7 +380,8 @@
       return '<div class="catrow" data-cat="'+esc(c.category)+'">'+
         '<div><div class="cname">'+esc(c.label||c.category)+'</div><div class="cgroup">'+esc(c.group_label||'')+'</div></div>'+
         '<div class="bar"><div class="seg-ours" style="width:'+ow+'%"></div><div class="seg-comp" style="width:'+cw+'%"></div></div>'+
-        '<div class="cnums"><span class="o">'+(c.ours||0)+' ours</span> · <span class="c">'+(c.competitor||0)+' comp</span></div>'+
+        '<div class="cnums"><span class="o">'+(c.ours||0)+' ours</span> · <span class="c">'+(c.competitor||0)+' comp</span>'+
+          '<div class="cshare">'+sharePct(c.ours, c.competitor)+'% ours</div></div>'+
       '</div>';
     }).join('');
     Array.prototype.forEach.call(document.querySelectorAll('.catrow'), function(row){
@@ -410,24 +417,18 @@
     api('accounts', { category: el('acctCategory').value, segment: el('acctSegment').value, limit:200 })
       .then(function(res){ renderAccounts(res.accounts||[]); }).catch(handleErr);
   }
-  function evLabel(ev){
-    if (ev==='confirmed') return '<span class="evtier confirmed">confirmed</span>';
-    if (ev==='manufacturer') return '<span class="evtier">manufacturer</span>';
-    if (ev==='detected') return '<span class="evtier detected">detected on site</span>';
-    return '';
-  }
   function renderAccounts(rows){
     el('acctCount').textContent = rows.length + (rows.length===200?'+ shown':' accounts');
     if (!rows.length){ el('acctList').innerHTML='<div class="empty">No accounts match this filter in this territory.</div>'; return; }
     el('acctList').innerHTML = rows.map(function(a){
       var devs = (a.devices||[]).map(function(d){
-        return '<span class="plate '+(d.is_ours?'ours':'comp')+'">'+esc(d.model)+'<span class="ev">'+esc(d.evidence||'')+'</span></span>';
+        return '<span class="plate '+(d.is_ours?'ours':'comp')+'">'+esc(d.model)+'</span>';
       }).join('');
       var loc = [a.neighbourhood, a.city].filter(Boolean).join(', ');
       return '<div class="acct">'+
         '<div class="head"><span class="aname">'+esc(a.name)+'</span>'+
           '<span class="ameta">'+esc(loc)+(a.reviews!=null?' · '+a.reviews+' reviews':'')+'</span>'+
-          (a.evidence?'<span style="margin-left:auto">'+evLabel(a.evidence)+'</span>':'')+
+          ''+
         '</div>'+
         (devs?'<div class="plates">'+devs+'</div>':'<div class="plates"><span class="reason">No device in this category</span></div>')+
       '</div>';
