@@ -1,14 +1,22 @@
 // ============================================================================
-// SkinDay Market Intelligence — dashboard API  (M40, 2026-07-30)
+// SkinDay Market Intelligence — dashboard API  (M41, 2026-07-31)
 // ----------------------------------------------------------------------------
-// Read-only. Password-gated (MI_SECRET). Server-side service role so the data
+// Read-only apart from the saved list. Server-side service role so the data
 // (the national competitive map — the moat) never leaves as an anon key a
-// browser could dump. Every action calls a mi_* RPC in the data layer and
-// returns only shaped, geography-scoped rows.
+// browser could dump. Every action calls a mi_* RPC and returns shaped rows.
 //
-// Env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, MI_SECRET
+// MULTI-TENANT. Nothing about a customer lives in this file. The x-mi-secret
+// header resolves to a row in mi_tenants, which carries display name, branding
+// and the OWNER PREDICATE: owner_type ('manufacturer' | 'distributor') plus
+// owner_name. A distributor tenant's installed base is defined by
+// distributor_ca, not by manufacturer, which no amount of p_manufacturer could
+// express. MI_SECRET remains as a fallback so a bad seed cannot lock the pilot
+// out mid-flight.
+//
+// Env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, MI_SECRET (fallback only)
 // ============================================================================
 const { createClient } = require('@supabase/supabase-js');
+const crypto = require('crypto');
 
 function cors() {
   return {
@@ -32,26 +40,36 @@ function nz(v) {
   return s === '' ? null : s;
 }
 
+// The fallback tenant, used only when MI_SECRET matches and mi_tenants has no
+// row for it. Deliberately the ONLY place a customer name appears in code.
+const FALLBACK_TENANT = {
+  slug: 'cynosure',
+  display_name: 'Cynosure Lutronic',
+  owner_type: 'manufacturer',
+  owner_name: 'Cynosure Lutronic',
+  accent_hex: '#147D74',
+  logo_url: null
+};
+
+async function resolveTenant(supabase, secret) {
+  if (!secret) return null;
+  try {
+    const { data, error } = await supabase.rpc('mi_tenant_by_secret', { p_secret: secret });
+    if (!error && Array.isArray(data) && data.length) return data[0];
+  } catch (e) {
+    // fall through to the env-var path rather than failing the request
+  }
+  if (process.env.MI_SECRET && secret === process.env.MI_SECRET) return FALLBACK_TENANT;
+  return null;
+}
+
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: cors(), body: '' };
   if (event.httpMethod !== 'POST') return json(405, { error: 'method not allowed' });
 
-  // ---- gate ----------------------------------------------------------------
-  const secret = event.headers['x-mi-secret'] || event.headers['X-Mi-Secret'];
-  if (!process.env.MI_SECRET || secret !== process.env.MI_SECRET) {
-    return json(401, { error: 'unauthorized' });
-  }
-
   let body;
   try { body = JSON.parse(event.body || '{}'); }
   catch { return json(400, { error: 'bad json' }); }
-
-  const action = body.action;
-  const province = nz(body.province);
-  const city = nz(body.city);
-  const neighbourhood = nz(body.neighbourhood);
-  const category = nz(body.category);
-  const manufacturer = nz(body.manufacturer) || 'Cynosure Lutronic';
 
   const supabase = createClient(
     process.env.SUPABASE_URL,
@@ -59,11 +77,33 @@ exports.handler = async (event) => {
     { auth: { persistSession: false } }
   );
 
+  // ---- gate + tenant ---------------------------------------------------------
+  const secret = event.headers['x-mi-secret'] || event.headers['X-Mi-Secret'];
+  const tenant = await resolveTenant(supabase, secret);
+  if (!tenant) return json(401, { error: 'unauthorized' });
+
+  const owner = { p_owner_type: tenant.owner_type, p_owner_name: tenant.owner_name };
+  const brand = {
+    display_name: tenant.display_name,
+    accent_hex: tenant.accent_hex,
+    logo_url: tenant.logo_url || null,
+    owner_type: tenant.owner_type
+  };
+
+  const action = body.action;
+  const province = nz(body.province);
+  const city = nz(body.city);
+  const neighbourhood = nz(body.neighbourhood);
+  const category = nz(body.category);
+
   try {
     switch (action) {
 
-      // geography drill-down options: no args -> provinces; province -> cities;
-      // province+city -> neighbourhoods
+      // who am I — lets the page set its badge and accent before anything loads
+      case 'tenant':
+        return json(200, { tenant: brand });
+
+      // geography drill-down options: no args -> provinces; province -> neighbourhoods
       case 'geo': {
         const { data, error } = await supabase.rpc('mi_geo', {
           p_province: province, p_city: city
@@ -72,80 +112,96 @@ exports.handler = async (event) => {
         return json(200, { geo: data || [] });
       }
 
-      // the four headline tiles + MoM delta
       case 'kpis': {
-        const { data, error } = await supabase.rpc('mi_kpis', {
-          p_province: province, p_city: city,
-          p_neighbourhood: neighbourhood, p_manufacturer: manufacturer
-        });
+        const { data, error } = await supabase.rpc('mi_kpis', Object.assign({
+          p_province: province, p_city: city, p_neighbourhood: neighbourhood
+        }, owner));
         if (error) throw error;
         return json(200, { kpis: data });
       }
 
-      // per-category ours vs competitor vs total (the panel below the KPI row)
       case 'categories': {
-        const { data, error } = await supabase.rpc('mi_categories', {
-          p_province: province, p_city: city,
-          p_neighbourhood: neighbourhood, p_manufacturer: manufacturer
-        });
+        const { data, error } = await supabase.rpc('mi_categories', Object.assign({
+          p_province: province, p_city: city, p_neighbourhood: neighbourhood
+        }, owner));
         if (error) throw error;
         return json(200, { categories: data || [] });
       }
 
-      // the filterable clinic list. segment: ours|competitor|none|greenfield
+      // top N manufacturers by penetration in the selected geography. The same
+      // field for every tenant: a rep sells against machines, not channels.
+      case 'leaderboard': {
+        const limit = Math.min(Math.max(parseInt(body.limit, 10) || 3, 1), 20);
+        const { data, error } = await supabase.rpc('mi_leaderboard', Object.assign({
+          p_province: province, p_neighbourhood: neighbourhood, p_limit: limit
+        }, owner));
+        if (error) throw error;
+        return json(200, { leaderboard: data || [] });
+      }
+
+      // manufacturer + distributor option lists for the Accounts filters,
+      // each with a clinic count, energy devices only
+      case 'filter_options': {
+        const { data, error } = await supabase.rpc('mi_filter_options', {
+          p_province: province, p_neighbourhood: neighbourhood
+        });
+        if (error) throw error;
+        return json(200, { options: data || { manufacturers: [], distributors: [] } });
+      }
+
+      // the filterable clinic list.
+      // segment: ours | competitor | greenfield | research
       case 'accounts': {
         const segment = nz(body.segment);
         const limit = Math.min(Math.max(parseInt(body.limit, 10) || 200, 1), 500);
-        const { data, error } = await supabase.rpc('mi_accounts', {
+        const { data, error } = await supabase.rpc('mi_accounts', Object.assign({
           p_province: province, p_city: city, p_neighbourhood: neighbourhood,
-          p_category: category, p_segment: segment, p_limit: limit
-        });
+          p_category: category, p_segment: segment, p_limit: limit,
+          p_filter_manufacturer: nz(body.filter_manufacturer),
+          p_filter_distributor: nz(body.filter_distributor)
+        }, owner));
         if (error) throw error;
         return json(200, { accounts: data || [] });
       }
 
-      // ranked opportunities for a target category, with reasons
-      case 'opportunities': {
-        if (!category) return json(400, { error: 'category required' });
-        const limit = Math.min(Math.max(parseInt(body.limit, 10) || 100, 1), 500);
-        const { data, error } = await supabase.rpc('mi_opportunities', {
-          p_category: category, p_province: province, p_city: city,
-          p_neighbourhood: neighbourhood, p_limit: limit
-        });
-        if (error) throw error;
-        return json(200, { opportunities: data || [] });
-      }
-
-      // one call that returns everything the top of the dashboard needs, so the
-      // page makes ONE request on a geography change instead of three
+      // one call for everything above the fold, so a geography change is a
+      // single request instead of four
       case 'overview': {
-        const [k, c, g] = await Promise.all([
-          supabase.rpc('mi_kpis', {
-            p_province: province, p_city: city,
-            p_neighbourhood: neighbourhood, p_manufacturer: manufacturer
-          }),
-          supabase.rpc('mi_categories', {
-            p_province: province, p_city: city,
-            p_neighbourhood: neighbourhood, p_manufacturer: manufacturer
-          }),
-          supabase.rpc('mi_geo', { p_province: province, p_city: city })
+        const [k, c, g, l] = await Promise.all([
+          supabase.rpc('mi_kpis', Object.assign({
+            p_province: province, p_city: city, p_neighbourhood: neighbourhood
+          }, owner)),
+          supabase.rpc('mi_categories', Object.assign({
+            p_province: province, p_city: city, p_neighbourhood: neighbourhood
+          }, owner)),
+          supabase.rpc('mi_geo', { p_province: province, p_city: city }),
+          supabase.rpc('mi_leaderboard', Object.assign({
+            p_province: province, p_neighbourhood: neighbourhood, p_limit: 3
+          }, owner))
         ]);
         if (k.error) throw k.error;
         if (c.error) throw c.error;
         if (g.error) throw g.error;
-        return json(200, { kpis: k.data, categories: c.data || [], geo: g.data || [] });
+        if (l.error) throw l.error;
+        return json(200, {
+          tenant: brand,
+          kpis: k.data,
+          categories: c.data || [],
+          geo: g.data || [],
+          leaderboard: l.data || []
+        });
       }
 
-      // the manufacturer's own installed base, their taxonomy, generation split
+      // the tenant's own installed base, their taxonomy
       case 'portfolio': {
-        const { data, error } = await supabase.rpc('mi_portfolio', {
-          p_province: province, p_neighbourhood: neighbourhood, p_manufacturer: manufacturer
-        });
+        const { data, error } = await supabase.rpc('mi_portfolio', Object.assign({
+          p_province: province, p_neighbourhood: neighbourhood
+        }, owner));
         if (error) throw error;
         return json(200, { portfolio: data || [] });
       }
 
-      // ---- My List (shared saved accounts + notes) ----
+      // ---- My List (shared saved accounts + notes, per tenant) ----
       case 'save_account': {
         if (!body.clinic_id) return json(400, { error: 'clinic_id required' });
         const { data, error } = await supabase.rpc('mi_save_account', {
