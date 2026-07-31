@@ -5,13 +5,19 @@
 // (the national competitive map — the moat) never leaves as an anon key a
 // browser could dump. Every action calls a mi_* RPC and returns shaped rows.
 //
-// MULTI-TENANT. Nothing about a customer lives in this file. The x-mi-secret
-// header resolves to a row in mi_tenants, which carries display name, branding
-// and the OWNER PREDICATE: owner_type ('manufacturer' | 'distributor') plus
-// owner_name. A distributor tenant's installed base is defined by
-// distributor_ca, not by manufacturer, which no amount of p_manufacturer could
-// express. MI_SECRET remains as a fallback so a bad seed cannot lock the pilot
-// out mid-flight.
+// MULTI-TENANT, WITH ROLES. Nothing about a customer lives in this file. The
+// x-mi-secret header resolves to a USER in mi_users, which yields the tenant
+// (display name, branding, and the OWNER PREDICATE: owner_type
+// 'manufacturer'|'distributor' plus owner_name), the ROLE and the TERRITORY.
+// A distributor tenant's installed base is defined by distributor_ca, not by
+// manufacturer, which no amount of p_manufacturer could express.
+//
+// Two rules enforced here rather than in the browser, because a dropdown is
+// not a permission: a user with a province is LOCKED to it whatever the page
+// asks for, and only role='admin' may write settings.
+//
+// Resolution order, so nobody is locked out mid-pilot:
+//   mi_users -> mi_tenants (treated as admin) -> MI_SECRET env var.
 //
 // Env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, MI_SECRET (fallback only)
 // ============================================================================
@@ -43,22 +49,41 @@ function nz(v) {
 // The fallback tenant, used only when MI_SECRET matches and mi_tenants has no
 // row for it. Deliberately the ONLY place a customer name appears in code.
 const FALLBACK_TENANT = {
+  tenant_id: null,
+  user_id: null,
   slug: 'cynosure',
   display_name: 'Cynosure Lutronic',
   owner_type: 'manufacturer',
   owner_name: 'Cynosure Lutronic',
   accent_hex: '#147D74',
-  logo_url: null
+  logo_url: null,
+  user_name: 'Pilot access',
+  role: 'admin',
+  province: null
 };
 
-async function resolveTenant(supabase, secret) {
-  if (!secret) return null;
+async function rpcRow(supabase, fn, args) {
   try {
-    const { data, error } = await supabase.rpc('mi_tenant_by_secret', { p_secret: secret });
+    const { data, error } = await supabase.rpc(fn, args);
     if (!error && Array.isArray(data) && data.length) return data[0];
-  } catch (e) {
-    // fall through to the env-var path rather than failing the request
+  } catch (e) { /* fall through to the next resolution step */ }
+  return null;
+}
+
+async function resolveIdentity(supabase, secret) {
+  if (!secret) return null;
+
+  const asUser = await rpcRow(supabase, 'mi_user_by_secret', { p_secret: secret });
+  if (asUser) return asUser;
+
+  // a tenant-level code is an admin with no territory limit
+  const asTenant = await rpcRow(supabase, 'mi_tenant_by_secret', { p_secret: secret });
+  if (asTenant) {
+    return Object.assign({}, asTenant, {
+      user_id: null, user_name: 'Admin', role: 'admin', province: null
+    });
   }
+
   if (process.env.MI_SECRET && secret === process.env.MI_SECRET) return FALLBACK_TENANT;
   return null;
 }
@@ -77,21 +102,27 @@ exports.handler = async (event) => {
     { auth: { persistSession: false } }
   );
 
-  // ---- gate + tenant ---------------------------------------------------------
+  // ---- gate + identity -------------------------------------------------------
   const secret = event.headers['x-mi-secret'] || event.headers['X-Mi-Secret'];
-  const tenant = await resolveTenant(supabase, secret);
-  if (!tenant) return json(401, { error: 'unauthorized' });
+  const me = await resolveIdentity(supabase, secret);
+  if (!me) return json(401, { error: 'unauthorized' });
 
-  const owner = { p_owner_type: tenant.owner_type, p_owner_name: tenant.owner_name };
+  const owner = { p_owner_type: me.owner_type, p_owner_name: me.owner_name };
+  const scope = { p_tenant_id: me.tenant_id, p_user_id: me.user_id };
   const brand = {
-    display_name: tenant.display_name,
-    accent_hex: tenant.accent_hex,
-    logo_url: tenant.logo_url || null,
-    owner_type: tenant.owner_type
+    display_name: me.display_name,
+    accent_hex: me.accent_hex,
+    logo_url: me.logo_url || null,
+    owner_type: me.owner_type,
+    user_name: me.user_name,
+    role: me.role,
+    province: me.province || null
   };
+  const isAdmin = me.role === 'admin';
 
   const action = body.action;
-  const province = nz(body.province);
+  // a locked territory is enforced here, not offered as a choice in the page
+  const province = me.province ? me.province : nz(body.province);
   const city = nz(body.city);
   const neighbourhood = nz(body.neighbourhood);
   const category = nz(body.category);
@@ -204,32 +235,49 @@ exports.handler = async (event) => {
       // ---- My List (shared saved accounts + notes, per tenant) ----
       case 'save_account': {
         if (!body.clinic_id) return json(400, { error: 'clinic_id required' });
-        const { data, error } = await supabase.rpc('mi_save_account', {
+        const { data, error } = await supabase.rpc('mi_save_account', Object.assign({
           p_clinic_id: String(body.clinic_id), p_note: nz(body.note)
-        });
+        }, scope));
         if (error) throw error;
         return json(200, { result: data });
       }
       case 'set_note': {
         if (!body.clinic_id) return json(400, { error: 'clinic_id required' });
-        const { data, error } = await supabase.rpc('mi_set_note', {
+        const { data, error } = await supabase.rpc('mi_set_note', Object.assign({
           p_clinic_id: String(body.clinic_id), p_note: body.note == null ? '' : String(body.note)
-        });
+        }, scope));
         if (error) throw error;
         return json(200, { result: data });
       }
       case 'remove_account': {
         if (!body.clinic_id) return json(400, { error: 'clinic_id required' });
-        const { data, error } = await supabase.rpc('mi_remove_account', {
+        const { data, error } = await supabase.rpc('mi_remove_account', Object.assign({
           p_clinic_id: String(body.clinic_id)
-        });
+        }, scope));
         if (error) throw error;
         return json(200, { result: data });
       }
       case 'list_saved': {
-        const { data, error } = await supabase.rpc('mi_list_saved', {});
+        const { data, error } = await supabase.rpc('mi_list_saved', Object.assign({
+          p_role: me.role
+        }, scope, owner));
         if (error) throw error;
         return json(200, { saved: data || [] });
+      }
+
+      // ---- Settings (admin only) ----
+      case 'save_settings': {
+        if (!isAdmin) return json(403, { error: 'admin only' });
+        if (!me.slug) return json(400, { error: 'no tenant to update' });
+        const { data, error } = await supabase.rpc('mi_set_tenant_branding', {
+          p_slug: me.slug,
+          p_display_name: nz(body.display_name),
+          p_accent_hex: nz(body.accent_hex),
+          p_logo_url: body.logo_url == null ? null : String(body.logo_url)
+        });
+        if (error) throw error;
+        const row = Array.isArray(data) && data.length ? data[0] : null;
+        return json(200, { tenant: row });
       }
 
       default:
