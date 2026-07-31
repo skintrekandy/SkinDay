@@ -370,7 +370,7 @@ exports.handler = async (event) => {
         headers: {
           'Content-Type': 'application/json',
           'Access-Control-Allow-Origin': '*',
-          'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=600',
+          'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=60',
         },
         body: JSON.stringify({ groups, models, categories, models_by_category, clinics_with_devices: allClinics.size }),
       };
