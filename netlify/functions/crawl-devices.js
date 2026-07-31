@@ -580,7 +580,13 @@ const STOPWORDS = new Set([
 // text on the page for the least bytes.
 // ===========================================================================
 
-async function getPage(url) {
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// A 429 is not a refusal, it is us being impolite. A chain with six branches is
+// six queue rows on ONE host, so we hit the same server six times back to back
+// and it throttles us. Laser Clinics Canada (6 Ontario clinics) and SpaMedica
+// were both lost this way. Wait and try once more before giving up.
+async function getPage(url, allowRetry) {
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), FETCH_TIMEOUT_MS);
   try {
@@ -589,6 +595,13 @@ async function getPage(url) {
       signal: ctl.signal,
       headers: BROWSER_HEADERS
     });
+    if (res.status === 429 && allowRetry !== false) {
+      const ra = parseInt(res.headers.get('retry-after') || '', 10);
+      const waitMs = Math.min(Number.isFinite(ra) ? ra * 1000 : 2500, 8000);
+      clearTimeout(timer);
+      await sleep(waitMs);
+      return getPage(url, false);
+    }
     if (!res.ok) return { ok: false, status: res.status, url };
     const ct = res.headers.get('content-type') || '';
     if (!/text\/html|application\/xhtml/i.test(ct)) return { ok: false, status: 415, url };
@@ -831,8 +844,13 @@ async function crawlHost(row, matcher) {
       // is pointless, and they are the population that needs manual entry or a
       // portal invitation instead.
       const blocked = (r.status === 403 || r.status === 429 || r.status === 401);
-      lastError = (blocked ? 'BLOCKED ' : '') + 'HTTP ' + r.status
+      const msg = (blocked ? 'BLOCKED ' : '') + 'HTTP ' + r.status
         + (r.error ? ' ' + r.error : '') + ' ' + url;
+      // A dead LINK is not a dead HOST. Ottawa Derm Centre read fine and was
+      // recorded as failed because a picked /pricing-menu/ had gone. Only
+      // overwrite lastError while nothing has been read yet, so the host's
+      // verdict reflects the homepage rather than the last broken guess.
+      if (pages.length === 0) lastError = msg;
       return null;
     }
     const text = toText(r.html);
@@ -855,6 +873,14 @@ async function crawlHost(row, matcher) {
   if (!homePage && !sawJsOnly) {
     // one retry on the bare http host, which the price run showed recovers a few
     homePage = await readPage('http://' + host + '/');
+  }
+  // The apex is not always the site. `host` has had any www. stripped, but a
+  // fair number of these domains only answer on www — nine of the top failing
+  // hosts by review count were exactly this, including several 300+ review
+  // clinics. Try the www form before calling the host dead.
+  if (!homePage && !sawJsOnly && !/^www\./i.test(host)) {
+    homePage = await readPage('https://www.' + host + '/')
+            || await readPage('http://www.' + host + '/');
   }
   // Nothing at all came back, not even a thin page: a genuine fetch failure.
   if (!pages.length) {
