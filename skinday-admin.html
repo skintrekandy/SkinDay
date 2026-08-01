@@ -1723,7 +1723,11 @@ async function dcTestHost() {
     if ((d.unmatched_sample || []).length) {
       dcLog('   unmatched names seen: ' + fvEscape(d.unmatched_sample.join(', ')), 'var(--gold)');
     }
-    dcLog('   ' + p.clinics + ' clinic row(s) on this host · ' + p.inserted + ' candidate row(s) written', 'var(--muted)');
+    var candBits = p.inserted + ' candidate row(s) written';
+    if (typeof p.candidates_new === 'number' || typeof p.candidates_refreshed === 'number') {
+      candBits = (p.candidates_new || 0) + ' new · ' + (p.candidates_refreshed || 0) + ' refreshed';
+    }
+    dcLog('   ' + p.clinics + ' clinic row(s) on this host · ' + candBits, 'var(--muted)');
   });
 
   dcLoadStats();
