@@ -461,7 +461,11 @@
       r.setProperty('--accent-strong','color-mix(in srgb, '+t.accent_hex+' 78%, #000)');
       r.setProperty('--accent-soft','color-mix(in srgb, '+t.accent_hex+' 12%, #fff)');
     }
-    el('settingsBtn').style.display=t.user_id?'':'none';
+    // An admin on a tenant-level code has no personal user row, so gating the
+    // whole Settings tab on user_id locked out the very person who sets it up.
+    el('settingsBtn').style.display=(t.role==='admin'||t.user_id)?'':'none';
+    // Name and password need a personal account to edit.
+    el('secAccount').style.display=t.user_id?'':'none';
     el('myName').value=t.user_name||'';
     el('myEmail').textContent=t.email||'';
     el('secOrg').style.display=t.role==='admin'?'':'none';
