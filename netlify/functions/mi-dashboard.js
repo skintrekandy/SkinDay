@@ -185,6 +185,12 @@ exports.handler = async (event) => {
         return json(200, { geo: data || [] });
       }
 
+      case 'coverage': {
+        const { data, error } = await supabase.rpc('mi_coverage', { p_province: province });
+        if (error) throw error;
+        return json(200, { coverage: data });
+      }
+
       case 'kpis': {
         const { data, error } = await supabase.rpc('mi_kpis', Object.assign({
           p_province: province, p_city: city, p_neighbourhood: neighbourhood
@@ -240,7 +246,7 @@ exports.handler = async (event) => {
       // one call for everything above the fold, so a geography change is a
       // single request instead of four
       case 'overview': {
-        const [k, c, g, l] = await Promise.all([
+        const [k, c, g, l, cov] = await Promise.all([
           supabase.rpc('mi_kpis', Object.assign({
             p_province: province, p_city: city, p_neighbourhood: neighbourhood
           }, owner)),
@@ -250,7 +256,8 @@ exports.handler = async (event) => {
           supabase.rpc('mi_geo', { p_province: province, p_city: city }),
           supabase.rpc('mi_leaderboard', Object.assign({
             p_province: province, p_neighbourhood: neighbourhood, p_limit: 3
-          }, owner))
+          }, owner)),
+          supabase.rpc('mi_coverage', { p_province: province })
         ]);
         if (k.error) throw k.error;
         if (c.error) throw c.error;
@@ -261,7 +268,8 @@ exports.handler = async (event) => {
           kpis: k.data,
           categories: c.data || [],
           geo: g.data || [],
-          leaderboard: l.data || []
+          leaderboard: l.data || [],
+          coverage: cov.error ? null : cov.data
         });
       }
 
