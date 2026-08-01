@@ -1333,6 +1333,10 @@ async function doCrawl(supabase, body) {
       sitemap_urls: out.sitemapUrls || 0,
       thin_only: !!out.thinOnly,
       inserted: inserted,
+      // The number that makes a monthly run readable: how much of this was
+      // actually new versus a re-confirmation of what we already had.
+      candidates_new: out.candidatesNew || 0,
+      candidates_refreshed: out.candidatesRefreshed || 0,
       devices: out.matches.map(m => ({ model: m.model, category: m.category, confidence: m.confidence })),
       unknowns: out.unknowns.map(u => u.token),
       error: out.lastError || null
