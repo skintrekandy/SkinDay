@@ -300,8 +300,12 @@ exports.handler = async (event) => {
         return json(200, { result: data });
       }
       case 'list_saved': {
+        // Geography applies here too: a director filtering to their region
+        // expects My List to follow, not to show every rep's whole country.
         const { data, error } = await supabase.rpc('mi_list_saved', Object.assign({
-          p_role: me.role
+          p_role: me.role,
+          p_province: province,
+          p_neighbourhood: neighbourhood
         }, scope, owner));
         if (error) throw error;
         return json(200, { saved: data || [] });
