@@ -294,7 +294,8 @@ exports.handler = async (event) => {
       case 'set_note': {
         if (!body.clinic_id) return json(400, { error: 'clinic_id required' });
         const { data, error } = await supabase.rpc('mi_set_note', Object.assign({
-          p_clinic_id: String(body.clinic_id), p_note: body.note == null ? '' : String(body.note)
+          p_clinic_id: String(body.clinic_id), p_note: body.note == null ? '' : String(body.note),
+          p_role: me.role
         }, scope));
         if (error) throw error;
         return json(200, { result: data });
@@ -302,7 +303,8 @@ exports.handler = async (event) => {
       case 'remove_account': {
         if (!body.clinic_id) return json(400, { error: 'clinic_id required' });
         const { data, error } = await supabase.rpc('mi_remove_account', Object.assign({
-          p_clinic_id: String(body.clinic_id)
+          p_clinic_id: String(body.clinic_id),
+          p_role: me.role
         }, scope));
         if (error) throw error;
         return json(200, { result: data });
