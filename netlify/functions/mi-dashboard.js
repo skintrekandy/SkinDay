@@ -332,8 +332,10 @@ exports.handler = async (event) => {
       }
       case 'delete_comment': {
         if (!body.comment_id) return json(400, { error: 'comment_id required' });
+        // Admins moderate the whole board; everyone else only their own.
         const { data, error } = await supabase.rpc('mi_delete_comment', Object.assign({
-          p_comment_id: parseInt(body.comment_id, 10)
+          p_comment_id: parseInt(body.comment_id, 10),
+          p_role: me.role
         }, scope));
         if (error) throw error;
         return json(200, { result: data });
@@ -362,6 +364,25 @@ exports.handler = async (event) => {
         if (error) return json(400, { error: error.message });
         // every session for this user was just invalidated, this one included
         return json(200, { result: data, signed_out: true });
+      }
+
+      // ---- Focus devices (admin only) ----
+      case 'list_focus': {
+        if (!isAdmin) return json(403, { error: 'admin only' });
+        const { data, error } = await supabase.rpc('mi_list_focus', { p_tenant_id: me.tenant_id });
+        if (error) throw error;
+        return json(200, { focus: data || [] });
+      }
+      case 'set_focus': {
+        if (!isAdmin) return json(403, { error: 'admin only' });
+        if (!nz(body.model)) return json(400, { error: 'model required' });
+        const { data, error } = await supabase.rpc('mi_set_focus', {
+          p_tenant_id: me.tenant_id,
+          p_model: String(body.model),
+          p_on: body.on === true
+        });
+        if (error) throw error;
+        return json(200, { result: data });
       }
 
       // ---- Team (admin only) ----
