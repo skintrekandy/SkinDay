@@ -163,6 +163,29 @@ function needsCorroboration(token, generic) {
   return RISKY_SINGLE_WORD.has(token);
 }
 
+// Character spans of every exclusion phrase occurrence in an already-normalised
+// haystack. Used to drop the OCCURRENCE, not the device and not the page.
+function exclusionSpans(hay, exclTokens) {
+  const spans = [];
+  for (const ex of exclTokens || []) {
+    const needle = ' ' + ex + ' ';
+    let from = 0;
+    for (;;) {
+      const at = hay.indexOf(needle, from);
+      if (at === -1) break;
+      spans.push([at + 1, at + needle.length - 1]);
+      from = at + 1;
+    }
+  }
+  return spans;
+}
+
+// True when the matched span sits INSIDE an exclusion phrase, i.e. the words we
+// matched are part of a product name rather than a machine mention.
+function insideExclusion(spans, a, b) {
+  return spans.some(([s, e]) => a >= s && b <= e);
+}
+
 const MFR_NOISE = new Set([
   'medical', 'aesthetics', 'aesthetic', 'systems', 'system', 'health',
   'lasers', 'laser', 'technologies', 'group', 'inc', 'ltd', 'corp'
@@ -182,6 +205,20 @@ function buildMatcher(devices) {
         .map(w => norm(w))
         .filter(w => w.length > 3 && !MFR_NOISE.has(w))
     )];
+    // ⚠️⚠️ EXCLUSION PHRASES are the answer to the DermaV class: a device name
+    // that collides with a SKINCARE PRODUCT rather than another device. The
+    // Vivier "Derma-V" cream and a clinic writing the laser as "Derma V"
+    // normalise to the identical token, so no guard on the NAME can separate
+    // them. What separates them is the words either side, which is what this
+    // carries.
+    //
+    // Scoped to the matched SPAN, never the page: Vivier is a common Canadian
+    // skincare line, so a genuine DermaV owner may well retail it on the same
+    // site. Suppressing the page would trade one false positive for a false
+    // negative.
+    const exclTokens = [...new Set(
+      (d.exclusion_phrases || []).map(p => norm(p)).filter(Boolean)
+    )];
     for (const name of [d.model, ...(d.model_aliases || [])]) {
       for (const tok of tokenVariants(name)) {
         if (tok.length < 3) continue;
@@ -192,6 +229,7 @@ function buildMatcher(devices) {
           category: d.category,
           surface: name,
           mfrTokens: mfrTokens,
+          exclTokens: exclTokens,
           corroborate: needsCorroboration(tok, !!d.name_is_also_generic)
         });
       }
@@ -377,6 +415,9 @@ function matchDevices(rawText, pageUrl, matcher, opts) {
 
   for (const entry of matcher) {
     const jammed = entry.token.replace(/ /g, '');
+    const hasExcl = !!(entry.exclTokens && entry.exclTokens.length);
+    const exclProse = hasExcl ? exclusionSpans(text, entry.exclTokens) : [];
+    const exclPath = hasExcl ? exclusionSpans(pathBlob, entry.exclTokens) : [];
 
     let pathHit = false;
     if (!isBlog) {
@@ -386,6 +427,7 @@ function matchDevices(rawText, pageUrl, matcher, opts) {
           const pAt = pathBlob.indexOf(needle, pFrom);
           if (pAt === -1) break;
           pFrom = pAt + 1;
+          if (hasExcl && insideExclusion(exclPath, pAt + 1, pAt + needle.length - 1)) continue;
           if (overlaps(claimedPath, pAt + 1, pAt + needle.length - 1)) continue;
           claimedPath.push([pAt + 1, pAt + needle.length - 1]);
           pathHit = true;
@@ -403,6 +445,9 @@ function matchDevices(rawText, pageUrl, matcher, opts) {
       const at = text.indexOf(' ' + entry.token + ' ', from);
       if (at === -1) break;
       from = at + 1;
+      // Part of a product name, not a machine mention. Checked BEFORE the span
+      // is claimed so a later, genuine mention on the same page still matches.
+      if (hasExcl && insideExclusion(exclProse, at + 1, at + 1 + entry.token.length)) continue;
       // Already consumed by a longer model name at this exact position.
       if (overlaps(claimedProse, at + 1, at + 1 + entry.token.length)) continue;
       const negWin = text.slice(
@@ -1050,7 +1095,7 @@ async function doCrawl(supabase, body) {
   // update and never a redeploy.
   const { data: devices, error: refErr } = await supabase
     .from('device_reference')
-    .select('id, model, model_aliases, manufacturer, manufacturer_aliases, category, name_is_also_generic, active')
+    .select('id, model, model_aliases, manufacturer, manufacturer_aliases, category, name_is_also_generic, exclusion_phrases, active')
     .eq('active', true);
   if (refErr) throw refErr;
   const matcher = buildMatcher(devices || []);
