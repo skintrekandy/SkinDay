@@ -103,6 +103,9 @@
   .cinput:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
   .linkish { background:none; border:0; padding:0; cursor:pointer; font-family:var(--font-mono); font-size:10.5px; color:var(--accent-strong); }
 
+  .cov { margin-top:16px; padding-top:14px; border-top:1px solid var(--line-2); font-family:var(--font-mono); font-size:11.5px; letter-spacing:.03em; color:var(--muted); }
+  .cov b { color:var(--ink-2); font-weight:500; }
+
   main { max-width:1120px; margin:0 auto; padding:32px 28px 90px; }
   .panel { display:none; } .panel.on { display:block; }
 
@@ -261,7 +264,7 @@
     <section class="panel on" id="panel-portfolio">
       <div class="hero" id="hero"><div class="empty"><span class="spin"></span></div></div>
       <div id="board"></div>
-      <div class="sec-label">Installed base by category</div>
+      <div class="sec-label">Identified accounts by category</div>
       <div id="portfolioList"><div class="empty"><span class="spin"></span></div></div>
       <div class="sec-label">Competitive field by category</div>
       <div id="catlist"><div class="empty"><span class="spin"></span></div></div>
@@ -275,7 +278,7 @@
           <option value="ours">Warm &#8212; running your devices</option>
           <option value="competitor">Cold &#8212; running a competitor</option>
           <option value="greenfield">Cold &#8212; no devices</option>
-          <option value="research">Need further research</option>
+          <option value="research">Pending research</option>
         </select>
         <select id="acctMfr"><option value="">Any manufacturer</option></select>
         <select id="acctDist"><option value="">Any distributor</option></select>
@@ -418,6 +421,7 @@
   var API='/.netlify/functions/mi-dashboard';
   var KEY=null, geo={province:'',city:'',neighbourhood:''};
   var loaded={accounts:false,list:false};
+  var COVERAGE=null;
   var ME=null;
   var catCache=[], savedIds={};
   // devices with a real generation pair -> ordered newer-first spellings for display grouping
@@ -437,6 +441,7 @@
       applyIdentity(res.tenant||{});
       el('gate').style.display='none'; el('app').style.display='block';
       fillSelect(el('selProvince'),res.geo||[],'All Canada');
+      COVERAGE=res.coverage||null;
       renderHero(res.kpis); renderBoard(res.leaderboard||[]);
       renderCategories(res.categories||[]); catCache=res.categories||[]; seedCategorySelects();
       api('portfolio',{}).then(function(r2){ renderPortfolio(r2.portfolio||[]); }).catch(handleErr);
@@ -624,18 +629,31 @@
     el('hero').innerHTML='<div class="empty"><span class="spin"></span></div>';
     el('portfolioList').innerHTML='<div class="empty"><span class="spin"></span></div>';
     el('catlist').innerHTML='<div class="empty"><span class="spin"></span></div>';
-    api('kpis',{}).then(function(res){ renderHero(res.kpis); }).catch(handleErr);
+    api('coverage',{}).then(function(res){ COVERAGE=res.coverage||null; })
+      .catch(function(){})
+      .then(function(){ return api('kpis',{}); })
+      .then(function(res){ renderHero(res.kpis); }).catch(handleErr);
     api('leaderboard',{limit:3}).then(function(res){ renderBoard(res.leaderboard||[]); }).catch(handleErr);
     api('portfolio',{}).then(function(res){ renderPortfolio(res.portfolio||[]); }).catch(handleErr);
     api('categories',{}).then(function(res){ renderCategories(res.categories||[]); catCache=res.categories||[]; seedCategorySelects(); }).catch(handleErr);
   }
+  // Counts, not claims of completeness. The coverage line states the base the
+  // percentages are drawn from, so nothing implies a national census - and it
+  // says nothing about where the data comes from.
   function renderHero(k){
     if(!k){ el('hero').innerHTML=''; return; }
-    var share = k.total ? Math.round(k.with_ours/k.total*1000)/10 : 0;
-    var where = geo.neighbourhood || (geo.province?geo.province.toUpperCase():"Canada's");
-    el('hero').innerHTML='<div class="big">'+(k.with_ours!=null?k.with_ours:'—')+' <span class="unit">clinics run your devices</span></div>'+
-      '<div class="sub">'+esc((ME&&ME.display_name)||'Your portfolio')+' has an installed base in <span class="share">'+share+'%</span> of '+esc(where==="Canada's"?"Canada's":where)+' aesthetic clinics'+
-      (k.without_ours!=null?', with <span class="share">'+k.without_ours+'</span> more without your devices yet':'')+'.</div>';
+    var where = geo.neighbourhood || (geo.province?geo.province.toUpperCase():'Canada');
+    var cov = COVERAGE || {};
+    var pending = (cov.clinics!=null && cov.verified!=null) ? (cov.clinics-cov.verified) : null;
+    el('hero').innerHTML='<div class="big">'+(k.with_ours!=null?k.with_ours:'—')+' <span class="unit">identified accounts</span></div>'+
+      '<div class="sub">Clinics in '+esc(where)+' with '+esc((ME&&ME.display_name)||'your')+' equipment identified'+
+      (k.without_ours!=null?', and <span class="share">'+k.without_ours+'</span> without.':'.')+'</div>'+
+      (cov.verified!=null
+        ? '<div class="cov"><b>'+cov.verified+'</b> clinics with verified equipment'+
+          (pending!=null?' &middot; <b>'+pending+'</b> pending research':'')+
+          (cov.last_updated?' &middot; updated '+esc(new Date(cov.last_updated).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'})):'')+
+          '</div>'
+        : '');
   }
   function renderPortfolio(rows){
     if(!rows.length){ el('portfolioList').innerHTML='<div class="empty">No installed base in this territory.</div>'; return; }
@@ -665,7 +683,7 @@
   }
   function renderBoard(rows){
     if(!rows||!rows.length){ el('board').innerHTML=''; return; }
-    el('board').innerHTML='<div class="sec-label">Market penetration</div><div class="cat">'+rows.map(function(r){
+    el('board').innerHTML='<div class="sec-label">Share of verified accounts</div><div class="cat">'+rows.map(function(r){
       return '<div class="dev"><span class="dn">'+esc(r.manufacturer)+(r.is_ours?'<span class="focus">You</span>':'')+'</span>'+
         '<span class="spacer"></span><span class="num">'+r.pct+'%<span class="l">'+r.clinics+' clinics</span></span></div>';
     }).join('')+'</div>';
@@ -739,7 +757,7 @@
                     limit:200}).then(function(res){ renderAccounts(res.accounts||[]); }).catch(handleErr);
   }
   function renderAccounts(rows){
-    el('acctCount').textContent=rows.length+(rows.length===200?'+ shown':' accounts');
+    el('acctCount').textContent=rows.length+(rows.length===200?'+ shown':' identified accounts');
     if(!rows.length){ el('acctList').innerHTML='<div class="empty">No accounts match this filter.</div>'; return; }
     el('acctList').innerHTML=rows.map(function(a){ return acctCard(a); }).join('');
     wireSaveButtons(el('acctList'));
