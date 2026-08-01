@@ -218,6 +218,22 @@ exports.handler = async (event) => {
         return json(200, { leaderboard: data || [] });
       }
 
+      // Per-category competitive field, as SHARE OF IDENTIFIED INSTALLATIONS.
+      // ⚠️ This is a DIFFERENT metric from `leaderboard`, which is share of
+      // CLINICS and overlaps (one clinic owning two makers counts in both, so
+      // those percentages do not sum to 100 and must never be drawn as a pie).
+      // Here each device row belongs to exactly one maker, so the slices are
+      // mutually exclusive, sum to 100, and "Other" is real rather than a plug.
+      // The two can never be reconciled and must not sit under one heading.
+      case 'category_share': {
+        const top = Math.min(Math.max(parseInt(body.top, 10) || 4, 2), 8);
+        const { data, error } = await supabase.rpc('mi_category_share', Object.assign({
+          p_province: province, p_neighbourhood: neighbourhood, p_top: top
+        }, owner));
+        if (error) throw error;
+        return json(200, { category_share: data || [] });
+      }
+
       // manufacturer + distributor option lists for the Accounts filters,
       // each with a clinic count, energy devices only
       case 'filter_options': {
@@ -246,7 +262,7 @@ exports.handler = async (event) => {
       // one call for everything above the fold, so a geography change is a
       // single request instead of four
       case 'overview': {
-        const [k, c, g, l, cov] = await Promise.all([
+        const [k, c, g, l, cov, cs] = await Promise.all([
           supabase.rpc('mi_kpis', Object.assign({
             p_province: province, p_city: city, p_neighbourhood: neighbourhood
           }, owner)),
@@ -257,7 +273,10 @@ exports.handler = async (event) => {
           supabase.rpc('mi_leaderboard', Object.assign({
             p_province: province, p_neighbourhood: neighbourhood, p_limit: 3
           }, owner)),
-          supabase.rpc('mi_coverage', { p_province: province })
+          supabase.rpc('mi_coverage', { p_province: province }),
+          supabase.rpc('mi_category_share', Object.assign({
+            p_province: province, p_neighbourhood: neighbourhood, p_top: 4
+          }, owner))
         ]);
         if (k.error) throw k.error;
         if (c.error) throw c.error;
@@ -269,7 +288,9 @@ exports.handler = async (event) => {
           categories: c.data || [],
           geo: g.data || [],
           leaderboard: l.data || [],
-          coverage: cov.error ? null : cov.data
+          coverage: cov.error ? null : cov.data,
+          // tolerated like coverage: a missing donut should not blank the page
+          category_share: cs.error ? [] : (cs.data || [])
         });
       }
 
