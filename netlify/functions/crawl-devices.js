@@ -186,6 +186,25 @@ function insideExclusion(spans, a, b) {
   return spans.some(([s, e]) => a >= s && b <= e);
 }
 
+// ⚠️ PROXIMITY EXCLUSIONS exist because adjacency is too literal. A shop grid
+// prints the brand in a heading, a logo alt or a separate column, so the page
+// reads "... Vivier ... Derma-V 60ml ..." and no adjacency phrase fires. An
+// exclusion phrase that does NOT contain the device token is treated as a
+// nearby-word test instead.
+//
+// The window is deliberately tight. A clinic can genuinely own a DermaV AND
+// retail Vivier on the same site, so a page-wide brand test would trade this
+// false positive for a false negative — the mistake that started this.
+const EXCL_WINDOW = 120;
+
+function nearExclusion(hay, a, b, tokens, win) {
+  if (!tokens || !tokens.length) return false;
+  const from = Math.max(0, a - win);
+  const to = Math.min(hay.length, b + win);
+  const around = hay.slice(from, to);
+  return tokens.some(t => around.indexOf(' ' + t + ' ') !== -1);
+}
+
 const MFR_NOISE = new Set([
   'medical', 'aesthetics', 'aesthetic', 'systems', 'system', 'health',
   'lasers', 'laser', 'technologies', 'group', 'inc', 'ltd', 'corp'
@@ -222,6 +241,10 @@ function buildMatcher(devices) {
     for (const name of [d.model, ...(d.model_aliases || [])]) {
       for (const tok of tokenVariants(name)) {
         if (tok.length < 3) continue;
+        // A phrase CONTAINING this token is an adjacency test ("derma v cream");
+        // one that does not is a proximity test ("vivier").
+        const exclAdj = exclTokens.filter(p => p.indexOf(tok) !== -1);
+        const exclNear = exclTokens.filter(p => p.indexOf(tok) === -1);
         entries.push({
           token: tok,
           device_id: d.id,
@@ -229,7 +252,8 @@ function buildMatcher(devices) {
           category: d.category,
           surface: name,
           mfrTokens: mfrTokens,
-          exclTokens: exclTokens,
+          exclTokens: exclAdj,
+          exclNear: exclNear,
           corroborate: needsCorroboration(tok, !!d.name_is_also_generic)
         });
       }
@@ -264,6 +288,17 @@ function classifyPage(url) {
 // run produced "Icon own page" on two unrelated clinic sites.
 const ASSET_EXT = /\.(png|jpe?g|gif|svg|webp|avif|ico|css|js|mjs|json|xml|txt|woff2?|ttf|eot|pdf|mp4|webm|zip)$/i;
 const ASSET_DIR = /\/(wp-content|wp-includes|wp-json|assets?|static|dist|build|themes?|plugins?|uploads?|images?|img|icons?|fonts?|media|cdn-cgi|_next|_nuxt)(\/|$)/i;
+
+// ⚠️⚠️ RETAIL PATHS ARE NOT EQUIPMENT. A device token inside a shop url is a
+// PRODUCT BEING SOLD, not a machine owned. Vivier's "Derma-V" cream on a Wix
+// store becomes /product-page/derma-v-..., which normalises to
+// "product page derma v" and matched DermaV cleanly — the brand and the word
+// "cream" are not in the slug, so no exclusion phrase could ever catch it.
+//
+// This drops only the OWN-PAGE signal. A clinic that genuinely owns the machine
+// still matches in prose, at `exact` rather than `own_page`. We lose a
+// confidence tier, never the device.
+const RETAIL_PATH = /\/(shop|shops|store|stores|product|products|product-page|collection|collections|catalog|cart|checkout|boutique|merch)(\/|$|-|\?)/i;
 
 // ⚠️⚠️ A URL THAT NAMES MORE THAN ONE DEVICE IS A COMPARISON, NOT A PRODUCT PAGE.
 // Found on Andy's own clinic: skin-trek.com/nerd/ultherapy-vs-thermage-vs-sofwave
@@ -322,6 +357,7 @@ function ownPagePaths(rawText, pageUrl, entries) {
       const p = new URL(u);
       if (host && p.hostname.replace(/^www\./, '') !== host) return;
       if (BLOG_PATH.test(p.pathname)) return;
+      if (RETAIL_PATH.test(p.pathname)) return;
       if (entries && isComparisonPath(p.pathname, entries)) return;
       if (ASSET_EXT.test(p.pathname) || ASSET_DIR.test(p.pathname)) return;
       if (p.pathname.split('/').filter(Boolean).length > 4) return;   // deep = not a service page
@@ -376,6 +412,12 @@ const RANK = { own_page: 4, exact: 3, generic_review: 2, blog_only: 1 };
 function matchDevices(rawText, pageUrl, matcher, opts) {
   opts = opts || {};
   let pageKind = classifyPage(pageUrl);
+  // Normalised host, used to suppress a device whose name IS the business name.
+  let hostNorm = '';
+  try {
+    const h = opts.host || new URL(pageUrl).hostname;
+    hostNorm = ' ' + norm(String(h).replace(/^www\./i, '').replace(/[.\-_]/g, ' ')) + ' ';
+  } catch (e) {}
 
   // ⚠️⚠️ COMPARISON PAGES ARE TREATED EXACTLY LIKE BLOG PAGES, which means
   // blog_only at best and never auto-approved. Denying only the own-page tier
@@ -415,7 +457,13 @@ function matchDevices(rawText, pageUrl, matcher, opts) {
 
   for (const entry of matcher) {
     const jammed = entry.token.replace(/ /g, '');
+    // ⚠️ CLINIC-NAME COLLISION. "Derma V+ Cosmetic Clinic" on dermav.com matched
+    // DermaV at `exact`. The device name IS the business name, so no phrase list
+    // can help — this is the mirror of the own-page filter.
+    if (hostNorm && (hostNorm.indexOf(' ' + entry.token + ' ') !== -1
+                  || hostNorm.indexOf(' ' + jammed + ' ') !== -1)) continue;
     const hasExcl = !!(entry.exclTokens && entry.exclTokens.length);
+    const hasNear = !!(entry.exclNear && entry.exclNear.length);
     const exclProse = hasExcl ? exclusionSpans(text, entry.exclTokens) : [];
     const exclPath = hasExcl ? exclusionSpans(pathBlob, entry.exclTokens) : [];
 
@@ -448,6 +496,7 @@ function matchDevices(rawText, pageUrl, matcher, opts) {
       // Part of a product name, not a machine mention. Checked BEFORE the span
       // is claimed so a later, genuine mention on the same page still matches.
       if (hasExcl && insideExclusion(exclProse, at + 1, at + 1 + entry.token.length)) continue;
+      if (hasNear && nearExclusion(text, at + 1, at + 1 + entry.token.length, entry.exclNear, EXCL_WINDOW)) continue;
       // Already consumed by a longer model name at this exact position.
       if (overlaps(claimedProse, at + 1, at + 1 + entry.token.length)) continue;
       const negWin = text.slice(
