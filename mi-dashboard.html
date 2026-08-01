@@ -144,6 +144,30 @@
   .genrow .gm { font-size:14px; color:var(--ink-2); } .genrow .spacer { flex:1; }
   .genrow .gc { font-family:var(--font-mono); font-size:14px; font-weight:500; }
 
+  /* category competitive donuts — share of identified INSTALLATIONS.
+     Deliberately NOT the same metric as #board (share of clinics), which
+     overlaps and therefore stays a bar. Never merge the two headings. */
+  .dgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:18px; }
+  .dcard { border:1px solid var(--line-2); border-radius:var(--radius-sm); padding:18px 16px 14px; cursor:pointer; transition:border-color .15s ease, background .15s ease; }
+  .dcard:hover { border-color:var(--accent); background:var(--surface-2); }
+  .dcard .dhead { display:flex; align-items:baseline; gap:8px; margin-bottom:2px; }
+  .dcard .dtitle { font-size:14.5px; font-weight:500; line-height:1.25; }
+  .dcard .drank { font-family:var(--font-mono); font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--accent-strong); background:var(--accent-soft); border:1px solid var(--accent); border-radius:100px; padding:2px 8px; white-space:nowrap; }
+  .dcard .drank.off { color:var(--faint); background:transparent; border-color:var(--line); }
+  .dcard .dsub { font-family:var(--font-mono); font-size:9px; letter-spacing:.06em; text-transform:uppercase; color:var(--faint); margin-bottom:12px; }
+  .dcard .dring { display:flex; align-items:center; gap:14px; }
+  .dcard svg { flex:0 0 auto; }
+  .dcard .dmid { font-family:var(--font-mono); font-size:19px; font-weight:600; fill:var(--ink); }
+  .dcard .dmids { font-family:var(--font-mono); font-size:7.5px; letter-spacing:.08em; fill:var(--faint); }
+  .dcard .dlegend { flex:1; min-width:0; }
+  .dcard .dl { display:flex; align-items:center; gap:7px; font-size:11.5px; color:var(--muted); line-height:1.7; }
+  .dcard .dl b { font-weight:500; color:var(--ink); }
+  .dcard .dl.you b { color:var(--accent-strong); font-weight:600; }
+  .dcard .dl .sw { width:8px; height:8px; border-radius:2px; flex:0 0 auto; }
+  .dcard .dl .dn { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .dcard .dl .dp { margin-left:auto; font-family:var(--font-mono); font-size:10.5px; }
+  .dnote { font-size:12px; color:var(--faint); margin-top:14px; line-height:1.5; }
+
   /* category competitive list */
   .crow { display:flex; align-items:center; gap:16px; padding:16px 4px; border-bottom:1px solid var(--line-2); cursor:pointer; }
   .crow:hover { background:var(--surface-2); }
@@ -453,7 +477,7 @@
       fillSelect(el('selProvince'),res.geo||[],'All Canada');
       COVERAGE=res.coverage||null;
       renderHero(res.kpis); renderBoard(res.leaderboard||[]);
-      renderCategories(res.categories||[]); catCache=res.categories||[]; seedCategorySelects();
+      renderCategoryShare(res.category_share||[]); catCache=res.categories||[]; seedCategorySelects();
       api('portfolio',{}).then(function(r2){ renderPortfolio(r2.portfolio||[]); }).catch(handleErr);
       loadFilterOptions(); loadSavedIds();
     }).catch(function(e){ KEY=null; el('gateErr').textContent=e&&e.unauth?'Incorrect access key.':'Could not connect. Try again.'; });
@@ -671,7 +695,8 @@
       .then(function(res){ renderHero(res.kpis); }).catch(handleErr);
     api('leaderboard',{limit:3}).then(function(res){ renderBoard(res.leaderboard||[]); }).catch(handleErr);
     api('portfolio',{}).then(function(res){ renderPortfolio(res.portfolio||[]); }).catch(handleErr);
-    api('categories',{}).then(function(res){ renderCategories(res.categories||[]); catCache=res.categories||[]; seedCategorySelects(); }).catch(handleErr);
+    api('category_share',{top:4}).then(function(res){ renderCategoryShare(res.category_share||[]); }).catch(handleErr);
+    api('categories',{}).then(function(res){ catCache=res.categories||[]; seedCategorySelects(); }).catch(handleErr);
   }
   // Counts, not claims of completeness. The coverage line states the base the
   // percentages are drawn from, so nothing implies a national census - and it
@@ -740,19 +765,81 @@
   }
 
   function sharePct(o,c){ o=o||0; c=c||0; var t=o+c; return t?Math.round(o/t*100):0; }
-  function renderCategories(cats){
-    if(!cats.length){ el('catlist').innerHTML='<div class="empty">No category data.</div>'; return; }
-    el('catlist').innerHTML=cats.map(function(c){
-      var t=(c.ours||0)+(c.competitor||0); var ow=t?Math.round((c.ours||0)/t*100):0;
-      return '<div class="crow" data-cat="'+esc(c.category)+'">'+
-        '<div class="cn">'+esc(c.label||c.category)+'<span class="cg">'+esc(c.group_label||'')+'</span></div>'+
-        '<div class="bar"><div class="o" style="width:'+ow+'%"></div><div class="c" style="width:'+(100-ow)+'%"></div></div>'+
-        '<div class="cshare">'+sharePct(c.ours,c.competitor)+'%<span class="cl">'+(c.ours||0)+' of '+t+' yours</span></div>'+
-      '</div>';
-    }).join('');
-    Array.prototype.forEach.call(document.querySelectorAll('.crow'),function(row){
-      row.addEventListener('click',function(){ el('acctCategory').value=row.getAttribute('data-cat'); el('acctSegment').value='competitor'; document.querySelector('.tabs button[data-tab="accounts"]').click(); loadAccounts(); });
+  // Competitive field by category, drawn as donuts. The metric is SHARE OF
+  // IDENTIFIED INSTALLATIONS within one category: every device row belongs to
+  // exactly one maker, so slices are mutually exclusive and sum to 100. That is
+  // why a pie is honest here and dishonest for #board, which counts CLINICS and
+  // overlaps. A clinic with two InMode machines counts twice here and once
+  // there, so the two panels will never reconcile — keep the labels apart.
+  var CAT_LABEL={};
+  function renderCategoryShare(rows){
+    var box=el('catlist');
+    if(!rows||!rows.length){ box.innerHTML='<div class="empty">No category data.</div>'; return; }
+    var byCat={}, order=[];
+    rows.forEach(function(r){
+      if(!byCat[r.category]){ byCat[r.category]={ label:r.category_label||r.category, group:r.group_label||'', total:r.total_installs||0, slices:[] }; order.push(r.category); }
+      byCat[r.category].slices.push(r);
+      CAT_LABEL[r.category]=r.category_label||r.category;
     });
+    box.innerHTML='<div class="dgrid">'+order.map(function(cat){
+      var c=byCat[cat];
+      var mine=null;
+      c.slices.forEach(function(s){ if(s.is_ours) mine=s; });
+      return '<div class="dcard" data-cat="'+esc(cat)+'">'+
+        '<div class="dhead"><span class="dtitle">'+esc(c.label)+'</span>'+rankPill(mine)+'</div>'+
+        '<div class="dsub">'+esc(c.group)+'</div>'+
+        '<div class="dring">'+donutSvg(c.slices, mine)+'<div class="dlegend">'+
+          c.slices.map(function(s){
+            return '<div class="dl'+(s.is_ours?' you':'')+'">'+
+              '<span class="sw" style="background:'+sliceColor(s)+'"></span>'+
+              '<span class="dn"><b>'+esc(s.manufacturer)+'</b></span>'+
+              '<span class="dp">'+fmtPct(s.pct)+'%</span></div>';
+          }).join('')+
+        '</div></div>'+
+      '</div>';
+    }).join('')+'</div>'+
+    '<div class="dnote">Share of identified installations within each category, across clinics with verified equipment. Each machine counts once, so slices total 100%. This is not the same measure as share of verified accounts above, where a clinic running several manufacturers counts under each.</div>';
+
+    Array.prototype.forEach.call(box.querySelectorAll('.dcard'),function(card){
+      card.addEventListener('click',function(){
+        el('acctCategory').value=card.getAttribute('data-cat');
+        el('acctSegment').value='competitor';
+        document.querySelector('.tabs button[data-tab="accounts"]').click();
+        loadAccounts();
+      });
+    });
+  }
+  function rankPill(mine){
+    if(!mine) return '<span class="drank off">Not present</span>';
+    var r=parseInt(mine.rn,10)||0;
+    if(!r||r>900) return '<span class="drank off">Unranked</span>';
+    return '<span class="drank'+(r<=3?'':' off')+'">#'+r+'</span>';
+  }
+  // The tenant always takes the accent; everyone else takes a muted grey ramp,
+  // deliberately, so a competitor never gets brand identity inside this portal.
+  var GREYS=['#B9BEC6','#CBD0D7','#DCE0E5','#E8EBEE','#F0F2F4'];
+  function sliceColor(s){
+    if(s.is_ours) return 'var(--accent)';
+    var i=(parseInt(s.rn,10)||1)-1;
+    return GREYS[Math.min(i,GREYS.length-1)];
+  }
+  function fmtPct(p){ var n=Number(p)||0; return n>=10?Math.round(n):n.toFixed(1); }
+  function donutSvg(slices, mine){
+    var R=34, C=2*Math.PI*R, off=0;
+    var arcs=slices.map(function(s){
+      var frac=Math.max(0,Math.min(1,(Number(s.pct)||0)/100));
+      var len=C*frac;
+      var a='<circle r="'+R+'" cx="0" cy="0" fill="none" stroke="'+sliceColor(s)+'" stroke-width="13"'+
+        ' stroke-dasharray="'+len.toFixed(2)+' '+(C-len).toFixed(2)+'"'+
+        ' stroke-dashoffset="'+(-off).toFixed(2)+'"></circle>';
+      off+=len; return a;
+    }).join('');
+    var mid=mine?fmtPct(mine.pct)+'%':'—';
+    return '<svg width="92" height="92" viewBox="-46 -46 92 92" role="img" aria-label="share of installations">'+
+      '<g transform="rotate(-90)">'+arcs+'</g>'+
+      '<text class="dmid" x="0" y="2" text-anchor="middle" dominant-baseline="middle">'+mid+'</text>'+
+      '<text class="dmids" x="0" y="15" text-anchor="middle">YOURS</text>'+
+    '</svg>';
   }
   function seedCategorySelects(){
     var opts='<option value="">All categories</option>'+catCache.map(function(c){ return '<option value="'+esc(c.category)+'">'+esc(c.label||c.category)+'</option>'; }).join('');
