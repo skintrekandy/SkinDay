@@ -289,16 +289,21 @@ function classifyPage(url) {
 const ASSET_EXT = /\.(png|jpe?g|gif|svg|webp|avif|ico|css|js|mjs|json|xml|txt|woff2?|ttf|eot|pdf|mp4|webm|zip)$/i;
 const ASSET_DIR = /\/(wp-content|wp-includes|wp-json|assets?|static|dist|build|themes?|plugins?|uploads?|images?|img|icons?|fonts?|media|cdn-cgi|_next|_nuxt)(\/|$)/i;
 
-// ⚠️⚠️ RETAIL PATHS ARE NOT EQUIPMENT. A device token inside a shop url is a
-// PRODUCT BEING SOLD, not a machine owned. Vivier's "Derma-V" cream on a Wix
-// store becomes /product-page/derma-v-..., which normalises to
-// "product page derma v" and matched DermaV cleanly — the brand and the word
-// "cream" are not in the slug, so no exclusion phrase could ever catch it.
+// ⚠️⚠️⚠️ RETAIL PATHS ARE AMBIGUOUS, NOT DISQUALIFYING. My first version of this
+// rejected every shop url outright and immediately broke the one clinic we KNOW
+// owns a DermaV: Precision Ptbo sells its treatments through Shopify, so its
+// best evidence on the whole site is
+//   /collections/laser-skin-treatments/products/dermav-laser
+// A med spa's "shop" is often its BOOKING CATALOGUE, not a skincare store.
 //
-// This drops only the OWN-PAGE signal. A clinic that genuinely owns the machine
-// still matches in prose, at `exact` rather than `own_page`. We lose a
-// confidence tier, never the device.
+// So the discriminator is the SLUG, not the path prefix:
+//   products/dermav-laser        → a bookable treatment, KEEP
+//   product-page/derma-v-60ml    → a Vivier cream SKU, DROP
+// A retail url counts only when it names equipment AND does not look like a
+// physical product. PRODUCT_SLUG wins, because "…-treatment-3ml" is a bottle.
 const RETAIL_PATH = /\/(shop|shops|store|stores|product|products|product-page|collection|collections|catalog|cart|checkout|boutique|merch)(\/|$|-|\?)/i;
+const EQUIP_SLUG = /(laser|treatment|session|consult|package|device|platform|microneedling|resurfacing|photofacial|\bipl\b|\brf\b)/i;
+const PRODUCT_SLUG = /(cream|serum|moisturi[sz]er|cleanser|toner|lotion|sunscreen|spf|balm|mask|peel-pad|supplement|gift-card|\d+\s*-?\s*(ml|mg|oz|g)\b)/i;
 
 // ⚠️⚠️ A URL THAT NAMES MORE THAN ONE DEVICE IS A COMPARISON, NOT A PRODUCT PAGE.
 // Found on Andy's own clinic: skin-trek.com/nerd/ultherapy-vs-thermage-vs-sofwave
@@ -357,7 +362,8 @@ function ownPagePaths(rawText, pageUrl, entries) {
       const p = new URL(u);
       if (host && p.hostname.replace(/^www\./, '') !== host) return;
       if (BLOG_PATH.test(p.pathname)) return;
-      if (RETAIL_PATH.test(p.pathname)) return;
+      if (RETAIL_PATH.test(p.pathname)
+          && (PRODUCT_SLUG.test(p.pathname) || !EQUIP_SLUG.test(p.pathname))) return;
       if (entries && isComparisonPath(p.pathname, entries)) return;
       if (ASSET_EXT.test(p.pathname) || ASSET_DIR.test(p.pathname)) return;
       if (p.pathname.split('/').filter(Boolean).length > 4) return;   // deep = not a service page
