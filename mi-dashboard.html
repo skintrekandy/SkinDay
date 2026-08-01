@@ -193,14 +193,33 @@
   .contacts { display:flex; gap:16px; flex-wrap:wrap; margin-top:11px; }
   .contacts a, .contacts span { font-size:13px; color:var(--ink-2); display:inline-flex; align-items:center; gap:6px; }
   .contacts .ico { color:var(--accent); }
+  .contacts .vc { font-family:var(--font-mono); font-size:8.5px; letter-spacing:.07em; text-transform:uppercase; color:var(--accent-strong); background:var(--accent-soft); border:1px solid var(--accent); border-radius:100px; padding:1px 6px; margin-left:7px; }
   .plates { display:flex; gap:7px; flex-wrap:wrap; margin-top:13px; }
-  /* A clinic with 20 machines was 20 red pills, which read as an alarm rather
-     than an inventory. Competitors are now NEUTRAL and carry a small
-     manufacturer-coloured dot; only the tenant's own devices are filled. */
-  .plate { display:inline-flex; align-items:center; gap:6px; font-family:var(--font-mono); font-size:11px; padding:4px 10px 4px 8px; border-radius:6px; border:1px solid var(--line-2); color:var(--ink-2); background:var(--surface); }
-  .plate .mdot { width:7px; height:7px; border-radius:50%; flex:none; }
+  /* A clinic with 20 machines was 20 pills in 20 hues, which read as a paint
+     chart rather than an inventory. Devices are now GROUPED UNDER THEIR MAKER,
+     the tenant's group first and accented, everyone else neutral. The colour
+     carried no information a label cannot carry better, so the dots are gone. */
+  .mfrs { margin-top:14px; display:flex; flex-direction:column; gap:9px; }
+  .mfr { display:grid; grid-template-columns:150px 1fr; gap:12px; align-items:baseline; }
+  .mfr .mn { font-family:var(--font-mono); font-size:10px; letter-spacing:.07em; text-transform:uppercase; color:var(--faint); line-height:1.9; }
+  .mfr .mn .ct { opacity:.65; }
+  .mfr.ours .mn { color:var(--accent-strong); font-weight:600; }
+  .mfr .md { display:flex; gap:6px; flex-wrap:wrap; }
+  @media (max-width:640px){ .mfr { grid-template-columns:1fr; gap:3px; } }
+  .plate { display:inline-flex; align-items:center; font-family:var(--font-mono); font-size:11px; padding:4px 10px; border-radius:6px; border:1px solid var(--line-2); color:var(--ink-2); background:var(--surface); cursor:pointer; }
+  .plate:hover { border-color:var(--accent); color:var(--accent-strong); }
   .plate.ours { border-color:var(--accent); color:var(--accent-strong); background:var(--accent-soft); font-weight:500; }
-  .plate.ours .mdot { background:var(--accent) !important; }
+  .plate.on { border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
+  /* Evidence panel. Every claim on this page came from somewhere; this is where
+     a rep can see where, and judge it. It shows the text we actually matched,
+     not a paraphrase — "Laser Genesis" reads very differently from "PicoSure",
+     and a rep should be able to tell those apart before making a call. */
+  .ev { margin-top:10px; border:1px solid var(--line-2); border-left:3px solid var(--accent); border-radius:var(--radius-sm); background:var(--surface-2); padding:12px 14px; font-size:12.5px; color:var(--ink-2); line-height:1.6; }
+  .ev .evh { font-family:var(--font-mono); font-size:10px; letter-spacing:.07em; text-transform:uppercase; color:var(--faint); margin-bottom:5px; }
+  .ev .evq { font-weight:500; color:var(--ink); }
+  .ev .evm { font-family:var(--font-mono); font-size:11px; color:var(--muted); margin-top:6px; display:flex; flex-wrap:wrap; gap:4px 14px; }
+  .ev .evm a { word-break:break-all; }
+  .ev .evwarn { margin-top:7px; color:var(--muted); font-style:italic; }
   .reasons { display:flex; gap:7px; flex-wrap:wrap; margin-top:13px; }
   .reason { font-size:12px; color:var(--muted); background:var(--surface-2); border:1px solid var(--line-2); border-radius:100px; padding:4px 11px; }
   .reason.key { color:var(--accent-strong); background:var(--accent-soft); border-color:var(--accent); }
@@ -270,7 +289,7 @@
       <button class="out" id="signout">Sign out</button>
     </div>
     <div class="tabs">
-      <button data-tab="portfolio" class="on">Portfolio</button>
+      <button data-tab="portfolio" class="on">Overview</button>
       <button data-tab="accounts">Accounts</button>
       <button data-tab="list">My List <span class="listcount" id="listCount" style="display:none">0</span></button>
     </div>
@@ -849,27 +868,89 @@
   function contactsHtml(a){
     var bits=[];
     if(a.phone) bits.push('<a href="tel:'+esc(a.phone)+'"><span class="ico">&#9742;</span>'+esc(a.phone)+'</a>');
+    // Email is absent for most of the country (populated in ON/AB/QC/BC only),
+    // so it renders when present and leaves no gap when it isn't.
+    // `email_source` distinguishes an address the clinic GAVE us from one
+    // scraped off a public page — a rep should know which they are writing to.
+    if(a.email){
+      var given=(a.email_source==='owner'||a.email_source==='claimed');
+      bits.push('<a href="mailto:'+esc(a.email)+'"><span class="ico">&#9993;</span>'+esc(a.email)+
+        (given?'<span class="vc" title="Provided by the clinic through SkinDay">Given</span>':'')+'</a>');
+    }
     if(a.website) bits.push('<a href="'+esc(a.website)+'" target="_blank" rel="noopener"><span class="ico">&#8599;</span>Website</a>');
     if(a.neighbourhood) bits.push('<span><span class="ico">&#9678;</span>'+esc(a.neighbourhood)+'</span>');
     return bits.length?'<div class="contacts">'+bits.join('')+'</div>':'';
   }
-  // One stable hue per manufacturer, from the name itself, so the palette needs
-  // no config and never runs out. Saturation and lightness are fixed low, which
-  // keeps forty makers looking like one family rather than a paint chart.
-  var HUE_CACHE={};
-  function mfrColor(name){
-    if(!name) return 'var(--line)';
-    if(HUE_CACHE[name]) return HUE_CACHE[name];
-    var h=0; for(var i=0;i<name.length;i++){ h=(h*31+name.charCodeAt(i))>>>0; }
-    var c='hsl('+(h%360)+',42%,58%)';
-    HUE_CACHE[name]=c; return c;
-  }
+  // Devices grouped under their manufacturer. Tenant's group always first and
+  // accented; competitors follow by how much of the clinic they hold, which is
+  // the order a rep cares about. Unattributed devices collect under "Other" at
+  // the end rather than being dropped.
   function platesHtml(devs){
     if(!devs||!devs.length) return '';
-    return '<div class="plates">'+devs.map(function(d){
-      return '<span class="plate '+(d.is_ours?'ours':'')+'" title="'+esc(d.manufacturer||'')+'">'+
-             '<span class="mdot" style="background:'+mfrColor(d.manufacturer)+'"></span>'+esc(d.model)+'</span>';
-    }).join('')+'</div>';
+    var groups={}, order=[];
+    devs.forEach(function(d){
+      var m=d.manufacturer||'Other';
+      if(!groups[m]){ groups[m]={ name:m, ours:!!d.is_ours, devs:[] }; order.push(m); }
+      if(d.is_ours) groups[m].ours=true;
+      groups[m].devs.push(d);
+    });
+    order.sort(function(a,b){
+      var A=groups[a], B=groups[b];
+      if(A.ours!==B.ours) return A.ours?-1:1;
+      if(A.name==='Other') return 1;
+      if(B.name==='Other') return -1;
+      if(A.devs.length!==B.devs.length) return B.devs.length-A.devs.length;
+      return A.name<B.name?-1:1;
+    });
+    return '<div class="mfrs">'+order.map(function(m){
+      var g=groups[m];
+      return '<div class="mfr'+(g.ours?' ours':'')+'">'+
+        '<div class="mn">'+esc(g.name)+(g.devs.length>1?' <span class="ct">'+g.devs.length+'</span>':'')+'</div>'+
+        '<div class="md">'+g.devs.map(function(d){
+          return '<span class="plate'+(d.is_ours?' ours':'')+'" role="button" tabindex="0"'+
+                 ' data-ev="'+esc(JSON.stringify({
+                     m:d.model||'', t:d.matched_text||'', u:d.source_url||'',
+                     s:d.status||'', d:d.last_seen||''
+                   }))+'">'+esc(d.model)+'</span>';
+        }).join('')+'</div>'+
+      '</div>';
+    }).join('')+'</div><div class="evslot"></div>';
+  }
+  // One panel per card, replaced on each click, so a rep never ends up with six
+  // open boxes. Clicking the same plate again closes it.
+  function bindEvidence(root){
+    Array.prototype.forEach.call(root.querySelectorAll('.plate'),function(p){
+      function open(e){
+        e.stopPropagation();
+        var card=p.closest('.acct')||root;
+        var slot=card.querySelector('.evslot'); if(!slot) return;
+        var was=p.classList.contains('on');
+        Array.prototype.forEach.call(card.querySelectorAll('.plate.on'),function(o){ o.classList.remove('on'); });
+        if(was){ slot.innerHTML=''; return; }
+        p.classList.add('on');
+        slot.innerHTML=evidenceHtml(JSON.parse(p.getAttribute('data-ev')));
+      }
+      p.addEventListener('click',open);
+      p.addEventListener('keydown',function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); open(e); } });
+    });
+  }
+  function evidenceHtml(v){
+    var bits=[];
+    if(v.d) bits.push('Last checked '+esc(String(v.d).slice(0,10)));
+    if(v.s) bits.push(esc(v.s==='listed'?'Listed on the clinic\u2019s own site':v.s));
+    if(v.u) bits.push('<a href="'+esc(v.u)+'" target="_blank" rel="noopener">View source</a>');
+    // The matched string IS the evidence. When it differs from the model name it
+    // is usually a treatment or a spelling variant, and that distinction is the
+    // whole point of showing this at all.
+    var loose = v.t && v.m && v.t.toLowerCase().replace(/[^a-z0-9]/g,'')
+                            !== v.m.toLowerCase().replace(/[^a-z0-9]/g,'');
+    return '<div class="ev">'+
+      '<div class="evh">Evidence for '+esc(v.m)+'</div>'+
+      (v.t ? 'Found <span class="evq">\u201c'+esc(v.t)+'\u201d</span> on the clinic\u2019s website.'
+           : 'No matched text recorded for this entry.')+
+      (loose ? '<div class="evwarn">This is not the model name itself. Worth confirming with the clinic which platform they run.</div>' : '')+
+      (bits.length?'<div class="evm">'+bits.join('')+'</div>':'')+
+    '</div>';
   }
 
   ['acctCategory','acctSegment','acctMfr','acctDist'].forEach(function(id){ el(id).addEventListener('change',loadAccounts); });
@@ -883,7 +964,7 @@
     el('acctCount').textContent=rows.length+(rows.length===200?'+ shown':' identified accounts');
     if(!rows.length){ el('acctList').innerHTML='<div class="empty">No accounts match this filter.</div>'; return; }
     el('acctList').innerHTML=rows.map(function(a){ return acctCard(a); }).join('');
-    wireSaveButtons(el('acctList'));
+    wireSaveButtons(el('acctList')); bindEvidence(el('acctList'));
   }
   function acctCard(a){
     var saved=savedIds[a.clinic_id];
@@ -953,6 +1034,7 @@
         contactsHtml(a)+platesHtml(a.devices)+noteBlock+commentsHtml(a)+
       '</div>';
     }).join('');
+    bindEvidence(el('savedList'));
     Array.prototype.forEach.call(el('savedList').querySelectorAll('.savenote'),function(btn){
       btn.addEventListener('click',function(){ var cid=btn.getAttribute('data-cid');
         var ta=el('savedList').querySelector('textarea.note-edit[data-cid="'+cid+'"]');
