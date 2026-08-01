@@ -1061,6 +1061,9 @@
             <option value="exact">Named in the text only</option>
             <option value="blog_only">Blog mentions only</option>
           </select>
+          <select class="form-input" id="dc-cand-device" style="max-width:280px;" onchange="dcLoadCandidates()">
+            <option value="">Every device</option>
+          </select>
           <button class="btn-ghost" onclick="dcLoadCandidates()">Refresh</button>
           <span id="dc-cand-stats" style="font-size:.82rem;color:var(--muted);"></span>
         </div>
@@ -1747,16 +1750,33 @@ async function dcLoadStats() {
     el.textContent = data.counts.pending;
     el.classList.toggle('zero', data.counts.pending === 0);
   }
+
+  // Rebuild the device filter from what is actually waiting, keeping whatever
+  // is currently selected. The counts sit in the option text so a device that
+  // dominates the queue is obvious before anyone selects all.
+  const sel = document.getElementById('dc-cand-device');
+  if (sel && Array.isArray(data.by_device)) {
+    const keep = sel.value;
+    let opts = '<option value="">Every device (' + data.counts.pending + ')</option>';
+    data.by_device.forEach(function (d) {
+      opts += '<option value="' + d.device_id + '">' +
+              fvEscape(d.model) + ' · ' + fvEscape(d.manufacturer || '—') +
+              ' (' + d.pending + ')</option>';
+    });
+    sel.innerHTML = opts;
+    if (keep && sel.querySelector('option[value="' + keep + '"]')) sel.value = keep;
+  }
 }
 
 async function dcLoadCandidates() {
   const status = document.getElementById('dc-cand-status').value;
   const conf   = document.getElementById('dc-cand-conf').value;
+  const device = document.getElementById('dc-cand-device').value;
   const list   = document.getElementById('dc-cand-list');
   list.innerHTML = '<div class="loading-state"><div class="spinner"></div> Loading candidates…</div>';
   dcCandMsg('');
 
-  const { ok, data } = await dcCall({ action: 'list-candidates', status: status, confidence: conf, limit: 300 });
+  const { ok, data } = await dcCall({ action: 'list-candidates', status: status, confidence: conf, device_id: device, limit: 300 });
   if (!ok) {
     list.innerHTML = '<div class="empty-state"><div class="empty-icon">!</div><div class="empty-title">Could not load candidates</div><div class="empty-desc">' +
       fvEscape((data && data.error) || 'Please try again.') + '</div></div>';
