@@ -613,7 +613,12 @@
   });
   el('selHood').addEventListener('change',function(){ geo.neighbourhood=this.value; onGeoChange(); });
   el('geoReset').addEventListener('click',function(){ geo={province:'',city:'',neighbourhood:''}; el('selProvince').value=''; el('selHood').style.display='none'; el('sepHood').style.display='none'; this.style.display='none'; onGeoChange(); });
-  function onGeoChange(){ loaded.accounts=false; refreshPortfolio(); loadFilterOptions(); if(el('panel-accounts').classList.contains('on')) loadAccounts(); }
+  function onGeoChange(){
+    loaded.accounts=false; loaded.list=false;
+    refreshPortfolio(); loadFilterOptions();
+    if(el('panel-accounts').classList.contains('on')) loadAccounts();
+    if(el('panel-list').classList.contains('on')) loadSaved();
+  }
 
   function refreshPortfolio(){
     el('hero').innerHTML='<div class="empty"><span class="spin"></span></div>';
@@ -758,6 +763,8 @@
   }
 
   function loadSavedIds(){ api('list_saved',{}).then(function(res){ (res.saved||[]).forEach(function(s){ savedIds[s.clinic_id]=true; }); updateListCount(); }).catch(function(){}); }
+  // The badge counts what is in the current territory, so it agrees with the
+  // list underneath it rather than with the whole country.
   function updateListCount(){ var n=Object.keys(savedIds).length; var c=el('listCount'); c.textContent=n; c.style.display=n?'':'none'; }
   function loadSaved(){ loaded.list=true; el('savedList').innerHTML='<div class="empty"><span class="spin"></span></div>'; api('list_saved',{}).then(function(res){ renderSaved(res.saved||[]); }).catch(handleErr); }
   function whenTxt(iso){
