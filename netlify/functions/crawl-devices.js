@@ -238,6 +238,16 @@ function buildMatcher(devices) {
     const exclTokens = [...new Set(
       (d.exclusion_phrases || []).map(p => norm(p)).filter(Boolean)
     )];
+    // ⚠️ PER-ALIAS CORROBORATION. `name_is_also_generic` is all-or-nothing on a
+    // DEVICE, which is too blunt: "Resolve" needs a Solta or Fraxel nearby to
+    // mean anything, while "Fraxel" itself does not. Listing the risky ALIAS
+    // here settles the ambiguous ones without deleting them — the alias keeps
+    // working on real pages and stops firing on ordinary prose. Multi-word
+    // aliases are exempt from corroboration elsewhere, so this is the only way
+    // to constrain phrases like "Broad Band Light" or "Nano Fractional".
+    const corrobAliases = new Set(
+      (d.corroborate_aliases || []).map(a => norm(a)).filter(Boolean)
+    );
     for (const name of [d.model, ...(d.model_aliases || [])]) {
       for (const tok of tokenVariants(name)) {
         if (tok.length < 3) continue;
@@ -255,6 +265,7 @@ function buildMatcher(devices) {
           exclTokens: exclAdj,
           exclNear: exclNear,
           corroborate: needsCorroboration(tok, !!d.name_is_also_generic)
+                       || corrobAliases.has(norm(name))
         });
       }
     }
@@ -1150,7 +1161,7 @@ async function doCrawl(supabase, body) {
   // update and never a redeploy.
   const { data: devices, error: refErr } = await supabase
     .from('device_reference')
-    .select('id, model, model_aliases, manufacturer, manufacturer_aliases, category, name_is_also_generic, exclusion_phrases, active')
+    .select('id, model, model_aliases, manufacturer, manufacturer_aliases, category, name_is_also_generic, exclusion_phrases, corroborate_aliases, active')
     .eq('active', true);
   if (refErr) throw refErr;
   const matcher = buildMatcher(devices || []);
@@ -1206,20 +1217,36 @@ async function doCrawl(supabase, body) {
           });
         }
       }
+      // ⚠️⚠️ NOT a plain upsert any more. `ignore duplicates` meant a re-crawl
+      // could only ever ADD a clinic it had never matched — it could never
+      // revisit one it had seen, so stale pre-fix rows survived a full crawl
+      // untouched and the run afterwards reported almost nothing. A monthly
+      // schedule built on that inherits every earlier mistake permanently.
+      //
+      // upsert_device_candidates() refreshes the evidence every run and keeps
+      // the human decision, EXCEPT when matched_text changes — a genuinely
+      // different claim goes back to pending. So a rejected row cannot be
+      // resurrected by re-reading the same page, and a device the clinic newly
+      // advertises does surface.
       for (let i = 0; i < rows.length; i += 200) {
         const slice = rows.slice(i, i + 200);
-        const { error } = await supabase.from('clinic_device_candidates')
-          .upsert(slice, { onConflict: 'clinic_id,device_id,source_url', ignoreDuplicates: true });
-        if (!error) inserted += slice.length;
-        else out.lastError = 'candidate insert: ' + error.message;
+        const { data, error } = await supabase.rpc('upsert_device_candidates', { p_rows: slice });
+        if (!error) {
+          inserted += slice.length;
+          for (const r of (data || [])) {
+            if (r.action === 'inserted') out.candidatesNew = (out.candidatesNew || 0) + Number(r.n);
+            else out.candidatesRefreshed = (out.candidatesRefreshed || 0) + Number(r.n);
+          }
+        } else out.lastError = 'candidate upsert: ' + error.message;
       }
     }
 
     // ---- sightings: one row per (clinic, device, run, url), plain insert -----
-    // The candidate table freezes crawled_at at first sighting because it is
-    // `on conflict do nothing`. Sightings do NOT: every run records what THIS
-    // run's matcher believed, so a re-find is visible instead of dropped. This
-    // never touches a candidate row, so no approve/reject can be clobbered.
+    // The candidate table now carries ONE standing row per clinic+device,
+    // refreshed each run. Sightings remain the per-run history: every run
+    // records what THIS run's matcher believed, at which url, so the trail
+    // survives even after a candidate is refreshed or its status changes.
+    // This never touches a candidate row, so no approve/reject can be clobbered.
     // ignoreDuplicates handles the chain fan-out reading one host once per run.
     if (out.matches.length && clinicIds.length) {
       const sightRows = [];
@@ -1360,8 +1387,28 @@ async function candidateStats(supabase) {
       c('clinic_devices', null, null),
       c('device_unknown_tokens', null, null)
     ]);
+  // Per-device breakdown of what is waiting. Drives the device filter, and on
+  // its own it is a useful signal: one device dominating the queue is either a
+  // real discovery or a bad alias, and either way it wants looking at before
+  // anyone approves in bulk.
+  let byDevice = [];
+  try {
+    const { data: pend } = await supabase
+      .from('clinic_device_candidates').select('device_id').eq('status', 'pending').limit(20000);
+    const tally = new Map();
+    for (const r of (pend || [])) tally.set(r.device_id, (tally.get(r.device_id) || 0) + 1);
+    if (tally.size) {
+      const { data: devs } = await supabase
+        .from('device_reference').select('id, model, manufacturer').in('id', [...tally.keys()]);
+      byDevice = (devs || []).map(d => ({
+        device_id: d.id, model: d.model, manufacturer: d.manufacturer, pending: tally.get(d.id) || 0
+      })).sort((a, b) => b.pending - a.pending || String(a.model).localeCompare(String(b.model)));
+    }
+  } catch (e) { byDevice = []; }
+
   return {
     counts: { pending, approved, rejected },
+    by_device: byDevice,
     queue: { pending: queuePending, done: queueDone, empty: queueEmpty, needs_render: needsRender, error: queueError },
     clinic_devices: listed,
     unknown_tokens: unknowns
@@ -1380,6 +1427,11 @@ async function listCandidates(supabase, body) {
     .order('host', { ascending: true })
     .limit(limit);
   if (body.confidence) q = q.eq('confidence', body.confidence);
+  // ⚠️ Reviewing one device at a time is the difference between a decision and
+  // a rubber stamp. Without this, "select all" on a pending list takes every
+  // device at once — which is how 46 DermaV rows we had deliberately set aside
+  // went live alongside a legitimate 281-clinic Bela MD batch.
+  if (body.device_id) q = q.eq('device_id', parseInt(body.device_id, 10));
 
   const { data: cands, error } = await q;
   if (error) throw error;
