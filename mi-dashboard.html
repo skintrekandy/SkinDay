@@ -90,6 +90,7 @@
   .member.off { opacity:.5; }
   .rpill { font-family:var(--font-mono); font-size:.66rem; letter-spacing:.06em; text-transform:uppercase; border-radius:100px; padding:4px 9px; border:1px solid var(--line); color:var(--muted); }
   .rpill.you { border-color:var(--accent); color:var(--accent-strong); }
+  .quiet.on { border-color:var(--accent); color:var(--accent-strong); background:var(--accent-soft); }
   .invite-link { margin-top:14px; padding:14px; border-radius:var(--radius-sm); background:var(--surface-2); font-family:var(--font-mono); font-size:.8rem; word-break:break-all; line-height:1.6; border:1px solid var(--line); }
 
   .note-ro { margin-top:12px; padding:12px 14px; border-radius:var(--radius-sm); background:var(--surface-2); border:1px solid var(--line-2); font-size:14.5px; line-height:1.55; color:var(--ink-2); white-space:pre-wrap; }
@@ -368,6 +369,15 @@
         </div>
       </div>
 
+      <div class="sec" id="secFocus">
+        <div class="sec-head" role="button" tabindex="0" aria-expanded="false"><span class="chevron">&#9662;</span>
+          <span class="eyebrow">Focus devices</span>
+          <h2>What the team is pushing.</h2>
+          <p>Marked devices are highlighted across the dashboard so reps can see at a glance where the current push is. Change these whenever priorities move.</p>
+        </div>
+        <div class="box"><div id="focusList"><div class="empty"><span class="spin"></span></div></div></div>
+      </div>
+
       <div class="sec" id="secTeam">
         <div class="sec-head" role="button" tabindex="0" aria-expanded="false"><span class="chevron">&#9662;</span>
           <span class="eyebrow">Team</span>
@@ -533,7 +543,7 @@
     Array.prototype.forEach.call(document.querySelectorAll('.tabs button'),function(x){ x.classList.remove('on'); });
     Array.prototype.forEach.call(document.querySelectorAll('.panel'),function(p){ p.classList.remove('on'); });
     el('panel-settings').classList.add('on');
-    loadTeam();
+    loadTeam(); loadFocus();
   });
   // collapsible sections, collapsed until asked for
   Array.prototype.forEach.call(document.querySelectorAll('#panel-settings .sec > .sec-head[role=button]'),function(h){
@@ -551,6 +561,28 @@
       b.addEventListener('click',function(){
         var c=b.getAttribute('data-c');
         el('setAccentHex').value=c; el('setAccent').value=c; renderSwatches(c);
+      });
+    });
+  }
+
+  function loadFocus(){
+    if(!ME||ME.role!=='admin') return;
+    api('list_focus',{}).then(function(res){ renderFocus(res.focus||[]); })
+      .catch(function(){ el('focusList').innerHTML='<div class="note">Could not load devices.</div>'; });
+  }
+  function renderFocus(rows){
+    if(!rows.length){ el('focusList').innerHTML='<div class="note">No devices on file for your portfolio yet.</div>'; return; }
+    el('focusList').innerHTML=rows.map(function(d){
+      return '<div class="member">'+
+        '<div class="grow"><div class="em">'+esc(d.model)+'</div>'+
+        '<div class="sub">'+(d.installs||0)+' identified accounts</div></div>'+
+        '<button class="quiet focustog'+(d.is_focus?' on':'')+'" data-model="'+esc(d.model)+'" data-on="'+(d.is_focus?'0':'1')+'">'+
+        (d.is_focus?'&#10003; Focus':'Set as focus')+'</button></div>';
+    }).join('');
+    Array.prototype.forEach.call(el('focusList').querySelectorAll('.focustog'),function(b){
+      b.addEventListener('click',function(){
+        api('set_focus',{model:b.getAttribute('data-model'),on:b.getAttribute('data-on')==='1'})
+          .then(loadFocus).catch(handleErr);
       });
     });
   }
@@ -802,7 +834,7 @@
     var list=(a.comments||[]).map(function(c){
       return '<div class="cmt"><div class="cmeta">'+esc(c.author)+' &middot; '+esc(whenTxt(c.at))+
         (c.edited_at?' &middot; edited '+esc(whenTxt(c.edited_at)):'')+
-        (c.mine?' <button class="linkish delcmt" data-id="'+c.id+'">delete</button>':'')+
+        ((c.mine||(ME&&ME.role==='admin'))?' <button class="linkish delcmt" data-id="'+c.id+'">delete</button>':'')+
         '</div><div class="cbody">'+esc(c.body)+'</div></div>';
     }).join('');
     return '<div class="thread">'+list+
