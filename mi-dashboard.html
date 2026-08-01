@@ -850,8 +850,11 @@
                (a.reviews!=null?' \u00b7 '+a.reviews+' reviews':'')+
                (a.is_mine?'':' \u00b7 saved by '+esc(a.saved_by||''));
       // A note belongs to whoever wrote it. Anyone else reads it and comments below.
-      var noteBlock = a.can_edit
+      // Admins moderate the whole board, including notes they did not write.
+      var canEdit = a.can_edit || (ME && ME.role === 'admin');
+      var noteBlock = canEdit
         ? '<textarea class="note-edit" data-cid="'+esc(a.clinic_id)+'" placeholder="Add a note (call outcome, contact name, next step)...">'+esc(a.note||'')+'</textarea>'+
+          (a.is_mine?'':'<div class="cmeta">note by '+esc(a.saved_by||'')+'</div>')+
           '<div class="actions"><button class="btn mini savenote" data-cid="'+esc(a.clinic_id)+'">Save note</button>'+
           '<span class="note-saved" data-cid="'+esc(a.clinic_id)+'" style="display:none">saved</span>'+
           '<button class="btn mini removebtn" data-cid="'+esc(a.clinic_id)+'">Remove</button>'+
