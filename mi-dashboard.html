@@ -94,6 +94,17 @@
   .invite-link { margin-top:14px; padding:14px; border-radius:var(--radius-sm); background:var(--surface-2); font-family:var(--font-mono); font-size:.8rem; word-break:break-all; line-height:1.6; border:1px solid var(--line); }
 
   .note-ro { margin-top:12px; padding:12px 14px; border-radius:var(--radius-sm); background:var(--surface-2); border:1px solid var(--line-2); font-size:14.5px; line-height:1.55; color:var(--ink-2); white-space:pre-wrap; }
+  /* Both blocks announce who can read them. "Private note" / "only you" and
+     "Team discussion" / "everyone on your team" answer the question a rep has
+     before typing, which the old two-identical-textareas layout did not. */
+  .nblock { margin-top:16px; border-top:1px solid var(--line-2); padding-top:12px; }
+  .bhead { display:flex; align-items:baseline; gap:9px; margin-bottom:2px; }
+  .bhead .blab { font-family:var(--font-mono); font-size:10.5px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-2); }
+  .bhead .bvis { font-size:11.5px; color:var(--faint); }
+  .bhead .bcount { font-family:var(--font-mono); font-size:10px; color:var(--muted); background:var(--surface-2); border:1px solid var(--line-2); border-radius:100px; padding:0 6px; }
+  .nedit { margin-top:10px; }
+  .cardfoot { margin-top:16px; padding-top:12px; border-top:1px solid var(--line-2); display:flex; align-items:center; }
+  .notetoggle, .cmttoggle { margin-top:9px; }
   .thread { margin-top:14px; border-top:1px solid var(--line-2); padding-top:12px; }
   .cmt { padding:9px 0; border-bottom:1px solid var(--line-2); }
   .cmt:last-of-type { border-bottom:0; }
@@ -999,6 +1010,10 @@
     if(mins<10080) return Math.round(mins/1440)+' d ago';
     return d.toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'});
   }
+  // Two always-open textareas took most of a card and said nothing about who
+  // would read them. Both are collapsed now, and each is labelled by VISIBILITY
+  // rather than purpose — "private note" and "team discussion" answer the
+  // question a rep actually has before typing.
   function commentsHtml(a){
     var list=(a.comments||[]).map(function(c){
       return '<div class="cmt"><div class="cmeta">'+esc(c.author)+' &middot; '+esc(whenTxt(c.at))+
@@ -1006,9 +1021,17 @@
         ((c.mine||(ME&&ME.role==='admin'))?' <button class="linkish delcmt" data-id="'+c.id+'">delete</button>':'')+
         '</div><div class="cbody">'+esc(c.body)+'</div></div>';
     }).join('');
-    return '<div class="thread">'+list+
-      '<div class="cadd"><textarea class="cinput" data-cid="'+esc(a.clinic_id)+'" rows="2" placeholder="Add a comment for the team..."></textarea>'+
-      '<button class="quiet addcmt" data-cid="'+esc(a.clinic_id)+'">Comment</button></div></div>';
+    var n=(a.comments||[]).length;
+    return '<div class="thread">'+
+      '<div class="bhead"><span class="blab">Team discussion</span>'+
+        '<span class="bvis">everyone on your team</span>'+
+        (n?'<span class="bcount">'+n+'</span>':'')+'</div>'+
+      list+
+      '<div class="cadd" data-cid="'+esc(a.clinic_id)+'" style="display:none">'+
+        '<textarea class="cinput" data-cid="'+esc(a.clinic_id)+'" rows="2" placeholder="Add a comment for the team..."></textarea>'+
+        '<button class="quiet addcmt" data-cid="'+esc(a.clinic_id)+'">Comment</button></div>'+
+      '<button class="linkish cmttoggle" data-cid="'+esc(a.clinic_id)+'">'+
+        (n?'Add a comment':'Start a discussion')+'</button></div>';
   }
   function renderSaved(rows){
     savedIds={}; rows.forEach(function(r){ if(r.is_mine) savedIds[r.clinic_id]=true; }); updateListCount();
@@ -1021,28 +1044,75 @@
       // A note belongs to whoever wrote it. Anyone else reads it and comments below.
       // Admins moderate the whole board, including notes they did not write.
       var canEdit = a.can_edit || (ME && ME.role === 'admin');
+      var cid = esc(a.clinic_id);
+      var noteRead = a.note
+        ? '<div class="note-ro">'+esc(a.note)+
+          (a.is_mine?'':'<div class="cmeta">note by '+esc(a.saved_by||'')+'</div>')+'</div>'
+        : '';
       var noteBlock = canEdit
-        ? '<textarea class="note-edit" data-cid="'+esc(a.clinic_id)+'" placeholder="Add a note (call outcome, contact name, next step)...">'+esc(a.note||'')+'</textarea>'+
-          (a.is_mine?'':'<div class="cmeta">note by '+esc(a.saved_by||'')+'</div>')+
-          '<div class="actions"><button class="btn mini savenote" data-cid="'+esc(a.clinic_id)+'">Save note</button>'+
-          '<span class="note-saved" data-cid="'+esc(a.clinic_id)+'" style="display:none">saved</span>'+
-          '<button class="btn mini removebtn" data-cid="'+esc(a.clinic_id)+'">Remove</button>'+
-          (when?'<span class="cmeta" style="margin-left:auto">note '+esc(whenTxt(when))+'</span>':'')+'</div>'
-        : (a.note ? '<div class="note-ro">'+esc(a.note)+'<div class="cmeta">'+esc(a.saved_by||'')+
-                    (when?' &middot; '+esc(whenTxt(when)):'')+'</div></div>' : '');
-      return '<div class="acct" data-cid="'+esc(a.clinic_id)+'">'+
+        ? '<div class="nblock">'+
+            '<div class="bhead"><span class="blab">Private note</span>'+
+              '<span class="bvis">only you</span>'+
+              (when?'<span class="cmeta" style="margin-left:auto">'+esc(whenTxt(when))+'</span>':'')+'</div>'+
+            noteRead+
+            '<div class="nedit" data-cid="'+cid+'" style="display:none">'+
+              '<textarea class="note-edit" data-cid="'+cid+'" placeholder="Call outcome, contact name, next step...">'+esc(a.note||'')+'</textarea>'+
+              '<div class="actions"><button class="btn mini savenote" data-cid="'+cid+'">Save note</button>'+
+              '<button class="btn mini notecancel" data-cid="'+cid+'">Cancel</button>'+
+              '<span class="note-saved" data-cid="'+cid+'" style="display:none">saved</span></div>'+
+            '</div>'+
+            '<button class="linkish notetoggle" data-cid="'+cid+'">'+(a.note?'Edit note':'Add a note')+'</button>'+
+          '</div>'
+        : (a.note ? '<div class="nblock"><div class="bhead"><span class="blab">Note</span>'+
+                    '<span class="bvis">'+esc(a.saved_by||'')+'</span></div>'+noteRead+'</div>' : '');
+      var foot = '<div class="cardfoot"><button class="btn mini removebtn" data-cid="'+cid+'">Remove from my list</button></div>';
+      return '<div class="acct" data-cid="'+cid+'">'+
         '<div class="head"><span class="aname">'+esc(a.name)+'</span><span class="ameta">'+meta+'</span></div>'+
-        contactsHtml(a)+platesHtml(a.devices)+noteBlock+commentsHtml(a)+
+        contactsHtml(a)+platesHtml(a.devices)+noteBlock+commentsHtml(a)+foot+
       '</div>';
     }).join('');
     bindEvidence(el('savedList'));
+    function toggleBox(sel, btnSel, openLabel){
+      Array.prototype.forEach.call(el('savedList').querySelectorAll(btnSel),function(btn){
+        btn.addEventListener('click',function(){
+          var cid=btn.getAttribute('data-cid');
+          var box=el('savedList').querySelector(sel+'[data-cid="'+cid+'"]');
+          if(!box) return;
+          var open=box.style.display!=='none';
+          box.style.display=open?'none':'';
+          btn.textContent=open?openLabel(btn):'Cancel';
+          if(!open){ var f=box.querySelector('textarea'); if(f) f.focus(); }
+        });
+      });
+    }
+    toggleBox('.nedit','.notetoggle',function(b){
+      var card=b.closest('.acct');
+      return card && card.querySelector('.note-ro') ? 'Edit note' : 'Add a note';
+    });
+    toggleBox('.cadd','.cmttoggle',function(b){
+      var card=b.closest('.acct');
+      return card && card.querySelector('.cmt') ? 'Add a comment' : 'Start a discussion';
+    });
+    Array.prototype.forEach.call(el('savedList').querySelectorAll('.notecancel'),function(btn){
+      btn.addEventListener('click',function(){
+        var cid=btn.getAttribute('data-cid');
+        var box=el('savedList').querySelector('.nedit[data-cid="'+cid+'"]');
+        if(box) box.style.display='none';
+        var t=el('savedList').querySelector('.notetoggle[data-cid="'+cid+'"]');
+        var card=btn.closest('.acct');
+        if(t) t.textContent=(card && card.querySelector('.note-ro'))?'Edit note':'Add a note';
+      });
+    });
     Array.prototype.forEach.call(el('savedList').querySelectorAll('.savenote'),function(btn){
       btn.addEventListener('click',function(){ var cid=btn.getAttribute('data-cid');
         var ta=el('savedList').querySelector('textarea.note-edit[data-cid="'+cid+'"]');
         api('set_note',{clinic_id:cid,note:ta.value}).then(function(res){
           var s2=el('savedList').querySelector('.note-saved[data-cid="'+cid+'"]');
-          if(res.result&&res.result.ok===false){ s2.textContent='not yours'; }
-          s2.style.display=''; setTimeout(function(){ s2.style.display='none'; s2.textContent='saved'; },1500);
+          if(res.result&&res.result.ok===false){ s2.textContent='not yours'; s2.style.display='';
+            setTimeout(function(){ s2.style.display='none'; s2.textContent='saved'; },1500); return; }
+          // Reload so the collapsed card shows the note we just wrote rather
+          // than an editor the user has to close by hand.
+          loadSaved();
         }).catch(handleErr); });
     });
     Array.prototype.forEach.call(el('savedList').querySelectorAll('.removebtn'),function(btn){
