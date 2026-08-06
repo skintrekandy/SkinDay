@@ -547,9 +547,16 @@ exports.handler = async (event) => {
         if (SLUG_EXACT[neighbourhood]) {
           q = q.eq('neighbourhood', SLUG_EXACT[neighbourhood]);
         } else {
-          // Fuzzy match — handles periods/abbreviations e.g. "st-catharines" → "St. Catharines"
+          // ⚠️⚠️ NO LEADING OR TRAILING WILDCARD. `%richmond%` matched
+          // "Richmond Hill" (Ontario, 103 clinics) on a search for Richmond
+          // (BC, 63) — a substring match across two provinces.
+          //
+          // The wildcards BETWEEN words are the ones doing real work: they let
+          // "st-catharines" find "St. Catharines" across the period. Wrapping
+          // the whole pattern was never needed for that, and it silently turns
+          // every place name into a prefix search.
           const words = neighbourhood.split('-').filter(Boolean);
-          const pattern = '%' + words.join('%') + '%';
+          const pattern = words.join('%');
           q = q.ilike('neighbourhood', pattern);
         }
       }
