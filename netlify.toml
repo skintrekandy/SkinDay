@@ -171,6 +171,38 @@
   status = 200
   force  = true
 
+# ── DEVICE x PROVINCE PAGES (SSR, M19.3) ─────────────────────────
+# /devices/{model}/{province}  e.g. /devices/morpheus8/ontario
+# /devices/sitemap.xml
+#
+# These sit UNDER the existing /devices/{model} pages deliberately. A separate
+# /technology/ namespace would have been a second device URL family competing
+# with this one for the same queries — the cannibalisation problem the one-
+# grain-per-area rule exists to prevent. National page stays device-level;
+# these add the province cut beneath it.
+#
+# Grain is PROVINCE for Canada, measured 2026-08-06: the metro cut gives 3,860
+# thin combinations at 17 listings each because Canadian rows carry city, not
+# metro. Province gives 261 pages at 40 listings each. Only combinations with
+# 10+ clinics render; anything thinner returns a real 404.
+#
+# ⚠️ BOTH RULES MUST COME BEFORE /devices/* — Netlify matches top-to-bottom and
+# the splat below would swallow them. Same trap the legacy clinic-slug 301s
+# are guarded against further up this file.
+# ⚠️ Do NOT map bare /devices or /devices/ here; that index belongs to
+# render-devices.js.
+[[redirects]]
+  from   = "/devices/sitemap.xml"
+  to     = "/.netlify/functions/device-page"
+  status = 200
+  force  = true
+
+[[redirects]]
+  from   = "/devices/:model/:province"
+  to     = "/.netlify/functions/device-page"
+  status = 200
+  force  = true
+
 # Slug passed as both a path splat and a query param, for the same reason as
 # the clinic rule: whichever way Netlify populates the event, the function
 # finds it.
