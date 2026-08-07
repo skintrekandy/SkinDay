@@ -62,6 +62,96 @@ const COST_GUIDE_PAGES = [
   'botox-cost-toronto', 'botox-cost-vancouver', 'botox-cost-london-ontario',
 ].map(slug => ({ loc: `/guide/${slug}`, changefreq: 'weekly', priority: 0.9 }));
 
+// ── DEVICE PAGES ─────────────────────────────────────────────────────────────
+// Clears part of the M39 TODO in netlify.toml and adds the M19.3 province
+// pages in the same pass:
+//   /devices/{model}            national, served by render-devices.js
+//   /devices/{model}/{province} served by device-page.js
+//
+// ⚠️ THE FLOOR AND THE GRAIN ARE COPIED FROM device-page.js ON PURPOSE. That
+// function 404s any combination under DEVICE_MIN_CLINICS and excludes devices
+// whose name is also an ordinary word. If the two ever disagree the sitemap
+// advertises URLs that 404, which is worse than listing nothing.
+//
+// ⚠️ THE NATIONAL PAGES ARE DELIBERATELY UNDER-LISTED. render-devices.js owns
+// which models get a /devices/{model} page and I have not read its gate, so
+// only models with DEVICE_MIN_CLINICS+ Canadian clinics are listed here — a
+// model that dense is certainly served. Under-listing costs slower indexing;
+// over-listing costs soft-404s. Read render-devices.js to close this properly.
+const DEVICE_MIN_CLINICS = 10;
+
+function devSlug(v) {
+  return String(v == null ? '' : v)
+    .toLowerCase()
+    .replace(/\+/g, ' plus ')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+const PROVINCE_SLUGS = {
+  ab: 'alberta', bc: 'british-columbia', mb: 'manitoba', nb: 'new-brunswick',
+  nl: 'newfoundland-and-labrador', ns: 'nova-scotia', nt: 'northwest-territories',
+  nu: 'nunavut', on: 'ontario', pe: 'prince-edward-island', qc: 'quebec',
+  sk: 'saskatchewan', yt: 'yukon'
+};
+
+async function fetchDeviceEntries(supabase) {
+  const { data: devices, error: dErr } = await supabase
+    .from('device_reference')
+    .select('id, model')
+    .eq('active', true)
+    .eq('name_is_also_generic', false);
+  if (dErr) throw new Error(`device_reference fetch failed: ${dErr.message}`);
+  const modelById = new Map((devices || []).map(d => [d.id, d.model]));
+
+  const national = new Map();   // deviceSlug -> Set(clinic id)
+  const byProvince = new Map(); // deviceSlug|provinceSlug -> Set(clinic id)
+
+  let from = 0;
+  for (;;) {
+    const { data, error } = await supabase
+      .from('clinic_devices')
+      .select('clinic_id, device_id, clinics!inner(id, country, province, approved)')
+      .eq('status', 'listed')
+      .eq('clinics.approved', true)
+      .eq('clinics.country', 'canada')
+      .range(from, from + PAGE_SIZE - 1);
+    if (error) throw new Error(`clinic_devices fetch failed: ${error.message}`);
+    if (!data || data.length === 0) break;
+    for (const r of data) {
+      const model = modelById.get(r.device_id);
+      if (!model) continue;
+      const d = devSlug(model);
+      if (!national.has(d)) national.set(d, new Set());
+      national.get(d).add(String(r.clinic_id));
+
+      const prov = r.clinics && r.clinics.province;
+      // The province slug is spelled out, never the two-letter code — a code
+      // in a search result loses its context the moment it is shared.
+      const pSlug = prov ? (PROVINCE_SLUGS[String(prov).toLowerCase()] || devSlug(prov)) : null;
+      if (!pSlug) continue;
+      const key = d + '|' + pSlug;
+      if (!byProvince.has(key)) byProvince.set(key, new Set());
+      byProvince.get(key).add(String(r.clinic_id));
+    }
+    if (data.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
+  }
+
+  const entries = [{ loc: '/devices/', changefreq: 'weekly', priority: 0.8 }];
+  for (const [d, ids] of national) {
+    if (ids.size < DEVICE_MIN_CLINICS) continue;
+    entries.push({ loc: `/devices/${d}`, changefreq: 'weekly', priority: 0.7 });
+  }
+  for (const [key, ids] of byProvince) {
+    if (ids.size < DEVICE_MIN_CLINICS) continue;
+    const [d, p] = key.split('|');
+    entries.push({ loc: `/devices/${d}/${p}`, changefreq: 'monthly',
+                   priority: ids.size >= 30 ? 0.7 : 0.6 });
+  }
+  return entries;
+}
+
 // INDEXABILITY GATE
 // Kept identical in spirit to clinicIsIndexable() in render-clinic.js so the
 // sitemap lists every page that function serves as an indexable 200, and no
@@ -200,10 +290,20 @@ exports.handler = async () => {
         lastmod: (c.updated_at || '').slice(0, 10) || TODAY,
       }));
 
+    // Device pages must never take the sitemap down: the clinic URLs are the
+    // load-bearing half and predate them.
+    let deviceEntries = [];
+    try {
+      deviceEntries = await fetchDeviceEntries(supabase);
+    } catch (e) {
+      console.error('sitemap: device pages skipped -', e.message);
+    }
+
     const allEntries = [
       ...HOMEPAGE,
       ...COST_GUIDE_PAGES,
       ...BOTOX_CITY_PAGES,
+      ...deviceEntries,
       ...clinicEntries,
     ];
 
@@ -212,7 +312,8 @@ exports.handler = async () => {
     console.log(
       `sitemap built: clinics_fetched=${clinics.length} ` +
       `indexable=${clinicEntries.length} price_ids=${priceIds.size} ` +
-      `expertise_ids=${expertiseIds.size} total_urls=${allEntries.length}`
+      `expertise_ids=${expertiseIds.size} device_urls=${deviceEntries.length} ` +
+      `total_urls=${allEntries.length}`
     );
 
     return {
