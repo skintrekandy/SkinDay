@@ -143,7 +143,7 @@ exports.handler = async (event) => {
     const [devRes, catRes] = await Promise.all([
       supabase
         .from('clinic_devices')
-        .select('clinic_id, status, device_reference!inner ( model, manufacturer, category, active )')
+        .select('clinic_id, status, device_reference!inner ( model, manufacturer, category, active, name_is_also_generic )')
         .eq('device_reference.active', true)
         .range(0, 49999),
       supabase.from('device_categories').select('category, segment, label_en, sort_order'),
@@ -218,6 +218,7 @@ exports.handler = async (event) => {
           const lab = labels[d.category] || {};
           device = {
             model: d.model, slug: slug, manufacturer: d.manufacturer,
+            name_is_also_generic: d.name_is_also_generic === true,
             category: d.category, category_label: lab.label_en || d.category,
           };
         }
@@ -233,7 +234,7 @@ exports.handler = async (event) => {
     if (!device) {
       const { data: refRow } = await supabase
         .from('device_reference')
-        .select('model, manufacturer, category')
+        .select('model, manufacturer, category, name_is_also_generic')
         .eq('active', true)
         .range(0, 999);
       const match = (refRow || []).find(r => slugifyModel(r.model) === slug);
@@ -241,7 +242,7 @@ exports.handler = async (event) => {
         return errorPage(404, 'Device not found', 'We could not find a device matching this address. <a href="/devices/">Browse all devices</a>.');
       }
       const lab = labels[match.category] || {};
-      device = { model: match.model, slug, manufacturer: match.manufacturer, category: match.category, category_label: lab.label_en || match.category };
+      device = { model: match.model, slug, manufacturer: match.manufacturer, category: match.category, category_label: lab.label_en || match.category, name_is_also_generic: match.name_is_also_generic === true };
     }
 
     if (device.category) {
@@ -294,6 +295,33 @@ exports.handler = async (event) => {
       .map(m => ({ model: m, slug: slugifyModel(m), clinics: siblingCounts[m].size }))
       .sort((a, b) => b.clinics - a.clinics).slice(0, 12);
 
+    // ── LINKS INTO THE PROVINCE PAGES (M19.3) ──────────────────────
+    // /devices/{model}/{province} is served by device-page.js. Without this
+    // block those pages are orphans reachable only from the sitemap, which is
+    // the weakest discovery path there is — Google follows links first.
+    //
+    // ⚠️ TWO CONDITIONS, both mirroring device-page.js exactly, because a link
+    // to a page that 404s is worse than no link:
+    //   - the province must have >= 10 clinics with this device
+    //   - the device's name must not also be an ordinary word (device-page.js
+    //     never renders those; /devices/elite exists here, /devices/elite/
+    //     ontario deliberately does not)
+    // The province slug is the FULL NAME (ontario, british-columbia), never the
+    // two-letter code, matching device-page.js and both sitemaps.
+    const PROVINCE_PAGE_MIN = 10;
+    const provinceLinks = device.name_is_also_generic ? [] : topProvinces
+      .filter(p => provCount[p] >= PROVINCE_PAGE_MIN)
+      .map(p => ({
+        label: provLabel(p) || p,
+        slug: slugifyModel(provLabel(p) || p),
+        clinics: provCount[p]
+      }));
+
+    const provinceBlock = provinceLinks.length ? `<div class="also-block">
+      <div class="also-label">${escapeHtml(device.model)} by province</div>
+      <div class="also-links">${provinceLinks.map(v => `<a class="also-link" href="/devices/${escapeHtml(device.slug)}/${escapeHtml(v.slug)}">${escapeHtml(v.label)} <em>${v.clinics}</em></a>`).join('')}</div>
+    </div>` : '';
+
     const siblingBlock = siblings.length ? `<div class="also-block">
       <div class="also-label">Other ${escapeHtml(String(device.category_label || '').toLowerCase())} devices</div>
       <div class="also-links">${siblings.map(s => `<a class="also-link" href="/devices/${escapeHtml(s.slug)}">${escapeHtml(s.model)} <em>${s.clinics}</em></a>`).join('')}</div>
@@ -312,6 +340,7 @@ exports.handler = async (event) => {
         </div>
       </div>
       <div class="clinic-list">${rows}</div>
+      ${provinceBlock}
       ${siblingBlock}
     </main>`;
 
