@@ -151,6 +151,47 @@ function slugifyModel(model) {
     .replace(/^-+|-+$/g, '');
 }
 
+// ⭐⭐ GENERATION FAMILIES. Splitting PicoSure Pro, Thermage FLX and Ultherapy
+// Prime into their own rows gave patients the exact names they search for, but
+// left the filter listing them as unrelated siblings — "PicoSure 182" and
+// "PicoSure Pro 73", with the real size of the installed base shown nowhere.
+//
+// `device_reference.platform` already carries the grouping, so no schema change.
+// ⚠️ BUT IT HOLDS TWO DIFFERENT RELATIONSHIPS: 'PicoSure' and 'Elite' group
+// GENERATIONS of one machine, while 'JOULE / mJOULE' and 'InMode' group
+// unrelated devices sharing a console — BBL and diVa are not versions of each
+// other. Nesting on platform blindly would file diVa under a "JOULE" heading no
+// patient has ever heard of.
+//
+// THE TEST: nest only when the platform name IS one of the models in the group.
+// A generation family is named after its flagship (PicoSure, Thermage,
+// Ultherapy, Fraxel, Icon, M22); a shared console is not.
+let FAMILY_CACHE = null;
+async function loadFamilies(supabase) {
+  if (FAMILY_CACHE) return FAMILY_CACHE;
+  const out = { parentOf: {}, isParent: {} };
+  try {
+    const { data } = await supabase
+      .from('device_reference')
+      .select('model, platform')
+      .eq('active', true);
+    const rows = data || [];
+    const norm = v => String(v == null ? '' : v).toLowerCase().replace(/[^a-z0-9]+/g, '');
+    const modelSet = new Set(rows.map(r => norm(r.model)));
+    rows.forEach(r => {
+      if (!r.platform) return;
+      const p = norm(r.platform);
+      if (!modelSet.has(p)) return;              // shared console, not a family
+      if (norm(r.model) === p) out.isParent[r.model] = true;
+      else out.parentOf[r.model] = r.platform;
+    });
+  } catch (e) {
+    console.error('family load failed (non-fatal):', e.message);
+  }
+  FAMILY_CACHE = out;
+  return out;
+}
+
 async function fetchDevicesFor(supabase, clinicIds) {
   if (!clinicIds || !clinicIds.length) return {};
   const labels = await loadCategoryLabels(supabase);
@@ -293,9 +334,26 @@ exports.handler = async (event) => {
       if (error) return { statusCode: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ error: error.message }) };
 
       const raw = facets || {};
+      const fam = await loadFamilies(supabase);
       const models = (raw.models || []).map(m => ({
         model: m.model, slug: slugifyModel(m.model), clinics: m.clinics,
+        // parent_model is set on a CHILD generation; family_clinics is the
+        // combined total carried on the parent, so the panel can render
+        // "PicoSure 255" with both generations indented beneath it.
+        parent_model: fam.parentOf[m.model] || null,
+        is_family_parent: !!fam.isParent[m.model],
       }));
+
+      // Family totals computed HERE, so the browser never has to add up counts
+      // it might get wrong, and so both surfaces agree on the number.
+      const familyTotal = {};
+      models.forEach(m => {
+        const key = m.parent_model || (m.is_family_parent ? m.model : null);
+        if (key) familyTotal[key] = (familyTotal[key] || 0) + (m.clinics || 0);
+      });
+      models.forEach(m => {
+        if (m.is_family_parent) m.family_clinics = familyTotal[m.model] || m.clinics || 0;
+      });
 
       const modelCategory = {};
       (raw.models || []).forEach(m => { if (m.category) modelCategory[m.model] = m.category; });
@@ -319,12 +377,27 @@ exports.handler = async (event) => {
 
       // Grouped the way the filter renders it, so the browser does not have to
       // reconstruct which model belongs to which category.
+      // ⚠️ ORDER BY FAMILY WEIGHT, not by the model's own count, or a child
+      // floats away from its parent. PicoSure's family is 255, which puts it
+      // above PicoWay's 150 — the honest ranking of the installed base, where
+      // before the two generations were ranked separately and neither showed it.
       const models_by_category = {};
-      models.forEach(m => {
-        const c = modelCategory[m.model];
-        if (!c) return;
-        (models_by_category[c] = models_by_category[c] || []).push(m);
-      });
+      models
+        .slice()
+        .sort((a, b) => {
+          const fa = a.parent_model || a.model, fb = b.parent_model || b.model;
+          const wa = familyTotal[fa] != null ? familyTotal[fa] : (a.clinics || 0);
+          const wb = familyTotal[fb] != null ? familyTotal[fb] : (b.clinics || 0);
+          if (wb !== wa) return wb - wa;
+          if (fa !== fb) return fa.localeCompare(fb);
+          if (!!a.parent_model !== !!b.parent_model) return a.parent_model ? 1 : -1;
+          return (b.clinics || 0) - (a.clinics || 0);
+        })
+        .forEach(m => {
+          const c = modelCategory[m.model];
+          if (!c) return;
+          (models_by_category[c] = models_by_category[c] || []).push(m);
+        });
 
       // Three tiers: group heading -> subcategory row -> model row. The group
       // count is DISTINCT CLINICS across the whole group, not a sum of its
@@ -368,14 +441,32 @@ exports.handler = async (event) => {
         .range(0, 49999);
       if (devErr) return { statusCode: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ error: devErr.message }) };
 
+      // ⭐ A PARENT SLUG SELECTS THE WHOLE FAMILY. Someone clicking "PicoSure"
+      // wants every clinic with one, not just those whose page happened to say
+      // the base model — the generations are the same machine at different ages.
+      // Selecting a CHILD stays exact: "PicoSure Pro" means the current model.
+      const fam2 = await loadFamilies(supabase);
+      const familySlugs = new Set();
+      if (slug) {
+        familySlugs.add(slug);
+        if (fam2.isParent && Object.keys(fam2.isParent).some(m => slugifyModel(m) === slug)) {
+          const parentModel = Object.keys(fam2.isParent).find(m => slugifyModel(m) === slug);
+          Object.entries(fam2.parentOf).forEach(([child, parent]) => {
+            if (parent === parentModel) familySlugs.add(slugifyModel(child));
+          });
+        }
+      }
+
       let device = null;
       const statusByClinic = {};
       const ids = new Set();
       (devRows || []).forEach(row => {
         const d = row.device_reference || {};
-        if (slug && slugifyModel(d.model) !== slug) return;
+        if (slug && !familySlugs.has(slugifyModel(d.model))) return;
         if (cat  && String(d.category || '').toLowerCase() !== cat) return;
-        if (!device) {
+        // ⚠️ Name the SELECTED device, not the first row returned — with a family
+        // selected the first row could be either generation.
+        if (!device && (!slug || slugifyModel(d.model) === slug)) {
           const c = labels[d.category] || {};
           device = {
             model: d.model, slug: slugifyModel(d.model),
