@@ -827,19 +827,13 @@
     .tech-model:hover { background: var(--warm); color: var(--deep); }
     .tech-model .n { font-size: 0.66rem; color: var(--dim); }
     .tech-model.sel { color: var(--rose); font-weight: 600; }
-    /* ⭐ A GENERATION sits under its family. PicoSure Pro is not a rival of
-       PicoSure — it is the current model of the same machine — so it is indented
-       under the parent, and the parent shows the FAMILY total rather than only
-       its own count. Splitting them into their own device_reference rows let a
-       patient search "PicoSure Pro" directly; this stops the split reading as
-       two unrelated products. */
-    .tech-model.child { padding-left: 3.1rem; font-size: 0.75rem; }
-    .tech-model.child::before {
-      content: '\2514'; margin-right: 0.35rem; color: var(--dim);
-      font-size: 0.7rem; line-height: 1;
-    }
-    .tech-model.parent .n { font-weight: 600; color: var(--muted); }
-    .tech-model.parent .own { font-size: 0.66rem; color: var(--dim); }
+    /* ⛔ NESTED GENERATIONS WERE TRIED 2026-08-11 AND REVERSED. `platform` groups
+       TWO DIFFERENT relationships and I built on it knowing that: it holds real
+       generations (PicoSure / PicoSure Pro) but ALSO separate machines sharing a
+       platform name — FlexSure under TempSure, CoolTone under CoolSculpting,
+       Titan under Pelleve. Those are not versions of each other and indenting
+       them was simply wrong. Any future attempt needs an explicit parent link on
+       device_reference, not `platform`. */
 
     .tech-any {
       width: 100%; padding: 0.45rem 0.8rem; text-align: left;
@@ -3963,22 +3957,9 @@ function renderTechPanel() {
         || g.label.toLowerCase().includes(term)
         || shownModels.length > 0;
       if (!catMatches) return '';
-      // get-clinics returns models already ordered so a child follows its
-      // parent, and carries parent_model / is_family_parent / family_clinics.
-      // ⚠️ While SEARCHING, show a matched child even if its parent was filtered
-      // out — someone typing "pro" wants PicoSure Pro, not an empty list.
       const modelRows = (term ? shownModels : models).map(m => {
         matches++;
-        const isChild  = !!m.parent_model;
-        const isParent = !!m.is_family_parent;
-        // The parent's number is the FAMILY total (255 = PicoSure 182 + Pro 73),
-        // with its own count shown quietly beside it so the two reconcile.
-        const count = isParent && m.family_clinics != null ? m.family_clinics : m.clinics;
-        const own   = (isParent && m.family_clinics != null && m.family_clinics !== m.clinics)
-          ? ` <span class="own">(${m.clinics} on this model)</span>` : '';
-        const cls = 'tech-model' + (isChild ? ' child' : '') + (isParent ? ' parent' : '') +
-                    (currentDevice === m.slug ? ' sel' : '');
-        return `<button type="button" class="${cls}" onclick="applyDevice('model:${m.slug}')">${devEsc(m.model)} <span class="n">${count}</span>${own}</button>`;
+        return `<button type="button" class="tech-model ${currentDevice === m.slug ? 'sel' : ''}" onclick="applyDevice('model:${m.slug}')">${devEsc(m.model)} <span class="n">${m.clinics}</span></button>`;
       }).join('');
       return `<button type="button" class="tech-sub ${currentDeviceCat === c.category ? 'sel' : ''}" onclick="applyDevice('cat:${c.category}')">${devEsc(c.label)} <span class="n">${c.clinics}</span></button>${modelRows}`;
     }).join('');
