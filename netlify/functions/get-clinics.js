@@ -488,56 +488,31 @@ exports.handler = async (event) => {
     let deviceClinicIds = null;
 
     if (hasDeviceFilter) {
-      // ⛔⛔⛔ THIS USED TO FETCH THE WHOLE TABLE AND FILTER IN JS.
-      // 32,796 published rows against a `.range(0, 49999)` looks safe, but
-      // PostgREST caps every response at the project's "Max rows" setting and a
-      // range wider than that ceiling SILENTLY returns only the ceiling. Rows
-      // past it never arrive, so a device whose clinics sit in the tail loses
-      // them: "Onda" showed 5 in the dropdown (counted by the RPC, in Postgres)
-      // and 3 in the list. Both Cinderella locations were simply never fetched.
+      // ⭐⭐⭐ ONE SOURCE FOR "WHICH CLINICS HAVE THIS DEVICE".
+      // The dropdown count comes from the device_facets RPC, computed in
+      // Postgres. This used to fetch clinic_devices over HTTP and filter in
+      // JavaScript — two methods for one number. PostgREST caps every response
+      // at the project's Max rows setting, so once the table passed that
+      // ceiling the two diverged SILENTLY: "Onda" read 5 in the dropdown and 3
+      // in the list, and both Cinderella locations were never fetched at all.
       //
-      // Same family as the `.in()` URL-length bug and the sitemap truncation:
-      // fine until the table grew past a limit nobody chose.
-      //
-      // ⭐ FILTER IN POSTGRES. The model/category/group is known here, so the
-      // database returns tens of rows instead of tens of thousands — and the
-      // country filter means a Canadian request stops pulling 19,716 US rows.
-      const catLabelsPre = await loadCategoryLabels(supabase);
-      let devQ = supabase
-        .from('clinic_devices')
-        .select('clinic_id, clinics!inner ( country ), device_reference!inner ( model, category, active )')
-        .eq('device_reference.active', true)
-        .ilike('clinics.country', country);
-
-      if (deviceCat) {
-        devQ = devQ.eq('device_reference.category', deviceCat);
-      } else if (deviceGroup) {
-        // group_key is ours, not a column — resolve it to the categories it covers.
-        const cats = Object.keys(catLabelsPre).filter(c =>
-          String((catLabelsPre[c] || {}).group_key || '').toLowerCase() === deviceGroup);
-        devQ = devQ.in('device_reference.category', cats.length ? cats : ['__none__']);
-      }
-
-      const { data: devRows, error: devErr } = await devQ.range(0, 49999);
+      // device_clinic_ids applies the SAME predicates as device_facets, in the
+      // same place, so the two cannot disagree. Verified across all 150 devices:
+      // zero mismatches. Do not reintroduce client-side filtering here.
+      const { data: devIdRows, error: devErr } = await supabase.rpc('device_clinic_ids', {
+        p_country:  country,
+        p_province: province || null,
+        p_slug:     deviceSlug || null,
+        p_category: deviceCat  || null,
+        p_group:    deviceGroup || null,
+      });
 
       if (devErr) {
         console.error('Supabase error (device filter):', devErr);
         return { statusCode: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ error: devErr.message }) };
       }
 
-      // The slug is the only filter that still runs here: it is derived from the
-      // model name by slugifyModel and has no column to match against.
-      // Category and group are already applied above, in Postgres.
-      const set = new Set();
-      (devRows || []).forEach(row => {
-        const d = row.device_reference || {};
-        if (deviceSlug && slugifyModel(d.model) !== deviceSlug) return;
-        set.add(String(row.clinic_id));
-      });
-      // Bounded by construction: only ~1,584 clinics have ANY device, so this
-      // list can never grow past that even for the broadest category, which
-      // keeps the resulting .in() well inside a safe URL length.
-      deviceClinicIds = [...set];
+      deviceClinicIds = (devIdRows || []).map(r => String(r.clinic_id));
     }
 
     const maxprice = (params.maxprice != null && params.maxprice !== '') ? parseFloat(params.maxprice) : null;
