@@ -293,16 +293,37 @@ exports.handler = async (event) => {
       if (error) return { statusCode: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ error: error.message }) };
 
       const raw = facets || {};
-      // ⭐ parent_model / family_clinics come from device_facets, computed in
-      // Postgres from device_reference.parent_device_id — a column that means
-      // ONE thing: this device is a later generation of that device. Exactly
-      // three rows have it. The browser never derives the relationship and
-      // never adds the counts up itself.
+
+      // ⭐ GENERATION FAMILIES, FETCHED SEPARATELY AND DELIBERATELY.
+      // device_families() reads device_reference alone — three rows — and is
+      // instant. Putting this into device_facets instead cost a self-join
+      // across ~33k rows, blew the anon role's statement timeout and emptied
+      // the whole dropdown. Two cheap calls beat one expensive one.
+      // A failure here must never break the filter: no families, flat list.
+      let familyMap = {};
+      try {
+        const { data: fam } = await supabase.rpc('device_families');
+        if (fam && typeof fam === 'object') familyMap = fam;
+      } catch (e) { console.error('device_families failed (non-fatal):', e.message); }
+
       const models = (raw.models || []).map(m => ({
         model: m.model, slug: slugifyModel(m.model), clinics: m.clinics,
-        parent_model: m.parent_model || null,
-        family_clinics: m.family_clinics != null ? m.family_clinics : m.clinics,
+        parent_model: familyMap[m.model] || null,
       }));
+
+      // ⚠️ Adding the two lines is EXACT here, verified against the database:
+      // no Canadian clinic owns both generations of any of the three families,
+      // so a distinct count and a sum agree. If a clinic ever owns both, this
+      // over-counts by one — the check is:
+      //   select ... where exists (both generations on one clinic)
+      const familyTotals = {};
+      models.forEach(m => {
+        const fam = m.parent_model || m.model;
+        familyTotals[fam] = (familyTotals[fam] || 0) + (m.clinics || 0);
+      });
+      models.forEach(m => {
+        if (!m.parent_model) m.family_clinics = familyTotals[m.model] || m.clinics;
+      });
 
       const modelCategory = {};
       (raw.models || []).forEach(m => { if (m.category) modelCategory[m.model] = m.category; });
@@ -330,8 +351,7 @@ exports.handler = async (event) => {
       // is 256 across both generations, which puts it above PicoWay's 150.
       // Ranking the base model alone at 182 understated the installed base.
       const familyOf = m => m.parent_model || m.model;
-      const familyTotal = {};
-      models.forEach(m => { familyTotal[familyOf(m)] = m.family_clinics; });
+      const familyTotal = familyTotals;
 
       const models_by_category = {};
       models
