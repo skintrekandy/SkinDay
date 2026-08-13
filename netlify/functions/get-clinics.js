@@ -488,27 +488,50 @@ exports.handler = async (event) => {
     let deviceClinicIds = null;
 
     if (hasDeviceFilter) {
-      const { data: devRows, error: devErr } = await supabase
+      // ⛔⛔⛔ THIS USED TO FETCH THE WHOLE TABLE AND FILTER IN JS.
+      // 32,796 published rows against a `.range(0, 49999)` looks safe, but
+      // PostgREST caps every response at the project's "Max rows" setting and a
+      // range wider than that ceiling SILENTLY returns only the ceiling. Rows
+      // past it never arrive, so a device whose clinics sit in the tail loses
+      // them: "Onda" showed 5 in the dropdown (counted by the RPC, in Postgres)
+      // and 3 in the list. Both Cinderella locations were simply never fetched.
+      //
+      // Same family as the `.in()` URL-length bug and the sitemap truncation:
+      // fine until the table grew past a limit nobody chose.
+      //
+      // ⭐ FILTER IN POSTGRES. The model/category/group is known here, so the
+      // database returns tens of rows instead of tens of thousands — and the
+      // country filter means a Canadian request stops pulling 19,716 US rows.
+      const catLabelsPre = await loadCategoryLabels(supabase);
+      let devQ = supabase
         .from('clinic_devices')
-        .select('clinic_id, device_reference!inner ( model, category, active )')
+        .select('clinic_id, clinics!inner ( country ), device_reference!inner ( model, category, active )')
         .eq('device_reference.active', true)
-        .range(0, 49999);
+        .ilike('clinics.country', country);
+
+      if (deviceCat) {
+        devQ = devQ.eq('device_reference.category', deviceCat);
+      } else if (deviceGroup) {
+        // group_key is ours, not a column — resolve it to the categories it covers.
+        const cats = Object.keys(catLabelsPre).filter(c =>
+          String((catLabelsPre[c] || {}).group_key || '').toLowerCase() === deviceGroup);
+        devQ = devQ.in('device_reference.category', cats.length ? cats : ['__none__']);
+      }
+
+      const { data: devRows, error: devErr } = await devQ.range(0, 49999);
 
       if (devErr) {
         console.error('Supabase error (device filter):', devErr);
         return { statusCode: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ error: devErr.message }) };
       }
 
-      const catLabels = await loadCategoryLabels(supabase);
+      // The slug is the only filter that still runs here: it is derived from the
+      // model name by slugifyModel and has no column to match against.
+      // Category and group are already applied above, in Postgres.
       const set = new Set();
       (devRows || []).forEach(row => {
         const d = row.device_reference || {};
         if (deviceSlug && slugifyModel(d.model) !== deviceSlug) return;
-        if (deviceCat  && String(d.category || '').toLowerCase() !== deviceCat) return;
-        if (deviceGroup) {
-          const lab = catLabels[d.category] || {};
-          if (String(lab.group_key || '').toLowerCase() !== deviceGroup) return;
-        }
         set.add(String(row.clinic_id));
       });
       // Bounded by construction: only ~1,584 clinics have ANY device, so this
