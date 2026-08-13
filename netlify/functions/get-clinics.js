@@ -293,8 +293,15 @@ exports.handler = async (event) => {
       if (error) return { statusCode: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ error: error.message }) };
 
       const raw = facets || {};
+      // ⭐ parent_model / family_clinics come from device_facets, computed in
+      // Postgres from device_reference.parent_device_id — a column that means
+      // ONE thing: this device is a later generation of that device. Exactly
+      // three rows have it. The browser never derives the relationship and
+      // never adds the counts up itself.
       const models = (raw.models || []).map(m => ({
         model: m.model, slug: slugifyModel(m.model), clinics: m.clinics,
+        parent_model: m.parent_model || null,
+        family_clinics: m.family_clinics != null ? m.family_clinics : m.clinics,
       }));
 
       const modelCategory = {};
@@ -319,12 +326,31 @@ exports.handler = async (event) => {
 
       // Grouped the way the filter renders it, so the browser does not have to
       // reconstruct which model belongs to which category.
+      // Order so a family sits together and ranks by its FAMILY total: PicoSure
+      // is 256 across both generations, which puts it above PicoWay's 150.
+      // Ranking the base model alone at 182 understated the installed base.
+      const familyOf = m => m.parent_model || m.model;
+      const familyTotal = {};
+      models.forEach(m => { familyTotal[familyOf(m)] = m.family_clinics; });
+
       const models_by_category = {};
-      models.forEach(m => {
-        const c = modelCategory[m.model];
-        if (!c) return;
-        (models_by_category[c] = models_by_category[c] || []).push(m);
-      });
+      models
+        .slice()
+        .sort((a, b) => {
+          const fa = familyOf(a), fb = familyOf(b);
+          const wa = familyTotal[fa] != null ? familyTotal[fa] : a.clinics;
+          const wb = familyTotal[fb] != null ? familyTotal[fb] : b.clinics;
+          if (wb !== wa) return wb - wa;               // families by total
+          if (fa !== fb) return fa.localeCompare(fb);
+          if (!!a.parent_model !== !!b.parent_model)   // base model first
+            return a.parent_model ? 1 : -1;
+          return b.clinics - a.clinics;               // then by own count
+        })
+        .forEach(m => {
+          const c = modelCategory[m.model];
+          if (!c) return;
+          (models_by_category[c] = models_by_category[c] || []).push(m);
+        });
 
       // Three tiers: group heading -> subcategory row -> model row. The group
       // count is DISTINCT CLINICS across the whole group, not a sum of its
@@ -499,6 +525,10 @@ exports.handler = async (event) => {
       // device_clinic_ids applies the SAME predicates as device_facets, in the
       // same place, so the two cannot disagree. Verified across all 150 devices:
       // zero mismatches. Do not reintroduce client-side filtering here.
+      // ⚠️ A PARENT SLUG MEANS THE WHOLE FAMILY. Selecting "PicoSure" from the
+      // family header returns clinics with either generation; selecting
+      // "PicoSure Pro" returns only that one. Expanded in Postgres via
+      // parent_device_id so the client never has to know the relationship.
       const { data: devIdRows, error: devErr } = await supabase.rpc('device_clinic_ids', {
         p_country:  country,
         p_province: province || null,
