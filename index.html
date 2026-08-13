@@ -827,13 +827,27 @@
     .tech-model:hover { background: var(--warm); color: var(--deep); }
     .tech-model .n { font-size: 0.66rem; color: var(--dim); }
     .tech-model.sel { color: var(--rose); font-weight: 600; }
-    /* ⛔ NESTED GENERATIONS WERE TRIED 2026-08-11 AND REVERSED. `platform` groups
-       TWO DIFFERENT relationships and I built on it knowing that: it holds real
-       generations (PicoSure / PicoSure Pro) but ALSO separate machines sharing a
-       platform name — FlexSure under TempSure, CoolTone under CoolSculpting,
-       Titan under Pelleve. Those are not versions of each other and indenting
-       them was simply wrong. Any future attempt needs an explicit parent link on
-       device_reference, not `platform`. */
+    /* ⭐ GENERATION FAMILIES. Keyed on device_reference.parent_device_id, which
+       is set on exactly three rows and means ONE thing: this device is a later
+       generation of that device.
+       ⛔ DO NOT rebuild this on `platform`. That column groups generations AND
+       separate machines sharing a console name (FlexSure/TempSure,
+       CoolTone/CoolSculpting, Titan/Pelleve) — nesting on it put unrelated
+       devices under each other, twice. */
+    .tech-family {
+      display: flex; align-items: baseline; gap: 0.4rem; width: 100%;
+      padding: 0.22rem 0.8rem 0.22rem 2.1rem;
+      background: none; border: none; cursor: pointer;
+      font-family: inherit; font-size: 0.78rem; color: var(--muted);
+      text-align: left;
+    }
+    .tech-family:hover { background: var(--warm); color: var(--deep); }
+    .tech-family .n { font-size: 0.66rem; color: var(--dim); }
+    .tech-model.gen { padding-left: 3.2rem; }
+    .tech-model.gen::before {
+      content: '\2514'; margin-right: 0.4rem; color: var(--dim);
+      font-size: 0.7rem; line-height: 1;
+    }
 
     .tech-any {
       width: 100%; padding: 0.45rem 0.8rem; text-align: left;
@@ -3957,9 +3971,29 @@ function renderTechPanel() {
         || g.label.toLowerCase().includes(term)
         || shownModels.length > 0;
       if (!catMatches) return '';
-      const modelRows = (term ? shownModels : models).map(m => {
+      // Three lines per family: a parent header carrying the family total, then
+      // the base model and the generation as indented children. All three counts
+      // come from the API, so what is on screen adds up.
+      // ⚠️ While SEARCHING, a matched generation renders on its own — typing
+      // "pro" must not require its parent to have matched too.
+      const shown = term ? shownModels : models;
+      const shownNames = new Set(shown.map(m => m.model));
+      const modelRows = shown.map(m => {
         matches++;
-        return `<button type="button" class="tech-model ${currentDevice === m.slug ? 'sel' : ''}" onclick="applyDevice('model:${m.slug}')">${devEsc(m.model)} <span class="n">${m.clinics}</span></button>`;
+        const isGen = !!m.parent_model;
+        const rows = [];
+        // The family header appears once, immediately before the base model.
+        if (!isGen && m.family_clinics > m.clinics) {
+          // ⭐ NO NEW FILTER STATE. The family header selects the PARENT's slug
+          // in the existing ?device= param; the server expands a parent slug to
+          // its generations. One state, one param, and every existing link
+          // keeps working.
+          rows.push(`<button type="button" class="tech-family${currentDevice === m.slug ? ' sel' : ''}" onclick="applyDevice('model:${m.slug}')">${devEsc(m.model)} <span class="n">${m.family_clinics}</span></button>`);
+        }
+        const gen = isGen || (shownNames.has(m.model) && m.family_clinics > m.clinics);
+        const cls = 'tech-model' + (gen ? ' gen' : '') + (currentDevice === m.slug ? ' sel' : '');
+        rows.push(`<button type="button" class="${cls}" onclick="applyDevice('model:${m.slug}')">${devEsc(m.model)} <span class="n">${m.clinics}</span></button>`);
+        return rows.join('');
       }).join('');
       return `<button type="button" class="tech-sub ${currentDeviceCat === c.category ? 'sel' : ''}" onclick="applyDevice('cat:${c.category}')">${devEsc(c.label)} <span class="n">${c.clinics}</span></button>${modelRows}`;
     }).join('');
