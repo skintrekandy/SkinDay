@@ -1259,6 +1259,20 @@ function renderClinic(clinic) {
     ${tierAHero}
     ${tierBHero}
 
+    <!-- PHOTOS -->
+    <!-- Moved ABOVE treatments and technology. A clinic whose hero photo
+         collapses (portrait cover, no hero_filename) had nothing visual at
+         all before the Technology card, so the page opened on a list of
+         machines. Photos belong with the clinic's identity, not below its
+         equipment. For a tier-A clinic this reads as hero then gallery,
+         which is the natural order anyway. -->
+    <div class="card animate animate-delay-2">
+      <div class="card-section">
+        <div class="section-label">Photos</div>
+        ${photosHTML}
+      </div>
+    </div>
+
     <!-- TREATMENT CATEGORIES -->
     ${categoriesCardHTML}
 
@@ -1276,14 +1290,6 @@ function renderClinic(clinic) {
         ${priceHTML}
       </div>
     </div>` : ''}
-
-    <!-- PHOTOS -->
-    <div class="card animate animate-delay-2">
-      <div class="card-section">
-        <div class="section-label">Photos</div>
-        ${photosHTML}
-      </div>
-    </div>
 
     <!-- PRACTITIONERS -->
     <div id="practitioners-section">${practitionersHTML}</div>
@@ -1381,30 +1387,54 @@ function fetchAndRenderPhotos(clinic) {
   function renderPhotos(allUrls) {
     if (!allUrls.length) return;
 
-    // Tier A: set hero image src using designated cover photo, fallback to first photo
+    // ── HERO SELECTION ──────────────────────────────────────────────
+    // The old rule was "use the designated hero, else photo number one" — and
+    // photo number one is just whatever was uploaded first. If that happened to
+    // be a portrait phone shot, the banner collapsed and the clinic lost its
+    // header. Rejuuv North York's first photo is an IMG_xxxx.jpg; Markham's
+    // happens to be landscape. Pure luck decided which profile looked right.
+    //
+    // Only 3 of 8 clinics with photos have ever set is_hero, so relying on that
+    // flag is relying on something almost nobody uses. Now the page MEASURES
+    // the candidates and picks the first landscape one itself. An explicit
+    // is_hero still wins outright — a human choice beats a heuristic.
     const heroImg = document.getElementById('hero-main-img');
     if (heroImg) {
-      // Use explicitly designated hero filename if set, otherwise first ordered photo
       const _clinicIdStrH = String(clinic.id);
       const heroFilename = clinic.hero_filename || null;
-      const heroUrl = heroFilename
-        ? `${_SB_URL}/storage/v1/object/public/clinic-photos/clinic-${_clinicIdStrH}/${heroFilename}`
-        : allUrls[0];
-      heroImg.onload = function() {
-        const ratio = this.naturalWidth / this.naturalHeight;
-        if (ratio < 1.3 && !heroFilename) {
-          // Portrait or square with no explicit hero set — drop the banner but
-          // KEEP the name, logo and rating. Zeroing the container height hid
-          // all of it and left Technology as the first thing on the page.
-          document.getElementById('profile-hero-photo')?.classList.add('hero-collapsed');
-        }
-      };
-      // A cover photo that 404s used to leave a 540px empty dark box: the
-      // inline onerror added a class with no CSS behind it. Same treatment.
-      heroImg.onerror = function() {
+
+      const collapse = () =>
         document.getElementById('profile-hero-photo')?.classList.add('hero-collapsed');
-      };
-      heroImg.src = heroUrl;
+
+      if (heroFilename) {
+        // Explicit choice: honour it whatever its shape, and only collapse if
+        // the file is missing.
+        heroImg.onerror = collapse;
+        heroImg.src = `${_SB_URL}/storage/v1/object/public/clinic-photos/clinic-${_clinicIdStrH}/${heroFilename}`;
+      } else {
+        // Measure in parallel rather than one at a time so this costs one round
+        // of loads, not five. Capped at 5: beyond that we are spending a user's
+        // bandwidth to improve a banner.
+        const candidates = allUrls.slice(0, 5);
+        Promise.all(candidates.map(url => new Promise(resolve => {
+          const probe = new Image();
+          probe.onload  = () => resolve({ url, ratio: probe.naturalWidth / probe.naturalHeight });
+          probe.onerror = () => resolve(null);
+          probe.src = url;
+        }))).then(results => {
+          // First landscape in the clinic's own display order, so their
+          // ordering still decides between equally usable photos.
+          const landscape = results.find(r => r && r.ratio >= 1.3);
+          if (landscape) {
+            heroImg.onerror = collapse;
+            heroImg.src = landscape.url;
+          } else {
+            // Every photo is portrait or square. A tall image stretched across
+            // a 540px banner looks worse than no banner.
+            collapse();
+          }
+        }).catch(collapse);
+      }
     }
 
     // Gallery: show max 3, rest via lightbox. "View all" if more exist.
