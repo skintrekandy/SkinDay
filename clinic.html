@@ -796,6 +796,28 @@
   .device-footnote {
     margin-top: 0.8rem; font-size: 0.68rem; line-height: 1.5; color: var(--muted);
   }
+
+  /* ── SSR CONTENT BLOCK ──────────────────────────────────────────
+     render-clinic.js injects <div id="ssr-content"> immediately after <body>:
+     an unstyled <h1> plus a stack of <p> tags, written for Googlebot so the
+     page is never a soft 404. Its comment says "users never see it" — but
+     they did. It rendered raw in the top-left corner for the 1-2 seconds the
+     client JS spent fetching /api/get-clinics, then vanished.
+
+     This is the standard visually-hidden pattern, NOT display:none. The text
+     stays in the DOM, in the HTML source, and in the accessibility tree, so
+     it is the same content the page shows once hydrated rather than anything
+     concealed. It just stops occupying the viewport while it waits to be
+     replaced. Both hydration paths still call .remove() on it. */
+  #ssr-content {
+    position: absolute;
+    width: 1px; height: 1px;
+    margin: -1px; padding: 0; border: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
 </style>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="/favicon-32x32.png" type="image/png" sizes="32x32">
