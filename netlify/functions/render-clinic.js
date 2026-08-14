@@ -21,11 +21,40 @@
 //     status = 200
 //     force = true
 
-const { createClient } = require('@supabase/supabase-js');
+// ⚡ COLD START. This function used to require('@supabase/supabase-js') for
+// what amounts to one REST call. That package is the heaviest thing in the
+// bundle and every cold start paid to parse and evaluate it. PostgREST is a
+// plain HTTP API and Node 18 has global fetch, so the dependency is gone.
+//
+// Everything below runs during Lambda INIT, not during the request. Init gets
+// a full CPU burst; the handler can be throttled. So the template read and the
+// env lookups happen here deliberately, not on first invocation.
 const path = require('path');
 const fs   = require('fs');
 
 const SITE = 'https://skinday.ca';
+
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+// Minimal PostgREST GET. Returns parsed JSON, throws on a non-2xx so the
+// caller's existing try/catch treats it exactly like the old client error.
+async function pgGet(pathAndQuery) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${pathAndQuery}`, {
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
+      Accept: 'application/json',
+    },
+  });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    const err = new Error(`PostgREST ${res.status}: ${detail.slice(0, 300)}`);
+    err.status = res.status;
+    throw err;
+  }
+  return res.json();
+}
 
 // Load the existing clinic.html template once at cold start.
 // We surgically swap in meta tags and inject content; the rest of the page
@@ -47,6 +76,12 @@ function loadTemplate() {
   }
   throw new Error('Could not locate clinic.html template');
 }
+
+// Read the 84 KB template during init rather than mid-request. Wrapped because
+// a throw at module scope would take down every invocation with no useful log;
+// loadTemplate() is still called in the handler and will throw there instead,
+// where the error path already handles it.
+try { loadTemplate(); } catch (_) { /* handler will surface it */ }
 
 // ── HTML ESCAPING ─────────────────────────────────────────────────
 // Crucial because clinic names and addresses go straight into attributes
@@ -363,11 +398,6 @@ async function _handler(event) {
       return { statusCode: 400, body: 'Missing slug' };
     }
 
-    const supabase = createClient(
-      process.env.SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
-
     // Mirror get-clinics.js slug-mode shape so SEO output matches what
     // the client-side renderer ultimately shows. Keep this minimal -
     // we only need fields used in title/desc/body, not the full payload.
@@ -388,17 +418,45 @@ async function _handler(event) {
     // changed whenever the rows were rewritten. When it happened to return an
     // unapproved row, the approved listing beside it was served as 410 Gone.
     // Order explicitly and pick deliberately instead.
-    const { data: rows, error } = await supabase
-      .from('clinics')
-      .select(`
-        id, name, slug, neighbourhood, area, province,
-        rating, reviews, price, injector_credentials, logo_url, approved,
-        phone, website, source
-      `)
-      .eq('slug', slug)
-      .order('approved', { ascending: false, nullsFirst: false })
-      .order('id', { ascending: true })
-      .limit(10);
+    // ⚡ ONE ROUND TRIP, NOT FOUR. This used to fetch the clinic, then wait,
+    // then fire three enrichment queries for expertise, prices and devices —
+    // parallel with each other but strictly after the first. Two sequential
+    // hops to the database on every page view.
+    //
+    // PostgREST embeds related tables through their foreign keys, so all four
+    // arrive in a single request. Devices are filtered in JS rather than with
+    // a nested filter: the active flag lives on the embedded device_reference
+    // and nested filter syntax is fragile enough that a silent empty result is
+    // a real risk. Filtering a handful of rows in memory costs nothing.
+    const SELECT_BASE =
+      'id,name,slug,neighbourhood,area,province,rating,reviews,price,' +
+      'injector_credentials,logo_url,approved,phone,website,source';
+    const SELECT_EMBEDDED = SELECT_BASE +
+      ',clinic_expertise(value,is_other,other_text)' +
+      ',clinic_prices(price)' +
+      ',clinic_devices(device_reference(model,active))';
+
+    const q = `clinics?slug=eq.${encodeURIComponent(slug)}` +
+              `&order=approved.desc.nullslast,id.asc&limit=10&select=`;
+
+    let rows = null;
+    let error = null;
+    let embedded = true;
+    try {
+      rows = await pgGet(q + encodeURIComponent(SELECT_EMBEDDED));
+    } catch (e) {
+      // An embedding failure means a foreign key PostgREST cannot see, not an
+      // outage. Fall back to the plain row so the page still renders, and log
+      // loudly — losing devices and expertise silently is exactly the kind of
+      // quiet degradation that goes unnoticed for weeks.
+      console.error('render-clinic: embedded select failed, falling back', slug, e.message);
+      embedded = false;
+      try {
+        rows = await pgGet(q + encodeURIComponent(SELECT_BASE));
+      } catch (e2) {
+        error = e2;
+      }
+    }
 
     // A database error is not the same thing as "this clinic does not exist".
     // Answering 404 on a transient failure lets an outage deindex a live page,
@@ -455,56 +513,38 @@ async function _handler(event) {
 
     // Case (a): approved → fall through and render normally.
 
-    // Run the two optional enrichment queries in parallel rather than sequentially.
-    // Sequential adds ~200-400ms per request; under a Google crawl burst this was
-    // the primary cause of Netlify function timeouts (5xx in Search Console).
-    // Both are non-fatal - if either fails the page still renders with base data.
-    const [expertiseResult, priceResult, deviceResult] = await Promise.allSettled([
-      supabase
-        .from('clinic_expertise')
-        .select('value, is_other, other_text')
-        .eq('clinic_id', String(clinic.id))
-        .limit(10),
-      supabase
-        .from('clinic_prices')
-        .select('price')
-        .eq('clinic_id', String(clinic.id))
-        .order('price', { ascending: true })
-        .limit(1),
-      // M39. Same non-fatal contract as the two above: if it fails the page
-      // still renders, just without the technology line.
-      supabase
-        .from('clinic_devices')
-        .select('device_reference!inner ( model, active )')
-        .eq('clinic_id', String(clinic.id))
-        .eq('device_reference.active', true)
-        .limit(30),
-    ]);
-
-    if (expertiseResult.status === 'fulfilled') {
-      const rows = expertiseResult.value.data;
-      if (rows && rows.length) {
+    // Enrichment now arrives with the row above. When the embedded select
+    // worked these are already present; when it fell back they are absent and
+    // the page renders without expertise, devices or the cheapest price —
+    // exactly the non-fatal contract the three separate queries had.
+    if (embedded) {
+      const exp = Array.isArray(clinic.clinic_expertise) ? clinic.clinic_expertise : [];
+      if (exp.length) {
         clinic.identity = {
-          expertise: rows.map(r => ({ label: r.is_other ? r.other_text : r.value })),
+          expertise: exp.slice(0, 10).map(r => ({ label: r.is_other ? r.other_text : r.value })),
         };
       }
-    }
 
-    if (deviceResult.status === 'fulfilled') {
-      const rows = deviceResult.value.data;
-      if (rows && rows.length) {
-        clinic.devices = rows
-          .map(r => (r.device_reference || {}))
-          .filter(d => d.model)
-          .sort((a, b) => String(a.model).localeCompare(String(b.model)));
-      }
-    }
+      const devRows = Array.isArray(clinic.clinic_devices) ? clinic.clinic_devices : [];
+      const devices = devRows
+        .map(r => (r.device_reference || {}))
+        .filter(d => d.model && d.active === true)
+        .sort((a, b) => String(a.model).localeCompare(String(b.model)))
+        .slice(0, 30);
+      if (devices.length) clinic.devices = devices;
 
-    if (priceResult.status === 'fulfilled') {
-      const rows = priceResult.value.data;
-      if (rows && rows.length && rows[0].price != null) {
-        clinic.price = rows[0].price;
-      }
+      const priceRows = Array.isArray(clinic.clinic_prices) ? clinic.clinic_prices : [];
+      const cheapest = priceRows
+        .map(r => r.price)
+        .filter(v => v != null)
+        .sort((a, b) => Number(a) - Number(b))[0];
+      if (cheapest != null) clinic.price = cheapest;
+
+      // Drop the raw embedded arrays so nothing downstream reads them by
+      // accident and so the shape matches what the old code produced.
+      delete clinic.clinic_expertise;
+      delete clinic.clinic_devices;
+      delete clinic.clinic_prices;
     }
 
     const template = loadTemplate();
@@ -522,9 +562,21 @@ async function _handler(event) {
       statusCode: 200,
       headers: {
         'Content-Type': 'text/html; charset=utf-8',
-        // Cache rendered HTML at the edge for 10 minutes.
-        // Clinic data changes are rare; cache misses are cheap.
-        'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=300',
+        // Browser cache: short, because a clinic can edit its own profile and
+        // should see the change on a reload.
+        'Cache-Control': 'public, max-age=0, must-revalidate',
+        // ⚡ THE HEADER THAT ACTUALLY REMOVES THE COLD START. Netlify's edge
+        // does NOT cache function responses off plain Cache-Control s-maxage;
+        // it needs this one. Without it every single profile view booted the
+        // function and hit the database, which is why the page felt slow on a
+        // first visit.
+        //
+        // stale-while-revalidate is the important half: once a page is warm,
+        // an expired entry is still served INSTANTLY from the edge while the
+        // refresh happens behind it. The visitor never waits for the function
+        // even when the cache has gone stale.
+        'Netlify-CDN-Cache-Control':
+          'public, s-maxage=600, stale-while-revalidate=86400, durable',
       },
       body: rendered,
     };
