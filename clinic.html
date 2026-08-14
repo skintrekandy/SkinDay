@@ -139,6 +139,38 @@
     .profile-hero-photo .profile-rating-row {
       margin-top: 0;
     }
+    /* ── HERO COLLAPSED ──────────────────────────────────────────────
+       When a tier-A cover photo turns out to be portrait or square, it looks
+       bad stretched across a 540px banner, so the photo is dropped. The old
+       code did that with height:0 + overflow:hidden on the whole container —
+       which also hid the clinic NAME, LOGO, RATING and REVIEW COUNT, because
+       those live inside it. The page then opened on the Technology card.
+       (Rejuuv North York hit this; Markham did not, because its cover photo
+       is landscape.)
+
+       Now the photo and its gradient are removed and the meta is promoted to
+       an ordinary header on the page background — same information, no banner.
+       Keeping ONE header rather than rendering a second avoids duplicating
+       #profileVisitSignal, which would break the visit-signal lookup. */
+    .profile-hero-photo.hero-collapsed {
+      height: auto;
+      background: transparent;
+      border-radius: 0;
+      overflow: visible;
+      margin-bottom: 0.5rem;
+    }
+    .profile-hero-photo.hero-collapsed img,
+    .profile-hero-photo.hero-collapsed .hero-gradient { display: none; }
+    .profile-hero-photo.hero-collapsed .hero-meta {
+      position: static;
+      padding: 0.25rem 0 0;
+    }
+    .profile-hero-photo.hero-collapsed .profile-name { color: var(--ink); }
+    .profile-hero-photo.hero-collapsed .review-count { color: var(--muted) !important; }
+    .profile-hero-photo.hero-collapsed .rating-num { color: var(--ink); }
+    @media (max-width: 700px) {
+      .profile-hero-photo.hero-collapsed { height: auto; padding: 0 1.25rem; }
+    }
     /* ── HERO SECTION — Tier B (no photo) ── */
     .profile-hero {
       background: var(--deep);
@@ -1179,7 +1211,7 @@ function renderClinic(clinic) {
 
   const tierAHero = hasTierA ? `
     <div class="profile-hero-photo animate" id="profile-hero-photo">
-      <img id="hero-main-img" src="" alt="${clinic.name}" loading="eager" onerror="this.parentElement.classList.add('hero-img-failed')" />
+      <img id="hero-main-img" src="" alt="${clinic.name}" loading="eager" />
       <div class="hero-gradient"></div>
       <div class="hero-meta">
         <h1 class="profile-name" style="display:flex;align-items:center;gap:10px;margin-bottom:0.6rem;">
@@ -1361,14 +1393,16 @@ function fetchAndRenderPhotos(clinic) {
       heroImg.onload = function() {
         const ratio = this.naturalWidth / this.naturalHeight;
         if (ratio < 1.3 && !heroFilename) {
-          // Portrait or square with no explicit hero set — collapse to Tier B appearance
-          const heroPhoto = document.getElementById('profile-hero-photo');
-          if (heroPhoto) {
-            heroPhoto.style.height = '0';
-            heroPhoto.style.margin = '0';
-            heroPhoto.style.overflow = 'hidden';
-          }
+          // Portrait or square with no explicit hero set — drop the banner but
+          // KEEP the name, logo and rating. Zeroing the container height hid
+          // all of it and left Technology as the first thing on the page.
+          document.getElementById('profile-hero-photo')?.classList.add('hero-collapsed');
         }
+      };
+      // A cover photo that 404s used to leave a 540px empty dark box: the
+      // inline onerror added a class with no CSS behind it. Same treatment.
+      heroImg.onerror = function() {
+        document.getElementById('profile-hero-photo')?.classList.add('hero-collapsed');
       };
       heroImg.src = heroUrl;
     }

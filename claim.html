@@ -21,6 +21,11 @@
     --dim:     #B5A89F;
     --border:  #EAE2D8;
     --green:   #3D7A55;
+    /* Present in index.html but absent here, so the two files were not a
+       complete match. Added for parity — unused today, available if this page
+       gains a hero or a deep panel. */
+    --deep2:   #241E1A;
+    --hero-border: rgba(201,169,110,0.25);
   }
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -48,15 +53,19 @@
     height: 64px;
     border-bottom: 1px solid rgba(255,255,255,0.06);
   }
+  /* Matches index.html exactly. This had drifted: "Day" was rendering in
+     --rose-m instead of --gold, at a heavier weight and tighter tracking, so
+     the claim page carried an older version of the wordmark than the rest of
+     the site. */
   .nav-logo {
     font-family: 'Cormorant Garamond', serif;
-    font-size: 1.5rem;
-    font-weight: 600;
+    font-size: 1.6rem;
+    font-weight: 400;
     color: var(--cream);
     text-decoration: none;
-    letter-spacing: 0.01em;
+    letter-spacing: 0.04em;
   }
-  .nav-logo span { color: var(--rose-m); }
+  .nav-logo span { color: var(--gold); }
   .nav-back {
     font-size: 0.8rem;
     font-weight: 500;
