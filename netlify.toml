@@ -129,6 +129,17 @@
   status = 301
   force  = true
 
+# Serene Rejuvenation (id 2673, Surrey BC) was listed as "Serene Rejuvenation
+# @ CityMed". CityMed Medical Centre is only the building they rent in, not
+# part of the business name, and the owner asked for it removed. Renaming the
+# clinic re-fires trg_clinics_slug, so the slug moved to serene-rejuvenation
+# and this preserves the indexed URL.
+[[redirects]]
+  from   = "/clinic/serene-rejuvenation-citymed"
+  to     = "/clinic/serene-rejuvenation"
+  status = 301
+  force  = true
+
 
 # ── CLINIC PAGES (SSR) ───────────────────────────────────────────
 # Server-side render clinic profile pages so Google sees real <title>,
