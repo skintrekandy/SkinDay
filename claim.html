@@ -1326,9 +1326,22 @@
   const SUPABASE_URL = 'https://vefldlqtyxdywbzdjuia.supabase.co';
   const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlZmxkbHF0eXhkeXdiemRqdWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNDAwMjgsImV4cCI6MjA4NzkxNjAyOH0.o582sXiUkB3j4FiHEA5rE3ABy_pdTeeK1PnNpNirHZA';
 
-  (async function loadClinics() {
+  // Exposed so the ?clinic= pre-population can WAIT for the list instead of
+  // racing it. See initFromURL below.
+  let clinicsReady;
+  clinicsReady = (async function loadClinics() {
     try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/clinics?select=id,name,neighbourhood,area,province,region,phone,website,place_id,maps_url,rating,reviews,claimed,approved&approved=eq.true&order=name.asc&limit=10000`, {
+      // ⚠️⚠️ THIS FETCH USED TO HAVE NO COUNTRY FILTER. It pulled every approved
+      // clinic in the database — canada 4,989 + usa 10,491 + taiwan 2,170 +
+      // hongkong 1,083 ≈ 18,700 — against a 10,000 row cap, ordered by name.
+      // Everything alphabetically past the cutoff was simply absent from the
+      // list this page searches, so ~8,700 clinics could never be found or
+      // claimed. Serene Rejuvenation (Surrey BC) ranked 12,731 and its owner
+      // had to email us.
+      //
+      // skinday.ca is the Canadian directory, so scope to Canada: 4,989 rows,
+      // comfortably inside the cap. The other countries have their own sites.
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/clinics?select=id,name,neighbourhood,area,province,region,phone,website,place_id,maps_url,rating,reviews,claimed,approved&approved=eq.true&country=eq.canada&order=name.asc&limit=10000`, {
         headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
       });
       const data = await res.json();
@@ -1339,6 +1352,11 @@
         promo: false,
         rank: 'low',
       })) : [];
+      // A truncated list is invisible to the user and to us — it just looks
+      // like the clinic does not exist. Say so in the console if it recurs.
+      if (clinics.length >= 10000) {
+        console.warn('[claim] clinic list hit the 10000 row cap — search results are incomplete');
+      }
     } catch(e) {
       console.error('Failed to load clinics:', e);
     }
@@ -1418,13 +1436,19 @@
   let chainLocations   = []; // array of clinic objects for chain flow
 
   // ── URL PARAM PRE-POPULATION ──
-  setTimeout(function initFromURL() {
+  // ⚠️ This used to be setTimeout(..., 0), which fires long before the clinic
+  // fetch resolves — so `clinics` was still empty, the lookup found nothing,
+  // and the page silently showed an empty search box. Anyone arriving from the
+  // "Claim Your Clinic" button on a profile had to search for their own clinic
+  // by hand. Await the load instead.
+  (async function initFromURL() {
     const params = new URLSearchParams(window.location.search);
     const id = parseInt(params.get('clinic'));
     if (!id) return;
-    const clinic = clinics.find(c => c.id === id);
+    try { await clinicsReady; } catch (e) {}
+    const clinic = clinics.find(c => c.id === id || String(c.id) === String(id));
     if (clinic) selectClinic(clinic);
-  }, 0);
+  })();
 
   // ── SINGLE-CLINIC SEARCH ──
   const searchInput = document.getElementById('clinic-search');

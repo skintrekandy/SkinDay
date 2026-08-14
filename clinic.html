@@ -809,7 +809,7 @@
 <nav>
   <a href="/" class="nav-logo">Skin<span>Day</span></a>
   <ul class="nav-links">
-    <li><a href="/claim2.html" class="nav-cta">Claim Your Clinic</a></li>
+    <li><a href="/claim.html" class="nav-cta">Claim Your Clinic</a></li>
     <li><a href="/editor.html" class="nav-cta" style="margin-left:4px;">Clinic Portal</a></li>
   </ul>
 </nav>
@@ -857,7 +857,9 @@ function renderClinic(clinic) {
   document.getElementById('ssr-content')?.remove();
 
   const isClaimed = clinic.claimed === true;
-  const claimHref = '/claim2.html?clinic=' + clinic.id;
+  // /claim2.html was removed long ago and 404s. Every clinic profile page has
+  // been sending owners there — a clinic owner had to email us to report it.
+  const claimHref = '/claim.html?clinic=' + clinic.id;
   const wrap = document.getElementById('pageWrap');
 
   // Expose clinic id for visit submission
