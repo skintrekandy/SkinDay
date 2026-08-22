@@ -569,6 +569,14 @@
     .pc-scale-you .pc-scale-price { color:var(--deep); font-weight:600; }
     .pc-cta { display:inline-block; margin-top:0.25rem; font-size:0.9rem; color:var(--rose); font-weight:600; text-decoration:none; }
     .pc-cta:hover { text-decoration:underline; }
+    /* Prose restatement of chart figures. The numbers inside .bar-pct are in
+       styled divs that content extractors discard, so each chart is followed by
+       a paragraph stating its values in a sentence. Set small and muted: it
+       reads as a caption for people and as data for machines. */
+    .chart-figures {
+      font-size: 0.78rem; line-height: 1.6; color: var(--muted);
+      margin: 0.5rem 0 1.2rem; max-width: 62ch;
+    }
 </style>
   <script type="application/ld+json">
   {
@@ -1243,6 +1251,14 @@
         <div class="bar-pct">13%</div>
       </div>
     </div>
+<!-- Figures restated in prose: the numbers in the bar chart above live in
+     styled div elements and do NOT survive content extraction, which is how AI
+     crawlers read this page. Verified 2026-08-21 — of 26 percentages on
+     the Toronto guide only 6 were extractable, and the ones that made it
+     were exactly those also written into a sentence. Keep this paragraph
+     in sync with the chart. -->
+<p class="chart-figures">Injector mix across GTA clinics: RN or RPN at 79%, MD or physician at 22%, nurse practitioner at 14%, and international medical graduate at 13%. Clinics can appear in more than one category where several credentials inject.</p>
+
 
     <p><strong>79% of GTA clinics are injecting with RNs or RPNs</strong> — Registered Nurses are the dominant injector type in this market by a wide margin. Physicians inject at 22% of clinics, often alongside nursing staff rather than exclusively.</p>
 
@@ -1323,6 +1339,14 @@
         <div class="bar-pct">3%</div>
       </div>
     </div>
+<!-- Figures restated in prose: the numbers in the bar chart above live in
+     styled div elements and do NOT survive content extraction, which is how AI
+     crawlers read this page. Verified 2026-08-21 — of 26 percentages on
+     the Toronto guide only 6 were extractable, and the ones that made it
+     were exactly those also written into a sentence. Keep this paragraph
+     in sync with the chart. -->
+<p class="chart-figures">Brand availability across GTA clinics: Botox 81%, Dysport 65%, Xeomin 23%, Nuceiva 12%, Letybo 3%. Most clinics carry more than one brand.</p>
+
 
     <p>Botox (Allergan) dominates at 81%, but Dysport has strong penetration at 65% — many clinics offer both. Nuceiva is gaining traction as a newer alternative. Letybo is the newest entrant and still in early adoption. The brand your clinic uses matters less than the skill of the injector using it.</p>
 
@@ -1368,6 +1392,14 @@
         <div class="bar-pct"><strong>$8.68</strong></div>
       </div>
     </div>
+<!-- Figures restated in prose: the numbers in the bar chart above live in
+     styled div elements and do NOT survive content extraction, which is how AI
+     crawlers read this page. Verified 2026-08-21 — of 26 percentages on
+     the Toronto guide only 6 were extractable, and the ones that made it
+     were exactly those also written into a sentence. Keep this paragraph
+     in sync with the chart. -->
+<p class="chart-figures">Average price per unit by brand, normalised to Botox-equivalent units: Nuceiva $9.81, Botox $9.73, Letybo $9.37, Dysport $9.09, Xeomin $8.68. The full spread is about $1.13 per unit, which is why brand is the least important factor in what a GTA patient pays.</p>
+
     <p style="font-size:0.75rem;color:var(--dim);">Averages based on verified pricing from SkinDay's GTA clinic dataset, with Dysport normalized to Botox-equivalent units. Letybo sample size is small — interpret with caution.</p>
 
     <p>The clearest takeaway here is what <em>isn't</em> there: brand barely moves the price. Four of the five toxins sit within about 70 cents of each other, and even the full spread — Nuceiva at $9.81 down to Xeomin at $8.68 — is only about $1.13/unit. Clinics don't really price by brand; they price by their own positioning, credentials, and location. So while it's worth knowing which product you're getting, the brand is the <em>least</em> important factor in what you'll pay. What actually drives price is who's injecting and where — which is where the real differences show up.</p>

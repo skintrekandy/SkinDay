@@ -287,7 +287,76 @@
     .pc-scale-you .pc-scale-price { color:var(--deep); font-weight:600; }
     .pc-cta { display:inline-block; margin-top:0.25rem; font-size:0.9rem; color:var(--rose); font-weight:600; text-decoration:none; }
     .pc-cta:hover { text-decoration:underline; }
+    /* Prose restatement of chart figures. The numbers inside .bar-pct are in
+       styled divs that content extractors discard, so each chart is followed by
+       a paragraph stating its values in a sentence. Set small and muted: it
+       reads as a caption for people and as data for machines. */
+    .chart-figures {
+      font-size: 0.78rem; line-height: 1.6; color: var(--muted);
+      margin: 0.5rem 0 1.2rem; max-width: 62ch;
+    }
 </style>
+  <!-- FAQ schema. Generated from the visible Q&A below on 2026-08-21; the six
+       questions here are the six rendered on the page. Vancouver was the only
+       guide shipping without any JSON-LD. Keep in sync if a question is added
+       or its answer reworded — schema that disagrees with the visible text is
+       worse than none. -->
+  <script type="application/ld+json" id="faq-schema">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "How much does Botox cost in Vancouver?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Botox in Metro Vancouver averages about $11.09 per unit as of June 2026, based on SkinDay's verified pricing data across Vancouver, Richmond, Burnaby, and Surrey. Most clinics charge between $9 and $12, with $12 emerging as the most common price point. That's roughly $1.50 more per unit than the GTA, reflecting Metro Vancouver's higher operating costs."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Why is Botox more expensive in Vancouver than other Canadian cities?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Metro Vancouver's average sits above Toronto's mainly because of higher commercial rents and a premium-positioned market. The product and the procedure are the same — what differs is the cost of operating a clinic in the region, which gets passed through in per-unit pricing."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can naturopathic doctors (NDs) inject Botox in BC?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. British Columbia is the most established province for ND injectors, where naturopathic doctors with additional prescribing and injectable certification can administer Botox. This is part of what makes Metro Vancouver's injector market distinct from Ontario's. As with any injector, ask about their specific injectable training and volume."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How much does Botox cost for the forehead in Vancouver?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Forehead lines typically take 10–20 units, roughly $110–$220 in Metro Vancouver at the regional average. Treating the frown lines and crow's feet at the same visit brings the total to about 35–60 units, or $390–$665."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Why do Botox prices vary between Vancouver clinics?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Three main factors: who's injecting (physicians and NPs charge more than RNs and NDs), location within Metro Vancouver, and the brand used. The product matters less than the injector's experience. A very low per-unit price can mean fewer units are being used, which may give weaker or shorter-lasting results."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How long does Botox last?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Most people see results last three to four months. First-time patients sometimes find it wears off a little faster; with regular treatment, results often last longer over time. This isn't affected by which brand you choose at a reputable clinic."
+      }
+    }
+  ]
+}
+  </script>
 </head>
 <body>
 
@@ -557,6 +626,14 @@
         <div class="bar-pct">38</div>
       </div>
     </div>
+<!-- Figures restated in prose: the numbers in the bar chart above live in
+     styled div elements and do NOT survive content extraction, which is how AI
+     crawlers read this page. Verified 2026-08-21 — of 26 percentages on
+     the Toronto guide only 6 were extractable, and the ones that made it
+     were exactly those also written into a sentence. Keep this paragraph
+     in sync with the chart. -->
+<p class="chart-figures">Clinic counts by city in Metro Vancouver: Vancouver 151, Surrey 86, Richmond 73, Burnaby 38.</p>
+
 
     <div class="density-callout">
       <div class="density-num">36</div>
@@ -694,6 +771,14 @@
         
       </div>
     </div>
+<!-- Figures restated in prose: the numbers in the bar chart above live in
+     styled div elements and do NOT survive content extraction, which is how AI
+     crawlers read this page. Verified 2026-08-21 — of 26 percentages on
+     the Toronto guide only 6 were extractable, and the ones that made it
+     were exactly those also written into a sentence. Keep this paragraph
+     in sync with the chart. -->
+<p class="chart-figures">Injector mix across Metro Vancouver clinics: MD or physician at 66%, RN or LPN at 32%, naturopathic doctor at 18%, and nurse practitioner at 14%. Clinics can appear in more than one category where several credentials inject.</p>
+
 
     <div class="nd-callout">
       <div class="nd-callout-title">Metro Vancouver's ND Injector Market — A National Outlier</div>
@@ -807,6 +892,14 @@
         <div class="bar-pct">16%</div>
       </div>
     </div>
+<!-- Figures restated in prose: the numbers in the bar chart above live in
+     styled div elements and do NOT survive content extraction, which is how AI
+     crawlers read this page. Verified 2026-08-21 — of 26 percentages on
+     the Toronto guide only 6 were extractable, and the ones that made it
+     were exactly those also written into a sentence. Keep this paragraph
+     in sync with the chart. -->
+<p class="chart-figures">Brand availability across Metro Vancouver clinics: Botox 81%, Dysport 64%, Nuceiva 17%, Xeomin 16%. Most clinics carry more than one brand.</p>
+
 
     <p>Botox and Dysport together account for the vast majority of the Metro Vancouver market, with most clinics carrying both. Nuceiva and Xeomin each appear in roughly one in six Metro Vancouver clinics, giving patients meaningful brand optionality beyond the two market leaders.</p>
 

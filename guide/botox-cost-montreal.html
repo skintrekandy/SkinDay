@@ -356,6 +356,14 @@
     .pc-scale-you .pc-scale-price { color:var(--deep); font-weight:600; }
     .pc-cta { display:inline-block; margin-top:0.25rem; font-size:0.9rem; color:var(--rose); font-weight:600; text-decoration:none; }
     .pc-cta:hover { text-decoration:underline; }
+    /* Prose restatement of chart figures. The numbers inside .bar-pct are in
+       styled divs that content extractors discard, so each chart is followed by
+       a paragraph stating its values in a sentence. Set small and muted: it
+       reads as a caption for people and as data for machines. */
+    .chart-figures {
+      font-size: 0.78rem; line-height: 1.6; color: var(--muted);
+      margin: 0.5rem 0 1.2rem; max-width: 62ch;
+    }
 </style>
 </head>
 <body>
@@ -688,6 +696,15 @@
         <div class="bar-pct" id="cred-np-pct">8%</div>
       </div>
     </div>
+<!-- Figures restated in prose: the numbers in the bar chart above live in
+     styled div elements and do NOT survive content extraction, which is how AI
+     crawlers read this page. Verified 2026-08-21 — of 26 percentages on
+     the Toronto guide only 6 were extractable, and the ones that made it
+     were exactly those also written into a sentence. Keep this paragraph
+     in sync with the chart. -->
+<p class="chart-figures en">Injector mix across Montreal clinics: MD or physician at <span id="cred-md-text">83</span>%, RN or nurse at <span id="cred-rn-text">50</span>%, and nurse practitioner (IPS) at <span id="cred-np-text">8</span>%. Clinics can appear in more than one category where several credentials inject.</p>
+<p class="chart-figures fr">Répartition des injecteurs dans les cliniques montréalaises : médecin <span id="cred-md-text-fr">83</span> %, infirmier(ère) <span id="cred-rn-text-fr">50</span> %, et infirmier(ère) praticien(ne) spécialisé(e) (IPS) <span id="cred-np-text-fr">8</span> %. Une clinique peut figurer dans plusieurs catégories si plusieurs professionnels y pratiquent des injections.</p>
+
 
     <p class="en"><strong>Over 80% of Montreal clinics have physician involvement</strong> — compared to 22% in the GTA. This is the single most distinctive feature of the Montreal market. Many of these physicians are not aesthetic medicine specialists who occasionally perform surgery; they are reconstructive and plastic surgeons whose clinics also offer Botox as part of a full-service aesthetic program.</p>
     <p class="fr"><strong>Plus de 80 % des cliniques montréalaises impliquent un médecin</strong>, contre 22 % dans la région du Grand Toronto. C'est la caractéristique la plus distinctive du marché montréalais. Nombre de ces médecins ne sont pas des spécialistes en médecine esthétique pratiquant occasionnellement la chirurgie, mais des chirurgiens plasticiens et reconstructeurs dont les cabinets proposent aussi le Botox dans le cadre d'un programme esthétique complet.</p>
@@ -768,6 +785,15 @@
         <div class="bar-pct" id="brand-letybo-pct">4%</div>
       </div>
     </div>
+<!-- Figures restated in prose: the numbers in the bar chart above live in
+     styled div elements and do NOT survive content extraction, which is how AI
+     crawlers read this page. Verified 2026-08-21 — of 26 percentages on
+     the Toronto guide only 6 were extractable, and the ones that made it
+     were exactly those also written into a sentence. Keep this paragraph
+     in sync with the chart. -->
+<p class="chart-figures en">Brand availability across Montreal clinics: Botox 78%, Dysport 52%, Xeomin 19%, Nuceiva 11%, Letybo 4%. Most clinics carry more than one brand.</p>
+<p class="chart-figures fr">Disponibilité des marques dans les cliniques montréalaises : Botox 78 %, Dysport 52 %, Xeomin 19 %, Nuceiva 11 %, Letybo 4 %. La plupart des cliniques offrent plus d’une marque.</p>
+
 
     <p class="en">Botox leads the Montreal market, but Dysport has strong penetration — many clinics offer both. The brand your clinic uses matters less than the skill of the injector using it.</p>
     <p class="fr">Botox domine le marché montréalais, mais Dysport est très répandu — de nombreuses cliniques proposent les deux. La marque utilisée par votre clinique compte moins que la compétence de l'intervenant qui l'utilise.</p>
@@ -1203,6 +1229,15 @@
         setBar('cred-md-bar', md, maxPct); setPct('cred-md-pct', md);
         setBar('cred-rn-bar', rn, maxPct); setPct('cred-rn-pct', rn);
         setBar('cred-np-bar', np, maxPct); setPct('cred-np-pct', np);
+
+        // Keep the prose restatement in step with the bars. The chart numbers
+        // live in styled div elements that content extractors discard, so the
+        // paragraph beneath the chart is the version AI crawlers actually read
+        // — if it were left static it would silently drift from the live data.
+        const setNum = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+        setNum('cred-md-text', md); setNum('cred-md-text-fr', md);
+        setNum('cred-rn-text', rn); setNum('cred-rn-text-fr', rn);
+        setNum('cred-np-text', np); setNum('cred-np-text-fr', np);
         
       }
     }

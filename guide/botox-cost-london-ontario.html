@@ -512,6 +512,14 @@
     .pc-scale-you .pc-scale-price { color:var(--deep); font-weight:600; }
     .pc-cta { display:inline-block; margin-top:0.25rem; font-size:0.9rem; color:var(--rose); font-weight:600; text-decoration:none; }
     .pc-cta:hover { text-decoration:underline; }
+    /* Prose restatement of chart figures. The numbers inside .bar-pct are in
+       styled divs that content extractors discard, so each chart is followed by
+       a paragraph stating its values in a sentence. Set small and muted: it
+       reads as a caption for people and as data for machines. */
+    .chart-figures {
+      font-size: 0.78rem; line-height: 1.6; color: var(--muted);
+      margin: 0.5rem 0 1.2rem; max-width: 62ch;
+    }
 </style>
   <script type="application/ld+json">
   {
@@ -751,6 +759,8 @@
         <div class="data-card-sub">The floor of the London market</div>
       </div>
     </div>
+<p class="chart-figures">London&rsquo;s per-unit figures at a glance: the average is $9.90, the median and most common price is $10.00, most clinics land in the $9 to $11 band, and the lowest published price in the London market is $7.49.</p>
+
 
     <p>The most striking thing about London isn't the average — it's the <em>consistency</em>. While the Greater Toronto Area spreads its pricing from roughly $7 to $13, London bunches almost entirely at $10. That means less hunting for a deal, but it also means price tells you very little about which clinic is right for you. The differentiation in London is the injector, not the dollar figure.</p>
 
@@ -768,6 +778,8 @@
         <div class="data-card-sub">Clustered in the top tenth of a star</div>
       </div>
     </div>
+<p class="chart-figures">Ratings across London-area clinics with Google reviews: 79% are rated 4.8&#9733; or higher and 71% are rated 4.9&#9733; or higher &mdash; which is why a high star rating separates almost nothing in this market.</p>
+
     <p>When 71% of clinics sit at 4.9 stars or above, a high rating isn't a signal — it's the baseline. A 4.9 doesn't tell you a clinic is exceptional; it tells you it's normal.</p>
 
     <h3 style="margin-top:2rem;">So how do you actually choose in London?</h3>
@@ -806,6 +818,14 @@
         <div class="bar-pct"><strong>$9.70</strong></div>
       </div>
     </div>
+<!-- Figures restated in prose: the numbers in the bar chart above live in
+     styled div elements and do NOT survive content extraction, which is how AI
+     crawlers read this page. Verified 2026-08-21 — of 26 percentages on
+     the Toronto guide only 6 were extractable, and the ones that made it
+     were exactly those also written into a sentence. Keep this paragraph
+     in sync with the chart. -->
+<p class="chart-figures">Average price per unit by brand in London, normalised to Botox-equivalent units: Nuceiva $10.42, Botox $9.91, Dysport $9.73, Xeomin $9.70. The full spread is about 72 cents per unit.</p>
+
     <p style="font-size:0.75rem;color:var(--dim);">Averages based on verified pricing from London-area clinics, with Dysport normalized to Botox-equivalent units. Some brand samples are small — interpret the smaller ones with caution.</p>
 
     <p>The takeaway is the same one the data shows in every market: brand barely moves the price. From Nuceiva at $10.42 to Xeomin at $9.70 is less than a dollar a unit, and the gap narrows further once you account for small sample sizes. So while it's worth knowing which product you're getting, the brand is the <em>least</em> important factor in what you'll pay. What matters is the injector.</p>
