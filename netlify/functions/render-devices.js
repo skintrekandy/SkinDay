@@ -172,20 +172,28 @@ exports.handler = async (event) => {
         .map(c => ({ category: c, label: (labels[c] && labels[c].label_en) || c, sort: (labels[c] && labels[c].sort_order) || 999, clinics: catClinics[c].size }))
         .sort((a, b) => a.sort - b.sort);
 
+      // Same reason as the clinic table on the model page: a wall of
+      // <a class="also-link"> is pure link markup and readability discards it
+      // as navigation, leaving the index with a heading and nothing else.
+      // Verified 2026-08-21: as anchor blocks readability kept neither the
+      // category names nor the models; as tables it keeps both. Headings are
+      // real <h2>s so the category names survive independently of the table.
       const blocks = cats.map(c => {
         const models = Object.keys(byCat[c.category])
           .map(m => ({ model: m, slug: slugifyModel(m), clinics: byCat[c.category][m].size }))
           .sort((a, b) => b.clinics - a.clinics);
-        return `<div class="cat-block"><div class="cat-title">${escapeHtml(c.label)}</div>
-          <div class="cat-count">${c.clinics.toLocaleString()} ${c.clinics === 1 ? 'clinic' : 'clinics'}</div>
-          <div class="also-links">${models.map(m => `<a class="also-link" href="/devices/${escapeHtml(m.slug)}">${escapeHtml(m.model)} <em>${m.clinics}</em></a>`).join('')}</div>
-        </div>`;
+        return `<h2>${escapeHtml(c.label)}</h2>
+          <p class="cat-count">${c.clinics.toLocaleString()} ${c.clinics === 1 ? 'clinic' : 'clinics'} in Canada list a ${escapeHtml(c.label.toLowerCase())} device.</p>
+          <table class="ssr-table">
+            <thead><tr><th>Device</th><th>Clinics</th></tr></thead>
+            <tbody>${models.map(m => `<tr><td><a href="/devices/${escapeHtml(m.slug)}">${escapeHtml(m.model)}</a></td><td>${m.clinics}</td></tr>`).join('')}</tbody>
+          </table>`;
       }).join('');
 
       const ssrBody = `<main class="wrap">
         <div class="crumb"><a href="/">SkinDay</a> <span>/</span> Devices</div>
-        <div class="page-head"><h1>Aesthetic devices in Canada</h1>
-        <p class="page-sub">Browse Canadian clinics by the technology they use.</p></div>
+        <h1>Aesthetic devices in Canada</h1>
+        <p class="page-sub">Browse Canadian clinics by the technology they use. Device listings are read from clinics&rsquo; own published pages.</p>
         ${blocks}</main>`;
 
       const rendered = patchTemplate(loadTemplate(), {
@@ -279,16 +287,32 @@ exports.handler = async (event) => {
     const desc  = buildModelDescription(device, count, topProvinces);
     const url   = `${SITE}/devices/${device.slug}`;
 
+    // ⚠️ TABLE MARKUP IS DELIBERATE — DO NOT REVERT TO <a class="clinic-row">.
+    // The clinic list used to be a stack of anchors, one per row, with every
+    // cell inside the <a>. That container is ~100% link markup, and readability
+    // penalises high link-density nodes as navigation: it dropped the entire
+    // list and kept only the page head. Verified 2026-08-21 — with anchor rows,
+    // trafilatura kept the clinics and readability did not; as a table BOTH
+    // keep them. device-page.js has always used tables, which is why the
+    // province pages never had this problem.
+    //
+    // Adding an explanatory paragraph does NOT fix it and makes things worse:
+    // trafilatura then scores the prose highest and drops the list instead, so
+    // the page loses clinics in both extractors. Tested, rejected.
+    //
+    // Only the clinic NAME is a link. The location and rating are plain text
+    // cells, which is what keeps link density down.
     const rows = clinics.map(c => {
       const where = [c.neighbourhood, provLabel(c.province)].filter(Boolean).join(', ');
       const rating = (c.rating != null)
-        ? `<span class="clinic-rating"><strong>${Number(c.rating).toFixed(1)}</strong>${c.reviews ? ' \u00b7 ' + Number(c.reviews).toLocaleString() + ' reviews' : ''}</span>`
+        ? `${Number(c.rating).toFixed(1)}${c.reviews ? ' \u00b7 ' + Number(c.reviews).toLocaleString() + ' reviews' : ''}`
         : '';
-      const verified = statusByClinic[String(c.id)] === 'verified' ? '<span class="verified-tag">Verified</span>' : '';
-      return `<a class="clinic-row" href="/clinic/${escapeHtml(c.slug || '')}">
-        <span class="clinic-name">${escapeHtml(c.name)}</span>
-        ${where ? `<span class="clinic-where">${escapeHtml(where)}</span>` : ''}
-        <span class="clinic-right">${verified}${rating}</span></a>`;
+      const verified = statusByClinic[String(c.id)] === 'verified' ? '<span class="verified-tag">Verified</span> ' : '';
+      return `<tr>
+        <td><a href="/clinic/${escapeHtml(c.slug || '')}">${escapeHtml(c.name)}</a></td>
+        <td>${escapeHtml(where)}</td>
+        <td>${verified}${escapeHtml(rating)}</td>
+      </tr>`;
     }).join('');
 
     const siblings = Object.keys(siblingCounts)
@@ -327,19 +351,32 @@ exports.handler = async (event) => {
       <div class="also-links">${siblings.map(s => `<a class="also-link" href="/devices/${escapeHtml(s.slug)}">${escapeHtml(s.model)} <em>${s.clinics}</em></a>`).join('')}</div>
     </div>` : '';
 
+    // ⚠️ THE HEADING AND LEDE ARE FLAT — NOT WRAPPED IN <div class="page-head">.
+    // That wrapper is what cost this page its clinic list. Readability picks a
+    // single highest-scoring node: with the h1 and lede inside their own div,
+    // that div wins and the table is discarded; with them as direct children of
+    // <main class="wrap">, the wrapper wins and the table comes with it.
+    // Verified 2026-08-21 — wrapped: readability returned the head only.
+    // Flat: both extractors return the full clinic list.
+    //
+    // The manufacturer and category are stated IN THE SENTENCE, not only in the
+    // .meta-chip spans. Trafilatura drops bare <span> chips as non-prose, so a
+    // fact that lives only in a chip does not survive extraction. Anything that
+    // matters on this page has to appear in a sentence somewhere.
+    const madeBy = device.manufacturer ? `, made by ${escapeHtml(device.manufacturer)}` : '';
+    const catSentence = device.category_label
+      ? ` ${escapeHtml(device.model)} is a ${escapeHtml(String(device.category_label).toLowerCase())} device.`
+      : '';
     const ssrBody = `<main class="wrap">
       <div class="crumb"><a href="/">SkinDay</a> <span>/</span> <a href="/devices/">Devices</a> <span>/</span> ${escapeHtml(device.model)}</div>
-      <div class="page-head">
-        <h1>${escapeHtml(device.model)}</h1>
-        <p class="page-sub">${count
-          ? `${count.toLocaleString()} ${count === 1 ? 'clinic' : 'clinics'} in Canada list ${escapeHtml(device.model)} on their own website.`
-          : `No clinics in our directory currently list ${escapeHtml(device.model)}.`}</p>
-        <div class="device-meta">
-          ${device.manufacturer ? `<span class="meta-chip">Made by <strong>${escapeHtml(device.manufacturer)}</strong></span>` : ''}
-          ${device.category_label ? `<span class="meta-chip">${escapeHtml(device.category_label)}</span>` : ''}
-        </div>
-      </div>
-      <div class="clinic-list">${rows}</div>
+      <h1>${escapeHtml(device.model)}</h1>
+      <p class="page-sub">${count
+        ? `${count.toLocaleString()} ${count === 1 ? 'clinic' : 'clinics'} in Canada list ${escapeHtml(device.model)}${madeBy} on their own website.${catSentence}`
+        : `No clinics in our directory currently list ${escapeHtml(device.model)}${madeBy}.${catSentence}`}</p>
+      <table class="ssr-table">
+        <thead><tr><th>Clinic</th><th>Location</th><th>Rating</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
       ${provinceBlock}
       ${siblingBlock}
     </main>`;
