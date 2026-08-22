@@ -168,6 +168,40 @@
       padding: 0.55rem 1.1rem; border-radius: 20px;
       background: var(--rose); color: #fff;
     }
+    /* ── SERVER-RENDERED BLOCK (#ssr-content) ────────────────
+       render-devices.js injects the crawler-facing version of this page as
+       #ssr-content, and the client script below replaces it once its own
+       fetch returns. It renders its clinic and device lists as TABLES, not as
+       the .clinic-row cards used after hydration, and that is deliberate: a
+       container built entirely of anchors is scored as navigation and thrown
+       away by content extractors, which is how AI crawlers read the page.
+       Tables survive. See the comment in render-devices.js before changing.
+
+       These rules exist so the brief pre-hydration paint reads as a plain,
+       finished table rather than unstyled markup. Scoped to #ssr-content so
+       nothing here can leak into the hydrated UI. */
+    #ssr-content .ssr-table {
+      width: 100%; border-collapse: collapse;
+      margin: 0.6rem 0 2rem; font-size: 0.92rem;
+    }
+    #ssr-content .ssr-table th,
+    #ssr-content .ssr-table td {
+      text-align: left; padding: 0.6rem 0.5rem;
+      border-bottom: 1px solid var(--border); vertical-align: top;
+    }
+    #ssr-content .ssr-table th {
+      font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--muted); font-weight: 600;
+    }
+    #ssr-content .ssr-table td a { font-weight: 600; text-decoration: none; }
+    #ssr-content .cat-count { color: var(--muted); font-size: 0.88rem; margin: 0.2rem 0 0; }
+    #ssr-content h2 { font-size: 1.25rem; margin: 2rem 0 0.2rem; }
+    /* The SSR block emits h1 and .page-sub flat rather than inside
+       .page-head — see render-devices.js — so its padding is restored here.
+       The hydrated UI still uses .page-head and is unaffected. */
+    #ssr-content h1 { padding-top: 0.6rem; }
+    #ssr-content .page-sub { padding-bottom: 1.2rem; }
+
   </style>
 </head>
 <body>
