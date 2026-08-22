@@ -830,25 +830,56 @@
   }
 
   /* ── SSR CONTENT BLOCK ──────────────────────────────────────────
-     render-clinic.js injects <div id="ssr-content"> immediately after <body>:
-     an unstyled <h1> plus a stack of <p> tags, written for Googlebot so the
-     page is never a soft 404. Its comment says "users never see it" — but
-     they did. It rendered raw in the top-left corner for the 1-2 seconds the
-     client JS spent fetching /api/get-clinics, then vanished.
+     render-clinic.js REPLACES the #loadingState placeholder inside #pageWrap
+     with <div id="ssr-content">: an <h1> plus a stack of <p> tags carrying the
+     clinic's name, price, rating, credentials, devices and phone.
 
-     This is the standard visually-hidden pattern, NOT display:none. The text
-     stays in the DOM, in the HTML source, and in the accessibility tree, so
-     it is the same content the page shows once hydrated rather than anything
-     concealed. It just stops occupying the viewport while it waits to be
-     replaced. Both hydration paths still call .remove() on it. */
+     It has to sit inside #pageWrap. Injected above it (the old behaviour) the
+     block is outside the page's only content container, and content
+     extractors — which is how AI crawlers read pages, since they do not
+     execute JS — score it as header boilerplate and throw it away. Verified
+     2026-08-21: after <body> both trafilatura and readability returned the
+     visit-signal modal and zero clinic data; inside #pageWrap both returned
+     the full record.
+
+     It was previously visually hidden (1px + clip-path). That was a fix for a
+     real complaint — it used to render raw and unstyled in the top-left
+     corner — but hiding it was treating the symptom. The block is now VISIBLE
+     and styled, for two reasons: users get a real clinic summary during the
+     1-2s fetch instead of "Loading clinic…", and initFromDB() deliberately
+     keeps SSR content on a transient 5xx, which with a hidden block meant a
+     blank page. Both hydration paths still dispose of it. */
   #ssr-content {
-    position: absolute;
-    width: 1px; height: 1px;
-    margin: -1px; padding: 0; border: 0;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    clip-path: inset(50%);
-    white-space: nowrap;
+    animation: ssrFadeIn 0.25s ease both;
+  }
+  @keyframes ssrFadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  #ssr-content h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2.4rem;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    line-height: 1.15;
+    color: var(--deep);
+    margin-bottom: 1.1rem;
+  }
+  #ssr-content p {
+    font-size: 0.95rem;
+    line-height: 1.75;
+    color: var(--muted);
+    max-width: 60ch;
+    margin-bottom: 0.5rem;
+  }
+  #ssr-content p:first-of-type {
+    font-size: 1.06rem;
+    color: var(--deep);
+    margin-bottom: 0.9rem;
+  }
+  @media (max-width: 700px) {
+    #ssr-content h1 { font-size: 1.9rem; }
+    #ssr-content p  { font-size: 0.9rem; }
   }
 </style>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -946,40 +977,19 @@ function renderClinic(clinic) {
   document.getElementById('tw-description').content = description;
   document.getElementById('tw-image').content = ogImage;
 
-  // JSON-LD structured data
-  const existingJsonLd = document.getElementById('json-ld');
-  if (existingJsonLd) existingJsonLd.remove();
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'MedicalBusiness',
-    'name': clinic.name,
-    'address': {
-      '@type': 'PostalAddress',
-      'addressLocality': clinic.neighbourhood,
-      'addressRegion': 'ON',
-      'addressCountry': 'CA'
-    },
-    'url': pageUrl,
-    ...(clinic.phone && { 'telephone': clinic.phone }),
-    ...(clinic.website && { 'sameAs': clinic.website }),
-    ...(clinic.rating && {
-      'aggregateRating': {
-        '@type': 'AggregateRating',
-        'ratingValue': clinic.rating,
-        'reviewCount': clinic.reviews || 1,
-        'bestRating': 5
-      }
-    }),
-    ...(clinic.price && {
-      'priceRange': `$${clinic.price}/unit (Botox)`
-    }),
-    ...(clinic.photos && clinic.photos.length > 0 && { 'image': clinic.photos[0] })
-  };
-  const script = document.createElement('script');
-  script.id = 'json-ld';
-  script.type = 'application/ld+json';
-  script.textContent = JSON.stringify(jsonLd);
-  document.head.appendChild(script);
+  // JSON-LD structured data is emitted SERVER-SIDE by render-clinic.js
+  // (buildSchema), for indexable clinics only. It is not built here.
+  //
+  // A second copy used to be appended to <head> at this point, and the two
+  // disagreed in two ways that mattered:
+  //   1. addressRegion was hardcoded 'ON'. The directory went national, so
+  //      every BC, Alberta and Quebec clinic was emitting Ontario. The server
+  //      copy uses clinic.province and only falls back to 'ON'.
+  //   2. It added aggregateRating, which the server copy omits on purpose —
+  //      review-snippet policy exposure across ~5,800 pages is not worth the
+  //      rich result. Adding it back client-side quietly undid that decision
+  //      for Google, which executes JS and saw both blocks.
+  // If schema needs changing, change it in render-clinic.js. One source.
 
   // Photos HTML — placeholder replaced after DOM is ready by fetchAndRenderPhotos()
   const photosPlaceholderHTML = `<div class="photos-placeholder" id="photos-placeholder-inner">
