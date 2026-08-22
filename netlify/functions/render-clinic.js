@@ -194,9 +194,19 @@ function buildSchema(clinic) {
 // Goal: defeat Google's Soft 404 classification by giving the page real,
 // unique, body-level content before any JavaScript runs.
 //
-// Non-goals: visual polish, hydration parity, design matching. Client JS
-// overwrites this block (via document.getElementById('ssr-content')?.remove())
-// once the rich UI is ready, so users never see it.
+// Also the AEO surface: this is the only body content an AI crawler that does
+// not execute JavaScript will ever read on a clinic page. Every fact worth
+// citing about a clinic has to appear here as plain text.
+//
+// Non-goals: hydration parity, design matching. Client JS overwrites this
+// block once the rich UI is ready.
+//
+// Users DO see it, briefly. It renders inside #pageWrap for the 1-2s the
+// client spends fetching /api/get-clinics, and it stays on screen permanently
+// if that fetch fails transiently (initFromDB deliberately keeps SSR content
+// on 5xx rather than showing "not found"). It is styled in clinic.html under
+// #ssr-content so that moment reads as a lightweight version of the page
+// rather than raw markup. Keep it plain and factual; it is user-visible copy.
 //
 // What matters: unique <h1>, unique paragraph content, semantic structure.
 // No inline CSS because that's where today's quote-collision bugs lived.
@@ -316,10 +326,42 @@ function patchTemplate(html, clinic) {
     `<meta name="twitter:image" id="tw-image" content="${escapeHtml(ogImg)}" />`
   );
 
-  // Inject SSR content block right after <body>. The client-side JS that
-  // renders clinic.html replaces #ssr-content (or ignores it; either is fine).
+  // Inject the SSR content block by REPLACING the loading placeholder inside
+  // #pageWrap. The client-side JS that renders clinic.html overwrites
+  // pageWrap.innerHTML wholesale (or calls .remove() on #ssr-content); either
+  // path disposes of it cleanly.
+  //
+  // ⚠️ PLACEMENT IS THE WHOLE POINT — DO NOT MOVE THIS BACK AFTER <body>.
+  // This block used to be injected immediately after the opening <body> tag,
+  // which put it OUTSIDE #pageWrap, the page's only content container.
+  // Googlebot coped, because it renders the page. Content extractors do not
+  // render: they score candidate nodes and treat a text block sitting above
+  // the main container as header boilerplate, discard it, and fall through to
+  // the largest surviving block — which on this page is the visit-signal
+  // modal. Verified 2026-08-21 against trafilatura and readability: injected
+  // after <body> BOTH extractors returned the modal and no clinic data;
+  // injected here BOTH returned the full record (name, price, rating, review
+  // count, credentials, devices, phone).
+  //
+  // That is what AI crawlers read. Every LLM answer that could cite a SkinDay
+  // clinic depends on this one replacement target. A semantic <main>/<article>
+  // wrapper does NOT rescue it from the wrong position — placement is the only
+  // variable that mattered in testing.
+  //
+  // The fallback below is deliberate: if clinic.html ever drifts and the
+  // placeholder string stops matching, we revert to the old post-<body>
+  // injection rather than emitting no body content at all. Degraded (Google
+  // still sees it, extractors do not) beats empty. The ssr_present log line in
+  // the handler will not catch this case, because both branches produce the
+  // id — check ssr_in_wrap instead.
   const seoBody = buildSeoBody(clinic);
-  out = out.replace(/<body([^>]*)>/, `<body$1>\n${seoBody}\n`);
+  const LOADING_PLACEHOLDER = '<div class="loading" id="loadingState">Loading clinic…</div>';
+  if (out.includes(LOADING_PLACEHOLDER)) {
+    out = out.replace(LOADING_PLACEHOLDER, seoBody);
+  } else {
+    console.error('render-clinic: loading placeholder not found in template — falling back to post-<body> injection (extractor-invisible)');
+    out = out.replace(/<body([^>]*)>/, `<body$1>\n${seoBody}\n`);
+  }
 
   // Indexability gate, injected just before </head>:
   //   - Empty stub clinics → noindex (with follow, so Google still discovers
@@ -554,9 +596,18 @@ async function _handler(event) {
     // missed and #ssr-content isn't in the output, the function logs will
     // show it immediately rather than us discovering it via Search Console.
     const ssrPresent = rendered.includes('id="ssr-content"');
+    // ssr_present only proves the block exists somewhere. ssr_in_wrap proves it
+    // landed INSIDE #pageWrap, which is the difference between AI crawlers
+    // reading the clinic record and reading the visit-signal modal.
+    // Search only the text AFTER #pageWrap opens. A plain indexOf comparison
+    // gives a false negative here: clinic.html's stylesheet comment mentions
+    // id="ssr-content" literally, in <head>, ahead of the wrapper.
+    const wrapIdx = rendered.indexOf('id="pageWrap"');
+    const ssrInWrap = wrapIdx !== -1 &&
+      rendered.slice(wrapIdx).includes('id="ssr-content"');
     const titlePresent = rendered.includes(escapeHtml(clinic.name || ''));
     const indexable = clinicIsIndexable(clinic);
-    console.log(`render-clinic slug=${slug} ssr_present=${ssrPresent} title_present=${titlePresent} indexable=${indexable}`);
+    console.log(`render-clinic slug=${slug} ssr_present=${ssrPresent} ssr_in_wrap=${ssrInWrap} title_present=${titlePresent} indexable=${indexable}`);
 
     return {
       statusCode: 200,

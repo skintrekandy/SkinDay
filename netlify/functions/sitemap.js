@@ -58,8 +58,14 @@ const BOTOX_CITY_PAGES = [
   'botox-winnipeg',
 ].map(slug => ({ loc: `/${slug}`, changefreq: 'weekly', priority: 0.8 }));
 
+// The guide pages are the strongest AEO asset on the site: fully static HTML,
+// real numbers in the body, question-shaped headings. Every one of them must
+// be listed. botox-cost-montreal was missing from this array while being
+// linked from the homepage footer — the Quebec guide was effectively
+// undiscoverable except by crawl.
 const COST_GUIDE_PAGES = [
   'botox-cost-toronto', 'botox-cost-vancouver', 'botox-cost-london-ontario',
+  'botox-cost-montreal',
 ].map(slug => ({ loc: `/guide/${slug}`, changefreq: 'weekly', priority: 0.9 }));
 
 // ── DEVICE PAGES ─────────────────────────────────────────────────────────────
