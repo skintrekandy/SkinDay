@@ -125,6 +125,82 @@ function buildDescription(clinic) {
 
 // Format injector_credentials which may be a JSON array string,
 // a plain string, or null. Examples: '["rn","img"]', 'RN, MD', null.
+// ── LINK TARGETS ──────────────────────────────────────────────────
+// The SSR block used to contain no links at all. Every clinic page was a dead
+// end: readable, but with no path to the device pages that list the same
+// machines or the city guide that explains the price it quotes. These two
+// helpers supply the only two link families we can resolve from a clinic row
+// alone, without another query.
+
+// MUST match slugifyModel() in render-devices.js exactly. That function derives
+// the /devices/{model} slug from the model name — there is no slug column — and
+// any active device_reference row resolves to a real page (an unmatched model
+// 404s, a matched-but-unused one renders noindexed). Since render-clinic only
+// ever sees devices already filtered on active === true, a link built here
+// always lands on a real page. If the device slug rule ever changes, change it
+// in both files or these links start 404ing.
+function slugifyModel(model) {
+  return String(model || '')
+    .toLowerCase()
+    .replace(/[\u00ae\u2122]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+// City pages that actually exist. Sourced from the [[redirects]] blocks in
+// netlify.toml — a link to a city page with no file behind it is a soft 404,
+// so this list must not be guessed at. Keyed by province because "Richmond"
+// is Richmond BC here and Richmond Hill is a separate Ontario page.
+//
+// Where both a /botox-{city} page and a /guide/botox-cost-{city} guide exist
+// for the same place (Montreal), the guide wins: it is the far richer page and
+// the one an AI answering "how much is Botox in Montreal" should land on.
+const CITY_PAGES = {
+  on: {
+    'toronto':       '/guide/botox-cost-toronto',
+    'london':        '/guide/botox-cost-london-ontario',
+    'north york':    '/botox-north-york',
+    'richmond hill': '/botox-richmond-hill',
+    'markham':       '/botox-markham',
+    'etobicoke':     '/botox-etobicoke',
+  },
+  bc: {
+    'vancouver': '/guide/botox-cost-vancouver',
+    'richmond':  '/botox-richmond',
+    'victoria':  '/botox-victoria',
+    'kelowna':   '/botox-kelowna',
+  },
+  ab: { 'calgary': '/botox-calgary', 'edmonton': '/botox-edmonton' },
+  qc: {
+    'montreal':    '/guide/botox-cost-montreal',
+    'montréal':    '/guide/botox-cost-montreal',
+    'quebec city': '/botox-quebec-city',
+    'québec':      '/botox-quebec-city',
+    'sherbrooke':  '/botox-sherbrooke',
+    'gatineau':    '/botox-gatineau',
+  },
+  mb: { 'winnipeg': '/botox-winnipeg' },
+};
+
+// GTA municipalities the Toronto guide actually reports on — its neighbourhood
+// table covers exactly these. A clinic in one of them has no page of its own
+// but the GTA guide genuinely contains its local average, so the link is
+// honest. Anywhere not on this list gets no city link rather than a wrong one.
+const GTA_GUIDE_AREAS = new Set([
+  'woodbridge', 'milton', 'burlington', 'aurora', 'oakville',
+  'vaughan', 'thornhill', 'mississauga', 'brampton',
+]);
+
+function cityPageFor(clinic) {
+  const prov = String(clinic.province || '').toLowerCase();
+  const city = String(clinic.neighbourhood || clinic.area || '').trim().toLowerCase();
+  if (!city) return null;
+  const byProv = CITY_PAGES[prov];
+  if (byProv && byProv[city]) return byProv[city];
+  if (prov === 'on' && GTA_GUIDE_AREAS.has(city)) return '/guide/botox-cost-toronto';
+  return null;
+}
+
 function formatInjectorCreds(raw) {
   if (!raw) return '';
   if (Array.isArray(raw)) return raw.map(s => String(s).toUpperCase()).join(', ');
@@ -245,16 +321,35 @@ function buildSeoBody(clinic) {
   // ("morpheus8 toronto" lands here as well as on /devices/morpheus8), and
   // without this the SSR paint has no technology at all and Googlebot never
   // sees it, because the card only appears after the client hydrates.
+  //
+  // Each model is LINKED to its /devices/{model} page. Capped at 8 rather than
+  // the full list: this block is short prose, and a paragraph that is mostly
+  // anchors gets scored as navigation and discarded by content extractors —
+  // the exact failure that cost the device pages their clinic list. Eight
+  // links against seven sentences keeps density well under that threshold.
   const devices = clinic.devices || [];
   if (devices.length) {
-    paragraphs.push(`Technology listed by ${name}: ${devices.slice(0, 12).map(d => escapeHtml(d.model)).join(', ')}.`);
+    const linked = devices.slice(0, 8)
+      .map(d => `<a href="/devices/${escapeHtml(slugifyModel(d.model))}">${escapeHtml(d.model)}</a>`)
+      .join(', ');
+    const rest = devices.length > 8 ? `, and ${devices.length - 8} more` : '';
+    paragraphs.push(`Technology listed by ${name}: ${linked}${rest}.`);
   }
 
   if (clinic.phone) {
     paragraphs.push(`Contact ${name} at ${escapeHtml(clinic.phone)}.`);
   }
 
-  paragraphs.push(`Compare ${name}'s Botox pricing and services against other ${loc} clinics on SkinDay.`);
+  // Closing sentence, now with somewhere to go. This used to say "compare
+  // against other Hamilton clinics on SkinDay" and link nowhere at all.
+  // cityPageFor returns null wherever no city page exists, in which case the
+  // sentence still reads correctly and only the directory link is offered —
+  // never a fabricated URL.
+  const cityHref = cityPageFor(clinic);
+  const compare = cityHref
+    ? `Compare ${name}'s Botox pricing and services against <a href="${escapeHtml(cityHref)}">other ${loc} clinics</a> on <a href="${SITE}/">SkinDay</a>.`
+    : `Compare ${name}'s Botox pricing and services against other ${loc} clinics on <a href="${SITE}/">SkinDay</a>.`;
+  paragraphs.push(compare);
 
   const body = paragraphs.map(p => `  <p>${p}</p>`).join('\n');
 
