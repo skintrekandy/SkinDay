@@ -4219,7 +4219,15 @@ function renderPageCards(clinicsData, append) {
             : ''}
           <div class="clinic-meta">📍 ${c.neighbourhood}${c.province ? `, ${provinceLabel(c.province)}` : ''}${(() => {
             if (!userLocation) return '';
-            const coords = (c.lat && c.lng) ? [parseFloat(c.lat), parseFloat(c.lng)] : (c.maps_url?.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) ? [parseFloat(c.maps_url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/)[1]), parseFloat(c.maps_url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/)[2])] : HOOD_COORDS[c.neighbourhood?.toLowerCase().replace(/\s+/g,'-')]);
+            /* ⛔⛔ THE HOOD_COORDS FALLBACK WAS REMOVED HERE (2026-08-23).
+               It measured from the NEIGHBOURHOOD CENTROID when a clinic had no
+               coordinates, so every clinic in one neighbourhood reported the
+               SAME distance — Andy stood in downtown Ottawa and saw a row of
+               Gatineau clinics all "6.6 km away". A precise-looking number that
+               is actually city-centre-to-city-centre is worse than no number:
+               it is the kind a user drives on. Every Canadian clinic has
+               lat/lng, so this fallback only ever fabricated. */
+            const coords = (c.lat && c.lng) ? [parseFloat(c.lat), parseFloat(c.lng)] : (c.maps_url?.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) ? [parseFloat(c.maps_url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/)[1]), parseFloat(c.maps_url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/)[2])] : null);
             if (!coords) return '';
             const d = haversineKm(userLocation.lat, userLocation.lon, coords[0], coords[1]);
             return ` <span class="dot">·</span> ${d < 1 ? (d * 1000).toFixed(0) + ' m' : d.toFixed(1) + ' km'} away`;
@@ -4495,6 +4503,32 @@ function updateNeighbourhoodCounts() {
 
 // ─── NEAR ME ───────────────────────────────────────────────────
 const HOOD_COORDS = {
+  // ⭐⭐ ADDED 2026-08-23, generated from clinics.lat/lng (median per
+  // neighbourhood, min 3 clinics) — not typed from memory.
+  // OTTAWA WAS ABSENT: standing downtown, the nearest listed place was
+  // GATINEAU across the river, so Near Me filtered to Quebec and hid all 170
+  // Ontario clinics in view. 133 Ottawa clinics were in the directory the
+  // whole time.
+  // ⚠️ NOTE THE PERIODS. Keys are built with .replace(/\s+/g,'-') which does
+  // NOT strip '.', so 'St. Catharines' looks up as 'st.-catharines'. The
+  // existing 'st-catharines' entry could never match. Same for Sault Ste.
+  // Marie, St. Johns, St. Albert — all silently broken.
+  'ottawa': [45.3919, -75.7131],
+  'st.-catharines': [43.1683, -79.2473],
+  'westmount': [45.4870, -73.5876],
+  'st.-johns': [47.5635, -52.7697],
+  'sault-ste.-marie': [46.5134, -84.3286],
+  'stoney-creek': [43.2175, -79.7620],
+  'longueuil': [45.5340, -73.4921],
+  'unionville': [43.8612, -79.3101],
+  'mount-royal': [45.5197, -73.6272],
+  'brossard': [45.4671, -73.4667],
+  'st.-albert': [53.6474, -113.6261],
+  'verdun': [45.4684, -73.5457],
+  'grimsby': [43.1978, -79.5642],
+  'dundas': [43.2669, -79.9507],
+  'nepean': [45.3309, -75.7367],
+  'woodstock': [43.1217, -80.7509],
   'toronto': [43.6532, -79.3832],
   'north-york': [43.7615, -79.4111],
   'richmond-hill': [43.8828, -79.4403],
@@ -4663,6 +4697,27 @@ function useNearMe() {
           sortSelect.insertBefore(opt, sortSelect.firstChild);
         }
         sortSelect.value = 'nearest';
+      }
+
+      // ⭐⭐ ON THE MAP, "NEAR ME" MEANS RADIUS — NEVER A NEIGHBOURHOOD FILTER.
+      // The old code snapped to the single nearest entry in HOOD_COORDS and
+      // filtered to it. From downtown Ottawa the nearest listed place was
+      // GATINEAU, ~3km across the river, so all 170 Ontario clinics in view were
+      // excluded and the map showed 49 Quebec ones. Any border city — Ottawa,
+      // Lloydminster, anywhere along a river — hits this. The map already has a
+      // viewport and sorts by true distance; the neighbourhood filter was
+      // fighting both.
+      if (currentView === 'map' && _map) {
+        currentFilter    = 'all';
+        currentNameQuery = '';
+        const nameBox = document.getElementById('searchClinicName');
+        if (nameBox) nameBox.value = '';
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        _map.setCenter({ lat: userLat, lng: userLon });
+        _map.setZoom(14);
+        initMap();
+        showToast('Showing clinics near you');
+        return;
       }
 
       if (nearest && nearestDist < 60) {
