@@ -93,6 +93,20 @@
   to     = "/.netlify/functions/save-clinic"
   status = 200
 
+# M23: the clinic's own equipment list, saved from the Devices tab in
+# editor.html. A SEPARATE function from save-clinic on purpose. It shares no
+# code with it, so the .ca and .com copies of save-clinic.js can keep
+# diverging without breaking device saves, and the identical save-devices.js
+# is deployed to both sites.
+#
+# ⚠️ This block is an explicit list with no /api/* splat, unlike skinday.com.
+# A function added here without its own line falls through to the static
+# publish root and returns HTML to a fetch that expects JSON.
+[[redirects]]
+  from   = "/api/save-devices"
+  to     = "/.netlify/functions/save-devices"
+  status = 200
+
 [[redirects]]
   from   = "/api/track-click"
   to     = "/.netlify/functions/track-click"
