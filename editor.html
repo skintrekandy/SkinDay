@@ -1588,6 +1588,7 @@
       <button class="tab-btn" onclick="switchTab('hours', this)">Hours</button>
       <button class="tab-btn" onclick="switchTab('photos', this)">Photos</button>
       <button class="tab-btn" onclick="switchTab('practitioners', this)">Practitioners</button>
+      <button class="tab-btn" onclick="switchTab('devices', this)">Devices</button>
     </nav>
 
     <!-- ─── TAB: PRICING ─── -->
@@ -1953,6 +1954,55 @@
       </div>
     </div>
 
+    <!-- ─── TAB: DEVICES (M23) ─── -->
+    <div class="tab-pane" id="tab-devices">
+      <div class="identity-intro">
+        The equipment you run is one of the things patients search by. Confirm what you have, remove anything we got wrong, and add what we missed.
+      </div>
+
+      <div class="identity-card">
+        <div class="identity-card-title">Your equipment</div>
+        <div class="identity-card-desc" id="device-card-desc">Search by model name. Only devices on our reference list can be added, so spelling and manufacturer stay consistent across the directory.</div>
+
+        <div class="identity-counter" id="device-counter">
+          <span class="count-num">0</span> selected
+        </div>
+
+        <div class="chips-area" id="device-chips"></div>
+
+        <div class="pill-picker" id="device-picker">
+          <div class="pill-picker-input-wrap" id="device-input-wrap">
+            <svg class="pill-picker-icon" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="9" cy="9" r="6.5" stroke="currentColor" stroke-width="1.5"/>
+              <path d="M14 14L17.5 17.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+            <input
+              type="text"
+              class="pill-picker-input"
+              id="device-input"
+              placeholder="Search by model, e.g. Morpheus8…"
+              autocomplete="off"
+              spellcheck="false" />
+            <button type="button" class="pill-picker-clear" id="device-clear" aria-label="Clear search">×</button>
+          </div>
+
+          <div class="pill-picker-panel" id="device-panel"></div>
+        </div>
+
+        <div class="identity-helper" id="device-helper">
+          Don't see your machine? Email hello@skinday.ca with the model name and we'll add it to the reference list.
+        </div>
+      </div>
+
+      <div class="identity-card">
+        <div class="identity-card-title">What publishing does</div>
+        <div class="identity-card-desc">
+          Once you save this list, it becomes the equipment shown on your SkinDay profile, replacing anything we found by reading your website. If you leave something off, it stops showing. You can come back and change it any time.
+        </div>
+        <div class="field-hint" id="device-published-state" style="margin-top:10px;"></div>
+      </div>
+    </div>
+
   <!-- Save Bar -->
   <div class="save-bar" id="save-bar">
     <div class="save-bar-msg"><strong>Unsaved changes</strong> — your edits haven't been published yet.</div>
@@ -2059,7 +2109,7 @@
       const data = await res.json();
 
       if (!res.ok || data.error) {
-        showLoginError(data.error || 'No approved clinic found for this account. Contact support@skinday.ca.');
+        showLoginError(data.error || 'No approved clinic found for this account. Contact hello@skinday.ca.');
         return;
       }
 
@@ -2322,6 +2372,7 @@
     buildHoursTable();
     buildPhotoGrid();
     practitionerLoad(currentClinic.id);
+    deviceLoadForClinic(currentClinic.id);
   }
 
   function populateFields() {
@@ -2715,6 +2766,15 @@
         identityRender('concerns');
       });
     }
+
+    // M23 Devices tab: the reference list is large enough that it is fetched
+    // on first visit rather than at login, so most clinics never pay for it.
+    if (tab === 'devices') {
+      deviceLoadReference().then(() => {
+        deviceInitPicker();
+        deviceRender();
+      });
+    }
   }
 
   // ─── DIRTY STATE ───
@@ -2779,6 +2839,16 @@
     });
     identityRender('expertise');
     identityRender('concerns');
+
+    // M23: restore the equipment selection from its snapshot
+    deviceSelected = [...deviceOriginal];
+    deviceDirty = false;
+    deviceQuery = '';
+    const devInput = document.getElementById('device-input');
+    const devClear = document.getElementById('device-clear');
+    if (devInput) devInput.value = '';
+    if (devClear) devClear.classList.remove('visible');
+    deviceRender();
 
     isDirty = false;
     document.getElementById('save-bar').classList.remove('visible');
@@ -3306,6 +3376,22 @@
         : 'Changes saved and published! ✓';
       showToast(toastMsg, 'success');
 
+      // ── M23: publish the equipment list, ONLY if the clinic edited it ──
+      // Deliberately NOT part of the payload above. /api/save-devices sets
+      // clinics.devices_published_at, which changes how this clinic's equipment
+      // is read everywhere on the platform. That has to follow a real edit on
+      // the Devices tab, never a save of an unrelated field, or a clinic that
+      // only changed its phone number would silently publish a list it has
+      // never looked at.
+      if (deviceDirty) {
+        try {
+          await deviceSave(currentClinic.id, token);
+        } catch (e) {
+          console.error('Device save error:', e);
+          showToast('Your details saved, but the equipment list did not. Open the Devices tab and save again.', 'error');
+        }
+      }
+
       // ── Non-critical saves — failures logged but don't override success toast ──
       try {
         await practitionerSave(currentClinic.id, token);
@@ -3524,6 +3610,314 @@
         body: JSON.stringify(toInsert)
       }
     );
+  }
+
+  // ─── M23 DEVICES ─────────────────────────────────────────────
+  // The clinic's own equipment list. Reuses the M28 pill-picker markup and
+  // CSS, with two differences: it is UNCAPPED (expertise allows 3), and it
+  // arrives PRE-FILLED from whatever the crawler found, so a clinic confirms
+  // a list rather than typing one from nothing.
+  //
+  // ⚠️ READS are plain PostgREST, like practitionerLoad. The SAVE is not:
+  // it goes through /api/save-devices, because publishing sets
+  // clinics.devices_published_at and must never be a browser-side write.
+  //
+  // ⚠️ DO NOT copy practitionerSave's delete-all-then-insert pattern here.
+  // clinic_devices holds crawl rows with first_seen dates, source urls and
+  // matched_text behind them. Nothing in this file may delete one.
+
+  let deviceReference   = [];   // [{ id, model, manufacturer, category }]
+  let deviceRows        = [];   // this clinic's existing clinic_devices rows
+  let deviceSelected    = [];   // device ids currently ticked
+  let deviceOriginal    = [];   // snapshot for discard
+  let deviceDirty       = false;
+  let deviceQuery       = '';
+  let devicePickerWired = false;
+  let deviceRefPromise  = null;
+  const deviceCatLabel  = {};   // category slug -> display label
+  const deviceCatGroup  = {};   // category slug -> parent group label
+  const deviceCatSort   = {};   // category slug -> sort order
+
+  function deviceHeaders() {
+    const tok = sessionStorage.getItem('sd_token');
+    return { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${tok || SUPABASE_KEY}` };
+  }
+
+  // Fetch the reference list once, on first visit to the tab. It is a few
+  // hundred rows, so most clinics never pay for it at login.
+  async function deviceLoadReference() {
+    if (deviceRefPromise) return deviceRefPromise;
+    deviceRefPromise = (async () => {
+      const h = deviceHeaders();
+      const sel = 'select=id,model,manufacturer,category&order=model.asc&limit=2000';
+
+      // `active` hides rows retired by a generation merge. If that column is
+      // ever renamed the request 400s, and an empty picker is a worse failure
+      // than showing a couple of merged duplicates, so fall back to the
+      // unfiltered list rather than to nothing.
+      let rows = [];
+      let res = await fetch(`${SUPABASE_URL}/rest/v1/device_reference?${sel}&active=is.true`, { headers: h });
+      if (!res.ok) {
+        res = await fetch(`${SUPABASE_URL}/rest/v1/device_reference?${sel}`, { headers: h });
+      }
+      rows = await res.json();
+      deviceReference = Array.isArray(rows) ? rows : [];
+
+      // Category labels are cosmetic. A failure here groups by raw slug,
+      // which is ugly but still usable, so it must not block the picker.
+      try {
+        const cRes = await fetch(
+          `${SUPABASE_URL}/rest/v1/device_categories?select=category,label_en,group_label,sort_order&limit=200`,
+          { headers: h }
+        );
+        const cats = await cRes.json();
+        if (Array.isArray(cats)) {
+          cats.forEach(c => {
+            deviceCatLabel[c.category] = c.label_en || c.category;
+            deviceCatGroup[c.category] = c.group_label || '';
+            deviceCatSort[c.category]  = (c.sort_order === null || c.sort_order === undefined) ? 999 : c.sort_order;
+          });
+        }
+      } catch (e) {
+        console.error('Device category labels unavailable:', e);
+      }
+    })().catch(e => {
+      console.error('Failed to load device reference:', e);
+      deviceReference = [];
+      deviceRefPromise = null; // allow a retry on the next tab visit
+    });
+    return deviceRefPromise;
+  }
+
+  // Load this clinic's rows and decide the starting selection.
+  async function deviceLoadForClinic(clinicId) {
+    deviceRows = [];
+    deviceSelected = [];
+    deviceOriginal = [];
+    deviceDirty = false;
+
+    try {
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/clinic_devices?clinic_id=eq.${encodeURIComponent(clinicId)}&select=device_id,declared_at,source,status&limit=500`,
+        { headers: deviceHeaders() }
+      );
+      const rows = await res.json();
+      deviceRows = Array.isArray(rows) ? rows : [];
+    } catch (e) {
+      console.error('Failed to load clinic devices:', e);
+      deviceRows = [];
+    }
+
+    // ⭐ THE PREFILL RULE.
+    // Published before: the declared rows ARE the list, and anything without
+    // declared_at was deliberately left off last time, so it stays off.
+    // Never published: start from everything we hold, so the clinic confirms
+    // and corrects instead of starting at zero.
+    const published = !!(currentClinic && currentClinic.devices_published_at);
+    const base = published ? deviceRows.filter(r => r.declared_at) : deviceRows;
+
+    deviceSelected = base.map(r => Number(r.device_id));
+    deviceOriginal = [...deviceSelected];
+    deviceRender();
+  }
+
+  function deviceById(id) {
+    return deviceReference.find(d => Number(d.id) === Number(id));
+  }
+
+  function deviceRowFor(id) {
+    return deviceRows.find(r => Number(r.device_id) === Number(id));
+  }
+
+  function deviceLabel(id) {
+    const d = deviceById(id);
+    return d ? d.model : `Device #${id}`;
+  }
+
+  function deviceFiltered() {
+    const q = (deviceQuery || '').trim().toLowerCase();
+    const selected = new Set(deviceSelected.map(Number));
+    return deviceReference.filter(d => {
+      if (selected.has(Number(d.id))) return false;
+      if (!q) return true;
+      return (d.model || '').toLowerCase().includes(q)
+          || (d.manufacturer || '').toLowerCase().includes(q);
+    });
+  }
+
+  function deviceGrouped(items) {
+    const buckets = new Map();
+    items.forEach(d => {
+      const cat = d.category || 'other';
+      if (!buckets.has(cat)) buckets.set(cat, []);
+      buckets.get(cat).push(d);
+    });
+    return [...buckets.entries()]
+      .map(([cat, list]) => ({
+        cat,
+        label: deviceCatLabel[cat] || cat,
+        group: deviceCatGroup[cat] || '',
+        sort: deviceCatSort[cat] === undefined ? 999 : deviceCatSort[cat],
+        items: list
+      }))
+      .sort((a, b) => (a.sort - b.sort) || a.label.localeCompare(b.label));
+  }
+
+  function deviceRender() {
+    deviceRenderChips();
+    deviceRenderPanel();
+    deviceRenderPublishedState();
+  }
+
+  function deviceRenderChips() {
+    const chipsEl = document.getElementById('device-chips');
+    const counterEl = document.getElementById('device-counter');
+    if (!chipsEl || !counterEl) return;
+
+    chipsEl.innerHTML = '';
+    deviceSelected.forEach(id => {
+      const d = deviceById(id);
+      const row = deviceRowFor(id);
+      const chip = document.createElement('span');
+      chip.className = 'identity-chip';
+
+      // Tell the clinic where a pre-filled entry came from. Without this the
+      // list looks like something they typed and forgot, and they cannot tell
+      // a crawl guess from their own earlier answer.
+      let provenance = '';
+      if (row && !row.declared_at && row.source === 'website') provenance = 'From your website';
+      else if (row && !row.declared_at && row.source === 'manufacturer') provenance = 'From the manufacturer';
+
+      chip.innerHTML =
+        `<span>${escapeHtml(deviceLabel(id))}</span>` +
+        (d && d.manufacturer ? `<span class="chip-other-label">${escapeHtml(d.manufacturer)}</span>` : '') +
+        (provenance ? `<span class="chip-other-label">${escapeHtml(provenance)}</span>` : '') +
+        `<button type="button" class="chip-remove" aria-label="Remove" onclick="deviceRemove(${Number(id)})">×</button>`;
+      chipsEl.appendChild(chip);
+    });
+
+    counterEl.querySelector('.count-num').textContent = deviceSelected.length;
+  }
+
+  function deviceRenderPanel() {
+    const panel = document.getElementById('device-panel');
+    if (!panel) return;
+
+    if (deviceReference.length === 0) {
+      panel.innerHTML = `<div class="pill-picker-empty">Loading the device list…</div>`;
+      return;
+    }
+
+    const filtered = deviceFiltered();
+    if (filtered.length === 0) {
+      panel.innerHTML = deviceQuery
+        ? `<div class="pill-picker-empty">No device matches "<strong>${escapeHtml(deviceQuery)}</strong>". If we're missing your machine, email hello@skinday.ca and we'll add it.</div>`
+        : `<div class="pill-picker-empty">Everything on our list is already selected.</div>`;
+      return;
+    }
+
+    let html = '';
+    deviceGrouped(filtered).forEach(group => {
+      html += `
+        <div class="pill-picker-group">
+          <div class="pill-picker-group-label">${escapeHtml(group.label)}</div>
+          <div class="pill-picker-options">
+            ${group.items.map(d =>
+              `<button type="button" class="pill-option" onclick="deviceAdd(${Number(d.id)})">${escapeHtml(d.model)}<span class="pill-plus">+</span></button>`
+            ).join('')}
+          </div>
+        </div>`;
+    });
+    panel.innerHTML = html;
+  }
+
+  function deviceRenderPublishedState() {
+    const el = document.getElementById('device-published-state');
+    if (!el) return;
+    const at = currentClinic && currentClinic.devices_published_at;
+    if (at) {
+      const d = new Date(at);
+      const when = isNaN(d.getTime()) ? '' : d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+      el.textContent = when
+        ? `You last published this list on ${when}.`
+        : 'You have published this list.';
+    } else {
+      el.textContent = deviceRows.length > 0
+        ? 'Not published yet. The list above is what we found by reading your website, so please check it before saving.'
+        : 'Not published yet. Nothing has been added for your clinic, so start by searching for your machines.';
+    }
+  }
+
+  function deviceAdd(id) {
+    if (deviceSelected.some(x => Number(x) === Number(id))) return;
+    deviceSelected.push(Number(id));
+    deviceDirty = true;
+    markDirty();
+    // Clear the search so the next machine can be typed straight away. Adding
+    // equipment is a repeated action, unlike picking 3 specialties once.
+    deviceQuery = '';
+    const input = document.getElementById('device-input');
+    const clearBtn = document.getElementById('device-clear');
+    if (input) { input.value = ''; input.focus(); }
+    if (clearBtn) clearBtn.classList.remove('visible');
+    deviceRender();
+  }
+
+  function deviceRemove(id) {
+    deviceSelected = deviceSelected.filter(x => Number(x) !== Number(id));
+    deviceDirty = true;
+    markDirty();
+    deviceRender();
+  }
+
+  function deviceInitPicker() {
+    if (devicePickerWired) return;
+    const input = document.getElementById('device-input');
+    const clearBtn = document.getElementById('device-clear');
+    if (!input) return;
+
+    input.addEventListener('input', () => {
+      deviceQuery = input.value;
+      if (clearBtn) clearBtn.classList.toggle('visible', !!deviceQuery);
+      deviceRenderPanel();
+    });
+
+    if (clearBtn) {
+      clearBtn.addEventListener('click', () => {
+        deviceQuery = '';
+        input.value = '';
+        clearBtn.classList.remove('visible');
+        input.focus();
+        deviceRenderPanel();
+      });
+    }
+
+    devicePickerWired = true;
+  }
+
+  // Publish. Server side does the row work; this only sends ids.
+  async function deviceSave(clinicId, token) {
+    const res = await fetch('/api/save-devices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ clinicId: String(clinicId), deviceIds: deviceSelected.map(Number) })
+    });
+
+    let data = {};
+    try { data = await res.json(); } catch (e) { data = {}; }
+    if (!res.ok || data.error) throw new Error(data.error || 'Device save failed');
+
+    // Mark published locally BEFORE re-reading, so the reload takes the
+    // published branch of the prefill rule rather than re-adding rows the
+    // clinic just removed.
+    if (currentClinic) currentClinic.devices_published_at = data.published_at || new Date().toISOString();
+    deviceDirty = false;
+    deviceOriginal = [...deviceSelected];
+
+    // Re-read from the server so the provenance labels stop saying "from your
+    // website" for rows the clinic has now confirmed.
+    await deviceLoadForClinic(clinicId);
+    return data;
   }
 
   function escHtml(str) {
