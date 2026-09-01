@@ -1139,7 +1139,7 @@
           </div>
           <button class="selected-change" onclick="clearClinic()">Change</button>
         </div>
-        <div class="field-hint">We have over 5,000 clinics listed across Canada. Start typing to find yours.</div>
+        <div class="field-hint" id="clinic-count-hint">Start typing to find your clinic.</div>
       </div>
     </div>
 
@@ -1330,114 +1330,134 @@
 
 <script>
   // ── CLINIC DATA — fetched from Supabase ──
-  let clinics = [];
+  // ⚠️ claim.html had NO escaping helper. Clinic names come from Google and
+  // Outscraper, i.e. third-party text, and they are interpolated into innerHTML
+  // in the results lists, so they must be escaped. Same gap that was found in
+  // index.html during the M39 device chips work.
+  function escapeHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
 
   const SUPABASE_URL = 'https://vefldlqtyxdywbzdjuia.supabase.co';
   const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlZmxkbHF0eXhkeXdiemRqdWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNDAwMjgsImV4cCI6MjA4NzkxNjAyOH0.o582sXiUkB3j4FiHEA5rE3ABy_pdTeeK1PnNpNirHZA';
 
-  // Exposed so the ?clinic= pre-population can WAIT for the list instead of
-  // racing it. See initFromURL below.
-  let clinicsReady;
-  clinicsReady = (async function loadClinics() {
+  // ── COUNTRY SCOPE ──
+  // skinday.ca is Canada only. skinday.com serves the US directory plus Taiwan
+  // and Hong Kong, so the country cannot be baked into this page. It is
+  // resolved ONCE here: the host decides, and ?country= overrides for the
+  // directories that share a host. Change the rule here and nowhere else.
+  const SD_COUNTRY = (function () {
+    const override = new URLSearchParams(window.location.search).get('country');
+    if (override) return override.trim().toLowerCase();
+    if (/(^|\.)skinday\.ca$/i.test(window.location.hostname)) return 'canada';
+    return 'usa';
+  })();
+
+  const SD_COUNTRY_LABELS = {
+    canada: 'Canada',
+    usa: 'the United States',
+    taiwan: 'Taiwan',
+    hongkong: 'Hong Kong'
+  };
+  const SD_COUNTRY_LABEL = SD_COUNTRY_LABELS[SD_COUNTRY] || 'your area';
+
+  // ⚠️⚠️ THIS PAGE NO LONGER DOWNLOADS THE COUNTRY.
+  // It used to fetch every approved clinic at limit=10000 and filter in
+  // JavaScript. That held for Canada at 4,989 rows and fails silently for
+  // anything larger. The USA is already past 10,000 approved, so every clinic
+  // alphabetically after the cutoff would be invisible and unclaimable, which
+  // is precisely what happened to Serene Rejuvenation (Surrey BC, rank 12,731)
+  // until its owner emailed us. Raising the limit only moves the cliff.
+  //
+  // Search now runs in Postgres and returns 25 rows, so there is no cap to
+  // outgrow in any country, Canada included.
+
+  const CLINIC_FIELDS = 'id,name,neighbourhood,area,province,region,phone,website,place_id,maps_url,rating,reviews,claimed,approved';
+
+  function sdHeaders(extra) {
+    return Object.assign({ 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }, extra || {});
+  }
+
+  // Commas, parentheses, quotes and backslashes are separators in PostgREST's
+  // filter grammar, so an unescaped one turns a search into a 400. Stripping
+  // beats quoting here: nobody looks up a clinic by its punctuation.
+  function sdSafeWord(w) {
+    return w.replace(/[,()"*\\]/g, '').trim();
+  }
+
+  // Every word must appear in the name OR the locality, which is what the old
+  // client-side filter did. Written as nested PostgREST logic so Postgres does
+  // the matching instead of the browser.
+  function sdBuildFilter(words) {
+    return 'and=(' + words.map(w =>
+      `or(name.ilike.*${encodeURIComponent(w)}*,neighbourhood.ilike.*${encodeURIComponent(w)}*)`
+    ).join(',') + ')';
+  }
+
+  function sdNormalise(c) {
+    return Object.assign({}, c, { id: Number(c.id) || c.id, price: null, promo: false, rank: 'low' });
+  }
+
+  // US rows do not carry `neighbourhood` the way Canadian ones do. Fall through
+  // the other locality columns rather than printing "undefined" beside a
+  // clinic's name, which is what the old template did unconditionally.
+  function sdPlace(c) {
+    return c.neighbourhood || c.area || c.region || c.province || '';
+  }
+
+  // One in-flight search at a time. Without this a fast typist can have an
+  // early, broader response land after a later, narrower one and overwrite it.
+  let sdSearchAbort = null;
+
+  async function sdSearchClinics(query, limit) {
+    const words = (query || '').trim().split(/\s+/).map(sdSafeWord).filter(Boolean);
+    if (words.length === 0) return [];
+
+    if (sdSearchAbort) sdSearchAbort.abort();
+    sdSearchAbort = new AbortController();
+
+    const url = `${SUPABASE_URL}/rest/v1/clinics?select=${CLINIC_FIELDS}`
+      + `&approved=eq.true&country=eq.${encodeURIComponent(SD_COUNTRY)}`
+      + `&${sdBuildFilter(words)}`
+      + `&order=name.asc&limit=${limit || 25}`;
+
+    const res = await fetch(url, { headers: sdHeaders(), signal: sdSearchAbort.signal });
+    if (!res.ok) throw new Error('Clinic search failed');
+    const data = await res.json();
+    return Array.isArray(data) ? data.map(sdNormalise) : [];
+  }
+
+  async function sdFetchClinicById(id) {
+    const url = `${SUPABASE_URL}/rest/v1/clinics?select=${CLINIC_FIELDS}`
+      + `&approved=eq.true&id=eq.${encodeURIComponent(id)}&limit=1`;
+    const res = await fetch(url, { headers: sdHeaders() });
+    if (!res.ok) return null;
+    const rows = await res.json();
+    return (Array.isArray(rows) && rows[0]) ? sdNormalise(rows[0]) : null;
+  }
+
+  // The old hint hard-coded "over 5,000 clinics across Canada", which was both
+  // country-specific and going stale. Read the real count instead; the static
+  // sentence in the markup stands if this fails.
+  (async function sdLoadCount() {
+    const el = document.getElementById('clinic-count-hint');
+    if (!el) return;
     try {
-      // ⚠️⚠️ THIS FETCH USED TO HAVE NO COUNTRY FILTER. It pulled every approved
-      // clinic in the database — canada 4,989 + usa 10,491 + taiwan 2,170 +
-      // hongkong 1,083 ≈ 18,700 — against a 10,000 row cap, ordered by name.
-      // Everything alphabetically past the cutoff was simply absent from the
-      // list this page searches, so ~8,700 clinics could never be found or
-      // claimed. Serene Rejuvenation (Surrey BC) ranked 12,731 and its owner
-      // had to email us.
-      //
-      // skinday.ca is the Canadian directory, so scope to Canada: 4,989 rows,
-      // comfortably inside the cap. The other countries have their own sites.
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/clinics?select=id,name,neighbourhood,area,province,region,phone,website,place_id,maps_url,rating,reviews,claimed,approved&approved=eq.true&country=eq.canada&order=name.asc&limit=10000`, {
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
-      });
-      const data = await res.json();
-      clinics = Array.isArray(data) ? data.map(c => ({
-        ...c,
-        id: Number(c.id) || c.id,
-        price: null,
-        promo: false,
-        rank: 'low',
-      })) : [];
-      // A truncated list is invisible to the user and to us — it just looks
-      // like the clinic does not exist. Say so in the console if it recurs.
-      if (clinics.length >= 10000) {
-        console.warn('[claim] clinic list hit the 10000 row cap — search results are incomplete');
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/clinics?select=id&approved=eq.true&country=eq.${encodeURIComponent(SD_COUNTRY)}`,
+        { headers: sdHeaders({ 'Prefer': 'count=exact', 'Range-Unit': 'items', 'Range': '0-0' }) }
+      );
+      const total = parseInt((res.headers.get('content-range') || '').split('/')[1], 10);
+      if (!isNaN(total) && total > 0) {
+        const rounded = total >= 1000 ? (Math.floor(total / 1000) * 1000).toLocaleString() : total.toLocaleString();
+        el.textContent = `We have over ${rounded} clinics listed in ${SD_COUNTRY_LABEL}. Start typing to find yours.`;
       }
-    } catch(e) {
-      console.error('Failed to load clinics:', e);
+    } catch (e) {
+      // Leave the neutral static hint in place.
     }
   })();
-  // Neighbourhood list for search filtering
-  const neighbourhoods = [
-  { label: 'Ajax', value: 'ajax' },
-  { label: 'Ancaster', value: 'ancaster' },
-  { label: 'Aurora', value: 'aurora' },
-  { label: 'Bayridge East', value: 'bayridge-east' },
-  { label: 'Beamsville', value: 'beamsville' },
-  { label: 'Binbrook', value: 'binbrook' },
-  { label: 'Brampton', value: 'brampton' },
-  { label: 'Brantford', value: 'brantford' },
-  { label: 'Burlington', value: 'burlington' },
-  { label: 'Caledon', value: 'caledon' },
-  { label: 'Chatham', value: 'chatham' },
-  { label: 'Cobourg', value: 'cobourg' },
-  { label: 'Concord', value: 'concord' },
-  { label: 'Downtown', value: 'downtown' },
-  { label: 'Dundas', value: 'dundas' },
-  { label: 'East York', value: 'east-york' },
-  { label: 'Etobicoke', value: 'etobicoke' },
-  { label: 'Fonthill', value: 'fonthill' },
-  { label: 'Forest Heights', value: 'forest-heights' },
-  { label: 'Georgetown', value: 'georgetown' },
-  { label: 'Grantham', value: 'grantham' },
-  { label: 'Grimsby', value: 'grimsby' },
-  { label: 'Guelph', value: 'guelph' },
-  { label: 'Haig', value: 'haig' },
-  { label: 'Hamilton', value: 'hamilton' },
-  { label: 'Hanlon Creek', value: 'hanlon-creek' },
-  { label: 'Jordan Station', value: 'jordan-station' },
-  { label: 'Kincardine', value: 'kincardine' },
-  { label: 'Kleinburg', value: 'kleinburg' },
-  { label: 'Komoka', value: 'komoka' },
-  { label: 'Lakeport', value: 'lakeport' },
-  { label: 'London', value: 'london' },
-  { label: 'Maple', value: 'maple' },
-  { label: 'Markham', value: 'markham' },
-  { label: 'Merritton', value: 'merritton' },
-  { label: 'Milton', value: 'milton' },
-  { label: 'Mississauga', value: 'mississauga' },
-  { label: 'Morriston', value: 'morriston' },
-  { label: 'Nepean', value: 'nepean' },
-  { label: 'New Liskeard', value: 'new-liskeard' },
-  { label: 'Newmarket', value: 'newmarket' },
-  { label: 'Niagara Falls', value: 'niagara-falls' },
-  { label: 'Niagara-on-the-Lake', value: 'niagara-on-the-lake' },
-  { label: 'North York', value: 'north-york' },
-  { label: 'Oakville', value: 'oakville' },
-  { label: 'Pickering', value: 'pickering' },
-  { label: 'Port Colborne', value: 'port-colborne' },
-  { label: 'Richmond Hill', value: 'richmond-hill' },
-  { label: 'Scarborough', value: 'scarborough' },
-  { label: 'St Thomas', value: 'st-thomas' },
-  { label: 'St. Catharines', value: 'st-catharines' },
-  { label: 'Stoney Creek', value: 'stoney-creek' },
-  { label: 'Thornhill', value: 'thornhill' },
-  { label: 'Thorold', value: 'thorold' },
-  { label: 'Toronto', value: 'toronto' },
-  { label: 'Unionville', value: 'unionville' },
-  { label: 'Vaughan', value: 'vaughan' },
-  { label: 'Waterdown', value: 'waterdown' },
-  { label: 'Waterloo', value: 'waterloo' },
-  { label: 'Western Hill', value: 'western-hill' },
-  { label: 'Whitby', value: 'whitby' },
-  { label: 'Whitchurch-Stouffville', value: 'whitchurch-stouffville' },
-  { label: 'Woodbridge', value: 'woodbridge' },
-  { label: 'Woodstock', value: 'woodstock' },
-  { label: 'York', value: 'york' },
-];
 
   let selectedClinic   = null;
   let hasUnsavedChanges = false;
@@ -1445,60 +1465,79 @@
   let chainLocations   = []; // array of clinic objects for chain flow
 
   // ── URL PARAM PRE-POPULATION ──
-  // ⚠️ This used to be setTimeout(..., 0), which fires long before the clinic
-  // fetch resolves — so `clinics` was still empty, the lookup found nothing,
-  // and the page silently showed an empty search box. Anyone arriving from the
-  // "Claim Your Clinic" button on a profile had to search for their own clinic
-  // by hand. Await the load instead.
+  // History worth keeping: this was once setTimeout(..., 0), which fired before
+  // the clinic list had loaded, so anyone arriving from the "Claim Your Clinic"
+  // button on a profile found an empty search box and had to look up their own
+  // clinic by hand. It then awaited the full country download. It now fetches
+  // the single row by id, which cannot race and has no size ceiling.
   (async function initFromURL() {
     const params = new URLSearchParams(window.location.search);
-    const id = parseInt(params.get('clinic'));
-    if (!id) return;
-    try { await clinicsReady; } catch (e) {}
-    const clinic = clinics.find(c => c.id === id || String(c.id) === String(id));
-    if (clinic) selectClinic(clinic);
+    const raw = params.get('clinic');
+    if (!raw) return;
+    // Fetches the single row by id. The old version waited for the whole
+    // country to download and then searched it in memory, so a clinic past the
+    // 10,000 row cap could not be pre-populated even from its own profile link.
+    try {
+      const clinic = await sdFetchClinicById(raw);
+      if (clinic) selectClinic(clinic);
+    } catch (e) {
+      console.error('Could not pre-populate clinic from URL:', e);
+    }
   })();
 
   // ── SINGLE-CLINIC SEARCH ──
   const searchInput = document.getElementById('clinic-search');
   const resultsBox  = document.getElementById('search-results');
 
-  searchInput.addEventListener('input', function() {
-    const q = this.value.trim().toLowerCase();
-    resultsBox.innerHTML = '';
-    if (q.length < 2) { resultsBox.classList.remove('visible'); return; }
+  // Debounced so a query goes out per pause, not per keystroke.
+  let searchTimer = null;
 
-    if (clinics.length === 0) {
-      resultsBox.innerHTML = `<div class="no-results">Loading clinics…</div>`;
-      resultsBox.classList.add('visible');
+  searchInput.addEventListener('input', function() {
+    const q = this.value.trim();
+    if (q.length < 2) {
+      clearTimeout(searchTimer);
+      resultsBox.innerHTML = '';
+      resultsBox.classList.remove('visible');
       return;
     }
 
-    // Split query into words — all words must appear somewhere in name or neighbourhood
-    const words = q.split(/\s+/).filter(Boolean);
-    const matches = clinics.filter(c => {
-      const haystack = (c.name + ' ' + (c.neighbourhood||'')).toLowerCase();
-      return words.every(w => haystack.includes(w));
-    }).slice(0, 50);
-
-    if (matches.length === 0) {
-      resultsBox.innerHTML = `<div class="no-results">No clinic found — <a href="mailto:hello@skinday.ca" style="color:var(--rose);">contact us to add yours</a></div>`;
-    } else {
-      matches.forEach(c => {
-        const div = document.createElement('div');
-        div.className = 'result-item';
-        div.innerHTML = `
-          <div>
-            <div class="result-name">${c.name}</div>
-            <div class="result-hood">&#128205; ${c.neighbourhood}</div>
-          </div>
-          <span class="result-select">Select &#8594;</span>
-        `;
-        div.addEventListener('mousedown', (e) => { e.preventDefault(); selectClinic(c); });
-        resultsBox.appendChild(div);
-      });
-    }
+    resultsBox.innerHTML = `<div class="no-results">Searching…</div>`;
     resultsBox.classList.add('visible');
+
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(async () => {
+      let matches;
+      try {
+        matches = await sdSearchClinics(q, 25);
+      } catch (e) {
+        if (e.name === 'AbortError') return; // a newer keystroke took over
+        resultsBox.innerHTML = `<div class="no-results">Search is unavailable right now. Please try again.</div>`;
+        return;
+      }
+      // The box may have been emptied while this was in flight.
+      if (searchInput.value.trim().length < 2) return;
+
+      resultsBox.innerHTML = '';
+      if (matches.length === 0) {
+        resultsBox.innerHTML = `<div class="no-results">No clinic found — <a href="mailto:hello@skinday.ca" style="color:var(--rose);">contact us to add yours</a></div>`;
+      } else {
+        matches.forEach(c => {
+          const div = document.createElement('div');
+          div.className = 'result-item';
+          const place = sdPlace(c);
+          div.innerHTML = `
+            <div>
+              <div class="result-name">${escapeHtml(c.name)}</div>
+              ${place ? `<div class="result-hood">&#128205; ${escapeHtml(place)}</div>` : ''}
+            </div>
+            <span class="result-select">Select &#8594;</span>
+          `;
+          div.addEventListener('mousedown', (e) => { e.preventDefault(); selectClinic(c); });
+          resultsBox.appendChild(div);
+        });
+      }
+      resultsBox.classList.add('visible');
+    }, 220);
   });
 
   function selectClinic(c) {
@@ -1507,7 +1546,7 @@
     resultsBox.classList.remove('visible');
 
     document.getElementById('selected-name').textContent = c.name;
-    document.getElementById('selected-hood').innerHTML = '📍 ' + c.neighbourhood;
+    document.getElementById('selected-hood').textContent = sdPlace(c) ? '📍 ' + sdPlace(c) : '';
     document.getElementById('selected-clinic').classList.add('visible');
 
     // Show location type question, hide "What you get" perks card
@@ -1523,7 +1562,7 @@
     // Populate hidden form fields for single-location flow
     document.getElementById('form-clinic-id').value            = c.id;
     document.getElementById('form-clinic-name').value          = c.name;
-    document.getElementById('form-clinic-neighbourhood').value = c.neighbourhood;
+    document.getElementById('form-clinic-neighbourhood').value = sdPlace(c);
   }
 
   function clearClinic() {
@@ -1566,35 +1605,58 @@
   const chainSearchInput  = document.getElementById('chain-search');
   const chainResultsBox   = document.getElementById('chain-search-results');
 
+  let chainSearchTimer = null;
+
   chainSearchInput.addEventListener('input', function() {
-    const q = this.value.trim().toLowerCase();
-    chainResultsBox.innerHTML = '';
-    if (q.length < 2) { chainResultsBox.classList.remove('visible'); return; }
-
-    const alreadyIds = new Set(chainLocations.map(c => c.id));
-    const matches = clinics.filter(c =>
-      !alreadyIds.has(c.id) &&
-      (c.name.toLowerCase().includes(q) || c.neighbourhood.toLowerCase().includes(q))
-    ).slice(0, 50);
-
-    if (matches.length === 0) {
-      chainResultsBox.innerHTML = `<div class="no-results">No clinic found matching that name or neighbourhood.</div>`;
-    } else {
-      matches.forEach(c => {
-        const div = document.createElement('div');
-        div.className = 'result-item';
-        div.innerHTML = `
-          <div>
-            <div class="result-name">${c.name}</div>
-            <div class="result-hood">&#128205; ${c.neighbourhood}</div>
-          </div>
-          <span class="result-select">+ Add</span>
-        `;
-        div.addEventListener('mousedown', (e) => { e.preventDefault(); addChainLocation(c); });
-        chainResultsBox.appendChild(div);
-      });
+    const q = this.value.trim();
+    if (q.length < 2) {
+      clearTimeout(chainSearchTimer);
+      chainResultsBox.innerHTML = '';
+      chainResultsBox.classList.remove('visible');
+      return;
     }
+
+    chainResultsBox.innerHTML = `<div class="no-results">Searching…</div>`;
     chainResultsBox.classList.add('visible');
+
+    clearTimeout(chainSearchTimer);
+    chainSearchTimer = setTimeout(async () => {
+      let rows;
+      try {
+        rows = await sdSearchClinics(q, 25);
+      } catch (e) {
+        if (e.name === 'AbortError') return;
+        chainResultsBox.innerHTML = `<div class="no-results">Search is unavailable right now. Please try again.</div>`;
+        return;
+      }
+      if (chainSearchInput.value.trim().length < 2) return;
+
+      // Locations already added are filtered out here rather than in the query,
+      // so the exclusion survives however the server orders its results.
+      const alreadyIds = new Set(chainLocations.map(c => String(c.id)));
+      const matches = rows.filter(c => !alreadyIds.has(String(c.id)));
+
+      chainResultsBox.innerHTML = '';
+      if (matches.length === 0) {
+        chainResultsBox.innerHTML = `<div class="no-results">No clinic found matching that name or location.</div>`;
+      } else {
+        matches.forEach(c => {
+          const div = document.createElement('div');
+          div.className = 'result-item';
+          const place = sdPlace(c);
+          div.innerHTML = `
+            <div>
+              <div class="result-name">${escapeHtml(c.name)}</div>
+              ${place ? `<div class="result-hood">&#128205; ${escapeHtml(place)}</div>` : ''}
+            </div>
+            <span class="result-select">+ Add</span>
+          `;
+          div.addEventListener('mousedown', (e) => { e.preventDefault(); addChainLocation(c); });
+          chainResultsBox.appendChild(div);
+        });
+      }
+      chainResultsBox.classList.add('visible');
+    }, 220);
   });
 
   function addChainLocation(c) {
@@ -1641,8 +1703,8 @@
         item.className = 'chain-location-item';
         item.innerHTML = `
           <div class="cli-info">
-            <div class="cli-name">${c.name}</div>
-            <div class="cli-hood">&#128205; ${c.neighbourhood}</div>
+            <div class="cli-name">${escapeHtml(c.name)}</div>
+            ${sdPlace(c) ? `<div class="cli-hood">&#128205; ${escapeHtml(sdPlace(c))}</div>` : ''}
           </div>
           <button class="chain-location-remove" onclick="removeChainLocation('${c.id}')">Remove</button>
         `;
@@ -1661,7 +1723,7 @@
       const first = chainLocations[0];
       document.getElementById('form-clinic-id').value            = first.id;
       document.getElementById('form-clinic-name').value          = first.name;
-      document.getElementById('form-clinic-neighbourhood').value = first.neighbourhood;
+      document.getElementById('form-clinic-neighbourhood').value = sdPlace(first);
     }
   }
 
