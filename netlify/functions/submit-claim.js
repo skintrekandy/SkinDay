@@ -16,6 +16,27 @@ const supabase = createClient(
 
 const REQUIRED_FIELDS = ['clinic_id', 'clinic_name', 'owner_name', 'owner_email', 'owner_role'];
 
+// M23: this function is now deployed on skinday.com as well as skinday.ca, and
+// both write to the same claims table. Nothing here needs to branch on country,
+// but the notification should SAY which country the claim came from, because
+// the review step and the portal the clinic ends up in both depend on it.
+const ADMIN_REVIEW_URL = process.env.ADMIN_REVIEW_URL || 'https://skinday.ca/skinday-admin.html';
+
+// Best effort. A claim is not worth failing over a label in an email.
+async function lookupCountry(clinicId) {
+  try {
+    const { data } = await supabase
+      .from('clinics')
+      .select('country')
+      .eq('id', String(clinicId))
+      .maybeSingle();
+    return data?.country || null;
+  } catch (err) {
+    console.error('country lookup failed:', err.message);
+    return null;
+  }
+}
+
 // For chains: check each location for existing claims, return first conflict found
 async function checkChainConflicts(clinicIds) {
   for (const id of clinicIds) {
@@ -31,7 +52,8 @@ async function checkChainConflicts(clinicIds) {
 }
 
 // Send email via Resend
-async function sendNotification(claim) {
+async function sendNotification(claim, country) {
+  const countryTag = country ? ` [${String(country).toUpperCase()}]` : '';
   try {
     await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -43,20 +65,21 @@ async function sendNotification(claim) {
         from: 'SkinDay <onboarding@resend.dev>',
         to:   process.env.ADMIN_EMAIL,
         subject: claim.is_chain
-          ? `New chain claim (${JSON.parse(claim.chain_clinic_ids || '[]').length} locations) — ${claim.clinic_name}`
-          : `New clinic claim — ${claim.clinic_name}`,
+          ? `New chain claim (${JSON.parse(claim.chain_clinic_ids || '[]').length} locations) — ${claim.clinic_name}${countryTag}`
+          : `New clinic claim — ${claim.clinic_name}${countryTag}`,
         html: `
           <p>A new clinic claim has been submitted${claim.is_chain ? ' <strong>(chain/group)</strong>' : ''}.</p>
           <table style="border-collapse:collapse;font-family:sans-serif;font-size:14px">
             <tr><td style="padding:6px 16px 6px 0;color:#888">Primary clinic</td><td><strong>${claim.clinic_name}</strong>${claim.clinic_neighbourhood ? ` — ${claim.clinic_neighbourhood}` : ''}</td></tr>
             <tr><td style="padding:6px 16px 6px 0;color:#888">Primary ID</td><td>${claim.clinic_id}</td></tr>
+            <tr><td style="padding:6px 16px 6px 0;color:#888">Country</td><td>${country || 'unknown'}</td></tr>
             ${claim.is_chain && claim.chain_clinic_ids ? `<tr><td style="padding:6px 16px 6px 0;color:#888">All location IDs</td><td>${JSON.parse(claim.chain_clinic_ids).join(', ')}</td></tr>` : ''}
             <tr><td style="padding:6px 16px 6px 0;color:#888">Owner</td><td>${claim.owner_name}</td></tr>
             <tr><td style="padding:6px 16px 6px 0;color:#888">Email</td><td>${claim.owner_email}</td></tr>
             <tr><td style="padding:6px 16px 6px 0;color:#888">Role</td><td>${claim.owner_role}</td></tr>
           </table>
           <p style="margin-top:24px">
-            <a href="https://skinday.ca/skinday-admin.html" style="background:#C8725A;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;font-family:sans-serif;font-size:14px">
+            <a href="${ADMIN_REVIEW_URL}" style="background:#C8725A;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;font-family:sans-serif;font-size:14px">
               Review in Admin Dashboard →
             </a>
           </p>
@@ -158,7 +181,8 @@ exports.handler = async (event) => {
   }
 
   // Send admin notification (non-blocking)
-  await sendNotification(claim);
+  const country = await lookupCountry(claim.clinic_id);
+  await sendNotification(claim, country);
 
   return {
     statusCode: 200,
