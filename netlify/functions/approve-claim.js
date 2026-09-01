@@ -7,7 +7,55 @@ const SUPABASE_URL         = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const RESEND_API_KEY       = process.env.RESEND_API_KEY;
 const WEBHOOK_SECRET       = process.env.APPROVE_WEBHOOK_SECRET;
-const PORTAL_URL           = process.env.PORTAL_URL || 'https://skinday.ca/editor.html';
+
+// ─────────────────────────────────────────────────────────────
+// M23 - THE PORTAL A CLINIC IS SENT TO DEPENDS ON ITS COUNTRY.
+//
+// ⚠️⚠️ THIS FUNCTION MUST EXIST IN EXACTLY ONE PLACE. It is not called by a
+// page; it is called by a Supabase Postgres webhook on the `clinics` table,
+// and there is one clinics table and one webhook. Deploying a second copy on
+// another site and pointing a second webhook at it would create the auth user
+// twice and email the clinic twice for every approval.
+//
+// Before M23 the portal url was a single env var defaulting to skinday.ca.
+// That was correct while every claimable clinic was Canadian. It is wrong the
+// moment a US clinic is approved: they would receive a password link that
+// lands on the Canadian site, whose save-clinic cannot serve them.
+//
+// The webhook payload carries the whole clinics row, so `record.country` is
+// already available and no schema change is needed.
+//
+// ⚠️ `redirect_to` on a recovery link only works if the exact url is in
+// Supabase Auth > URL Configuration > Redirect URLs. Adding a country here
+// without allowlisting its editor url makes Supabase silently fall back to
+// the project Site URL, and the clinic lands in the wrong place with no error
+// anywhere to explain it.
+// ─────────────────────────────────────────────────────────────
+const SITE_BY_COUNTRY = {
+  canada:   'https://skinday.ca',
+  usa:      'https://skinday.com',
+  taiwan:   'https://skinday.com',
+  hongkong: 'https://skinday.com'
+};
+
+// PORTAL_URL is kept only as the last resort for a clinics row with no country
+// value at all. It is no longer the primary source, so if it is still set in
+// Netlify to the .ca url that setting now affects nothing except that edge.
+const FALLBACK_PORTAL_URL = process.env.PORTAL_URL || 'https://skinday.ca/editor.html';
+
+function siteFor(country) {
+  const key = String(country || '').trim().toLowerCase();
+  return SITE_BY_COUNTRY[key] || null;
+}
+
+function portalUrlFor(country) {
+  const site = siteFor(country);
+  if (!site) {
+    console.error(`No site mapped for country "${country}" - falling back to ${FALLBACK_PORTAL_URL}. The clinic may be sent to the wrong portal.`);
+    return FALLBACK_PORTAL_URL;
+  }
+  return `${site}/editor.html`;
+}
 
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
@@ -37,6 +85,9 @@ exports.handler = async (event) => {
   }
 
   const clinicId = record.id;
+
+  // Resolved from the row the webhook just handed us, not from an env var.
+  const portalUrl = portalUrlFor(record.country);
 
   try {
     // 1. Look up clinic_name + owner_email from claims table
@@ -75,7 +126,7 @@ exports.handler = async (event) => {
       return { statusCode: 200, body: 'No email — skipped' };
     }
 
-    console.log(`Approving: ${clinic_name} (${owner_email}) — ${allClinicIds.length} location(s)`);
+    console.log(`Approving: ${clinic_name} (${owner_email}) — ${allClinicIds.length} location(s), country=${record.country}, portal=${portalUrl}`);
 
     // 2. Create Supabase Auth user, linking all clinic IDs in metadata
     const authRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
@@ -119,7 +170,7 @@ exports.handler = async (event) => {
       body: JSON.stringify({
         type: 'recovery',
         email: owner_email,
-        redirect_to: PORTAL_URL
+        redirect_to: portalUrl
       })
     });
 
@@ -176,7 +227,7 @@ exports.handler = async (event) => {
         subject: is_chain
           ? `Your SkinDay listings are approved — ${clinic_name}`
           : `Your SkinDay listing is approved — ${clinic_name}`,
-        html: buildEmail(clinic_name, linkData.action_link, allClinicIds.length)
+        html: buildEmail(clinic_name, linkData.action_link, allClinicIds.length, portalUrl)
       })
     });
 
@@ -195,7 +246,10 @@ exports.handler = async (event) => {
   }
 };
 
-function buildEmail(clinicName, setupLink, locationCount = 1) {
+function buildEmail(clinicName, setupLink, locationCount = 1, portalUrl = FALLBACK_PORTAL_URL) {
+  // The expiry fallback link must point at the SAME portal as the setup link,
+  // or a US clinic whose link expires is sent to the Canadian login.
+  const portalLabel = String(portalUrl).replace(/^https?:\/\//, '');
   const isChain = locationCount > 1;
   const headline = isChain ? 'Your listings are live 🎉' : 'Your listing is live 🎉';
   const bodyLine = isChain
@@ -228,7 +282,7 @@ function buildEmail(clinicName, setupLink, locationCount = 1) {
       <p>${bodyLine}</p>
       <p>Set up your password to access the Clinic Portal, where you can update your price, add promos, upload photos, and manage your hours.</p>
       <a href="${setupLink}" class="btn">Set up your password →</a>
-      <p class="note">This link expires in 24 hours. If it expires, visit <a href="https://skinday.ca/editor.html" style="color:#c9736a;">skinday.ca/editor.html</a> and use "Forgot password" to get a new one.</p>
+      <p class="note">This link expires in 24 hours. If it expires, visit <a href="${portalUrl}" style="color:#c9736a;">${portalLabel}</a> and use "Forgot password" to get a new one.</p>
     </div>
     <div class="footer">
       Questions? Reply to this email or contact <a href="mailto:hello@skinday.ca" style="color:#c9736a;">hello@skinday.ca</a><br/>

@@ -1,6 +1,18 @@
 const { createClient } = require('@supabase/supabase-js');
 
 // ─────────────────────────────────────────────────────────────
+// ⚠️ M23: THIS FILE IS NOW DEPLOYED TO BOTH skinday.ca AND skinday.com,
+// byte for byte. There is nothing country-specific left in it: no country
+// filter, no province logic, and the only two site-specific strings were the
+// support address, now hello@skinday.ca on both.
+//
+// KEEP IT THAT WAY. get-clinics.js was allowed to fork between the two sites
+// and the copies have drifted to the point where one change is two unrelated
+// edits. If something here ever genuinely needs to differ by country, branch
+// on the clinic's `country` column rather than forking the file.
+// ─────────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────
 // M28 — Clinic Identity taxonomy slugs
 // These MUST match /data/taxonomy/expertise.json and concerns.json
 // in the repo. Server validates incoming values against these sets
@@ -264,7 +276,7 @@ exports.handler = async (event) => {
           return {
             statusCode: 404,
             headers,
-            body: JSON.stringify({ error: 'No clinic claim found for this account. Contact support@skinday.ca.' })
+            body: JSON.stringify({ error: 'No clinic claim found for this account. Contact hello@skinday.ca.' })
           };
         }
 
@@ -296,7 +308,7 @@ exports.handler = async (event) => {
         return {
           statusCode: 404,
           headers,
-          body: JSON.stringify({ error: 'No approved clinic found for this account. Contact support@skinday.ca.' })
+          body: JSON.stringify({ error: 'No approved clinic found for this account. Contact hello@skinday.ca.' })
         };
       }
 
