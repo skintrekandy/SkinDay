@@ -36,10 +36,12 @@ function probeNearMiss(text) {
   if (!text) return null;
   const brandHit = TOXINS.find(([, re]) => re.test(text));
   const amounts = [];
-  const re = /\$\s?(\d{1,4}(?:\.\d{1,2})?)|(\d{1,4}(?:\.\d{1,2})?)\s?\$/g;
+  // Must use the SAME number shape as the extractor, or the diagnostic lies:
+  // the first version read $6,000 as 6 and reported a fake in-band amount.
+  const re = /\$\s?(\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d{1,5}(?:[.,]\d{1,2})?)|(\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d{1,5}(?:[.,]\d{1,2})?)\s?\$/g;
   let m;
   while ((m = re.exec(text)) !== null) {
-    const v = parseFloat(m[1] || m[2]);
+    const v = toNumber(m[1] || m[2]);
     if (!isNaN(v)) amounts.push(v);
   }
 
@@ -228,7 +230,15 @@ function windows(text) {
   // Reaching backwards further than forwards is deliberate: the brand and the
   // basis words usually precede the number, while the next table row follows it.
   const flat = text.replace(/\s+/g, ' ');
-  const re = /\$\s?\d{1,5}(?:[.,]\d{1,2})?|\d{1,5}(?:[.,]\d{1,2})?\s?\$/g;
+  // ⚠⚠ THOUSANDS SEPARATORS. `\d{1,5}(?:[.,]\d{1,2})?` truncates "$6,000"
+  // to "6,00", which toNumber reads as a FRENCH DECIMAL and returns 6.00 -
+  // a four-figure surgical price arriving as a plausible per-unit number.
+  // Found on cosmeticsurgerycenter.com, whose "Only $6,000" and "$10,000"
+  // specials surfaced as 6 and 10. Match the grouped form FIRST so the whole
+  // number is captured; toNumber already strips thousands commas correctly
+  // once it receives them. Quebec's "9,50 $" still parses as 9.50, because
+  // ,50 is two digits and not three.
+  const re = /\$\s?(?:\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d{1,5}(?:[.,]\d{1,2})?)|(?:\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d{1,5}(?:[.,]\d{1,2})?)\s?\$/g;
   let m;
   while ((m = re.exec(flat)) !== null) {
     let a = Math.max(0, m.index - 70);
@@ -258,7 +268,8 @@ function toNumber(raw) {
 // both sides and unionmd.ca/tarifs uses both orders on the same page.
 function amounts(win) {
   const found = [];
-  const re = /\$\s?(\d{1,5}(?:[.,]\d{1,2})?)|(\d{1,5}(?:[.,]\d{1,2})?)\s?\$/g;
+  // Same thousands fix as the scanning regex above.
+  const re = /\$\s?(\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d{1,5}(?:[.,]\d{1,2})?)|(\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d{1,5}(?:[.,]\d{1,2})?)\s?\$/g;
   let m;
   while ((m = re.exec(win)) !== null) {
     const raw = m[1] !== undefined ? m[1] : m[2];
