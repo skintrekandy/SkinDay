@@ -28,6 +28,33 @@ const SB = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const ADMIN_SECRET = process.env.ADMIN_SECRET;
 
+// ── Near-miss probe (sample-run instrumentation, NOT part of extraction) ────
+// Answers one question about a host that produced no price: how close did we
+// get? Kept completely separate from extractPrices so it can never widen what
+// the crawler accepts. Read only from the queue row's last_error.
+function probeNearMiss(text) {
+  if (!text) return null;
+  const brandHit = TOXINS.find(([, re]) => re.test(text));
+  const amounts = [];
+  const re = /\$\s?(\d{1,4}(?:\.\d{1,2})?)|(\d{1,4}(?:\.\d{1,2})?)\s?\$/g;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    const v = parseFloat(m[1] || m[2]);
+    if (!isNaN(v)) amounts.push(v);
+  }
+
+  if (!brandHit && amounts.length === 0) return null;
+  if (!brandHit) return { rank: 1, note: 'amounts on page but no toxin brand named' };
+  if (amounts.length === 0) return { rank: 2, note: `brand ${brandHit[0]} named, no dollar amount anywhere` };
+
+  const inBand = amounts.filter(v => v >= MIN_UNIT_PRICE && v <= MAX_UNIT_PRICE);
+  if (inBand.length === 0) {
+    const near = amounts.filter(v => v > 0 && v < 200).sort((a, b) => a - b);
+    return { rank: 4, note: `brand ${brandHit[0]} named; amounts present but NONE in the $${MIN_UNIT_PRICE}-$${MAX_UNIT_PRICE} band` + (near.length ? ` (closest: ${near.slice(0, 5).join(', ')})` : '') };
+  }
+  return { rank: 3, note: `brand ${brandHit[0]} named and ${inBand.length} amount(s) in band, but a reject rule or the basis test discarded them (${inBand.slice(0, 5).join(', ')})` };
+}
+
 // ── The extractor ───────────────────────────────────────────────────────────
 // Verified against a 42-case golden fixture drawn from real Canadian pricing
 // pages AND the first full production run. Two run-driven fixes baked in: the
@@ -52,8 +79,17 @@ const TOXINS = [
   ['botox',    /\bbotox\b/i],
   ['dysport',  /\bdysport\b/i],
   ['xeomin',   /\bxeomin\b/i],
+  // nuceiva is the Canadian trade name; the same product is Jeuveau in the US,
+  // so one row covers both markets.
   ['nuceiva',  /\bnuceiva\b|\bjeuveau\b/i],
-  ['letybo',   /\bletybo\b|\bletibotulinum\b/i]
+  ['letybo',   /\bletybo\b|\bletibotulinum\b/i],
+  // ⭐ US ONLY. Daxxify has no Canadian presence, so a Canada-built brand list
+  // could not have contained it. A California clinic publishing only a Daxxify
+  // price would otherwise read as "no price found", which would understate the
+  // US publication rate this sample exists to measure.
+  // ⓘ Daxxify is often priced per TREATMENT rather than per unit. Those get
+  // rejected by the existing basis rules, which is correct.
+  ['daxxify',  /\bdaxxify\b|\bdaxibotulinum\b/i]
 ];
 
 // The accept condition. An explicit per-unit basis, English or French.
@@ -504,8 +540,24 @@ async function crawlOne(row) {
   }
 
   if (!picked) {
+    // ⭐ SAMPLE-RUN DIAGNOSTIC. An 'empty' row used to record nothing, so a
+    // false negative was invisible from the outside and every extractor bug in
+    // Canada had to be found by hand-reading pages. Record the closest thing to
+    // a price we saw, so the miss can be classified without a page fetch:
+    //   nothing at all      -> the site genuinely publishes no toxin price
+    //   brand but no amount -> a price page we failed to reach or parse
+    //   amount out of band  -> the CAD-tuned $6-$40 window is wrong for the US
+    let nearest = null;
+    for (const page of pages) {
+      const probe = probeNearMiss(page.text);
+      if (probe && (!nearest || probe.rank > nearest.rank)) {
+        nearest = probe;
+        nearest.url = page.url;
+      }
+    }
     return { status: 'empty', price_url: priceUrl || null,
-             pages_tried: pages.length, prices_found: 0 };
+             pages_tried: pages.length, prices_found: 0,
+             last_error: nearest ? ('near-miss: ' + nearest.note).slice(0, 400) : 'near-miss: no toxin brand on any page read' };
   }
 
   const { inserted, skipped } =
