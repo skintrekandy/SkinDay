@@ -285,7 +285,7 @@ function buildEmail(clinicName, setupLink, locationCount = 1, portalUrl = FALLBA
       <p class="note">This link expires in 24 hours. If it expires, visit <a href="${portalUrl}" style="color:#c9736a;">${portalLabel}</a> and use "Forgot password" to get a new one.</p>
     </div>
     <div class="footer">
-      Questions? Reply to this email or contact <a href="mailto:hello@skinday.ca" style="color:#c9736a;">hello@skinday.ca</a><br/>
+      Questions? Reply to this email or contact <a href="mailto:hello@skinday.com" style="color:#c9736a;">hello@skinday.com</a><br/>
       SkinDay · Toronto, ON
     </div>
   </div>
