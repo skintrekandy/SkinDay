@@ -607,11 +607,25 @@ exports.handler = async (event) => {
   const batch = Math.min(Math.max(parseInt(body.batch, 10) || BATCH_DEFAULT, 1), 5);
   const retry = body.retry === true;
 
+  // ⭐ COUNTRY FILTER. The queue used to hold Canada only, so claiming by
+  // `status='pending' order by id` was unambiguous. It now holds Canada AND
+  // California in one table, and California's rows were seeded later, so they
+  // all carry HIGHER ids. Without this filter a run with both countries queued
+  // drains every Canadian host before touching a single Californian one, and
+  // there is no way to work them in any other order.
+  //
+  // Omitted or 'all' keeps the old behaviour exactly, so nothing that calls
+  // this function today changes.
+  const rawCountry = typeof body.country === 'string' ? body.country.trim().toLowerCase() : '';
+  const country = (rawCountry && rawCountry !== 'all') ? rawCountry : null;
+
   try {
     const want = retry ? 'in.(pending,error)' : 'eq.pending';
-    const claim = await sb(`crawl_price_queue?select=*&status=${want}&order=id.asc&limit=${batch}`);
+    const countryFilter = country ? `&country=eq.${encodeURIComponent(country)}` : '';
+    const claim = await sb(`crawl_price_queue?select=*&status=${want}${countryFilter}&order=id.asc&limit=${batch}`);
     if (!claim || !claim.length) {
-      return json(200, { done: true, processed: [], remaining: 0, note: 'queue empty' });
+      return json(200, { done: true, processed: [], remaining: 0,
+                         note: country ? `queue empty for ${country}` : 'queue empty' });
     }
 
     const ids = claim.map(r => r.id);
@@ -652,8 +666,11 @@ exports.handler = async (event) => {
       });
     }
 
-    const pending = await sb('crawl_price_queue?select=id&status=eq.pending', { prefer: 'count=exact' });
-    return json(200, { done: false, processed, remaining: (pending || []).length });
+    const pending = await sb(
+      `crawl_price_queue?select=id&status=eq.pending${country ? `&country=eq.${encodeURIComponent(country)}` : ''}`,
+      { prefer: 'count=exact' }
+    );
+    return json(200, { done: false, country: country || 'all', processed, remaining: (pending || []).length });
   } catch (e) {
     return json(500, { error: String(e.message || e).slice(0, 500) });
   }
