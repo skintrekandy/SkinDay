@@ -60,15 +60,32 @@ function probeNearMiss(text) {
 // ── The extractor ───────────────────────────────────────────────────────────
 // Verified against a 42-case golden fixture drawn from real Canadian pricing
 // pages AND the first full production run. Two run-driven fixes baked in: the
-// $6/unit floor and therapeutic-rate rejection, which killed the $2-$4 false
-// positives (therapeutic Botox priced separately from cosmetic on the same page).
-const MIN_UNIT_PRICE = 6;    // Cosmetic neurotoxin in Canada essentially never
-                             // sits below $6/unit. The old $2 floor let THERAPEUTIC
-                             // rates through: essentialsmedispa.ca published cosmetic
-                             // Botox at $10 AND therapeutic (migraine/TMJ, insurance)
-                             // at $3.57, and the extractor took the lower number.
-                             // $6 also excludes promo loss-leaders ($2.98/unit anchors)
-                             // that are real but misleading as a "typical" price.
+// ⭐⭐ THE FLOOR IS $1, NOT $6. Changed 2026-09-02 on Andy's instruction, and
+// the reasoning matters more than the number.
+//
+// $6 was introduced to kill therapeutic-rate pollution: essentialsmedispa.ca
+// published cosmetic Botox at $10 and therapeutic (migraine/TMJ, insurance) at
+// $3.57 on the same page, and the extractor took the lower number. But a price
+// floor is the WRONG INSTRUMENT for that job. It cannot tell a therapeutic rate
+// from a genuinely cheap cosmetic one, so it silently discarded both.
+//
+// [Andy] "there are clinics in Ontario selling botox at $5 and Xeomin at $2.99,
+// there should not be a floor like you mentioned, because as the market gets
+// more competitive it will have more lower pricing." A floor that has to keep
+// rising to fight a different problem excludes exactly the prices a price
+// directory exists to surface, and it gets worse as the market matures.
+//
+// THE THERAPEUTIC REJECTS CARRY THAT JOB INSTEAD, and they are the right tool:
+// therapeutic / migraine / TMJ / masseter / bruxism / hyperhidrosis / insurance
+// / medically covered and the rest, all matched on the page text. [Andy]
+// "therapeutic will be shown specifically on websites so not hard for us to
+// identify" - a clinic charging a therapeutic rate says so in words, because it
+// has to for the patient to know which rate applies.
+//
+// ⚠️ Sub-$6 rows will now appear. That is intended. SOL Skin Spa's $2.98 Xeomin
+// anchor is a real advertised price, not an error.
+// ⚠️ $1 rather than 0, so a bare "$1" or a stray zero still has a bound.
+const MIN_UNIT_PRICE = 1;
 const MAX_UNIT_PRICE = 40;   // nothing legitimate is above this per unit
 const MAX_WINDOW_CHARS = 320;
 // With no explicit basis word, the brand and the number must be near enough to
@@ -479,7 +496,15 @@ function metaText(html) {
 // by phoning a clinic outranks anything published on a web page, and
 // clinic_prices is unique on (clinic_id, toxin, injector_type), so writing over
 // it later would be a genuine loss.
-async function landPrices(prices, clinicIds, sourceUrl, host) {
+// ⚠️ `currency` was hardcoded 'CAD', which was correct while the queue held
+// Canada only. It now holds California too, so every US price would be filed
+// as Canadian dollars. Derived from the QUEUE ROW's country rather than a
+// constant, and rows with no country fall back to CAD, matching the pre-M23
+// behaviour for anything seeded before the column existed.
+const CURRENCY_BY_COUNTRY = { canada: 'CAD', usa: 'USD' };
+
+async function landPrices(prices, clinicIds, sourceUrl, host, country) {
+  const currency = CURRENCY_BY_COUNTRY[String(country || '').trim().toLowerCase()] || 'CAD';
   let inserted = 0, skipped = 0;
 
   for (const clinicId of clinicIds) {
@@ -498,7 +523,7 @@ async function landPrices(prices, clinicIds, sourceUrl, host) {
           host,
           toxin: p.toxin,
           price: p.price,
-          currency: 'CAD',
+          currency,
           basis: 'per_unit',
           basis_source: p.basis_source,
           from_range: !!p.from_range,
@@ -572,7 +597,7 @@ async function crawlOne(row) {
   }
 
   const { inserted, skipped } =
-    await landPrices(picked.prices, row.clinic_ids || [], picked.page.url, row.host);
+    await landPrices(picked.prices, row.clinic_ids || [], picked.page.url, row.host, row.country);
 
   return {
     status: 'done',

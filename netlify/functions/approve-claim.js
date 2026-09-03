@@ -38,6 +38,19 @@ const SITE_BY_COUNTRY = {
   hongkong: 'https://skinday.com'
 };
 
+// ⚠️ The CONTACT address follows the clinic's own site, so each site's contact
+// email matches its domain. The SENDER stays hello@skinday.ca on both: that is
+// the domain verified in Resend and the one the .com key is scoped to, and
+// verifying a second domain is deliberately not being paid for.
+//
+// ⚠️ Both approval paths serve BOTH countries. This function is .ca-only but is
+// fired by a webhook on every clinic; the .com admin's claims queue likewise
+// shows every country. So neither can hardcode a contact address.
+function contactFor(country) {
+  const site = siteFor(country) || 'https://skinday.ca';
+  return 'hello@' + site.replace(/^https?:\/\//, '');
+}
+
 // PORTAL_URL is kept only as the last resort for a clinics row with no country
 // value at all. It is no longer the primary source, so if it is still set in
 // Netlify to the .ca url that setting now affects nothing except that edge.
@@ -247,6 +260,7 @@ exports.handler = async (event) => {
 };
 
 function buildEmail(clinicName, setupLink, locationCount = 1, portalUrl = FALLBACK_PORTAL_URL) {
+  const contact = 'hello@' + String(portalUrl).replace(/^https?:\/\//, '').split('/')[0];
   // The expiry fallback link must point at the SAME portal as the setup link,
   // or a US clinic whose link expires is sent to the Canadian login.
   const portalLabel = String(portalUrl).replace(/^https?:\/\//, '');
@@ -285,7 +299,7 @@ function buildEmail(clinicName, setupLink, locationCount = 1, portalUrl = FALLBA
       <p class="note">This link expires in 24 hours. If it expires, visit <a href="${portalUrl}" style="color:#c9736a;">${portalLabel}</a> and use "Forgot password" to get a new one.</p>
     </div>
     <div class="footer">
-      Questions? Reply to this email or contact <a href="mailto:hello@skinday.com" style="color:#c9736a;">hello@skinday.com</a><br/>
+      Questions? Reply to this email or contact <a href="mailto:${contact}" style="color:#c9736a;">${contact}</a><br/>
       SkinDay · Toronto, ON
     </div>
   </div>
