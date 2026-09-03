@@ -984,10 +984,21 @@
 
         <div class="form-section-label">Run</div>
         <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;">
+          <label style="font-size:.82rem;color:var(--muted);display:flex;align-items:center;gap:.4rem;">
+            Country
+            <select id="pc-country" style="background:var(--cream);border:1px solid var(--border);border-radius:6px;padding:.35rem .5rem;font-family:'DM Sans',sans-serif;font-size:.82rem;color:var(--deep);">
+              <option value="canada">Canada</option>
+              <option value="usa">USA</option>
+              <option value="all">Both (by queue order)</option>
+            </select>
+          </label>
           <button class="btn-primary" id="pc-start" onclick="pcStart()">Start crawl</button>
           <button class="btn-ghost" id="pc-stop" onclick="pcStop()" style="display:none;">Stop</button>
           <button class="btn-ghost" onclick="pcStart(true)">Retry failed</button>
           <span id="pc-progress" style="font-size:.82rem;color:var(--muted);"></span>
+        </div>
+        <div class="form-subtitle" style="margin-top:.5rem;">
+          The queue now holds Canada and California together. California was seeded later so its rows carry higher ids, and the crawler claims by id: <strong>"Both" therefore finishes every Canadian host before starting a Californian one.</strong> Pick a country to work them in any other order.
         </div>
         <div class="form-subtitle" style="margin-top:.6rem;">Watch the first ten hosts before leaving it to loop. A price shown with a question mark had no "per unit" wording anywhere on the page and was accepted on the strength of the amount alone, so those deserve a closer look at review time.</div>
 
@@ -1349,12 +1360,20 @@ function pcStop() {
   pcLog('stopped.', 'var(--muted)');
 }
 
+// Read ONCE at the start of a run, not per batch. Changing the dropdown
+// mid-run would otherwise switch countries between batches and make the
+// progress line meaningless.
+let pcCountry = 'canada';
+
 async function pcStart(retry) {
   if (pcRunning) return;
   pcRunning = true;
+  const sel = document.getElementById('pc-country');
+  pcCountry = (sel && sel.value) || 'canada';
   pcTotals = { hosts: 0, inserted: 0, empty: 0, errors: 0 };
   pcButtons(true);
-  pcLog(retry === true ? 'retrying hosts that failed…' : 'starting…', 'var(--muted)');
+  pcLog((retry === true ? 'retrying hosts that failed' : 'starting')
+        + ' · ' + (pcCountry === 'all' ? 'both countries' : pcCountry) + '…', 'var(--muted)');
 
   while (pcRunning) {
     let data;
@@ -1362,7 +1381,7 @@ async function pcStart(retry) {
       const res = await fetch('/.netlify/functions/crawl-prices', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-admin-secret': adminSecret },
-        body: JSON.stringify({ batch: 3, retry: retry === true })
+        body: JSON.stringify({ batch: 3, retry: retry === true, country: pcCountry })
       });
       data = await res.json();
       if (!res.ok) {
