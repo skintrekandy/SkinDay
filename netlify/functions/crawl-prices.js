@@ -187,7 +187,45 @@ const DISQUALIFY = [
 
   // Discounts and credits are not prices.
   /\boff\b/i, /\bsave\b/i, /\bcredit\b/i, /\bgift\b/i, /\bcoupon\b/i,
-  /\brebate\b/i, /\d\s*%/
+  /\brebate\b/i, /\d\s*%/,
+
+  // ⭐⭐ TRUE-DYSPORT-UNIT PRICING. Rejected on Andy's instruction 2026-09-02:
+  // "Always quote Botox equivalent pricing. That is just the standard. I would
+  // just not publish those clinics' data. Making patients confused."
+  //
+  // Roughly 3 Dysport units equal 1 Botox unit, so a clinic quoting TRUE Dysport
+  // units publishes ~$3.34 where the Botox-equivalent price is ~$10. Canadian
+  // clinics quote the Botox equivalent by convention, which is why this never
+  // surfaced before; a number of Californian ones do not, and they say so:
+  //   "Dysport per unit (3u = 1u Botox) $ 3.34"     labeautyskincenter.com
+  //   "DYSPORT PER UNIT (3 UNITS OF DYSPORT = 1 UNIT OF BOTOX) $4"
+  //                                                 touchmeupmedspa.com
+  //
+  // ⚠️ THIS ALSO KILLS A REAL FALSE ATTRIBUTION, which is why it is a reject and
+  // not a conversion: the word "Botox" inside that ratio sentence made the
+  // extractor file $3.34 as a BOTOX price on seven clinics. Their actual Botox
+  // price is around $10, so they were about to show as the cheapest Botox in
+  // California.
+  //
+  // Scoped to the price WINDOW, so a clean "Botox $12/unit" elsewhere on the
+  // same page is unaffected. Only the ratio-quoted line is dropped.
+  /\d\s*(?:u\b|units?\b)[^.]{0,30}=\s*\d\s*(?:u\b|units?\b)/i,
+  /\bdysport\b[^.]{0,40}\b3\s*:\s*1\b/i,
+  /\b3\s*:\s*1\b[^.]{0,40}\bdysport\b/i,
+
+  // A surcharge is an add-on, not the price. prolaseclinic.com:
+  // "A $1 per unit surcharge applies for Botox performed by Dr."
+  /\bsurcharge\b/i,
+
+  // ⭐ MAGNITUDE SUFFIXES. portraitcare.com published "Botox - Dominant $25.84 B",
+  // a MARKET-SIZE figure in billions, and it was approved as a $25.84 per-unit
+  // price: the highest in California by a wide margin.
+  //
+  // Same failure shape as the thousands-separator bug: the extractor reads the
+  // digits and ignores what is attached to them. `\b` after B and M means
+  // "$4 Member" is untouched, because M followed by a letter is not a boundary.
+  /\$\s*\d[\d.,]*\s*(?:B|M|bn|mn|billion|million)\b/i,
+  /\d[\d.,]*\s*(?:billion|million)\b/i
 ];
 
 // DELIBERATELY NOT REJECTED, each one having cost a real price on a real page:
@@ -503,12 +541,44 @@ function metaText(html) {
 // behaviour for anything seeded before the column existed.
 const CURRENCY_BY_COUNTRY = { canada: 'CAD', usa: 'USD' };
 
+// ⭐⭐ US DYSPORT: KEPT ABOVE A THRESHOLD, DROPPED BELOW IT.
+// Andy 2026-09-02: "we should not skip all Dysport in US, this is wrong. If the
+// prices are not unreasonably low, then it means it's true and worth keeping."
+//
+// WHY DYSPORT ONLY: it is the single toxin here without a 1:1 relationship to
+// Botox. Roughly 3 Dysport units equal 1 Botox unit, so a published per-unit
+// figure is either a TRUE-DYSPORT-UNIT price or a BOTOX-EQUIVALENT one, and the
+// two differ threefold. Xeomin, Jeuveau and Daxxify are all about 1:1.
+//
+// WHY THE US ONLY: [Andy] Canadian clinics quote the Botox equivalent by
+// convention, so this never arose in the Canadian run. Canada is untouched.
+//
+// WHY A THRESHOLD RATHER THAN A REJECT: a Botox-equivalent Dysport quote lands
+// near that clinic's Botox price, $10 and up. A true-unit quote lands near a
+// third of it. The California run clustered the true-unit ones at $3.00, $3.34,
+// $3.50, $3.75, $4.00, $4.25 and $4.33, with nothing between $4.33 and the
+// Botox-equivalent range, so the two populations separate cleanly.
+//
+// ⚠️ THIS IS NOT THE $6 FLOOR RETURNING. That floor applied to EVERY toxin and
+// existed to reject therapeutic rates; it was removed because it also discarded
+// genuinely cheap cosmetic pricing. This is one toxin, in one country, for one
+// reason: we cannot tell which unit the clinic means, and below this figure the
+// answer is almost certainly the one that misleads a patient.
+//
+// ⓘ The honest source for a low Dysport price is the clinic itself, through the
+// portal. Until a clinic publishes its own, a number we cannot interpret is
+// worse than no number.
+const DYSPORT_US_MIN = 6;
+
 async function landPrices(prices, clinicIds, sourceUrl, host, country) {
-  const currency = CURRENCY_BY_COUNTRY[String(country || '').trim().toLowerCase()] || 'CAD';
+  const countryKey = String(country || '').trim().toLowerCase();
+  const currency = CURRENCY_BY_COUNTRY[countryKey] || 'CAD';
+  const isUS = (countryKey === 'usa');
   let inserted = 0, skipped = 0;
 
   for (const clinicId of clinicIds) {
     for (const p of prices) {
+      if (isUS && p.toxin === 'dysport' && Number(p.price) < DYSPORT_US_MIN) { skipped++; continue; }
       const existing = await sb(
         `clinic_prices?select=id&clinic_id=eq.${encodeURIComponent(clinicId)}` +
         `&toxin=eq.${encodeURIComponent(p.toxin)}&limit=1`
