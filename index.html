@@ -36,6 +36,11 @@
       --deep2:   #241E1A;
       --rose:    #C8725A;
       --rose-m:  #D4896E;
+      /* Filled chip for injectables: darker than --rose-bg so a product reads
+         as a different kind of thing from a machine at a glance, lighter than
+         --rose-m so it never competes with a button. */
+      --rose-fill: #E9C9BC;
+      --rose-ink:  #5A3826;
       --rose-bg: #F5E8E3;
       --gold:    #C9A96E;
       --muted:   #8A7B72;
@@ -878,9 +883,14 @@
       white-space: nowrap;
     }
     .dev-chip-more { background: transparent; border-style: dashed; color: var(--muted); }
-    /* Injectables read as a different kind of thing from the machines beside
-       them, without needing a second row or a heading on the card. */
-    .inj-chip { background: var(--rose-bg); border-color: var(--rose-m); }
+    /* Injectables sit on their own row directly under the machines: close
+       enough to read as one block about what the clinic offers, tinted
+       strongly enough to be a different kind of thing at a glance. */
+    .card-injectables { margin-top: 0.25rem; }
+    .inj-chip {
+      background: var(--rose-fill); border-color: var(--rose-m);
+      color: var(--rose-ink); font-weight: 600;
+    }
 
     .filter-spacer { flex: 1 1 auto; min-width: 0; }
     .active-filter-line {
@@ -1062,6 +1072,15 @@
       color: var(--deep); text-decoration: none;
     }
     .cm-dev-chip:hover { background: var(--rose-bg); border-color: var(--rose-m); }
+    /* ⚠️ The plain chip's HOVER state is already --rose-bg, so an injectable
+       styled with that would look permanently hovered. It takes the filled
+       tone instead, and hovers to the line colour. */
+    .cm-inj-chip {
+      background: var(--rose-fill); border-color: var(--rose-m);
+      color: var(--rose-ink); font-weight: 600;
+    }
+    .cm-inj-chip:hover { background: var(--rose-m); color: #fff; }
+    .cm-inj-chip .mfr { color: var(--rose-ink); opacity: .72; }
     .cm-dev-chip .mfr { color: var(--muted); font-weight: 400; font-size: 0.66rem; }
     .cm-dev-chip .vtag { color: var(--green); font-size: 0.6rem; letter-spacing: 0.04em; }
     .cm-dev-note { font-size: 0.66rem; color: var(--dim); line-height: 1.5; margin-top: 0.5rem; }
@@ -4368,13 +4387,26 @@ function renderPageCards(clinicsData, append) {
     const devOverflow = devs.length - devShown.length;
     const injShown = injs.slice(0, 3);
     const injOverflow = injs.length - injShown.length;
-    const devicesHTML = (devs.length || injs.length)
-      ? `<div class="card-devices" aria-label="Technology and injectables listed by this clinic">${
-          devShown.map(d => `<a class="dev-chip" href="/?device=${devSlug(d.model)}" onclick="event.stopPropagation()">${devEsc(d.model)}</a>`).join('')
-        }${devOverflow > 0 ? `<span class="dev-chip dev-chip-more">+${devOverflow}</span>` : ''}${
-          injShown.map(d => `<a class="dev-chip inj-chip" href="/?inj=${devSlug(d.model)}" onclick="event.stopPropagation()">${devEsc(d.model)}</a>`).join('')
-        }${injOverflow > 0 ? `<span class="dev-chip dev-chip-more">+${injOverflow}</span>` : ''}</div>`
+    // ⚠️ ONE ROW EACH, NOT ONE ROW OF BOTH. Sharing a row put the machines'
+    // "+3" overflow chip in the middle of the line, directly before the first
+    // product, so it read as "3 more, then Radiesse, then Sculptra" — the
+    // counter appeared to cover the products it was actually excluding. Each
+    // kind now carries its own counter at the end of its own row, and the two
+    // groups stop fighting each other for wrap position.
+    const chipRow = (list, overflow, cls, param) => list.length
+      ? `${list.map(d => `<a class="dev-chip${cls}" href="/?${param}=${devSlug(d.model)}" onclick="event.stopPropagation()">${devEsc(d.model)}</a>`).join('')}`
+        + (overflow > 0 ? `<span class="dev-chip dev-chip-more">+${overflow}</span>` : '')
       : '';
+
+    const devicesHTML =
+      (devs.length
+        ? `<div class="card-devices" aria-label="Technology listed by this clinic">${
+            chipRow(devShown, devOverflow, '', 'device')}</div>`
+        : '')
+      + (injs.length
+        ? `<div class="card-devices card-injectables" aria-label="Injectables listed by this clinic">${
+            chipRow(injShown, injOverflow, ' inj-chip', 'inj')}</div>`
+        : '');
     return `
       <div class="clinic-card${hasPrice ? '' : ' no-price'}" data-id="${c.id}">
         ${(() => {
@@ -6741,7 +6773,7 @@ window.openClinicModal = async function openClinicModal(clinicId) {
       cmInjList.innerHTML = `
         <div>
           <div class="cm-dev-chips">${cmInjs.map(d => {
-            return `<a class="cm-dev-chip" href="/?inj=${devSlug(d.model)}">${devEsc(d.model)}${
+            return `<a class="cm-dev-chip cm-inj-chip" href="/?inj=${devSlug(d.model)}">${devEsc(d.model)}${
               d.manufacturer ? `<span class="mfr">${devEsc(d.manufacturer)}</span>` : ''
             }${d.status === 'verified' ? '<span class="vtag">\u2713</span>' : ''}</a>`;
           }).join('')}</div>
