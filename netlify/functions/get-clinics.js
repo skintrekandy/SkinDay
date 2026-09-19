@@ -126,6 +126,16 @@ const SEGMENT_TO_CARD_CATEGORY = {
   body_contouring: 'body',
 };
 
+// ── INJECTABLES (M40) ────────────────────────────────────────────
+// Biostimulators live in the same reference table as the machines, because the
+// crawler, the review gate and the clinic_devices join are all the same code.
+// They are NOT the same thing to a patient: an injectable is a product a clinic
+// orders, not equipment it owns, and it must never appear under Technology.
+// Segment is the single dividing line, set on the category row, so adding
+// fillers or neurotoxins later needs no change here.
+const INJECTABLE_SEGMENT = 'injectables';
+const isInjectableSegment = seg => seg === INJECTABLE_SEGMENT;
+
 function shapeDeviceRow(row, labels) {
   const d = row.device_reference || {};
   const cat = labels[d.category] || {};
@@ -328,7 +338,7 @@ exports.handler = async (event) => {
       const modelCategory = {};
       (raw.models || []).forEach(m => { if (m.category) modelCategory[m.model] = m.category; });
 
-      const categories = (raw.categories || [])
+      const allCategories = (raw.categories || [])
         .map(c => {
           const lab = labels[c.category] || {};
           return {
@@ -345,6 +355,9 @@ exports.handler = async (event) => {
         .filter(c => c.segment)
         .sort((a, b) => a.sort_order - b.sort_order);
 
+      const categories    = allCategories.filter(c => !isInjectableSegment(c.segment));
+      const injCategories = allCategories.filter(c =>  isInjectableSegment(c.segment));
+
       // Grouped the way the filter renders it, so the browser does not have to
       // reconstruct which model belongs to which category.
       // Order so a family sits together and ranks by its FAMILY total: PicoSure
@@ -353,7 +366,10 @@ exports.handler = async (event) => {
       const familyOf = m => m.parent_model || m.model;
       const familyTotal = familyTotals;
 
+      const injCategorySet = new Set(injCategories.map(c => c.category));
+
       const models_by_category = {};
+      const inj_models_by_category = {};
       models
         .slice()
         .sort((a, b) => {
@@ -369,22 +385,39 @@ exports.handler = async (event) => {
         .forEach(m => {
           const c = modelCategory[m.model];
           if (!c) return;
-          (models_by_category[c] = models_by_category[c] || []).push(m);
+          const into = injCategorySet.has(c) ? inj_models_by_category : models_by_category;
+          (into[c] = into[c] || []).push(m);
         });
 
       // Three tiers: group heading -> subcategory row -> model row. The group
       // count is DISTINCT CLINICS across the whole group, not a sum of its
       // subcategories, because one clinic can own an RF and a HIFU device and
       // must not be counted twice. That distinct count is computed in SQL.
-      const groups = (raw.groups || [])
+      const shapeGroups = (cats) => (raw.groups || [])
         .map(g => ({
           key: g.key,
           label: g.label || g.key,
           order: g.order != null ? g.order : 999,
           clinics: g.clinics,
-          categories: categories.filter(c => (labels[c.category] || {}).group_key === g.key),
+          categories: cats.filter(c => (labels[c.category] || {}).group_key === g.key),
         }))
+        // A group with nothing under it is not offered. This is what keeps the
+        // injectables group out of the Technology list and vice versa.
+        .filter(g => g.categories.length)
         .sort((a, b) => a.order - b.order);
+
+      const groups     = shapeGroups(categories);
+      const inj_groups = shapeGroups(injCategories);
+
+      // The flat model list backs the picker's label lookup, so each side gets
+      // only its own models — otherwise selecting Sculptra would make the
+      // Technology button read "Sculptra".
+      const injModelSet = new Set();
+      Object.keys(inj_models_by_category).forEach(c => {
+        (inj_models_by_category[c] || []).forEach(m => injModelSet.add(m.model));
+      });
+      const inj_models  = models.filter(m =>  injModelSet.has(m.model));
+      const eqp_models  = models.filter(m => !injModelSet.has(m.model));
 
       return {
         statusCode: 200,
@@ -393,7 +426,11 @@ exports.handler = async (event) => {
           'Access-Control-Allow-Origin': '*',
           'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=60',
         },
-        body: JSON.stringify({ groups, models, categories, models_by_category, clinics_with_devices: raw.clinics_with_devices || 0 }),
+        body: JSON.stringify({
+          groups, models: eqp_models, categories, models_by_category,
+          inj_groups, inj_models, inj_categories: injCategories, inj_models_by_category,
+          clinics_with_devices: raw.clinics_with_devices || 0,
+        }),
       };
     }
 
@@ -533,7 +570,18 @@ exports.handler = async (event) => {
     const hasDeviceFilter = !!(deviceSlug || deviceCat || deviceGroup);
     let deviceClinicIds = null;
 
-    if (hasDeviceFilter) {
+    // ⭐ INJECTABLES GET THEIR OWN PARAMS (?inj= / ?injcat= / ?injgroup=) rather
+    // than sharing ?device=. Two controls sharing one param would mean picking
+    // Sculptra silently clears a Morpheus8 filter, and neither button could say
+    // truthfully what it is showing. Separate params also make the two
+    // COMBINABLE — "clinics with a Morpheus8 that also offer Sculptra" is a
+    // real question, answered by intersecting the two id lists below.
+    const injSlug  = (params.inj || '').trim().toLowerCase();
+    const injCat   = (params.injcat || '').trim().toLowerCase();
+    const injGroup = (params.injgroup || '').trim().toLowerCase();
+    const hasInjFilter = !!(injSlug || injCat || injGroup);
+
+    if (hasDeviceFilter || hasInjFilter) {
       // ⭐⭐⭐ ONE SOURCE FOR "WHICH CLINICS HAVE THIS DEVICE".
       // The dropdown count comes from the device_facets RPC, computed in
       // Postgres. This used to fetch clinic_devices over HTTP and filter in
@@ -549,20 +597,36 @@ exports.handler = async (event) => {
       // family header returns clinics with either generation; selecting
       // "PicoSure Pro" returns only that one. Expanded in Postgres via
       // parent_device_id so the client never has to know the relationship.
-      const { data: devIdRows, error: devErr } = await supabase.rpc('device_clinic_ids', {
-        p_country:  country,
-        p_province: province || null,
-        p_slug:     deviceSlug || null,
-        p_category: deviceCat  || null,
-        p_group:    deviceGroup || null,
-      });
+      // Same RPC for both, so the injectable list can never be computed by a
+      // second method that drifts from the first.
+      const idsFor = async (slug, cat, grp) => {
+        const { data, error } = await supabase.rpc('device_clinic_ids', {
+          p_country:  country,
+          p_province: province || null,
+          p_slug:     slug || null,
+          p_category: cat  || null,
+          p_group:    grp  || null,
+        });
+        if (error) throw error;
+        return (data || []).map(r => String(r.clinic_id));
+      };
 
-      if (devErr) {
+      try {
+        const [eqpIds, injIds] = await Promise.all([
+          hasDeviceFilter ? idsFor(deviceSlug, deviceCat, deviceGroup) : Promise.resolve(null),
+          hasInjFilter    ? idsFor(injSlug, injCat, injGroup)          : Promise.resolve(null),
+        ]);
+
+        if (eqpIds && injIds) {
+          const keep = new Set(injIds);
+          deviceClinicIds = eqpIds.filter(id => keep.has(id));
+        } else {
+          deviceClinicIds = eqpIds || injIds;
+        }
+      } catch (devErr) {
         console.error('Supabase error (device filter):', devErr);
         return { statusCode: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ error: devErr.message }) };
       }
-
-      deviceClinicIds = (devIdRows || []).map(r => String(r.clinic_id));
     }
 
     const maxprice = (params.maxprice != null && params.maxprice !== '') ? parseFloat(params.maxprice) : null;
@@ -613,7 +677,7 @@ exports.handler = async (event) => {
       // Technology filter. An empty match list must yield NO results rather
       // than being skipped, or "clinics with a Morpheus8" would silently
       // return every clinic in the province.
-      if (hasDeviceFilter) q = q.in('id', deviceClinicIds.length ? deviceClinicIds : ['__none__']);
+      if (deviceClinicIds) q = q.in('id', deviceClinicIds.length ? deviceClinicIds : ['__none__']);
 
       return q;
     };
