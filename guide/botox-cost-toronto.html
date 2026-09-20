@@ -688,7 +688,7 @@
         <div class="stat-desc">Most common range</div>
       </div>
       <div class="stat-item">
-        <div class="stat-num" id="statClinicCount">1,553<span>+</span></div>
+        <div class="stat-num" id="statClinicCount">2,455<span>+</span></div>
         <div class="stat-desc">GTA clinics tracked</div>
       </div>
     </div>
@@ -1114,7 +1114,7 @@
 
     let bins = FALLBACK;
     try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/clinic_prices?select=price,clinics!inner(province)&clinics.province=eq.ON&price=gte.3&price=lte.15`, {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/clinic_prices?select=price,clinics!inner(province)&clinics.province=eq.on&price=gte.3&price=lte.15`, {
         headers: { 'apikey': SUPABASE_KEY }
       });
       if (res.ok) {
@@ -1588,7 +1588,7 @@
 
 <div class="guide-section" id="city-distribution">
     <h2>Where GTA clinics <em>are concentrated</em></h2>
-    <p>Toronto and North York alone account for over a third of all cosmetic clinics in the GTA. Here's how <span id="proseClinicCount">1,553+</span> GTA-area clinics are distributed across the region.</p>
+    <p>Here's how <span id="proseClinicCount">2,455+</span> cosmetic clinics across the Greater Toronto Area are distributed.</p>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:2.5rem;margin:2rem 0;align-items:start;" class="chart-grid">
       <!-- Donut chart -->
@@ -1599,44 +1599,87 @@
       <!-- Bar list -->
       <div>
         <div class="bar-chart" id="city-bars"></div>
-        <p style="font-size:0.72rem;color:var(--dim);margin-top:1rem;">Top 10 areas · <span id="captionClinicCount">1,553</span> clinics total</p>
+        <p style="font-size:0.72rem;color:var(--dim);margin-top:1rem;">Top 10 areas · <span id="captionClinicCount">2,455</span> clinics total</p>
       </div>
     </div>
+    <p class="chart-figures" id="city-figures">Cosmetic clinics by area across the Greater Toronto Area: Toronto 658, Mississauga 284, North York 207, Brampton 182, Richmond Hill 145, Markham 130, Oakville 112, Etobicoke 109, Thornhill 97, Vaughan 96. 2,455 clinics in total.</p>
   </div>
 
   <script>
-  const AREA_COLORS = {
-    'toronto': '#C8725A', 'north-york': '#C9A96E', 'brampton': '#3D7A55',
-    'richmond-hill': '#8A7B72', 'etobicoke': '#B5A89F', 'markham': '#9e7a72',
-    'thornhill': '#6b4c44', 'burlington': '#a0614e', 'hamilton': '#c9736a',
-    'scarborough': '#d4896e'
-  };
-  const AREA_LABELS = {
-    'toronto': 'Toronto', 'north-york': 'North York', 'brampton': 'Brampton',
-    'richmond-hill': 'Richmond Hill', 'etobicoke': 'Etobicoke', 'markham': 'Markham',
-    'thornhill': 'Thornhill', 'burlington': 'Burlington', 'hamilton': 'Hamilton',
-    'scarborough': 'Scarborough', 'london': 'London', 'aurora': 'Aurora',
-    'newmarket': 'Newmarket', 'mississauga': 'Mississauga'
-  };
-  const FALLBACK_DATA = [
-    { area: 'Toronto',       count: 388, color: '#C8725A' },
-    { area: 'North York',    count: 197, color: '#C9A96E' },
-    { area: 'Brampton',      count: 142, color: '#3D7A55' },
-    { area: 'Richmond Hill', count: 114, color: '#8A7B72' },
-    { area: 'Etobicoke',     count: 108, color: '#B5A89F' },
-    { area: 'Markham',       count: 86,  color: '#9e7a72' },
-    { area: 'Thornhill',     count: 80,  color: '#6b4c44' },
-    { area: 'Burlington',    count: 75,  color: '#a0614e' },
-    { area: 'Hamilton',      count: 78,  color: '#c9736a' },
-    { area: 'Scarborough',   count: 58,  color: '#d4896e' },
+  // ── WHERE GTA CLINICS ARE CONCENTRATED ──────────────────────────
+  // Counts come from /api/get-clinics?mode=area-counts, which aggregates in
+  // Postgres and returns one row per province + neighbourhood. Two faults this
+  // replaces, both of which made the section show numbers from the day it was
+  // written while looking live:
+  //   1. it read `clinics.length` on a response that is an object, so the
+  //      check threw on every single load and the fallback always drew;
+  //   2. it compared province to 'Ontario'/'ON' when the stored value is 'on'.
+  // The fallback below is now the real distribution as of 2026-09-20, so the
+  // worst case is current rather than a year out of date.
+
+  // The GTA is Toronto plus the four regional municipalities: Peel, York,
+  // Durham, Halton. Hamilton is NOT in it — it is its own single-tier city in
+  // the wider Golden Horseshoe, and it was inflating this chart before.
+  // Toronto's own former municipalities are listed separately because that is
+  // how they are stored.
+  const GTA_AREAS = [
+    // Toronto
+    'toronto','north york','scarborough','etobicoke','york','east york','downtown toronto',
+    // Peel
+    'mississauga','brampton','caledon','bolton','streetsville',
+    // York
+    'markham','unionville','richmond hill','vaughan','woodbridge','thornhill','concord',
+    'maple','kleinburg','nobleton','king city','aurora','newmarket','stouffville',
+    'whitchurch stouffville','east gwillimbury','holland landing','georgina','keswick','sutton',
+    // Durham
+    'ajax','pickering','whitby','brooklin','oshawa','clarington','bowmanville','courtice',
+    'uxbridge','port perry','beaverton',
+    // Halton
+    'oakville','burlington','milton','halton hills','georgetown','acton'
   ];
 
-  function drawChart(data) {
-    const total = data.reduce((s, d) => s + d.count, 0);
+  // Rank order, not a name lookup: a city entering the top ten still gets a
+  // colour instead of falling through to grey.
+  const AREA_PALETTE = ['#C8725A','#C9A96E','#3D7A55','#8A7B72','#B5A89F',
+                        '#9e7a72','#6b4c44','#a0614e','#c9736a','#d4896e'];
 
-    // Donut chart
+  // Accents stripped and punctuation flattened so 'Whitchurch-Stouffville' and
+  // 'Whitchurch Stouffville' are the same place.
+  const normArea = v => String(v || '')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+
+  const GTA_SET = new Set(GTA_AREAS.map(normArea));
+
+  const FALLBACK_DATA = [
+    { area: 'Toronto',       count: 658 },
+    { area: 'Mississauga',   count: 284 },
+    { area: 'North York',    count: 207 },
+    { area: 'Brampton',      count: 182 },
+    { area: 'Richmond Hill', count: 145 },
+    { area: 'Markham',       count: 130 },
+    { area: 'Oakville',      count: 112 },
+    { area: 'Etobicoke',     count: 109 },
+    { area: 'Thornhill',     count: 97  },
+    { area: 'Vaughan',       count: 96  },
+  ];
+  const FALLBACK_TOTAL = 2455;
+
+  function drawChart(data, gtaTotal) {
+    if (!data.length) return;
+    data = data.map((d, i) => Object.assign({}, d, { color: d.color || AREA_PALETTE[i % AREA_PALETTE.length] }));
+
+    // Slices are shares of the whole GTA, not of the top ten, so the donut and
+    // the number in the middle describe the same population.
+    const total = gtaTotal || data.reduce((s, d) => s + d.count, 0);
+    const shown = data.reduce((s, d) => s + d.count, 0);
+    const label = total.toLocaleString('en-CA');
+
     const canvas = document.getElementById('cityChart');
+    if (!canvas) return;
     const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
     const cx = 130, cy = 130, r = 110, inner = 68;
     let angle = -Math.PI / 2;
     data.forEach(d => {
@@ -1649,77 +1692,93 @@
       ctx.fill();
       angle += slice;
     });
-    // Inner hole
+    // Everything outside the top ten, so the ring closes.
+    if (shown < total) {
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, r, angle, -Math.PI / 2 + 2 * Math.PI);
+      ctx.closePath();
+      ctx.fillStyle = '#E4DAD1';
+      ctx.fill();
+    }
+
     ctx.beginPath();
     ctx.arc(cx, cy, inner, 0, 2 * Math.PI);
     ctx.fillStyle = '#FAF7F2';
     ctx.fill();
-    // Center label
+
     ctx.fillStyle = '#1C1714';
     ctx.font = 'bold 28px Cormorant Garamond, serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(window._clinicCountLabel || '1,553', cx, cy - 10);
+    ctx.fillText(label, cx, cy - 10);
     ctx.font = '11px DM Sans, sans-serif';
     ctx.fillStyle = '#8A7B72';
     ctx.fillText('GTA clinics', cx, cy + 14);
 
-    // Legend
     const legend = document.getElementById('chart-legend');
-    data.slice(0, 5).forEach(d => {
-      const pct = ((d.count / total) * 100).toFixed(1);
-      legend.innerHTML += `<div style="display:flex;align-items:center;gap:0.5rem;font-size:0.75rem;">
-        <span style="width:10px;height:10px;border-radius:2px;background:${d.color};flex-shrink:0;"></span>
-        <span style="color:#3a2f2b;flex:1;">${d.area}</span>
-        <span style="color:#8A7B72;">${pct}%</span>
-      </div>`;
-    });
+    if (legend) {
+      legend.innerHTML = data.slice(0, 5).map(d => {
+        const pct = ((d.count / total) * 100).toFixed(1);
+        return '<div style="display:flex;align-items:center;gap:0.5rem;font-size:0.75rem;">'
+          + '<span style="width:10px;height:10px;border-radius:2px;background:' + d.color + ';flex-shrink:0;"></span>'
+          + '<span style="color:#3a2f2b;flex:1;">' + d.area + '</span>'
+          + '<span style="color:#8A7B72;">' + pct + '%</span>'
+          + '</div>';
+      }).join('');
+    }
 
-    // Bar chart
     const bars = document.getElementById('city-bars');
-    const max = data[0].count;
-    data.forEach(d => {
-      const pct = ((d.count / max) * 100).toFixed(0);
-      bars.innerHTML += `<div class="bar-row">
-        <div class="bar-label" style="font-size:0.75rem;">${d.area}</div>
-        <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${d.color};"></div></div>
-        <div class="bar-pct">${d.count}</div>
-      </div>`;
-    });
+    if (bars) {
+      const max = data[0].count;
+      bars.innerHTML = data.map(d =>
+        '<div class="bar-row">'
+        + '<div class="bar-label" style="font-size:0.75rem;">' + d.area + '</div>'
+        + '<div class="bar-track"><div class="bar-fill" style="width:' + ((d.count / max) * 100).toFixed(0) + '%;background:' + d.color + ';"></div></div>'
+        + '<div class="bar-pct">' + d.count + '</div>'
+        + '</div>'
+      ).join('');
+    }
+
+    // The bar numbers sit in styled divs that content extractors drop, so the
+    // same figures are restated as a sentence, generated from the same array.
+    const figures = document.getElementById('city-figures');
+    if (figures) {
+      figures.textContent = 'Cosmetic clinics by area across the Greater Toronto Area: '
+        + data.map(d => d.area + ' ' + d.count).join(', ')
+        + '. ' + label + ' clinics in total.';
+    }
+
+    const set = (id, txt, html) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (html) el.innerHTML = txt; else el.textContent = txt;
+    };
+    set('statClinicCount', label + '<span>+</span>', true);
+    set('proseClinicCount', label + '+');
+    set('captionClinicCount', label);
   }
 
-  // Fetch live data from get-clinics, fall back to hardcoded if unavailable
-  (async function() {
+  (async function buildCityDistribution() {
     try {
-      const res = await fetch('/api/get-clinics');
-      const clinics = res.ok ? await res.json() : [];
-      if (!clinics.length) throw new Error('empty');
+      const res = await fetch('/api/get-clinics?mode=area-counts&country=canada');
+      if (!res.ok) throw new Error('http ' + res.status);
+      const payload = await res.json();
+      const areas = (payload && payload.areas) || [];
+      if (!areas.length) throw new Error('empty');
 
-      // Count by area, top 10
-      const counts = {};
-      clinics.filter(c => !c.province || c.province === 'Ontario' || c.province === 'ON').forEach(c => { if (c.area) counts[c.area] = (counts[c.area] || 0) + 1; });
-      const sorted = Object.entries(counts)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 10)
-        .map(([area, count]) => ({
-          area: AREA_LABELS[area] || area,
-          count,
-          color: AREA_COLORS[area] || '#8A7B72'
-        }));
+      const gta = areas.filter(a =>
+        String(a.province || '').toLowerCase() === 'on' && GTA_SET.has(normArea(a.neighbourhood))
+      );
+      if (!gta.length) throw new Error('no gta rows');
 
-      const total = clinics.filter(c => !c.province || c.province === 'Ontario' || c.province === 'ON').length;
-      const formatted = total.toLocaleString('en-CA');
-      window._clinicCountLabel = formatted;
+      const total = gta.reduce((s, a) => s + a.clinics, 0);
+      const top = gta.slice().sort((a, b) => b.clinics - a.clinics).slice(0, 10)
+        .map(a => ({ area: a.neighbourhood, count: a.clinics }));
 
-      // Update count spans
-      ['statClinicCount','proseClinicCount','captionClinicCount'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.textContent = formatted + (id === 'captionClinicCount' ? '' : '+');
-      });
-
-      drawChart(sorted);
-    } catch(e) {
-      drawChart(FALLBACK_DATA);
+      drawChart(top, total);
+    } catch (e) {
+      drawChart(FALLBACK_DATA, FALLBACK_TOTAL);
     }
   })();
   </script>
@@ -1774,7 +1833,7 @@
 
   try {
     const res = await fetch(
-      `${SB}/rest/v1/clinics?select=price&province=eq.ON&approved=eq.true&price=gte.3&price=lte.20`,
+      `${SB}/rest/v1/clinics?select=price&province=eq.on&approved=eq.true&price=gte.3&price=lte.20`,
       { headers: { 'apikey': KEY } }
     );
     if (!res.ok) return;
