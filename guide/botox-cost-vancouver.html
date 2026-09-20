@@ -380,7 +380,7 @@
         <div class="stat-desc">Most common range</div>
       </div>
       <div class="stat-item">
-        <div class="stat-num" id="statClinicCount">348<span>+</span></div>
+        <div class="stat-num" id="statClinicCount">716<span>+</span></div>
         <div class="stat-desc">Metro Vancouver clinics tracked</div>
       </div>
     </div>
@@ -667,7 +667,7 @@
     try {
       // Fetch BC clinic prices via join — province filter
       const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/clinic_prices?select=price,clinics!inner(province)&clinics.province=eq.BC&price=gte.6&price=lte.15`,
+        `${SUPABASE_URL}/rest/v1/clinic_prices?select=price,clinics!inner(province)&clinics.province=eq.bc&price=gte.6&price=lte.15`,
         { headers: { 'apikey': SUPABASE_KEY } }
       );
       if (res.ok) {
@@ -1113,7 +1113,7 @@
   <!-- CTA -->
   <div class="cta-band">
     <h3>Find the right Metro Vancouver clinic <em>for you</em></h3>
-    <p>Browse real Botox prices from 348+ Metro Vancouver clinics. Filter by neighbourhood, injector credential, and language. Free to use — no account required.</p>
+    <p>Browse real Botox prices from 716+ Metro Vancouver clinics. Filter by neighbourhood, injector credential, and language. Free to use — no account required.</p>
     <a href="/?province=bc" class="cta-btn">Browse Metro Vancouver Clinics →</a>
   </div>
 
@@ -1179,7 +1179,21 @@
   try {
     const SUPABASE_URL = 'https://vefldlqtyxdywbzdjuia.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlZmxkbHF0eXhkeXdiemRqdWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNDAwMjgsImV4cCI6MjA4NzkxNjAyOH0.o582sXiUkB3j4FiHEA5rE3ABy_pdTeeK1PnNpNirHZA';
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/clinics?select=id&province=eq.BC&approved=eq.true&neighbourhood=in.(Vancouver,Richmond,Burnaby,Surrey)`, {
+  // Metro Vancouver municipalities. Names with spaces must be quoted inside
+  // PostgREST's in.() list, and the whole list URL-encoded, or the filter is
+  // silently dropped. Extra names are harmless: a value that does not exist
+  // in the data simply matches nothing.
+  const METRO_VAN = ['Vancouver','Surrey','Burnaby','Richmond','Coquitlam','Langley',
+    'Delta','North Vancouver','West Vancouver','New Westminster','Maple Ridge',
+    'Port Coquitlam','Port Moody','White Rock','Pitt Meadows','Ladner','Tsawwassen',
+    'Cloverdale','Steveston','Fort Langley','Walnut Grove','Aldergrove'];
+  const METRO_IN = 'in.(' + METRO_VAN.map(n => '"' + n + '"').join(',') + ')';
+    const q = new URLSearchParams();
+    q.set('select', 'id');
+    q.set('province', 'eq.bc');
+    q.set('approved', 'eq.true');
+    q.set('neighbourhood', METRO_IN);
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/clinics?` + q.toString(), {
       method: 'HEAD',
       headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Prefer': 'count=exact' }
     });
@@ -1201,10 +1215,23 @@
   const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlZmxkbHF0eXhkeXdiemRqdWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNDAwMjgsImV4cCI6MjA4NzkxNjAyOH0.o582sXiUkB3j4FiHEA5rE3ABy_pdTeeK1PnNpNirHZA';
 
   try {
-    const res = await fetch(
-      `${SB}/rest/v1/clinics?select=price&province=eq.BC&neighbourhood=in.(Vancouver,Richmond,Burnaby,Surrey)&approved=eq.true&price=gte.3&price=lte.20`,
-      { headers: { 'apikey': KEY } }
-    );
+  // Metro Vancouver municipalities. Names with spaces must be quoted inside
+  // PostgREST's in.() list, and the whole list URL-encoded, or the filter is
+  // silently dropped. Extra names are harmless: a value that does not exist
+  // in the data simply matches nothing.
+  const METRO_VAN = ['Vancouver','Surrey','Burnaby','Richmond','Coquitlam','Langley',
+    'Delta','North Vancouver','West Vancouver','New Westminster','Maple Ridge',
+    'Port Coquitlam','Port Moody','White Rock','Pitt Meadows','Ladner','Tsawwassen',
+    'Cloverdale','Steveston','Fort Langley','Walnut Grove','Aldergrove'];
+  const METRO_IN = 'in.(' + METRO_VAN.map(n => '"' + n + '"').join(',') + ')';
+    const q = new URLSearchParams();
+    q.set('select', 'price');
+    q.set('province', 'eq.bc');
+    q.set('neighbourhood', METRO_IN);
+    q.set('approved', 'eq.true');
+    q.set('price', 'gte.3');
+    q.append('price', 'lte.20');
+    const res = await fetch(`${SB}/rest/v1/clinics?` + q.toString(), { headers: { 'apikey': KEY } });
     if (!res.ok) return;
     const rows = await res.json();
     if (!rows.length) return;
