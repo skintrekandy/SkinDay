@@ -537,6 +537,41 @@ exports.handler = async (event) => {
       };
     }
 
+    // ── MODE: clinic counts by area (guide pages) ────────────
+    // The guide donuts need one number per city across the whole country, not
+    // a page of clinic rows. Counting happens in Postgres (area_counts RPC)
+    // for the same reason device_facets does: pulling every row over PostgREST
+    // and counting in JS silently truncates at the project's Max rows setting,
+    // and a truncated count looks exactly like a real one.
+    //
+    // province comes back lower-cased so a caller cannot miss rows by guessing
+    // the wrong case — the whole reason these charts were dead.
+    if (params.mode === 'area-counts') {
+      const { data, error } = await supabase.rpc('area_counts', {
+        p_country: params.country || 'canada',
+      });
+      if (error) {
+        console.error('Supabase error (area-counts):', error);
+        return { statusCode: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ error: error.message }) };
+      }
+      const areas = (data || []).map(r => ({
+        province:     r.province,
+        neighbourhood: r.neighbourhood,
+        clinics:      Number(r.clinics) || 0,
+      }));
+      return {
+        statusCode: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          // These counts move once a month at most, so a long edge cache keeps
+          // the guide pages off the database entirely.
+          'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
+        },
+        body: JSON.stringify({ areas, total: areas.reduce((n, a) => n + a.clinics, 0) }),
+      };
+    }
+
     // ── PARAMS ───────────────────────────────────────────────
     const page          = Math.max(0, parseInt(params.page || '0', 10));
     const sort          = params.sort || 'reviews';
