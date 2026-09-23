@@ -18,6 +18,23 @@
   <meta name="twitter:title" id="tw-title" content="SkinDay — GTA Cosmetic Clinic Directory" />
   <meta name="twitter:description" id="tw-description" content="Find cosmetic clinics in the GTA with transparent Botox pricing on SkinDay." />
   <meta name="twitter:image" id="tw-image" content="https://skinday.ca/og-default.jpg" />
+  <link rel="preconnect" href="https://vefldlqtyxdywbzdjuia.supabase.co" crossorigin />
+  <link rel="preconnect" href="https://vefldlqtyxdywbzdjuia.supabase.co" />
+  <link rel="preload" href="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" as="script" />
+  <script>
+  // Start the clinic lookup while the rest of the page is still downloading.
+  // initFromDB() picks this request up instead of starting its own.
+  (function () {
+    try {
+      var p = window.location.pathname.split('/');
+      var slug = decodeURIComponent(p[p.length - 1] || p[p.length - 2] || '');
+      if (slug) {
+        window.__sdClinicSlug = slug;
+        window.__sdClinicReq = fetch('/api/get-clinics?slug=' + encodeURIComponent(slug));
+      }
+    } catch (e) {}
+  })();
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
@@ -1221,7 +1238,7 @@ function renderClinic(clinic) {
 
   const tierAHero = hasTierA ? `
     <div class="profile-hero-photo animate" id="profile-hero-photo">
-      <img id="hero-main-img" src="" alt="${clinic.name}" loading="eager" />
+      <img id="hero-main-img" src="" alt="${clinic.name}" loading="eager" fetchpriority="high" />
       <div class="hero-gradient"></div>
       <div class="hero-meta">
         <h1 class="profile-name" style="display:flex;align-items:center;gap:10px;margin-bottom:0.6rem;">
@@ -1510,7 +1527,10 @@ async function initFromDB() {
 
   try {
     // Direct slug lookup — no full table fetch needed
-    const res = await fetch(`/api/get-clinics?slug=${encodeURIComponent(slug)}`);
+    const res = await ((window.__sdClinicReq && window.__sdClinicSlug === slug)
+      ? window.__sdClinicReq
+      : fetch(`/api/get-clinics?slug=${encodeURIComponent(slug)}`));
+    window.__sdClinicReq = null;
 
     if (res.status === 404) {
       // Positive confirmation: clinic doesn't exist. Numeric-id fallback first
