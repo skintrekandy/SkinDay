@@ -117,10 +117,60 @@ function patchTemplate(html, { title, desc, url, indexable, ssrBody, jsonLd }) {
   return out;
 }
 
+// ── READING clinic_devices WITHOUT HITTING THE ROW CAP ─────────────────
+// This page used to read the WHOLE clinic_devices table with embedded
+// device_reference on every request, in one call with .range(0, 49999). Two
+// problems. It was slow (the 4.4s /devices/exion request), and PostgREST caps
+// a response at the project's Max rows setting whatever range is asked for, so
+// once the table grew past that cap the page could be working from a silently
+// cut-off subset. get-clinics.js documents the same failure costing the
+// Technology filter its counts.
+//
+// Now: device_reference (a small table) is read first, and clinic_devices is
+// read only for the device ids the page actually needs, in explicitly ordered
+// pages that are fetched in parallel, so nothing is dropped.
+const CD_PAGE = 1000;
+async function readClinicDevices(supabase, deviceIds) {
+  if (!deviceIds.length) return [];
+  const head = await supabase
+    .from('clinic_devices')
+    .select('clinic_id', { count: 'exact', head: true })
+    .in('device_id', deviceIds);
+  if (head.error) throw head.error;
+  const total = head.count || 0;
+  const pages = Math.ceil(total / CD_PAGE);
+  const results = await Promise.all(Array.from({ length: pages }, (_, i) =>
+    supabase
+      .from('clinic_devices')
+      .select('clinic_id, device_id, status')
+      .in('device_id', deviceIds)
+      .order('device_id', { ascending: true })
+      .order('clinic_id', { ascending: true })
+      .range(i * CD_PAGE, i * CD_PAGE + CD_PAGE - 1)
+  ));
+  const out = [];
+  for (const r of results) {
+    if (r.error) throw r.error;
+    (r.data || []).forEach(row => out.push(row));
+  }
+  return out;
+}
+
+// Six hours fresh at Netlify's edge, then served stale for up to a day while it
+// refreshes in the background. `durable` shares one copy across every edge
+// location. Without this header Netlify does not cache a function's response
+// at all, so every crawler hit rebuilt the page from the database.
+const CDN_CACHE = 'public, durable, s-maxage=21600, stale-while-revalidate=86400';
+
 function errorPage(statusCode, heading, body) {
   return {
     statusCode,
-    headers: { 'Content-Type': 'text/html; charset=utf-8' },
+    headers: Object.assign(
+      { 'Content-Type': 'text/html; charset=utf-8' },
+      // A 404 is cached too (for an hour), so bots repeating a dead URL do not
+      // reach the database. A 503 is never cached.
+      statusCode === 404 ? { 'Netlify-CDN-Cache-Control': 'public, durable, s-maxage=3600' } : {}
+    ),
     body: `<!DOCTYPE html><html lang="en"><head><title>${heading} \u00b7 SkinDay</title><meta name="robots" content="noindex" /></head><body><h1>${heading}</h1><p>${body}</p></body></html>`,
   };
 }
@@ -138,18 +188,38 @@ exports.handler = async (event) => {
   }
 
   try {
-    // Everything published, in one read. The whole table is small enough that
-    // one query beats several, and both modes need the same rows.
-    const [devRes, catRes] = await Promise.all([
+    // device_reference and the category labels first; both are small.
+    const [refRes, catRes] = await Promise.all([
       supabase
-        .from('clinic_devices')
-        .select('clinic_id, status, device_reference!inner ( model, manufacturer, category, active, name_is_also_generic )')
-        .eq('device_reference.active', true)
-        .range(0, 49999),
+        .from('device_reference')
+        .select('id, model, manufacturer, category, active, name_is_also_generic')
+        .eq('active', true)
+        .range(0, 999),
       supabase.from('device_categories').select('category, segment, label_en, sort_order'),
     ]);
+    if (refRes.error) throw refRes.error;
+    const refs = refRes.data || [];
+    const refById = new Map(refs.map(r => [String(r.id), r]));
 
-    if (devRes.error) throw devRes.error;
+    // Which device ids this request needs. The index needs all of them. A model
+    // page needs the model itself plus the rest of its category, for the
+    // "Other ... devices" sibling links.
+    const targetRefs = slug ? refs.filter(r => slugifyModel(r.model) === slug) : [];
+    let wantedIds;
+    if (!slug) {
+      wantedIds = refs.map(r => r.id);
+    } else {
+      const cats = new Set(targetRefs.map(r => r.category).filter(Boolean));
+      wantedIds = refs
+        .filter(r => slugifyModel(r.model) === slug || cats.has(r.category))
+        .map(r => r.id);
+    }
+
+    // Same shape the rest of this function has always read:
+    // { clinic_id, status, device_reference: { model, manufacturer, ... } }
+    const devRows = (await readClinicDevices(supabase, wantedIds))
+      .map(r => ({ clinic_id: r.clinic_id, status: r.status, device_reference: refById.get(String(r.device_id)) }))
+      .filter(r => r.device_reference);
 
     const labels = {};
     (catRes.data || []).forEach(r => { labels[r.category] = r; });
@@ -158,7 +228,7 @@ exports.handler = async (event) => {
     if (!slug) {
       const byCat = {};
       const catClinics = {};
-      (devRes.data || []).forEach(row => {
+      devRows.forEach(row => {
         const d = row.device_reference || {};
         if (!d.model || !d.category) return;
         const lab = labels[d.category];
@@ -207,7 +277,7 @@ exports.handler = async (event) => {
       console.log(`render-devices index categories=${cats.length} ssr_present=${rendered.includes('id="ssr-content"')}`);
       return {
         statusCode: 200,
-        headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=600' },
+        headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=600', 'Netlify-CDN-Cache-Control': CDN_CACHE },
         body: rendered,
       };
     }
@@ -218,7 +288,7 @@ exports.handler = async (event) => {
     const statusByClinic = {};
     const siblingCounts = {};
 
-    (devRes.data || []).forEach(row => {
+    devRows.forEach(row => {
       const d = row.device_reference || {};
       if (!d.model) return;
       if (slugifyModel(d.model) === slug) {
@@ -240,12 +310,7 @@ exports.handler = async (event) => {
     // real page (someone searching the name should find something), just an
     // empty one, so it renders and is noindexed rather than 404ing.
     if (!device) {
-      const { data: refRow } = await supabase
-        .from('device_reference')
-        .select('model, manufacturer, category, name_is_also_generic')
-        .eq('active', true)
-        .range(0, 999);
-      const match = (refRow || []).find(r => slugifyModel(r.model) === slug);
+      const match = targetRefs[0];
       if (!match) {
         return errorPage(404, 'Device not found', 'We could not find a device matching this address. <a href="/devices/">Browse all devices</a>.');
       }
@@ -254,7 +319,7 @@ exports.handler = async (event) => {
     }
 
     if (device.category) {
-      (devRes.data || []).forEach(row => {
+      devRows.forEach(row => {
         const d = row.device_reference || {};
         if (d.category !== device.category) return;
         if (slugifyModel(d.model) === slug) return;
@@ -404,7 +469,7 @@ exports.handler = async (event) => {
 
     return {
       statusCode: 200,
-      headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, s-maxage=900, stale-while-revalidate=300' },
+      headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, s-maxage=900, stale-while-revalidate=300', 'Netlify-CDN-Cache-Control': CDN_CACHE },
       body: rendered,
     };
 
