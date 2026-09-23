@@ -626,7 +626,11 @@ async function _handler(event) {
     if (!clinic) {
       return {
         statusCode: 404,
-        headers: { 'Content-Type': 'text/html; charset=utf-8' },
+        headers: {
+          'Content-Type': 'text/html; charset=utf-8',
+          // Crawlers retry dead URLs; answer the repeats from the edge.
+          'Netlify-CDN-Cache-Control': 'public, durable, s-maxage=3600',
+        },
         body: '<!DOCTYPE html><html><head><title>Clinic not found · SkinDay</title><meta name="robots" content="noindex" /></head><body><h1>Clinic not found</h1><p>We couldn\'t find a clinic matching this address. <a href="/">Browse clinics on SkinDay</a>.</p></body></html>',
       };
     }
@@ -643,7 +647,11 @@ async function _handler(event) {
     if (clinic.approved !== true) {
       return {
         statusCode: 410,
-        headers: { 'Content-Type': 'text/html; charset=utf-8' },
+        headers: {
+          'Content-Type': 'text/html; charset=utf-8',
+          // Short, so a re-approved clinic comes back within ten minutes.
+          'Netlify-CDN-Cache-Control': 'public, durable, s-maxage=600',
+        },
         body: '<!DOCTYPE html><html><head><title>Clinic no longer listed \u00b7 SkinDay</title><meta name="robots" content="noindex" /></head><body><h1>This clinic is no longer listed</h1><p>This listing has been removed from SkinDay. <a href="/">Browse current clinics</a>.</p></body></html>',
       };
     }

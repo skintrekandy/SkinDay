@@ -272,6 +272,11 @@ exports.handler = async (event) => {
           'Content-Type': 'application/json',
           'Access-Control-Allow-Origin': '*',
           'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60',
+          // Every clinic profile calls this right after the page arrives, and
+          // without this header Netlify ran the function (six database queries)
+          // on every single view. Five minutes, matching the old intent, so a
+          // clinic editing its own profile sees the change soon.
+          'Netlify-CDN-Cache-Control': 'public, durable, s-maxage=300, stale-while-revalidate=3600',
         },
         body: JSON.stringify(data),
       };
@@ -425,6 +430,7 @@ exports.handler = async (event) => {
           'Content-Type': 'application/json',
           'Access-Control-Allow-Origin': '*',
           'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=60',
+          'Netlify-CDN-Cache-Control': 'public, durable, s-maxage=600, stale-while-revalidate=3600',
         },
         body: JSON.stringify({
           groups, models: eqp_models, categories, models_by_category,
@@ -510,6 +516,7 @@ exports.handler = async (event) => {
           'Content-Type': 'application/json',
           'Access-Control-Allow-Origin': '*',
           'Cache-Control': 'public, s-maxage=900, stale-while-revalidate=300',
+          'Netlify-CDN-Cache-Control': 'public, durable, s-maxage=3600, stale-while-revalidate=86400',
         },
         body: JSON.stringify({ device, clinics: rows, total: rows.length, siblings }),
       };
@@ -532,6 +539,7 @@ exports.handler = async (event) => {
           'Content-Type': 'application/json',
           'Access-Control-Allow-Origin': '*',
           'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=120',
+          'Netlify-CDN-Cache-Control': 'public, durable, s-maxage=1800, stale-while-revalidate=86400',
         },
         body: JSON.stringify(data),
       };
@@ -567,6 +575,7 @@ exports.handler = async (event) => {
           // These counts move once a month at most, so a long edge cache keeps
           // the guide pages off the database entirely.
           'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
+          'Netlify-CDN-Cache-Control': 'public, durable, s-maxage=3600, stale-while-revalidate=86400',
         },
         body: JSON.stringify({ areas, total: areas.reduce((n, a) => n + a.clinics, 0) }),
       };
@@ -670,10 +679,12 @@ exports.handler = async (event) => {
 
     // ── BUILD BASE QUERY ─────────────────────────────────────
     // All filters combine cleanly — no branching that drops a filter
-    const buildBase = () => {
+    // ⭐ Only the dedicated count queries ask Postgres for an exact count. The
+    // four bucket queries used to request one each and throw it away.
+    const buildBase = (withCount) => {
       let q = supabase
         .from('clinics')
-        .select(CARD_FIELDS, { count: 'exact' })
+        .select(CARD_FIELDS, withCount ? { count: 'exact' } : undefined)
         .eq('approved', true)
         .ilike('country', country);
 
@@ -727,7 +738,7 @@ exports.handler = async (event) => {
 
     // ── COUNT ONLY ───────────────────────────────────────────
     if (countOnly) {
-      const { count, error } = await buildBase().select('id', { count: 'exact', head: true }).range(0, 0);
+      const { count, error } = await buildBase(true).select('id', { count: 'exact', head: true }).range(0, 0);
       if (error) return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
       return {
         statusCode: 200,
@@ -810,8 +821,8 @@ exports.handler = async (event) => {
       // Count: under a ceiling, count only in-range priced clinics (still
       // honouring province/neighbourhood/search); otherwise the whole set.
       hasPriceCeiling
-        ? (hasBucketIds ? buildBase().select('id', { count: 'exact', head: true }).in('id', bucketIdList).range(0, 0) : Promise.resolve(emptyRes))
-        : buildBase().select('id', { count: 'exact', head: true }).range(0, 0),
+        ? (hasBucketIds ? buildBase(true).select('id', { count: 'exact', head: true }).in('id', bucketIdList).range(0, 0) : Promise.resolve(emptyRes))
+        : buildBase(true).select('id', { count: 'exact', head: true }).range(0, 0),
     ]);
 
     if (pricedClaimedRes.error || pricedUnclaimedRes.error || claimedAllRes.error || unclaimedAllRes.error) {
@@ -951,6 +962,7 @@ exports.handler = async (event) => {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
         'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=60',
+        'Netlify-CDN-Cache-Control': 'public, durable, s-maxage=600, stale-while-revalidate=3600',
         'Vary': 'Accept-Encoding',
       },
       body: JSON.stringify({
