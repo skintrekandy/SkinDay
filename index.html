@@ -2511,6 +2511,8 @@
   .cm-contact-btn-secondary svg { width: 13px; height: 13px; stroke: currentColor; flex-shrink: 0; }
   .cm-contact-btn-secondary:hover { border-color: var(--rose); background: var(--warm); }
   .cm-contact-btn-secondary.dim { opacity: 0.3; pointer-events: none; }
+  .cm-contact-social-row { display: flex; gap: 6px; margin-top: 6px; }
+  .cm-contact-social-row .cm-contact-btn-secondary { flex: 0 1 calc((100% - 12px) / 3); }
 
   /* DETAILS */
   .cm-details-section { padding: 18px 24px; border-bottom: 1px solid var(--border); }
@@ -6487,6 +6489,17 @@ function maybeShowVisitPrompt() {
             Email
           </a>
         </div>
+        <!-- Social accounts: shown only when the clinic has one on file -->
+        <div class="cm-contact-social-row" id="cm-social-row" style="display:none">
+          <a class="cm-contact-btn-secondary" id="cm-facebook" href="#" target="_blank" rel="noopener" style="display:none">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg>
+            Facebook
+          </a>
+          <a class="cm-contact-btn-secondary" id="cm-instagram" href="#" target="_blank" rel="noopener" style="display:none">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+            Instagram
+          </a>
+        </div>
       </div>
 
       <!-- Details -->
@@ -6962,6 +6975,16 @@ window.openClinicModal = async function openClinicModal(clinicId) {
 
   if (clinic.website) { websiteBtn.href = clinic.website; websiteBtn.classList.remove('dim'); }
   else { websiteBtn.href = '#'; websiteBtn.classList.add('dim'); }
+
+  // Social accounts. Hidden rather than dimmed when missing: most clinics have
+  // one or the other, and a row of greyed-out icons reads as a gap.
+  const fbBtn = document.getElementById('cm-facebook');
+  const igBtn = document.getElementById('cm-instagram');
+  const safeUrl = u => (typeof u === 'string' && /^https?:\/\//i.test(u.trim())) ? u.trim() : '';
+  const fbUrl = safeUrl(clinic.facebook_url), igUrl = safeUrl(clinic.instagram_url);
+  fbBtn.href = fbUrl || '#'; fbBtn.style.display = fbUrl ? 'flex' : 'none';
+  igBtn.href = igUrl || '#'; igBtn.style.display = igUrl ? 'flex' : 'none';
+  document.getElementById('cm-social-row').style.display = (fbUrl || igUrl) ? 'flex' : 'none';
 
   const bookHref = clinic.booking_url || clinic.website || (clinic.phone ? 'tel:' + clinic.phone.replace(/\s/g,'') : null);
   if (bookHref && isClaimed) { bookBtn.href = bookHref; bookBtn.classList.remove('dim'); }
