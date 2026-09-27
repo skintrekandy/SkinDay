@@ -3029,13 +3029,13 @@
     </div>
     </div>
     <div class="filter-group" id="injGroupWrap" style="display:none;">
-    <span class="filter-label">Biostimulators</span>
+    <span class="filter-label">Injectables</span>
     <div class="tech-picker" id="injPicker">
       <button type="button" class="tech-btn" id="injBtn" onclick="toggleInjPanel()" aria-haspopup="listbox" aria-expanded="false">
-        <span id="injBtnLabel">Any biostimulator</span>
+        <span id="injBtnLabel">Any injectable</span>
         <span class="tech-caret" aria-hidden="true">⌄</span>
       </button>
-      <div class="tech-panel" id="injPanel" role="listbox" aria-label="Biostimulators">
+      <div class="tech-panel" id="injPanel" role="listbox" aria-label="Injectables">
         <input type="text" class="tech-search" id="injSearch" placeholder="Search a product" oninput="renderInjPanel()" autocomplete="off" />
         <div class="tech-scroll" id="injScroll"></div>
       </div>
@@ -3575,6 +3575,7 @@ function drawReviewDistChart() {
         <li><a href="/guide/botox-cost-vancouver">Botox Guide Vancouver</a></li>
         <li><a href="/guide/botox-cost-london-ontario">Botox Guide London</a></li>
         <li><a href="/guide/botox-cost-montreal">Botox Guide Montreal</a></li>
+        <li><a href="/insights">SkinDay Insights</a></li>
         <li><a href="https://skinday.com">SkinDay Global</a></li>
       </ul>
     </div>
@@ -4195,7 +4196,7 @@ function renderInjPanel() {
   const groups = deviceFacets.inj_groups || [];
   const byCat  = deviceFacets.inj_models_by_category || {};
 
-  let html = `<button type="button" class="tech-any" onclick="applyInj('')">Any biostimulator</button>`;
+  let html = `<button type="button" class="tech-any" onclick="applyInj('')">Any injectable</button>`;
   let matches = 0;
 
   groups.forEach(g => {
@@ -4237,7 +4238,7 @@ function renderInjPanel() {
 }
 
 function injLabel() {
-  if (!deviceFacets) return currentInj || currentInjCat || currentInjGroup || 'Any biostimulator';
+  if (!deviceFacets) return currentInj || currentInjCat || currentInjGroup || 'Any injectable';
   if (currentInj) {
     const m = (deviceFacets.inj_models || []).find(x => x.slug === currentInj);
     return m ? m.model : currentInj;
@@ -4250,7 +4251,7 @@ function injLabel() {
     const g = (deviceFacets.inj_groups || []).find(x => x.key === currentInjGroup);
     return g ? g.label : currentInjGroup;
   }
-  return 'Any biostimulator';
+  return 'Any injectable';
 }
 
 function activeInjLabel() { return injLabel(); }
