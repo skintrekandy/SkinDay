@@ -28,6 +28,12 @@
 
 const { createClient } = require('@supabase/supabase-js');
 
+// Device x city pages exist on skinday.ca only (render-device-city.js). This
+// same file is deployed to skinday.com, where that file does not exist, so the
+// require is guarded and the city links simply do not appear there.
+let CITY = null;
+try { CITY = require('./render-device-city')._internals; } catch (e) { CITY = null; }
+
 const MIN_CLINICS = 10;
 const MAX_CLINICS_LISTED = 60;
 const CACHE = 'public, max-age=0, s-maxage=21600, stale-while-revalidate=86400';
@@ -252,6 +258,17 @@ function devicePage(combo, all, origin, base) {
   // that would compete with the first. skinday.com has no /devices, so it
   // mounts at /technology.
   const href = c => `${base}/${c.deviceSlug}/${c.territorySlug}`;
+
+  // City rows in the "Where" table link down to the city page when one exists:
+  // Canada, a device in CITY_PAGE_DEVICES, and enough clinics in that city.
+  const cityPages = !!(CITY && combo.country === 'canada'
+    && CITY.CITY_PAGE_DEVICES.includes(combo.deviceSlug));
+  const provCode = cityPages ? CITY.provCodeOf(combo.territoryRaw) : null;
+  const cityCell = (a, count) => {
+    if (!provCode || a === 'Other' || count < CITY.MIN_CLINICS_TO_INDEX) return esc(a);
+    const cs = CITY.placeSlug(a);
+    return cs ? `<a href="${base}/${combo.deviceSlug}/${CITY.PROVINCE_SLUGS[provCode]}/${cs}">${esc(a)}</a>` : esc(a);
+  };
   const canonical = origin + href(combo);
   const title = `${device.model} in ${label} — ${n} Clinics | SkinDay`;
   const description = `${n} clinics in ${label} have a ${device.model}${device.manufacturer ? ' by ' + device.manufacturer : ''}. See where they are, how they are rated, and compare them side by side.`;
@@ -270,7 +287,7 @@ function devicePage(combo, all, origin, base) {
 <table>
   <thead><tr><th>${combo.country === 'canada' ? 'City' : 'Area'}</th><th>Clinics</th></tr></thead>
   <tbody>
-    ${areas.slice(0, 15).map(([a, c]) => `<tr><td>${esc(a)}</td><td>${num(c)}</td></tr>`).join('')}
+    ${areas.slice(0, 15).map(([a, c]) => `<tr><td>${cityCell(a, c)}</td><td>${num(c)}</td></tr>`).join('')}
   </tbody>
 </table>
 
@@ -304,7 +321,7 @@ ${sameTerritory.length ? `<h2>Other equipment in ${esc(label)}</h2>
 <h3>Does having the same device mean the same result?</h3>
 <p>No. The machine is one factor among several. Operator experience, treatment settings, the number of sessions and how a plan is tailored to your skin all matter at least as much. The device tells you what a clinic can offer, not how well it will be delivered.</p>
 <h3>Is this list complete?</h3>
-<p>It is not, and it is worth being honest about that. Some clinic websites block automated reading, and some list equipment nowhere on the site. A clinic missing from this page may still have the device. If you spot something wrong, tell us and we will check it.</p>
+<p>Not always. Some clinics do not name their equipment anywhere on their website, so a clinic missing from this page may still have the device. If you spot something wrong, tell us and we will check it.</p>
 </div>
 
 <footer>
