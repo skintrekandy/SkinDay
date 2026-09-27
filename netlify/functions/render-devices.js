@@ -33,6 +33,14 @@ const fs   = require('fs');
 
 const SITE = 'https://skinday.ca';
 
+// Device x city pages (render-device-city.js). The device list and the
+// grouping rules are read from that file so the links here can never point at
+// a city page it would 404. Non-fatal: if it fails to load, the national page
+// renders exactly as before, just without the city links.
+let CITY = null;
+try { CITY = require('./render-device-city')._internals; }
+catch (e) { console.error('render-devices: city helpers unavailable', e.message); }
+
 // A device page with almost nobody on it is a thin page. Google logs those as
 // "Crawled - currently not indexed" and it drags on the whole set, so anything
 // under this threshold is rendered but marked noindex, follow: the links are
@@ -348,6 +356,10 @@ exports.handler = async (event) => {
         .from('clinics')
         .select('id, name, slug, neighbourhood, province, rating, reviews')
         .eq('approved', true)
+        // skinday.ca is the Canadian directory. clinic_devices also holds the
+        // US rows, and without this the national count and list included
+        // California and New York clinics.
+        .ilike('country', 'canada')
         .in('id', [...clinicIds])
         .order('reviews', { ascending: false, nullsFirst: false })
         .range(0, 4999);
@@ -426,6 +438,35 @@ exports.handler = async (event) => {
       <div class="also-links">${provinceLinks.map(v => `<a class="also-link" href="/devices/${escapeHtml(device.slug)}/${escapeHtml(v.slug)}">${escapeHtml(v.label)} <em>${v.clinics}</em></a>`).join('')}</div>
     </div>` : '';
 
+    // ── LINKS INTO THE CITY PAGES ──────────────────────────────────
+    // /devices/{model}/{province}/{city}, served by render-device-city.js, for
+    // the devices listed in its CITY_PAGE_DEVICES. Counted from this page's own
+    // list, which can only be equal to or smaller than the city page's count
+    // (that page also expands a parent model to its generations), so a city
+    // shown here always clears the city page's indexing floor.
+    let cityBlock = '';
+    if (CITY && CITY.CITY_PAGE_DEVICES.includes(device.slug) && !device.name_is_also_generic) {
+      const cc = {};
+      clinics.forEach(c => {
+        const pc = CITY.provCodeOf(c.province);
+        const cs = CITY.placeSlug(c.neighbourhood);
+        if (!pc || !cs) return;
+        const k = pc + '|' + cs;
+        if (!cc[k]) cc[k] = { pc, cs, name: String(c.neighbourhood).trim(), n: 0 };
+        cc[k].n++;
+      });
+      const cities = Object.values(cc)
+        .filter(x => x.n >= CITY.MIN_CLINICS_TO_INDEX)
+        .sort((a, b) => b.n - a.n)
+        .slice(0, 30);
+      if (cities.length) {
+        cityBlock = `<div class="also-block">
+      <div class="also-label">${escapeHtml(device.model)} by city</div>
+      <div class="also-links">${cities.map(x => `<a class="also-link" href="/devices/${escapeHtml(device.slug)}/${escapeHtml(CITY.PROVINCE_SLUGS[x.pc])}/${escapeHtml(x.cs)}">${escapeHtml(x.name)} <em>${x.n}</em></a>`).join('')}</div>
+    </div>`;
+      }
+    }
+
     const siblingBlock = siblings.length ? `<div class="also-block">
       <div class="also-label">Other ${escapeHtml(String(device.category_label || '').toLowerCase())} devices</div>
       <div class="also-links">${siblings.map(s => `<a class="also-link" href="/devices/${escapeHtml(s.slug)}">${escapeHtml(s.model)} <em>${s.clinics}</em></a>`).join('')}</div>
@@ -457,6 +498,7 @@ exports.handler = async (event) => {
         <thead><tr><th>Clinic</th><th>Location</th><th>Rating</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
+      ${cityBlock}
       ${provinceBlock}
       ${siblingBlock}
     </main>`;

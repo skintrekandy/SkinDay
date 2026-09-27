@@ -158,6 +158,46 @@ async function fetchDeviceEntries(supabase) {
   return entries;
 }
 
+// ── DEVICE x CITY PAGES ─────────────────────────────────────────────────────
+// /devices/{model}/{province}/{city}, served by render-device-city.js. The
+// device list, the grouping and the indexing floor are read from that file,
+// and the clinic set comes from the same device_clinic_ids RPC it uses, so the
+// sitemap lists exactly the city pages that render as indexable.
+async function fetchDeviceCityEntries(supabase) {
+  const CITY = require('./render-device-city')._internals;
+  const entries = [];
+  for (const slug of CITY.CITY_PAGE_DEVICES) {
+    const { data: idRows, error } = await supabase.rpc('device_clinic_ids', {
+      p_country: 'canada', p_province: null, p_slug: slug, p_category: null, p_group: null,
+    });
+    if (error) throw new Error(`device_clinic_ids(${slug}) failed: ${error.message}`);
+    const ids = [...new Set((idRows || []).map(r => String(r.clinic_id)))];
+
+    const counts = {};
+    for (let i = 0; i < ids.length; i += 150) {
+      const { data, error: cErr } = await supabase
+        .from('clinics')
+        .select('id, neighbourhood, province')
+        .eq('approved', true)
+        .ilike('country', 'canada')
+        .in('id', ids.slice(i, i + 150));
+      if (cErr) throw new Error(`clinics fetch for ${slug} failed: ${cErr.message}`);
+      for (const c of data || []) {
+        const pc = CITY.provCodeOf(c.province);
+        const cs = CITY.placeSlug(c.neighbourhood);
+        if (!pc || !cs) continue;
+        const k = CITY.PROVINCE_SLUGS[pc] + '/' + cs;
+        counts[k] = (counts[k] || 0) + 1;
+      }
+    }
+    for (const k of Object.keys(counts)) {
+      if (counts[k] < CITY.MIN_CLINICS_TO_INDEX) continue;
+      entries.push({ loc: `/devices/${slug}/${k}`, changefreq: 'weekly', priority: 0.7 });
+    }
+  }
+  return entries;
+}
+
 // INDEXABILITY GATE
 // Kept identical in spirit to clinicIsIndexable() in render-clinic.js so the
 // sitemap lists every page that function serves as an indexable 200, and no
@@ -305,11 +345,20 @@ exports.handler = async () => {
       console.error('sitemap: device pages skipped -', e.message);
     }
 
+    // Same contract: a failure drops the city pages, never the sitemap.
+    let deviceCityEntries = [];
+    try {
+      deviceCityEntries = await fetchDeviceCityEntries(supabase);
+    } catch (e) {
+      console.error('sitemap: device city pages skipped -', e.message);
+    }
+
     const allEntries = [
       ...HOMEPAGE,
       ...COST_GUIDE_PAGES,
       ...BOTOX_CITY_PAGES,
       ...deviceEntries,
+      ...deviceCityEntries,
       ...clinicEntries,
     ];
 
@@ -319,6 +368,7 @@ exports.handler = async () => {
       `sitemap built: clinics_fetched=${clinics.length} ` +
       `indexable=${clinicEntries.length} price_ids=${priceIds.size} ` +
       `expertise_ids=${expertiseIds.size} device_urls=${deviceEntries.length} ` +
+      `device_city_urls=${deviceCityEntries.length} ` +
       `total_urls=${allEntries.length}`
     );
 
