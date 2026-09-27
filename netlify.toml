@@ -222,6 +222,20 @@
   status = 200
   force  = true
 
+# ── DEVICE x CITY PAGES (SSR) ────────────────────────────────────
+# /devices/{model}/{province}/{city}  e.g. /devices/morpheus8/ontario/toronto
+# Served by render-device-city.js for the devices in its CITY_PAGE_DEVICES
+# list. It reads devices.html, which is already in [functions] included_files.
+#
+# ⚠️ MUST SIT ABOVE the /devices/:model/:province rule below. That rule would
+# not match a three-part path, but the /devices/* splat further down would,
+# and it would send the city URL to render-devices.js as an unknown slug.
+[[redirects]]
+  from   = "/devices/:model/:province/:city"
+  to     = "/.netlify/functions/render-device-city?model=:model&province=:province&city=:city"
+  status = 200
+  force  = true
+
 [[redirects]]
   from   = "/devices/:model/:province"
   to     = "/.netlify/functions/device-page"
