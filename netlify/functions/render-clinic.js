@@ -201,6 +201,42 @@ function cityPageFor(clinic) {
   return null;
 }
 
+// ── DEVICE x CITY LINKS ───────────────────────────────────────────
+// For devices that have city pages (render-device-city.js), the device name
+// links to THIS clinic's city page (/devices/morpheus8/ontario/markham) rather
+// than the national one. The clinic is itself on that page, so it always
+// renders; the city page decides whether it is indexable.
+//
+// ⚠️ COPIED, NOT REQUIRED, FROM render-device-city.js. Requiring that file
+// would pull @supabase/supabase-js back into this bundle and undo the
+// cold-start work above. Keep CITY_PAGE_DEVICES and the two slug rules in sync
+// with that file (and with render-devices.js and sitemap.js).
+const CITY_PAGE_DEVICES = ['morpheus8', 'xerf'];
+const CITY_PROVINCE_SLUGS = {
+  ab: 'alberta', bc: 'british-columbia', mb: 'manitoba', nb: 'new-brunswick',
+  nl: 'newfoundland-and-labrador', ns: 'nova-scotia', nt: 'northwest-territories',
+  nu: 'nunavut', on: 'ontario', pe: 'prince-edward-island', qc: 'quebec',
+  sk: 'saskatchewan', yt: 'yukon'
+};
+function placeSlug(v) {
+  return String(v || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+function deviceHref(model, clinic) {
+  const d = slugifyModel(model);
+  if (CITY_PAGE_DEVICES.includes(d)) {
+    const k = String(clinic.province || '').trim().toLowerCase();
+    const pc = CITY_PROVINCE_SLUGS[k] ? k
+      : Object.keys(CITY_PROVINCE_SLUGS).find(c => CITY_PROVINCE_SLUGS[c] === placeSlug(k));
+    const cs = placeSlug(clinic.neighbourhood);
+    if (pc && cs) return `/devices/${d}/${CITY_PROVINCE_SLUGS[pc]}/${cs}`;
+  }
+  return `/devices/${d}`;
+}
+
 function formatInjectorCreds(raw) {
   if (!raw) return '';
   if (Array.isArray(raw)) return raw.map(s => String(s).toUpperCase()).join(', ');
@@ -330,7 +366,7 @@ function buildSeoBody(clinic) {
   const devices = clinic.devices || [];
   if (devices.length) {
     const linked = devices.slice(0, 8)
-      .map(d => `<a href="/devices/${escapeHtml(slugifyModel(d.model))}">${escapeHtml(d.model)}</a>`)
+      .map(d => `<a href="${escapeHtml(deviceHref(d.model, clinic))}">${escapeHtml(d.model)}</a>`)
       .join(', ');
     const rest = devices.length > 8 ? `, and ${devices.length - 8} more` : '';
     paragraphs.push(`Technology listed by ${name}: ${linked}${rest}.`);
