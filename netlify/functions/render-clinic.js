@@ -567,11 +567,11 @@ async function _handler(event) {
     // a real risk. Filtering a handful of rows in memory costs nothing.
     const SELECT_BASE =
       'id,name,slug,neighbourhood,area,province,rating,reviews,price,' +
-      'injector_credentials,logo_url,approved,phone,website,source';
+      'injector_credentials,logo_url,approved,phone,website,source,devices_published_at';
     const SELECT_EMBEDDED = SELECT_BASE +
       ',clinic_expertise(value,is_other,other_text)' +
       ',clinic_prices(price)' +
-      ',clinic_devices(device_reference(model,active))';
+      ',clinic_devices(declared_at,device_reference(model,active))';
 
     const q = `clinics?slug=eq.${encodeURIComponent(slug)}` +
               `&order=approved.desc.nullslast,id.asc&limit=10&select=`;
@@ -670,7 +670,10 @@ async function _handler(event) {
         };
       }
 
-      const devRows = Array.isArray(clinic.clinic_devices) ? clinic.clinic_devices : [];
+      // A clinic that has published its list shows only what it confirmed.
+      const published = !!clinic.devices_published_at;
+      const devRows = (Array.isArray(clinic.clinic_devices) ? clinic.clinic_devices : [])
+        .filter(r => !published || r.declared_at != null);
       const devices = devRows
         .map(r => (r.device_reference || {}))
         .filter(d => d.model && d.active === true)

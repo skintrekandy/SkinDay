@@ -100,7 +100,7 @@ const CONCERNS_MAP = buildTaxonomyMap('concerns.json', {
 // manufacturer, the plain-English category label, and status. The card shows
 // model names only; the profile shows the rest.
 const DEVICE_SELECT = `
-  clinic_id, status, first_seen,
+  clinic_id, status, first_seen, declared_at,
   device_reference!inner ( model, manufacturer, category, active )
 `;
 
@@ -161,9 +161,35 @@ function slugifyModel(model) {
     .replace(/^-+|-+$/g, '');
 }
 
+
+// ── PUBLISHED LISTS (M26) ────────────────────────────────────────
+// Once a clinic publishes its list from the portal Services tab, only the rows
+// it confirmed (declared_at set) display. Rows it left off stay in the table
+// as evidence and simply stop showing. Same rule as the device_facets and
+// device_clinic_ids RPCs, so a filter count and the list behind it agree.
+// The published set is tiny (only clinics that have saved from the portal),
+// so one small query covers every page.
+async function publishedClinicIds(supabase) {
+  const { data, error } = await supabase
+    .from('clinics')
+    .select('id')
+    .not('devices_published_at', 'is', null)
+    .range(0, 9999);
+  if (error) throw error;
+  return new Set((data || []).map(r => String(r.id)));
+}
+const rowShows = (row, published) =>
+  !published.has(String(row.clinic_id)) || row.declared_at != null;
+
 async function fetchDevicesFor(supabase, clinicIds) {
   if (!clinicIds || !clinicIds.length) return {};
   const labels = await loadCategoryLabels(supabase);
+  let published;
+  try { published = await publishedClinicIds(supabase); }
+  catch (e) {
+    console.warn('[get-clinics] published lookup failed, continuing without devices:', e.message);
+    return {};
+  }
   const { data, error } = await supabase
     .from('clinic_devices')
     .select(DEVICE_SELECT)
@@ -177,6 +203,7 @@ async function fetchDevicesFor(supabase, clinicIds) {
   }
   const map = {};
   (data || []).forEach(row => {
+    if (!rowShows(row, published)) return;
     const cid = String(row.clinic_id);
     if (!map[cid]) map[cid] = [];
     map[cid].push(shapeDeviceRow(row, labels));
@@ -451,12 +478,16 @@ exports.handler = async (event) => {
       if (!slug && !cat) return { statusCode: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ error: 'device or devicecat required' }) };
 
       const labels = await loadCategoryLabels(supabase);
-      const { data: devRows, error: devErr } = await supabase
-        .from('clinic_devices')
-        .select('clinic_id, status, device_reference!inner ( model, manufacturer, category, active )')
-        .eq('device_reference.active', true)
-        .range(0, 49999);
-      if (devErr) return { statusCode: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ error: devErr.message }) };
+      const [devRes, published] = await Promise.all([
+        supabase
+          .from('clinic_devices')
+          .select('clinic_id, status, declared_at, device_reference!inner ( model, manufacturer, category, active )')
+          .eq('device_reference.active', true)
+          .range(0, 49999),
+        publishedClinicIds(supabase),
+      ]);
+      if (devRes.error) return { statusCode: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ error: devRes.error.message }) };
+      const devRows = (devRes.data || []).filter(r => rowShows(r, published));
 
       let device = null;
       const statusByClinic = {};

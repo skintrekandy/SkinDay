@@ -130,8 +130,20 @@ function patchTemplate(html, { title, desc, url, indexable, ssrBody, jsonLd }) {
 // read only for the device ids the page actually needs, in explicitly ordered
 // pages that are fetched in parallel, so nothing is dropped.
 const CD_PAGE = 1000;
+// Once a clinic publishes its list from the portal, only rows it confirmed
+// display. Same rule as device_facets / device_clinic_ids / get-clinics.
+async function publishedClinicIds(supabase) {
+  const { data, error } = await supabase
+    .from('clinics')
+    .select('id')
+    .not('devices_published_at', 'is', null)
+    .range(0, 9999);
+  if (error) throw error;
+  return new Set((data || []).map(r => String(r.id)));
+}
 async function readClinicDevices(supabase, deviceIds) {
   if (!deviceIds.length) return [];
+  const published = await publishedClinicIds(supabase);
   const head = await supabase
     .from('clinic_devices')
     .select('clinic_id', { count: 'exact', head: true })
@@ -142,7 +154,7 @@ async function readClinicDevices(supabase, deviceIds) {
   const results = await Promise.all(Array.from({ length: pages }, (_, i) =>
     supabase
       .from('clinic_devices')
-      .select('clinic_id, device_id, status')
+      .select('clinic_id, device_id, status, declared_at')
       .in('device_id', deviceIds)
       .order('device_id', { ascending: true })
       .order('clinic_id', { ascending: true })
@@ -151,7 +163,10 @@ async function readClinicDevices(supabase, deviceIds) {
   const out = [];
   for (const r of results) {
     if (r.error) throw r.error;
-    (r.data || []).forEach(row => out.push(row));
+    (r.data || []).forEach(row => {
+      if (published.has(String(row.clinic_id)) && row.declared_at == null) return;
+      out.push(row);
+    });
   }
   return out;
 }
