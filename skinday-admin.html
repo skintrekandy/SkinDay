@@ -734,37 +734,23 @@
     </div>
   </header>
 
+  <!-- ⭐ SLIMMED 2026-09-29. Claims, flagged votes and both crawls moved to the
+       global admin (skinday.com/skinday-global-admin), which serves every
+       country. This page keeps the hands-on Canadian entry tools only. The old
+       panels are still in the file, hidden, so nothing that references them breaks. -->
   <nav class="admin-nav">
-    <button class="nav-tab active" data-tab="pending" onclick="switchTab('pending')">
-      Pending <span class="tab-count" id="count-pending">—</span>
-    </button>
-    <button class="nav-tab" data-tab="approved" onclick="switchTab('approved')">
-      Approved <span class="tab-count zero" id="count-approved">—</span>
-    </button>
-    <button class="nav-tab" data-tab="rejected" onclick="switchTab('rejected')">
-      Rejected <span class="tab-count zero" id="count-rejected">—</span>
-    </button>
-    <button class="nav-tab" data-tab="revoked" onclick="switchTab('revoked')">
-      Revoked <span class="tab-count zero" id="count-revoked">—</span>
-    </button>
-    <button class="nav-tab" data-tab="add-clinic" onclick="switchTab('add-clinic')">
-      + Add Clinic
-    </button>
-    <button class="nav-tab" data-tab="price-intake" onclick="switchTab('price-intake')">
+    <button class="nav-tab active" data-tab="price-intake" onclick="switchTab('price-intake')">
       $ Price Intake
     </button>
     <button class="nav-tab" data-tab="practitioners" onclick="switchTab('practitioners')">
       👤 Practitioners
     </button>
-    <button class="nav-tab" data-tab="flagged-votes" onclick="switchTab('flagged-votes')">
-      Flagged votes <span class="tab-count zero" id="count-flagged-votes">—</span>
+    <button class="nav-tab" data-tab="add-clinic" onclick="switchTab('add-clinic')">
+      + Add Clinic
     </button>
-    <button class="nav-tab" data-tab="price-crawl" onclick="switchTab('price-crawl')">
-      Price crawl
-    </button>
-    <button class="nav-tab" data-tab="device-crawl" onclick="switchTab('device-crawl')">
-      Device crawl <span class="tab-count zero" id="count-device-crawl">—</span>
-    </button>
+    <a class="nav-tab" href="https://skinday.com/skinday-global-admin" target="_blank" rel="noopener" style="margin-left:auto;text-decoration:none;">
+      Claims, votes &amp; crawls → Global admin
+    </a>
   </nav>
 
   <main class="admin-main">
@@ -1154,7 +1140,7 @@
 <script>
 const API = '/api/admin-action';
 let adminSecret = '';
-let currentTab = 'pending';
+let currentTab = 'price-intake';
 let allClaims = { pending: [], approved: [], rejected: [], revoked: [] };
 
 // ── AUTH ─────────────────────────────────────────────────────
@@ -1232,7 +1218,8 @@ async function loadAll() {
   document.getElementById('app').style.display = 'block';
 
   updateStats();
-  renderTab(currentTab);
+  // Opens on the manual entry tools; claims live in the global admin now.
+  switchTab(currentTab);
 }
 
 function refresh() {
