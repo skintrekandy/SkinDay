@@ -1203,22 +1203,27 @@ function renderClinic(clinic) {
   // Renders NOTHING when the clinic has no rows. About 70% of clinics have not
   // had their site read yet, and a "No devices listed" empty state would read
   // as a finding about the clinic rather than a gap in our data.
-  const devices = Array.isArray(clinic.devices) ? clinic.devices : [];
-  let deviceCardHTML = '';
-  if (devices.length) {
-    const groups = {};
-    devices.forEach(d => {
-      const key = d.category_label || d.category || 'Other';
-      (groups[key] = groups[key] || []).push(d);
-    });
-    // Preserve the order the API already sorted by (category sort_order).
-    const orderedLabels = [];
-    devices.forEach(d => {
-      const key = d.category_label || d.category || 'Other';
-      if (orderedLabels.indexOf(key) === -1) orderedLabels.push(key);
-    });
+  // ⚠️ clinic.devices carries BOTH machines and injectable products (Botox,
+  // HArmonyCa ...), because they share one reference table. A patient reads
+  // them as different things, so they are split here: segment 'injectables'
+  // (set on the category row) is the dividing line, same as the directory
+  // filter. The label check is a fallback for a category whose segment has
+  // not been set yet.
+  const allDeviceRows = Array.isArray(clinic.devices) ? clinic.devices : [];
+  const isInjectableRow = d => d.segment === 'injectables'
+    || /neurotoxin|biostimulat|filler|skin booster|injectable/i.test(d.category_label || d.category || '');
+  const devices     = allDeviceRows.filter(d => !isInjectableRow(d));
+  const injectables = allDeviceRows.filter(isInjectableRow);
 
-    const rows = orderedLabels.map(label => `
+  const groupRows = list => {
+    const groups = {};
+    const order = [];
+    list.forEach(d => {
+      const key = d.category_label || d.category || 'Other';
+      if (!groups[key]) { groups[key] = []; order.push(key); }
+      groups[key].push(d);
+    });
+    return order.map(label => `
       <div class="device-group">
         <div class="device-group-label">${escapeHtml(label)}</div>
         ${groups[label].map(d => `
@@ -1230,6 +1235,19 @@ function renderClinic(clinic) {
               : `<span class="device-status">Listed</span>`}
           </div>`).join('')}
       </div>`).join('');
+  };
+
+  const injectableCardHTML = injectables.length ? `
+    <div class="card animate animate-delay-1">
+      <div class="card-section">
+        <div class="section-label">Injectables</div>
+        <div class="device-list">${groupRows(injectables)}</div>
+      </div>
+    </div>` : '';
+
+  let deviceCardHTML = '';
+  if (devices.length) {
+    const rows = groupRows(devices);
 
     deviceCardHTML = `
     <div class="card animate animate-delay-1">
@@ -1338,6 +1356,7 @@ function renderClinic(clinic) {
 
     <!-- TECHNOLOGY (M39) -->
     ${deviceCardHTML}
+    ${injectableCardHTML}
 
     <!-- PROMO (above pricing, only when promo text exists) -->
     ${promoHTML}
