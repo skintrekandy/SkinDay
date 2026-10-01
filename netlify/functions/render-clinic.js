@@ -237,6 +237,31 @@ function deviceHref(model, clinic) {
   return `/devices/${d}`;
 }
 
+// ── TECHNOLOGY vs INJECTABLES ─────────────────────────────────────
+// Machines and injectable products share device_reference, so a clinic's rows
+// mix Morpheus8 with Botox Cosmetic. The dividing line is the category's
+// segment ('injectables'), read from device_categories: 15 rows, fetched once
+// per warm container alongside the clinic query so it adds no wait. The
+// name check is a fallback if that small read fails or a segment is unset.
+let CATEGORY_SEGMENTS = null;
+async function loadCategorySegments() {
+  if (CATEGORY_SEGMENTS) return CATEGORY_SEGMENTS;
+  try {
+    const rows = await pgGet('device_categories?select=category,segment,label_en');
+    CATEGORY_SEGMENTS = {};
+    (rows || []).forEach(r => { CATEGORY_SEGMENTS[r.category] = r; });
+  } catch (e) {
+    console.error('render-clinic: device_categories read failed (non-fatal)', e.message);
+    return {};
+  }
+  return CATEGORY_SEGMENTS;
+}
+function isInjectable(d, cats) {
+  const c = (cats && cats[d.category]) || {};
+  if (c.segment) return c.segment === 'injectables';
+  return /neurotoxin|biostimulat|filler|skin.?booster|injectable/i.test(`${d.category || ''} ${c.label_en || ''}`);
+}
+
 function formatInjectorCreds(raw) {
   if (!raw) return '';
   if (Array.isArray(raw)) return raw.map(s => String(s).toUpperCase()).join(', ');
@@ -388,6 +413,13 @@ function buildSeoBody(clinic) {
       .join(', ');
     const rest = devices.length > 8 ? `, and ${devices.length - 8} more` : '';
     paragraphs.push(`Technology listed by ${name}: ${linked}${rest}.`);
+  }
+
+  // Injectable products, as plain text. No links: there is no per-product
+  // page for injectables on the patient site.
+  const injectables = clinic.injectables || [];
+  if (injectables.length) {
+    paragraphs.push(`Injectables offered by ${name}: ${injectables.map(d => escapeHtml(d.model)).join(', ')}.`);
   }
 
   if (clinic.phone) {
@@ -625,7 +657,7 @@ async function _handler(event) {
     const SELECT_EMBEDDED = SELECT_BASE +
       ',clinic_expertise(value,is_other,other_text)' +
       ',clinic_prices(price,price_date)' +
-      ',clinic_devices(declared_at,device_reference(model,active))';
+      ',clinic_devices(declared_at,device_reference(model,active,category))';
 
     const q = `clinics?slug=eq.${encodeURIComponent(slug)}` +
               `&order=approved.desc.nullslast,id.asc&limit=10&select=`;
@@ -633,6 +665,9 @@ async function _handler(event) {
     let rows = null;
     let error = null;
     let embedded = true;
+    // Category segments load in parallel with the clinic; cached after the
+    // first request in a warm container.
+    const catsPromise = loadCategorySegments();
     try {
       rows = await pgGet(q + encodeURIComponent(SELECT_EMBEDDED));
     } catch (e) {
@@ -728,12 +763,15 @@ async function _handler(event) {
       const published = !!clinic.devices_published_at;
       const devRows = (Array.isArray(clinic.clinic_devices) ? clinic.clinic_devices : [])
         .filter(r => !published || r.declared_at != null);
-      const devices = devRows
+      const cats = await catsPromise;
+      const allRows = devRows
         .map(r => (r.device_reference || {}))
         .filter(d => d.model && d.active === true)
-        .sort((a, b) => String(a.model).localeCompare(String(b.model)))
-        .slice(0, 30);
+        .sort((a, b) => String(a.model).localeCompare(String(b.model)));
+      const devices = allRows.filter(d => !isInjectable(d, cats)).slice(0, 30);
+      const injectables = allRows.filter(d => isInjectable(d, cats)).slice(0, 20);
       if (devices.length) clinic.devices = devices;
+      if (injectables.length) clinic.injectables = injectables;
 
       const priceRows = Array.isArray(clinic.clinic_prices) ? clinic.clinic_prices : [];
       const cheapestRow = priceRows
