@@ -12,6 +12,11 @@
 [functions]
   included_files = ["clinic.html", "devices.html"]
 
+# Weekly IndexNow ping: tells Bing which pages changed this week. Monday
+# 09:00 UTC. Runs on its own; nothing to trigger by hand.
+[functions."indexnow-ping"]
+  schedule = "0 9 * * 1"
+
 
 # ── CANONICAL HOMEPAGE ───────────────────────────────────────────
 # Redirect /index.html to / so the duplicate path stops competing in search.
