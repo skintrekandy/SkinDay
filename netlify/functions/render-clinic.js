@@ -289,7 +289,7 @@ function buildSchema(clinic) {
     url,
     address: {
       '@type': 'PostalAddress',
-      addressRegion: clinic.province || 'ON',
+      addressRegion: String(clinic.province || 'ON').toUpperCase(),
       addressCountry: 'CA',
     },
   };
@@ -325,22 +325,40 @@ function buildSchema(clinic) {
 function buildSeoBody(clinic) {
   const name = escapeHtml(clinic.name || 'Cosmetic Clinic');
   const loc  = escapeHtml(clinic.neighbourhood || clinic.area || clinic.province || 'Canada');
-  const province = escapeHtml(clinic.province || 'ON');
+  const province = escapeHtml(String(clinic.province || 'ON').toUpperCase());
 
   // Build paragraphs from whatever data is available. Each one adds a few
   // unique words that distinguish this URL from every other clinic page.
   const paragraphs = [];
 
-  paragraphs.push(`${name} is a cosmetic clinic in ${loc}, ${province}.`);
-
-  if (clinic.price != null && clinic.price > 0) {
-    paragraphs.push(`Botox pricing from $${escapeHtml(clinic.price)} per unit.`);
-  } else {
-    paragraphs.push(`Botox and neurotoxin pricing available on request.`);
+  // ── THE ANSWER SENTENCE ─────────────────────────────────────────
+  // The first paragraph answers what someone asking about this clinic wants
+  // to know, in one place: where it is, the Botox price, its main devices,
+  // its rating, and when the price was checked. AI answers quote the page
+  // that says this up front. It matches the visible summary line clinic.html
+  // shows under the rating, so crawlers and visitors read the same facts.
+  const devicesForLead = (clinic.devices || []).slice(0, 3).map(d => escapeHtml(d.model));
+  const listJoin = a => a.length <= 1 ? (a[0] || '') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1];
+  const hasPrice = clinic.price != null && Number(clinic.price) > 0;
+  let lead = `${name} is a cosmetic clinic in ${loc}, ${province}.`;
+  if (hasPrice && devicesForLead.length) {
+    lead += ` It offers Botox from $${escapeHtml(clinic.price)} per unit and lists ${listJoin(devicesForLead)} among its devices.`;
+  } else if (hasPrice) {
+    lead += ` It offers Botox from $${escapeHtml(clinic.price)} per unit.`;
+  } else if (devicesForLead.length) {
+    lead += ` It lists ${listJoin(devicesForLead)} among its devices.`;
   }
-
   if (clinic.rating && clinic.reviews) {
-    paragraphs.push(`Rated ${escapeHtml(clinic.rating)} stars from ${escapeHtml(clinic.reviews)} Google reviews.`);
+    lead += ` Rated ${escapeHtml(clinic.rating)} from ${escapeHtml(Number(clinic.reviews).toLocaleString('en-CA'))} Google reviews.`;
+  }
+  if (hasPrice && clinic.price_date) {
+    const d = new Date(clinic.price_date);
+    if (!isNaN(d)) lead += ` Prices checked ${d.toLocaleDateString('en-CA', { month: 'long', year: 'numeric', timeZone: 'UTC' })}.`;
+  }
+  paragraphs.push(lead);
+
+  if (!hasPrice) {
+    paragraphs.push(`Botox and neurotoxin pricing available on request.`);
   }
 
   const creds = formatInjectorCreds(clinic.injector_credentials);
@@ -606,7 +624,7 @@ async function _handler(event) {
       'injector_credentials,logo_url,approved,phone,website,source,devices_published_at';
     const SELECT_EMBEDDED = SELECT_BASE +
       ',clinic_expertise(value,is_other,other_text)' +
-      ',clinic_prices(price)' +
+      ',clinic_prices(price,price_date)' +
       ',clinic_devices(declared_at,device_reference(model,active))';
 
     const q = `clinics?slug=eq.${encodeURIComponent(slug)}` +
@@ -718,11 +736,13 @@ async function _handler(event) {
       if (devices.length) clinic.devices = devices;
 
       const priceRows = Array.isArray(clinic.clinic_prices) ? clinic.clinic_prices : [];
-      const cheapest = priceRows
-        .map(r => r.price)
-        .filter(v => v != null)
-        .sort((a, b) => Number(a) - Number(b))[0];
-      if (cheapest != null) clinic.price = cheapest;
+      const cheapestRow = priceRows
+        .filter(r => r.price != null)
+        .sort((a, b) => Number(a.price) - Number(b.price))[0];
+      if (cheapestRow) {
+        clinic.price = cheapestRow.price;
+        clinic.price_date = cheapestRow.price_date || null;
+      }
 
       // Drop the raw embedded arrays so nothing downstream reads them by
       // accident and so the shape matches what the old code produced.
