@@ -3674,7 +3674,7 @@ let currentMaxPrice = null;      // number (price ceiling per unit) or null
 let currentDevice   = null;      // model slug, e.g. 'morpheus8'
 let currentDeviceCat = null;     // fine subcategory, e.g. 'tightening_rf'
 let currentDeviceGroup = null;   // group, e.g. 'laser_ipl' or 'tightening'
-let deviceFacets    = null;      // { models, categories, clinics_with_devices }
+let deviceFacets    = null;      // { groups, models, categories, models_by_category, inj_* } (names only, no counts)
 // M40 injectables. Its own state and its own query params, never shared with
 // the technology filter above: a patient picking Sculptra must not silently
 // drop a Morpheus8 filter, and the two buttons have to be able to say
@@ -3971,11 +3971,10 @@ function applyMaxPrice(val) {
 // Mirrors the price ceiling above: a deep-linkable param, applied server-side,
 // with the active-filter line stating the result in words.
 //
-// Options come from /api/get-clinics?mode=device-facets, which returns a clinic
-// COUNT on every entry. That count is the point: offering all 122 models would
-// bury the patient in options that return two clinics each. Anything under the
-// threshold is left out, and every remaining option shows its count so the
-// choice is informed before the click.
+// Options come from /api/get-clinics?mode=device-facets. Names only, in
+// alphabetical order (Andy, 2026-10-03): per-device clinic counts are market
+// share, which belongs to Market Intelligence, not the patient directory. Thin
+// options are dropped on the server before the list is sent.
 // Device model and manufacturer strings originate from a crawl of third-party
 // websites, so they are escaped before being interpolated into HTML. index.html
 // had no helper of its own.
@@ -3994,7 +3993,6 @@ function devSlug(model) {
     .replace(/^-+|-+$/g, '');
 }
 
-const DEVICE_MIN_CLINICS = 3;
 
 async function loadDeviceFacets() {
   try {
@@ -4052,7 +4050,8 @@ function renderTechPanel() {
     // While searching, only the matching models are shown, and a group or
     // subcategory appears only if something under it matched.
     const catBlocks = cats.map(c => {
-      const models = (byCat[c.category] || []).filter(m => m.clinics >= DEVICE_MIN_CLINICS);
+      // Thin options are dropped on the server, which no longer sends counts.
+      const models = (byCat[c.category] || []);
       const shownModels = term ? models.filter(m => m.model.toLowerCase().includes(term)) : models;
       const catMatches = !term
         || c.label.toLowerCase().includes(term)
@@ -4071,25 +4070,25 @@ function renderTechPanel() {
         const isGen = !!m.parent_model;
         const rows = [];
         // The family header appears once, immediately before the base model.
-        if (!isGen && m.family_clinics > m.clinics) {
+        if (!isGen && m.has_family) {
           // ⭐ NO NEW FILTER STATE. The family header selects the PARENT's slug
           // in the existing ?device= param; the server expands a parent slug to
           // its generations. One state, one param, and every existing link
           // keeps working.
-          rows.push(`<button type="button" class="tech-family${currentDevice === m.slug ? ' sel' : ''}" onclick="applyDevice('model:${m.slug}')">${devEsc(m.model)} <span class="n">${m.family_clinics}</span></button>`);
+          rows.push(`<button type="button" class="tech-family${currentDevice === m.slug ? ' sel' : ''}" onclick="applyDevice('model:${m.slug}')">${devEsc(m.model)}</button>`);
         }
-        const gen = isGen || (shownNames.has(m.model) && m.family_clinics > m.clinics);
+        const gen = isGen || (shownNames.has(m.model) && m.has_family);
         const cls = 'tech-model' + (gen ? ' gen' : '') + (currentDevice === m.slug ? ' sel' : '');
-        rows.push(`<button type="button" class="${cls}" onclick="applyDevice('model:${m.slug}')">${devEsc(m.model)} <span class="n">${m.clinics}</span></button>`);
+        rows.push(`<button type="button" class="${cls}" onclick="applyDevice('model:${m.slug}')">${devEsc(m.model)}</button>`);
         return rows.join('');
       }).join('');
-      return `<button type="button" class="tech-sub ${currentDeviceCat === c.category ? 'sel' : ''}" onclick="applyDevice('cat:${c.category}')">${devEsc(c.label)} <span class="n">${c.clinics}</span></button>${modelRows}`;
+      return `<button type="button" class="tech-sub ${currentDeviceCat === c.category ? 'sel' : ''}" onclick="applyDevice('cat:${c.category}')">${devEsc(c.label)}</button>${modelRows}`;
     }).join('');
 
     const groupMatches = !term || g.label.toLowerCase().includes(term) || catBlocks.length > 0;
     if (!groupMatches || !catBlocks) return;
 
-    html += `<button type="button" class="tech-group ${currentDeviceGroup === g.key ? 'sel' : ''}" onclick="applyDevice('group:${g.key}')">${devEsc(g.label)} <span class="n">${g.clinics}</span></button>${catBlocks}`;
+    html += `<button type="button" class="tech-group ${currentDeviceGroup === g.key ? 'sel' : ''}" onclick="applyDevice('group:${g.key}')">${devEsc(g.label)}</button>${catBlocks}`;
   });
 
   if (term && matches === 0) html += '<div class="tech-empty">Nothing matches that.</div>';
@@ -4215,9 +4214,9 @@ function renderInjPanel() {
       const modelRows = shown.map(m => {
         matches++;
         const cls = 'tech-model' + (currentInj === m.slug ? ' sel' : '');
-        return `<button type="button" class="${cls}" onclick="applyInj('model:${m.slug}')">${devEsc(m.model)} <span class="n">${m.clinics}</span></button>`;
+        return `<button type="button" class="${cls}" onclick="applyInj('model:${m.slug}')">${devEsc(m.model)}</button>`;
       }).join('');
-      return `<button type="button" class="tech-sub ${currentInjCat === c.category ? 'sel' : ''}" onclick="applyInj('cat:${c.category}')">${devEsc(c.label)} <span class="n">${c.clinics}</span></button>${modelRows}`;
+      return `<button type="button" class="tech-sub ${currentInjCat === c.category ? 'sel' : ''}" onclick="applyInj('cat:${c.category}')">${devEsc(c.label)}</button>${modelRows}`;
     }).join('');
 
     const groupMatches = !term || g.label.toLowerCase().includes(term) || catBlocks.length > 0;
@@ -4230,7 +4229,7 @@ function renderInjPanel() {
     // group, so this is a rendering rule rather than a hardcoded exception.
     if ((g.categories || []).length < 2) { html += catBlocks; return; }
 
-    html += `<button type="button" class="tech-group ${currentInjGroup === g.key ? 'sel' : ''}" onclick="applyInj('group:${g.key}')">${devEsc(g.label)} <span class="n">${g.clinics}</span></button>${catBlocks}`;
+    html += `<button type="button" class="tech-group ${currentInjGroup === g.key ? 'sel' : ''}" onclick="applyInj('group:${g.key}')">${devEsc(g.label)}</button>${catBlocks}`;
   });
 
   if (term && matches === 0) html += '<div class="tech-empty">Nothing matches that.</div>';
