@@ -87,9 +87,13 @@ const provLabel = p => PROV_NAMES[String(p || '').trim().toUpperCase()] || (p ||
 // Written to read like a search result, because that is where it appears.
 // The province list is in the description because "morpheus8 toronto" style
 // queries are the whole point of these pages.
+// ⭐ NO CLINIC COUNTS ON THESE PAGES (Andy, 2026-10-03). Per-device clinic
+// counts, side by side, are a market-share table, which is what Market
+// Intelligence sells. Titles, descriptions and links name devices and places
+// without numbers, and every list is alphabetical so its order ranks nothing.
 function buildModelTitle(device, count) {
   return count
-    ? `${device.model} Clinics in Canada (${count}) — SkinDay`
+    ? `${device.model} Clinics in Canada — SkinDay`
     : `${device.model} — SkinDay`;
 }
 function buildModelDescription(device, count, topProvinces) {
@@ -98,7 +102,7 @@ function buildModelDescription(device, count, topProvinces) {
   }
   const where = topProvinces.length ? ` Clinics in ${topProvinces.slice(0, 3).map(provLabel).join(', ')}.` : '';
   const mfr = device.manufacturer ? ` by ${device.manufacturer}` : '';
-  return `${count} Canadian ${count === 1 ? 'clinic lists' : 'clinics list'} ${device.model}${mfr}.${where} Compare clinics, ratings and pricing on SkinDay.`;
+  return `Canadian clinics that offer ${device.model}${mfr}.${where} Compare clinics, ratings and pricing on SkinDay.`;
 }
 
 function patchTemplate(html, { title, desc, url, indexable, ssrBody, jsonLd }) {
@@ -262,7 +266,7 @@ exports.handler = async (event) => {
       });
 
       const cats = Object.keys(byCat)
-        .map(c => ({ category: c, label: (labels[c] && labels[c].label_en) || c, sort: (labels[c] && labels[c].sort_order) || 999, clinics: catClinics[c].size }))
+        .map(c => ({ category: c, label: (labels[c] && labels[c].label_en) || c, sort: (labels[c] && labels[c].sort_order) || 999 }))
         .sort((a, b) => a.sort - b.sort);
 
       // Same reason as the clinic table on the model page: a wall of
@@ -272,14 +276,17 @@ exports.handler = async (event) => {
       // category names nor the models; as tables it keeps both. Headings are
       // real <h2>s so the category names survive independently of the table.
       const blocks = cats.map(c => {
+        // Same threshold as the directory filter: a device on fewer than three
+        // clinics is not listed here (its own page still exists, noindexed).
         const models = Object.keys(byCat[c.category])
-          .map(m => ({ model: m, slug: slugifyModel(m), clinics: byCat[c.category][m].size }))
-          .sort((a, b) => b.clinics - a.clinics);
+          .filter(m => byCat[c.category][m].size >= MIN_CLINICS_TO_INDEX)
+          .map(m => ({ model: m, slug: slugifyModel(m), mfr: (refs.find(r => r.model === m) || {}).manufacturer || '' }))
+          .sort((a, b) => a.model.localeCompare(b.model, 'en', { sensitivity: 'base' }));
+        if (!models.length) return '';
         return `<h2>${escapeHtml(c.label)}</h2>
-          <p class="cat-count">${c.clinics.toLocaleString()} ${c.clinics === 1 ? 'clinic' : 'clinics'} in Canada list a ${escapeHtml(c.label.toLowerCase())} device.</p>
           <table class="ssr-table">
-            <thead><tr><th>Device</th><th>Clinics</th></tr></thead>
-            <tbody>${models.map(m => `<tr><td><a href="/devices/${escapeHtml(m.slug)}">${escapeHtml(m.model)}</a></td><td>${m.clinics}</td></tr>`).join('')}</tbody>
+            <thead><tr><th>Device</th><th>Made by</th></tr></thead>
+            <tbody>${models.map(m => `<tr><td><a href="/devices/${escapeHtml(m.slug)}">${escapeHtml(m.model)}</a></td><td>${escapeHtml(m.mfr)}</td></tr>`).join('')}</tbody>
           </table>`;
       }).join('');
 
@@ -408,8 +415,9 @@ exports.handler = async (event) => {
     }).join('');
 
     const siblings = Object.keys(siblingCounts)
-      .map(m => ({ model: m, slug: slugifyModel(m), clinics: siblingCounts[m].size }))
-      .sort((a, b) => b.clinics - a.clinics).slice(0, 12);
+      .filter(m => siblingCounts[m].size >= MIN_CLINICS_TO_INDEX)
+      .map(m => ({ model: m, slug: slugifyModel(m) }))
+      .sort((a, b) => a.model.localeCompare(b.model, 'en', { sensitivity: 'base' })).slice(0, 12);
 
     // ── LINKS INTO THE PROVINCE PAGES (M19.3) ──────────────────────
     // /devices/{model}/{province} is served by device-page.js. Without this
@@ -429,13 +437,13 @@ exports.handler = async (event) => {
       .filter(p => provCount[p] >= PROVINCE_PAGE_MIN)
       .map(p => ({
         label: provLabel(p) || p,
-        slug: slugifyModel(provLabel(p) || p),
-        clinics: provCount[p]
-      }));
+        slug: slugifyModel(provLabel(p) || p)
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
 
     const provinceBlock = provinceLinks.length ? `<div class="also-block">
       <div class="also-label">${escapeHtml(device.model)} by province</div>
-      <div class="also-links">${provinceLinks.map(v => `<a class="also-link" href="/devices/${escapeHtml(device.slug)}/${escapeHtml(v.slug)}">${escapeHtml(v.label)} <em>${v.clinics}</em></a>`).join('')}</div>
+      <div class="also-links">${provinceLinks.map(v => `<a class="also-link" href="/devices/${escapeHtml(device.slug)}/${escapeHtml(v.slug)}">${escapeHtml(v.label)}</a>`).join('')}</div>
     </div>` : '';
 
     // ── LINKS INTO THE CITY PAGES ──────────────────────────────────
@@ -458,18 +466,19 @@ exports.handler = async (event) => {
       const cities = Object.values(cc)
         .filter(x => x.n >= CITY.MIN_CLINICS_TO_INDEX)
         .sort((a, b) => b.n - a.n)
-        .slice(0, 30);
+        .slice(0, 30)
+        .sort((a, b) => a.name.localeCompare(b.name));
       if (cities.length) {
         cityBlock = `<div class="also-block">
       <div class="also-label">${escapeHtml(device.model)} by city</div>
-      <div class="also-links">${cities.map(x => `<a class="also-link" href="/devices/${escapeHtml(device.slug)}/${escapeHtml(CITY.PROVINCE_SLUGS[x.pc])}/${escapeHtml(x.cs)}">${escapeHtml(x.name)} <em>${x.n}</em></a>`).join('')}</div>
+      <div class="also-links">${cities.map(x => `<a class="also-link" href="/devices/${escapeHtml(device.slug)}/${escapeHtml(CITY.PROVINCE_SLUGS[x.pc])}/${escapeHtml(x.cs)}">${escapeHtml(x.name)}</a>`).join('')}</div>
     </div>`;
       }
     }
 
     const siblingBlock = siblings.length ? `<div class="also-block">
       <div class="also-label">Other ${escapeHtml(String(device.category_label || '').toLowerCase())} devices</div>
-      <div class="also-links">${siblings.map(s => `<a class="also-link" href="/devices/${escapeHtml(s.slug)}">${escapeHtml(s.model)} <em>${s.clinics}</em></a>`).join('')}</div>
+      <div class="also-links">${siblings.map(s => `<a class="also-link" href="/devices/${escapeHtml(s.slug)}">${escapeHtml(s.model)}</a>`).join('')}</div>
     </div>` : '';
 
     // ⚠️ THE HEADING AND LEDE ARE FLAT — NOT WRAPPED IN <div class="page-head">.
@@ -492,7 +501,7 @@ exports.handler = async (event) => {
       <div class="crumb"><a href="/">SkinDay</a> <span>/</span> <a href="/devices/">Devices</a> <span>/</span> ${escapeHtml(device.model)}</div>
       <h1>${escapeHtml(device.model)}</h1>
       <p class="page-sub">${count
-        ? `${count.toLocaleString()} ${count === 1 ? 'clinic' : 'clinics'} in Canada list ${escapeHtml(device.model)}${madeBy} on their own website.${catSentence}`
+        ? `Clinics in Canada that offer ${escapeHtml(device.model)}${madeBy}.${catSentence}`
         : `No clinics in our directory currently list ${escapeHtml(device.model)}${madeBy}.${catSentence}`}</p>
       <table class="ssr-table">
         <thead><tr><th>Clinic</th><th>Location</th><th>Rating</th></tr></thead>
