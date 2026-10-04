@@ -311,7 +311,9 @@ exports.handler = async (event) => {
     }
 
     // ── MODE: device facets (M39) ────────────────────────────
-    // The option list for the Technology filter, with a clinic count on every
+    // The option list for the Technology filter. Counts are used HERE to drop
+    // thin options and are never sent (see the note before the return).
+    // Historical note: this used to send a clinic count on every
     // entry. Counts are the whole point: a filter option that returns three
     // clinics is a dead end, so the UI can hide anything below a threshold
     // instead of offering 122 models and letting the patient find the empty
@@ -452,6 +454,48 @@ exports.handler = async (event) => {
       const inj_models  = models.filter(m =>  injModelSet.has(m.model));
       const eqp_models  = models.filter(m => !injModelSet.has(m.model));
 
+      // ⭐⭐ NO COUNTS LEAVE THIS FUNCTION (Andy, 2026-10-03). This dropdown is
+      // public, and clinic counts per device are a national market-share table,
+      // which is what Market Intelligence sells. Patients only need the names.
+      // So, before anything is sent:
+      //   1. equipment models under DEVICE_MIN_CLINICS are dropped HERE (the
+      //      threshold used to be applied in the browser, which needed counts);
+      //   2. every list is put in ALPHABETICAL order (family first, then its
+      //      generations), so the order no longer ranks popularity either;
+      //   3. clinics / family_clinics / clinics_with_devices are stripped, and a
+      //      plain has_family flag replaces the family_clinics > clinics test.
+      // Injectables keep no minimum, as before.
+      const DEVICE_MIN_CLINICS = 3;
+      const famHasGen = {};
+      models.forEach(m => { if (m.parent_model && m.clinics > 0) famHasGen[m.parent_model] = true; });
+      const alpha = (a, b) => {
+        const fa = familyOf(a), fb = familyOf(b);
+        if (fa !== fb) return fa.localeCompare(fb, 'en', { sensitivity: 'base' });
+        if (!!a.parent_model !== !!b.parent_model) return a.parent_model ? 1 : -1;
+        return a.model.localeCompare(b.model, 'en', { sensitivity: 'base' });
+      };
+      const cleanModel = m => ({
+        model: m.model, slug: m.slug, parent_model: m.parent_model,
+        has_family: !m.parent_model && !!famHasGen[m.model],
+      });
+      const cleanList = (byCat, minClinics) => {
+        const out = {};
+        Object.keys(byCat).forEach(c => {
+          const kept = (byCat[c] || []).filter(m => (m.clinics || 0) >= minClinics).sort(alpha).map(cleanModel);
+          if (kept.length) out[c] = kept;
+        });
+        return out;
+      };
+      const pub_models_by_category     = cleanList(models_by_category, DEVICE_MIN_CLINICS);
+      const pub_inj_models_by_category = cleanList(inj_models_by_category, 1);
+      const shownSet = new Set();
+      [pub_models_by_category, pub_inj_models_by_category].forEach(o =>
+        Object.keys(o).forEach(c => o[c].forEach(m => shownSet.add(m.model))));
+      const cleanCat = c => ({ category: c.category, label: c.label, segment: c.segment,
+                               card_category: c.card_category, sort_order: c.sort_order });
+      const cleanGroups = gs => gs.map(g => ({ key: g.key, label: g.label, order: g.order,
+                                               categories: g.categories.map(cleanCat) }));
+
       return {
         statusCode: 200,
         headers: {
@@ -461,9 +505,14 @@ exports.handler = async (event) => {
           'Netlify-CDN-Cache-Control': 'public, durable, s-maxage=600, stale-while-revalidate=3600',
         },
         body: JSON.stringify({
-          groups, models: eqp_models, categories, models_by_category,
-          inj_groups, inj_models, inj_categories: injCategories, inj_models_by_category,
-          clinics_with_devices: raw.clinics_with_devices || 0,
+          groups: cleanGroups(groups),
+          models: eqp_models.filter(m => shownSet.has(m.model)).sort(alpha).map(cleanModel),
+          categories: categories.map(cleanCat),
+          models_by_category: pub_models_by_category,
+          inj_groups: cleanGroups(inj_groups),
+          inj_models: inj_models.filter(m => shownSet.has(m.model)).sort(alpha).map(cleanModel),
+          inj_categories: injCategories.map(cleanCat),
+          inj_models_by_category: pub_inj_models_by_category,
         }),
       };
     }
