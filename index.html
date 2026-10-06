@@ -5858,7 +5858,7 @@ async function openCompareModal() {
     const isTop = c.rating === highestRating && unique(selected.map(x => x.rating), highestRating);
     return `<td class="${isTop ? 'compare-winner' : ''}">
       <div><span class="compare-stars">${renderStars(c.rating)}</span>${isTop ? '<span class="compare-winner-tag">Highest</span>' : ''}</div>
-      <div class="compare-rating-num">${c.rating} / 5.0</div>
+      <div class="compare-rating-num">${c.rating != null ? c.rating + ' / 5.0' : '—'}</div>
     </td>`;
   }).join('');
 
@@ -6751,7 +6751,7 @@ window.openClinicModal = async function openClinicModal(clinicId) {
 
   // Rating
   cmRenderStars(clinic.rating, document.getElementById('cm-stars'));
-  document.getElementById('cm-rating-num').textContent = clinic.rating.toFixed(1);
+  document.getElementById('cm-rating-num').textContent = clinic.rating != null ? Number(clinic.rating).toFixed(1) : 'No reviews yet';
   document.getElementById('cm-review-count').textContent = (clinic.reviews || 0).toLocaleString();
   document.getElementById('cm-rating-link').href = clinic.maps_url || (clinic.lat && clinic.lng ? `https://www.google.com/maps/search/?api=1&query=${clinic.lat},${clinic.lng}` : '#');
 
