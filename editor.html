@@ -3213,7 +3213,7 @@
   }
 
   function identityPillHtml(category, item) {
-    return `<button type="button" class="pill-option" data-category="${category}" data-slug="${escapeHtml(item.slug)}" onclick="identityAddSlug('${category}', '${escapeHtml(item.slug)}')">${escapeHtml(item.display)}<span class="pill-plus">+</span></button>`;
+    return `<button type="button" class="pill-option" data-category="${category}" data-slug="${escapeHtml(item.slug)}" onclick="identityAddSlug('${category}', '${escapeHtml(item.slug)}')"><span class="pill-plus">+</span>${escapeHtml(item.display)}</button>`;
   }
 
   function identityUpdateLockState(category) {
@@ -4039,7 +4039,7 @@
           <div class="pill-picker-group-label">${escapeHtml(group.label)}</div>
           <div class="pill-picker-options">
             ${group.items.map(d =>
-              `<button type="button" class="pill-option" onclick="deviceAdd(${Number(d.id)})">${escapeHtml(d.model)}<span class="pill-plus">+</span></button>`
+              `<button type="button" class="pill-option" onclick="deviceAdd(${Number(d.id)})"><span class="pill-plus">+</span>${escapeHtml(d.model)}</button>`
             ).join('')}
           </div>
         </div>`;
