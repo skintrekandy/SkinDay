@@ -3811,8 +3811,8 @@
   let deviceSide        = 'dev';
   // Fallback for the four injectable categories if device_categories cannot
   // be read with mi_segment.
-  const DEVICE_INJ_CATS = ['biostimulator','neurotoxin','filler','fat_dissolving'];
-  const DEVICE_INJ_ORDER = { biostimulator: 1, neurotoxin: 2, filler: 3, fat_dissolving: 4 };
+  const DEVICE_INJ_CATS = ['biostimulator','neurotoxin','filler','fat_dissolving','skin_booster','mesotherapy'];
+  const DEVICE_INJ_ORDER = { biostimulator: 1, neurotoxin: 2, filler: 3, fat_dissolving: 4, skin_booster: 5, mesotherapy: 6 };
   function deviceSegOf(cat) {
     if (deviceCatSeg[cat]) return deviceCatSeg[cat];
     return DEVICE_INJ_CATS.includes(cat) ? 'inj' : 'dev';
@@ -3872,19 +3872,16 @@
       // which is ugly but still usable, so it must not block the picker.
       try {
         const cRes = await fetch(
-          `${SUPABASE_URL}/rest/v1/device_categories?select=category,label_en,group_label,sort_order,mi_segment&limit=200`,
+          `${SUPABASE_URL}/rest/v1/device_categories?select=*&limit=200`,
           { headers: h }
         );
-        let cats = await cRes.json();
-        if (!cRes.ok) {
-          const r2 = await fetch(`${SUPABASE_URL}/rest/v1/device_categories?select=category,label_en,group_label,sort_order&limit=200`, { headers: h });
-          cats = await r2.json();
-        }
+        const cats = await cRes.json();
         if (Array.isArray(cats)) {
           cats.forEach(c => {
             deviceCatLabel[c.category] = c.label_en || c.category;
             deviceCatGroup[c.category] = c.group_label || '';
-            if (c.mi_segment) deviceCatSeg[c.category] = c.mi_segment === 'injectables' ? 'inj' : 'dev';
+            const seg = c.segment || c.mi_segment;
+            if (seg) deviceCatSeg[c.category] = seg === 'injectables' ? 'inj' : 'dev';
             deviceCatSort[c.category]  = (c.sort_order === null || c.sort_order === undefined) ? 999 : c.sort_order;
           });
         }
